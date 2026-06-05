@@ -98,6 +98,50 @@
       "problemMatcher": []
     },
     {
+      "label": "spa: build (-> wwwroot/admin)",
+      "detail": "Compile the admin SPA (Vite) into wwwroot/admin",
+      "type": "shell",
+      "command": "npm run build",
+      "options": { "cwd": "${workspaceFolder}/Areas/admin-spa" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "spa: dev (Vite HMR)",
+      "detail": "Run the admin SPA dev server with hot reload (proxies /admin-api to :5000)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/Areas/admin-spa" },
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "." },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "(ready in|Local:|VITE)"
+        }
+      }
+    },
+    {
+      "label": "spa: install",
+      "detail": "npm install for the admin SPA (run `npx heroui-pro login && npx heroui-pro install` first for the licensed package)",
+      "type": "shell",
+      "command": "npm install",
+      "options": { "cwd": "${workspaceFolder}/Areas/admin-spa" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build: SPA + .NET",
+      "detail": "Compile the SPA into wwwroot/admin, then build the .NET host",
+      "dependsOrder": "sequence",
+      "dependsOn": ["spa: build (-> wwwroot/admin)", "build"],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "ef: add migration",
       "detail": "dotnet ef migrations add <name> (prompts for a name)",
       "type": "process",

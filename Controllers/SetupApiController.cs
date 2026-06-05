@@ -1,68 +1,73 @@
 using DotNetForge.Core.Installation;
 using DotNetForge.Data;
-using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Dtos;
 using DotNetForge.Web.Services;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Controllers;
 
 /// <summary>
-/// Legacy server-rendered setup wizard, kept at /setup-legacy as a fallback for environments that
-/// have not built the React SPA (the primary wizard is the React page at /setup). Creates the first
-/// Super Admin and marks the CMS installed; reachable only while uninstalled.
+/// Anonymous JSON API behind the React setup wizard (installation_setup.md). Reachable only while the
+/// CMS is not installed (the InstallationMiddleware blocks /setup* afterward). Writes are antiforgery
+/// protected via the X-CSRF-TOKEN header; the GET endpoint issues that token.
 /// </summary>
-[Route("setup-legacy")]
-public sealed class SetupController : Controller
+[ApiController]
+[AllowAnonymous]
+[Route("setup")]
+[Produces("application/json")]
+public sealed class SetupApiController : ControllerBase
 {
     private readonly IInstallationService _installation;
     private readonly InstallationStatusCache _status;
     private readonly AuthService _authService;
-    private readonly AppEnvironment _env;
     private readonly DotNetForgeDbContext _db;
+    private readonly IAntiforgery _antiforgery;
 
-    public SetupController(
+    public SetupApiController(
         IInstallationService installation,
         InstallationStatusCache status,
         AuthService authService,
-        AppEnvironment env,
-        DotNetForgeDbContext db)
+        DotNetForgeDbContext db,
+        IAntiforgery antiforgery)
     {
         _installation = installation;
         _status = status;
         _authService = authService;
-        _env = env;
         _db = db;
+        _antiforgery = antiforgery;
     }
 
-    [HttpGet("")]
-    public IActionResult Index()
+    /// <summary>Issues the antiforgery token (and cookie) for the setup form to use on submit.</summary>
+    [HttpGet("antiforgery")]
+    public IActionResult Antiforgery()
     {
-        ViewData["AppName"] = _env.AppName;
-        return View(new SetupRequest());
+        var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+        return Ok(new { token = tokens.RequestToken });
     }
 
+    /// <summary>Creates the first Super Admin, marks the CMS installed, and signs the user in.</summary>
     [HttpPost("")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Index(SetupRequest request)
+    public async Task<IActionResult> Install([FromBody] SetupRequest request)
     {
-        ViewData["AppName"] = _env.AppName;
+        if (await _installation.IsInstalledAsync(HttpContext.RequestAborted))
+        {
+            return Conflict(new { error = "The CMS is already installed." });
+        }
 
         var result = await _installation.InstallAsync(request, HttpContext.RequestAborted);
         if (result.Failed)
         {
-            ModelState.AddModelError(string.Empty, result.Error);
-            request.Password = string.Empty;
-            request.ConfirmPassword = string.Empty;
-            return View(request);
+            return BadRequest(new { error = result.Error });
         }
 
         _status.MarkInstalled();
 
-        // Sign the new Super Admin in and head to the dashboard.
         var tenant = await _db.Tenants.OrderBy(t => t.CreatedDate).FirstAsync(HttpContext.RequestAborted);
         var signIn = await _authService.ValidateAsync(
             request.Email.Trim(), request.Password, tenant.Id, HttpContext.RequestAborted);
@@ -72,6 +77,6 @@ public sealed class SetupController : Controller
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, signIn.Principal);
         }
 
-        return Redirect("/admin");
+        return Ok(new { success = true, redirect = "/admin" });
     }
 }

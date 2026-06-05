@@ -1,6 +1,7 @@
 /* HeroUI v3 setup: import Tailwind first, then HeroUI styles (order matters). */
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "@heroui-pro/react/css";
 
 /*
  * HeroUI Pro Theme
@@ -19,6 +20,6 @@
 [data-theme="light"],
 [data-theme="default"] {
   /* Border Radius */
-  --radius: 0.125rem;
-  --field-radius: 0.25rem;
+  --radius: 0.25rem;
+  --field-radius: 0.5rem;
 }

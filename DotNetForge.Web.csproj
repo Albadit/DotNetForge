@@ -23,6 +23,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <!-- Runtime Razor compilation so admin extensions can ship their own view.cshtml under extensions/. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
   </ItemGroup>
 
   <ItemGroup>

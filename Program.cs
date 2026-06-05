@@ -53,10 +53,15 @@ app.MapControllerRoute(
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", app = env.AppName }));
 
-// Serve the admin SPA (built into wwwroot/admin) for every /admin/* path. The SPA calls the
-// cookie-authenticated /admin-api surface; unauthenticated API calls return 401 and the SPA then
-// redirects to /account/login.
+// Serve the admin SPA (built into wwwroot/admin) for the React setup wizard (/setup) and every
+// /admin/* path. The SPA calls the cookie-authenticated /admin-api surface; unauthenticated API
+// calls return 401 and the SPA then redirects to /account/login. The /setup install API is anonymous.
+app.MapFallbackToFile("/setup", "admin/index.html");
 app.MapFallbackToFile("/admin/{*path}", "admin/index.html");
+
+// Any other unmatched (non-file) URL resolves to a published public page by slug (e.g. /home, /about).
+// The more specific fallbacks above win, so this never shadows the SPA or the API routes.
+app.MapFallbackToController("RenderPage", "Home");
 
 app.Run();
 return 0;

@@ -67,7 +67,15 @@ async function send<T>(method: "POST" | "PUT" | "DELETE", path: string, body?: u
     throw new ApiError("Unauthorized", 401);
   }
   if (!res.ok) {
-    throw new ApiError(`Request failed (${res.status})`, res.status);
+    // Surface the server's validation message ({ "error": "..." }) when present.
+    let message = `Request failed (${res.status})`;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body && typeof body.error === "string" && body.error) message = body.error;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(message, res.status);
   }
   return (res.status === 204 ? (undefined as T) : ((await res.json()) as T));
 }

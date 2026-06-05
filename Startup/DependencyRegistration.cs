@@ -17,6 +17,7 @@ using DotNetForge.Shared.Stores;
 using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 
 namespace DotNetForge.Web.Startup;
 
@@ -111,9 +112,13 @@ public static class DependencyRegistration
         // Antiforgery for the admin SPA: the token is sent back in an X-CSRF-TOKEN header on writes.
         services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 
-        // MVC + the API controllers (the API project is mounted as an application part).
+        // MVC + the API controllers (the API project is mounted as an application part). Runtime Razor
+        // compilation lets admin extensions ship a view.cshtml under extensions/ that is compiled and
+        // rendered on demand (the content root provider resolves the ~/extensions/... path).
         services.AddControllersWithViews()
-            .AddApplicationPart(typeof(ContentApiController).Assembly);
+            .AddApplicationPart(typeof(ContentApiController).Assembly)
+            .AddRazorRuntimeCompilation(options =>
+                options.FileProviders.Add(new PhysicalFileProvider(contentRoot)));
 
         return services;
     }

@@ -88,6 +88,9 @@ public sealed class DotNetForgeDbContext : DbContext
             e.Property(p => p.MetaTitle).HasMaxLength(300);
             e.Property(p => p.MetaDescription).HasMaxLength(1000);
             e.Property(p => p.TargetUrl).HasMaxLength(2000);
+            e.Property(p => p.SeoKeywords).HasMaxLength(500);
+            e.Property(p => p.CanonicalUrl).HasMaxLength(2000);
+            e.Property(p => p.FileReference).HasMaxLength(2000);
             e.HasIndex(p => new { p.TenantId, p.ParentPageId, p.Slug }).IsUnique();
         });
 

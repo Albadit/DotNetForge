@@ -48,8 +48,31 @@ public static class DataSeeder
         }
 
         await SeedRolesAsync(db, tenant.Id, cancellationToken);
+        await SeedPagesAsync(db, tenant.Id, cancellationToken);
         await SeedAuthProvidersAsync(db, cancellationToken);
         await EnsureSystemStateAsync(db, cancellationToken);
+    }
+
+    /// <summary>Seeds a small starter page tree so the Content Manager has something to show on a fresh install.</summary>
+    private static async Task SeedPagesAsync(DotNetForgeDbContext db, Guid tenantId, CancellationToken ct)
+    {
+        if (await db.Pages.AnyAsync(p => p.TenantId == tenantId, ct))
+        {
+            return;
+        }
+
+        var home = new Page { TenantId = tenantId, Slug = "/", Title = "Home", Published = true, DisplayInMenu = true, SortOrder = 0 };
+        var about = new Page { TenantId = tenantId, Slug = "about", Title = "About", Published = true, DisplayInMenu = true, SortOrder = 1 };
+        var news = new Page { TenantId = tenantId, Slug = "news", Title = "News", Published = true, DisplayInMenu = true, SortOrder = 2 };
+        var contact = new Page { TenantId = tenantId, Slug = "contact", Title = "Contact", DisplayInMenu = true, SortOrder = 3 };
+        db.Pages.AddRange(home, about, news, contact);
+
+        // Children of About.
+        db.Pages.AddRange(
+            new Page { TenantId = tenantId, Slug = "team", Title = "Team", Published = true, SortOrder = 0, ParentPageId = about.Id },
+            new Page { TenantId = tenantId, Slug = "history", Title = "History", SortOrder = 1, ParentPageId = about.Id });
+
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedRolesAsync(DotNetForgeDbContext db, Guid tenantId, CancellationToken ct)

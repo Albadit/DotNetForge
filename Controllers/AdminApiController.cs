@@ -4,6 +4,7 @@ using DotNetForge.Data;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
+using DotNetForge.Shared.Enums;
 using DotNetForge.Web.Services;
 using DotNetForge.Web.Startup;
 using Microsoft.AspNetCore.Antiforgery;
@@ -121,18 +122,238 @@ public sealed class AdminApiController : ControllerBase
             .AsNoTracking()
             .Where(p => p.TenantId == TenantId)
             .OrderBy(p => p.SortOrder).ThenBy(p => p.Title)
-            .Select(p => new
-            {
-                id = p.Id,
-                p.Slug,
-                p.Title,
-                p.Published,
-                p.DisplayInMenu,
-                type = p.PageType.ToString(),
-                p.UpdatedDate,
-            })
             .ToListAsync();
-        return Ok(pages);
+        return Ok(pages.Select(MapPage));
+    }
+
+    public sealed record PageInput(
+        string Title, string Slug, string? MetaTitle, string? MetaDescription, string? SeoKeywords,
+        string? CanonicalUrl, bool Published, bool Disabled, bool DisplayInMenu, Guid? ParentPageId,
+        int SortOrder, string PageType, string? TargetUrl, string? FileReference,
+        DateTime? ScheduledPublishDate, DateTime? ScheduledUnpublishDate);
+
+    [HttpPost("content/pages")]
+    public async Task<IActionResult> CreatePage([FromBody] PageInput input)
+    {
+        var page = new Page { TenantId = TenantId, CreatedById = CurrentUserId };
+        var error = await ApplyPageInputAsync(page, input);
+        if (error is not null)
+        {
+            return BadRequest(new { error });
+        }
+
+        _db.Pages.Add(page);
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync(AuditActions.ContentCreated, "Page", page.Id.ToString(), page.Title);
+        return Ok(MapPage(page));
+    }
+
+    [HttpPut("content/pages/{id:guid}")]
+    public async Task<IActionResult> UpdatePage(Guid id, [FromBody] PageInput input)
+    {
+        var page = await _db.Pages.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == TenantId);
+        if (page is null)
+        {
+            return NotFound();
+        }
+
+        var error = await ApplyPageInputAsync(page, input);
+        if (error is not null)
+        {
+            return BadRequest(new { error });
+        }
+
+        page.UpdatedDate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync(AuditActions.ContentUpdated, "Page", page.Id.ToString(), page.Title);
+        return Ok(MapPage(page));
+    }
+
+    [HttpDelete("content/pages/{id:guid}")]
+    public async Task<IActionResult> DeletePage(Guid id)
+    {
+        var page = await _db.Pages.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == TenantId);
+        if (page is null)
+        {
+            return NotFound();
+        }
+
+        // Never orphan children: re-parent them to the deleted page's parent.
+        var children = await _db.Pages.Where(p => p.TenantId == TenantId && p.ParentPageId == id).ToListAsync();
+        foreach (var child in children)
+        {
+            child.ParentPageId = page.ParentPageId;
+        }
+
+        _db.Pages.Remove(page);
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync(AuditActions.ContentDeleted, "Page", id.ToString(), page.Title);
+        return NoContent();
+    }
+
+    /// <summary>Validates the input and applies it to the page; returns an error message, or null on success.</summary>
+    private async Task<string?> ApplyPageInputAsync(Page page, PageInput input)
+    {
+        if (string.IsNullOrWhiteSpace(input.Title))
+        {
+            return "Title is required.";
+        }
+
+        var slug = Slugify(input.Slug);
+        if (slug.Length == 0)
+        {
+            return "A valid slug is required.";
+        }
+
+        if (!Enum.TryParse<PageType>(input.PageType, ignoreCase: true, out var pageType))
+        {
+            return "Invalid page type.";
+        }
+
+        if (input.ParentPageId is Guid parentId)
+        {
+            var rows = await _db.Pages.AsNoTracking()
+                .Where(p => p.TenantId == TenantId)
+                .Select(p => new { p.Id, p.ParentPageId })
+                .ToListAsync();
+            var parentOf = rows.ToDictionary(r => r.Id, r => r.ParentPageId);
+
+            if (!parentOf.ContainsKey(parentId))
+            {
+                return "Parent page not found in this tenant.";
+            }
+
+            // Cycle check: walking the ancestors of the new parent must not reach this page.
+            Guid? cursor = parentId;
+            while (cursor is Guid c)
+            {
+                if (c == page.Id)
+                {
+                    return "That parent would create a cycle in the page tree.";
+                }
+                cursor = parentOf.TryGetValue(c, out var pp) ? pp : null;
+            }
+        }
+
+        var slugTaken = await _db.Pages.AnyAsync(p =>
+            p.TenantId == TenantId && p.ParentPageId == input.ParentPageId && p.Slug == slug && p.Id != page.Id);
+        if (slugTaken)
+        {
+            return $"A page with the slug '{slug}' already exists under this parent.";
+        }
+
+        // A parent can have at most one dynamic "[param]" route segment (otherwise resolution is ambiguous).
+        if (slug.StartsWith('[') && slug.EndsWith(']'))
+        {
+            var siblingSlugs = await _db.Pages.AsNoTracking()
+                .Where(p => p.TenantId == TenantId && p.ParentPageId == input.ParentPageId && p.Id != page.Id)
+                .Select(p => p.Slug)
+                .ToListAsync();
+            if (siblingSlugs.Any(s => s.StartsWith('[') && s.EndsWith(']')))
+            {
+                return "This parent already has a dynamic route ([…]); only one is allowed per parent.";
+            }
+        }
+
+        if (input.ScheduledPublishDate is DateTime sp && input.ScheduledUnpublishDate is DateTime su && su <= sp)
+        {
+            return "Scheduled unpublish must be after scheduled publish.";
+        }
+
+        if (pageType == PageType.UrlRedirect && string.IsNullOrWhiteSpace(input.TargetUrl))
+        {
+            return "Target URL is required for a URL redirect page.";
+        }
+
+        if (pageType == PageType.File && string.IsNullOrWhiteSpace(input.FileReference))
+        {
+            return "File reference is required for a File page.";
+        }
+
+        page.Title = input.Title.Trim();
+        page.Slug = slug;
+        page.MetaTitle = Trimmed(input.MetaTitle);
+        page.MetaDescription = Trimmed(input.MetaDescription);
+        page.SeoKeywords = Trimmed(input.SeoKeywords);
+        page.CanonicalUrl = Trimmed(input.CanonicalUrl);
+        page.Published = input.Published;
+        page.Disabled = input.Disabled;
+        page.DisplayInMenu = input.DisplayInMenu;
+        page.ParentPageId = input.ParentPageId;
+        page.SortOrder = input.SortOrder;
+        page.PageType = pageType;
+        page.TargetUrl = Trimmed(input.TargetUrl);
+        page.FileReference = Trimmed(input.FileReference);
+        page.ScheduledPublishDate = input.ScheduledPublishDate;
+        page.ScheduledUnpublishDate = input.ScheduledUnpublishDate;
+        return null;
+    }
+
+    private static object MapPage(Page p) => new
+    {
+        id = p.Id,
+        p.Slug,
+        p.Title,
+        p.MetaTitle,
+        p.MetaDescription,
+        p.SeoKeywords,
+        p.CanonicalUrl,
+        p.Published,
+        p.Disabled,
+        p.DisplayInMenu,
+        parentPageId = p.ParentPageId,
+        p.SortOrder,
+        type = p.PageType.ToString(),
+        p.TargetUrl,
+        p.FileReference,
+        p.ScheduledPublishDate,
+        p.ScheduledUnpublishDate,
+        p.CreatedDate,
+        p.UpdatedDate,
+    };
+
+    private Guid? CurrentUserId =>
+        Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : null;
+
+    private static string? Trimmed(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string Slugify(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return string.Empty;
+        }
+
+        // "/" is the reserved slug for the site root (home) page.
+        if (input.Trim() == "/")
+        {
+            return "/";
+        }
+
+        var sb = new System.Text.StringBuilder(input.Length);
+        foreach (var ch in input.Trim().ToLowerInvariant())
+        {
+            if (ch is >= 'a' and <= 'z' or >= '0' and <= '9')
+            {
+                sb.Append(ch);
+            }
+            else if (ch is '-' or ' ' or '_')
+            {
+                sb.Append('-');
+            }
+            else if (ch is '[' or ']')
+            {
+                // Brackets mark a dynamic route segment, e.g. "[id]" matches any value.
+                sb.Append(ch);
+            }
+        }
+
+        var slug = sb.ToString();
+        while (slug.Contains("--", StringComparison.Ordinal))
+        {
+            slug = slug.Replace("--", "-");
+        }
+        return slug.Trim('-');
     }
 
     [HttpGet("media")]
@@ -214,6 +435,38 @@ public sealed class AdminApiController : ControllerBase
 
     private sealed record ExtensionDto(
         string Id, string Name, string Version, string Type, string Status, string Author, bool ValidManifest, string Source);
+
+    /// <summary>
+    /// Returns the valid <c>admin</c>-type extensions discovered under <c>extensions/admin/</c>. The
+    /// admin SPA renders one sidebar tab + page per entry, so dropping a manifest there adds a tab with
+    /// no React changes (extensions.md).
+    /// </summary>
+    [HttpGet("admin-extensions")]
+    public IActionResult AdminExtensions()
+    {
+        var extensionsRoot = Path.Combine(_hostEnv.ContentRootPath, "extensions");
+
+        var list = _loader.Discover(extensionsRoot)
+            .Where(d => d.IsValid && d.Manifest is not null &&
+                        string.Equals(d.Manifest.Type, "admin", StringComparison.OrdinalIgnoreCase))
+            .Select(d => new
+            {
+                id = d.Manifest!.Id,
+                name = d.Manifest.Name,
+                description = d.Manifest.Description,
+                version = d.Manifest.Version,
+                author = d.Manifest.Author,
+                entryPoint = d.Manifest.EntryPoint,
+                routes = d.Manifest.Routes,
+                settings = d.Manifest.Settings,
+                hasView = System.IO.File.Exists(
+                    Path.Combine(Path.GetDirectoryName(d.Path) ?? string.Empty, "Views", "Index.cshtml")),
+            })
+            .OrderBy(x => x.name)
+            .ToList();
+
+        return Ok(list);
+    }
 
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()

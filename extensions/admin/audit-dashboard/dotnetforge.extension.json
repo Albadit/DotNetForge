@@ -12,7 +12,6 @@
   "dependencies": [],
   "routes": ["/admin/ext/audit-dashboard"],
   "settings": {
-    "refreshSeconds": 30,
     "showFailedLogins": true
   }
 }

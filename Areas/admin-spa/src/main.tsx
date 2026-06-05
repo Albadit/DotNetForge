@@ -6,10 +6,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 // HeroUI v3 needs no provider; its styles are imported via Tailwind in index.css.
 import "./index.css";
 
-// Side-effect imports: these register the core areas and the extensions into the module registry
-// BEFORE the router is built from that registry.
+// Side-effect import: registers the core areas into the module registry BEFORE the router is built.
+// Admin extensions are NOT registered here - they come from the backend (extensions/admin/) at runtime.
 import "./areas";
-import "./extensions";
 
 import { buildRouter } from "./routes/router";
 import { queryClient } from "./app/queryClient";

@@ -86,15 +86,21 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full responsibilities of each pro
 
 ## Admin panel (React SPA)
 
-The primary admin UI is a **React + Vite + TypeScript** SPA in
-[`Areas/admin-spa/`](Areas/admin-spa/) (HeroUI v3, Lucide, TanStack Query), served by the ASP.NET Core
-host under **`/admin`**. It talks to a cookie-authenticated, antiforgery-protected `/admin-api`
-surface (distinct from the token-only `/api`).
+The admin UI and the first-run **setup wizard** are a **React + Vite + TypeScript** SPA in
+[`Areas/admin-spa/`](Areas/admin-spa/) (HeroUI v3 + **HeroUI Pro**, Lucide, TanStack Query), served by
+the ASP.NET Core host at **`/admin`** and **`/setup`**. It talks to cookie-authenticated,
+antiforgery-protected APIs (`/admin-api` and the anonymous `/setup` install endpoint) - distinct from
+the token-only `/api`.
+
+> **HeroUI Pro is a licensed package.** Building the SPA needs it installed via the authenticated CLI:
+> `npx heroui-pro login` then `npx heroui-pro install` (or set `HEROUI_AUTH_TOKEN` for CI). See
+> [heroui.pro](https://heroui.pro).
 
 ```bash
 cd Areas/admin-spa
+npx heroui-pro login && npx heroui-pro install   # one-time: authenticate + add @heroui-pro/react
 npm install
-npm run build      # builds into wwwroot/admin (served at /admin)
+npm run build      # builds into wwwroot/admin (served at /admin and /setup)
 npm run dev        # optional: Vite dev server with HMR (proxies /admin-api to :5000)
 ```
 
@@ -103,7 +109,8 @@ and routes are generated from it - so a new area or admin extension appears by r
 (see `Areas/admin-spa/src/extensions/` and the "Hello Extension" sample). Initial areas: Dashboard,
 Content, Media, Users, Settings, Extensions.
 
-> A legacy server-rendered Razor admin is kept as a fallback at **`/admin-legacy`**.
+> **Without the SPA build** (e.g. no HeroUI Pro license), the server-rendered Razor fallbacks remain
+> fully functional: the setup wizard at **`/setup-legacy`** and the admin at **`/admin-legacy`**.
 
 ## The headless API
 

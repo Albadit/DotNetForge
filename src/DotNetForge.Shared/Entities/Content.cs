@@ -36,6 +36,21 @@ public class Page
     /// <summary>Required when <see cref="PageType"/> is <see cref="PageType.UrlRedirect"/>.</summary>
     public string? TargetUrl { get; set; }
 
+    /// <summary>Comma-separated SEO keywords.</summary>
+    public string? SeoKeywords { get; set; }
+
+    /// <summary>Canonical link for duplicate-content control (absolute URL).</summary>
+    public string? CanonicalUrl { get; set; }
+
+    /// <summary>Auto-publish time (UTC). When reached the page becomes published.</summary>
+    public DateTime? ScheduledPublishDate { get; set; }
+
+    /// <summary>Auto-unpublish time (UTC). Must be after <see cref="ScheduledPublishDate"/>.</summary>
+    public DateTime? ScheduledUnpublishDate { get; set; }
+
+    /// <summary>Reference to a File Manager asset; required when <see cref="PageType"/> is File.</summary>
+    public string? FileReference { get; set; }
+
     public Guid? CreatedById { get; set; }
 
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

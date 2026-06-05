@@ -37,12 +37,28 @@ public sealed class CmsIntegrationTests
     }
 
     [Fact]
-    public async Task Setup_page_is_served_before_install()
+    public async Task Setup_api_is_available_before_install()
+    {
+        // The React setup page (/setup) is served from the SPA build; its install API is anonymous
+        // and available before install. We test the API (not the SPA HTML) so this stays decoupled
+        // from the SPA build, which requires a HeroUI Pro license to produce.
+        using var factory = new DotNetForgeWebFactory();
+        using var client = NoRedirectClient(factory);
+
+        var response = await client.GetAsync("/setup/antiforgery");
+
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("token", body);
+    }
+
+    [Fact]
+    public async Task Legacy_setup_page_is_served_before_install()
     {
         using var factory = new DotNetForgeWebFactory();
         using var client = NoRedirectClient(factory);
 
-        var response = await client.GetAsync("/setup");
+        var response = await client.GetAsync("/setup-legacy");
 
         response.EnsureSuccessStatusCode();
         var html = await response.Content.ReadAsStringAsync();
