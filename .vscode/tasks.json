@@ -1,0 +1,123 @@
+{
+  // All tasks below are in the "build" group with NO default, so pressing
+  // Ctrl+Shift+B (Run Build Task) shows a picker to select which one to run.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "detail": "dotnet build - web host + referenced libraries (from repo root)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "watch (hot reload)",
+      "detail": "dotnet watch - run the web host with hot reload",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "base": "$msCompile",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*(Building|Determining projects to restore|dotnet watch).*$",
+          "endsPattern": "^.*(Now listening on:|Waiting for changes|Application started).*$"
+        }
+      }
+    },
+    {
+      "label": "run",
+      "detail": "dotnet run - start the web host (http://localhost:5000)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["run"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "base": "$msCompile",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*(Building|Determining projects to restore).*$",
+          "endsPattern": "^.*(Now listening on:|Application started).*$"
+        }
+      }
+    },
+    {
+      "label": "test: all",
+      "detail": "Run unit tests, then integration tests",
+      "dependsOrder": "sequence",
+      "dependsOn": ["test: unit", "test: integration"],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "test: unit",
+      "detail": "dotnet test tests/DotNetForge.Tests",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "tests/DotNetForge.Tests"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: integration",
+      "detail": "dotnet test tests/DotNetForge.IntegrationTests",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "tests/DotNetForge.IntegrationTests"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "clean",
+      "detail": "dotnet clean - remove build outputs",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["clean"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "restore tools",
+      "detail": "dotnet tool restore - restore the pinned dotnet-ef tool",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["tool", "restore"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "ef: add migration",
+      "detail": "dotnet ef migrations add <name> (prompts for a name)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef", "migrations", "add", "${input:migrationName}",
+        "--project", "src/DotNetForge.Data",
+        "--startup-project", "src/DotNetForge.Data",
+        "--output-dir", "Migrations"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "migrationName",
+      "type": "promptString",
+      "description": "Name for the new EF Core migration (e.g. AddProductTable)"
+    }
+  ]
+}

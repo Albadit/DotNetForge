@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Domain & services: RBAC, content, settings, installation, validation. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
+    <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

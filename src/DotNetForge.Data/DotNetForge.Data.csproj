@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Persistence: EF Core DbContext, entity mappings, migrations, provider selection. -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
+    <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

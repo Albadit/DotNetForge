@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Headless/Hybrid API surface: controllers, API-token authentication, and
+    permission enforcement. Built as an ASP.NET Core class library (the Web
+    host mounts it), hence the framework reference rather than the Web SDK.
+  -->
+  <PropertyGroup>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
+    <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
+    <ProjectReference Include="..\DotNetForge.Core\DotNetForge.Core.csproj" />
+    <!-- The headless API queries persistence directly; full repository abstraction is future work. -->
+    <ProjectReference Include="..\DotNetForge.Data\DotNetForge.Data.csproj" />
+  </ItemGroup>
+
+</Project>

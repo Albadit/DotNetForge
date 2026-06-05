@@ -1,0 +1,22 @@
+@{
+    ViewData["Title"] = "Sign in";
+    Layout = "_AuthLayout";
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<h2>Sign in</h2>
+
+<div asp-validation-summary="All" class="validation-summary"></div>
+
+<form method="post" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl">
+    @Html.AntiForgeryToken()
+    <div class="form-row">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="username" autofocus />
+    </div>
+    <div class="form-row">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password" />
+    </div>
+    <button type="submit" class="btn primary">Sign in</button>
+</form>

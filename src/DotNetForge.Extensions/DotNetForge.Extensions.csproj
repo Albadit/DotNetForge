@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Extension host: manifest discovery & validation, lifecycle, DI registration. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
+    <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
+    <ProjectReference Include="..\DotNetForge.Core\DotNetForge.Core.csproj" />
+  </ItemGroup>
+
+</Project>

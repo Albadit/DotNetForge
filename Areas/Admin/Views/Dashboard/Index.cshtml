@@ -1,0 +1,26 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<p class="muted">Welcome to <strong>@Model.AppName</strong>. Here's an overview of your CMS.</p>
+
+<div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">@Model.Users</div><div class="stat-label">Users</div></div>
+    <div class="stat-card"><div class="stat-num">@Model.Roles</div><div class="stat-label">Roles</div></div>
+    <div class="stat-card"><div class="stat-num">@Model.Pages</div><div class="stat-label">Pages</div></div>
+    <div class="stat-card"><div class="stat-num">@Model.Media</div><div class="stat-label">Media files</div></div>
+    <div class="stat-card"><div class="stat-num">@Model.ApiTokens</div><div class="stat-label">API tokens</div></div>
+    <div class="stat-card"><div class="stat-num">@Model.Webhooks</div><div class="stat-label">Webhooks</div></div>
+    <div class="stat-card"><div class="stat-num">@Model.Extensions</div><div class="stat-label">Extensions</div></div>
+    <div class="stat-card"><div class="stat-num">@Model.AuditEntries</div><div class="stat-label">Audit entries</div></div>
+</div>
+
+<div class="panel">
+    <h2>System</h2>
+    <table class="kv">
+        <tr><th>CMS version</th><td>@Model.CmsVersion</td></tr>
+        <tr><th>Installed</th><td>@(Model.InstalledAtUtc?.ToString("u") ?? "-")</td></tr>
+        <tr><th>Operating modes</th><td>Traditional · Headless · Hybrid</td></tr>
+    </table>
+</div>

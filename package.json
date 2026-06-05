@@ -1,0 +1,12 @@
+{
+  "name": "dotnetforge-cms",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend tooling (linting) for DotNetForge CMS.",
+  "scripts": {
+    "lint": "eslint \"wwwroot/js/**/*.js\""
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

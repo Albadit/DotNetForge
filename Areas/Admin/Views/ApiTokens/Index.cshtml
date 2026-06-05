@@ -1,0 +1,42 @@
+@model List<ApiToken>
+@{
+    ViewData["Title"] = "API Tokens";
+}
+
+<div class="page-actions">
+    <p class="muted">Scoped tokens for the headless API. The secret is shown only once at creation.</p>
+    <a class="btn primary" href="/admin/api-tokens/create">Create token</a>
+</div>
+
+<table class="data">
+    <thead>
+        <tr><th>Name</th><th>Prefix</th><th>Permissions</th><th>Created</th><th>Last used</th><th>Expires</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+    @foreach (var token in Model)
+    {
+        <tr>
+            <td><strong>@token.Name</strong></td>
+            <td><code>@token.TokenPrefix</code></td>
+            <td class="muted">@token.Permissions.Count scope(s)</td>
+            <td class="muted">@token.CreatedDate.ToString("u")</td>
+            <td class="muted">@(token.LastUsedDate?.ToString("u") ?? "never")</td>
+            <td class="muted">@(token.ExpirationDate?.ToString("u") ?? "unlimited")</td>
+            <td><span class="badge @(token.Revoked ? "warn" : "ok")">@(token.Revoked ? "revoked" : "active")</span></td>
+            <td>
+                @if (!token.Revoked)
+                {
+                    <form method="post" asp-action="Revoke" asp-route-id="@token.Id" class="inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn small danger">Revoke</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    @if (Model.Count == 0)
+    {
+        <tr><td colspan="8" class="muted">No tokens yet.</td></tr>
+    }
+    </tbody>
+</table>
