@@ -63,13 +63,27 @@ public sealed class CmsIntegrationTests
     }
 
     [Fact]
-    public async Task After_install_admin_requires_authentication()
+    public async Task After_install_admin_api_requires_authentication()
     {
         using var factory = new DotNetForgeWebFactory();
         await factory.InstallAsync();
         using var client = NoRedirectClient(factory);
 
-        var response = await client.GetAsync("/admin");
+        // The admin SPA shell at /admin is a static file; the auth gate is the cookie-authenticated
+        // admin API, which returns 401 (not a redirect) for the SPA to handle.
+        var response = await client.GetAsync("/admin-api/me");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task After_install_legacy_admin_requires_authentication()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        using var client = NoRedirectClient(factory);
+
+        var response = await client.GetAsync("/admin-legacy");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains("/account/login", response.Headers.Location?.OriginalString);

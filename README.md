@@ -84,6 +84,27 @@ docs/                    # Developer documentation
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full responsibilities of each project.
 
+## Admin panel (React SPA)
+
+The primary admin UI is a **React + Vite + TypeScript** SPA in
+[`Areas/admin-spa/`](Areas/admin-spa/) (HeroUI v3, Lucide, TanStack Query), served by the ASP.NET Core
+host under **`/admin`**. It talks to a cookie-authenticated, antiforgery-protected `/admin-api`
+surface (distinct from the token-only `/api`).
+
+```bash
+cd Areas/admin-spa
+npm install
+npm run build      # builds into wwwroot/admin (served at /admin)
+npm run dev        # optional: Vite dev server with HMR (proxies /admin-api to :5000)
+```
+
+The shell is **module/area-based**: areas and extensions register into one registry, and the sidebar
+and routes are generated from it - so a new area or admin extension appears by registration alone
+(see `Areas/admin-spa/src/extensions/` and the "Hello Extension" sample). Initial areas: Dashboard,
+Content, Media, Users, Settings, Extensions.
+
+> A legacy server-rendered Razor admin is kept as a fallback at **`/admin-legacy`**.
+
 ## The headless API
 
 Create a scoped token from **Admin → Settings → API Tokens** (the full secret is shown once), then

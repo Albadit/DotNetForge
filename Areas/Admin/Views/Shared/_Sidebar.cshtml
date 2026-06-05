@@ -1,47 +1,47 @@
 @{
-    var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "/admin";
+    var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "/admin-legacy";
     string Active(string href) =>
         string.Equals(path, href, StringComparison.OrdinalIgnoreCase) ? "active" : "";
 }
-@* Canonical admin sidebar tree (admin_area.md). Every leaf routes to a real module. *@
+@* Canonical admin sidebar tree (admin_area.md). Legacy Razor admin, served under /admin-legacy. *@
 <nav class="admin-nav">
     <div class="nav-group">
         <div class="nav-group-title">Main</div>
-        <a class="nav-item @Active("/admin")" href="/admin">Dashboard</a>
-        <a class="nav-item @Active("/admin/content")" href="/admin/content">Content Manager</a>
-        <a class="nav-item @Active("/admin/file-manager")" href="/admin/file-manager">File Manager</a>
-        <a class="nav-item @Active("/admin/marketplace")" href="/admin/marketplace">Marketplace</a>
+        <a class="nav-item @Active("/admin-legacy")" href="/admin-legacy">Dashboard</a>
+        <a class="nav-item @Active("/admin-legacy/content")" href="/admin-legacy/content">Content Manager</a>
+        <a class="nav-item @Active("/admin-legacy/file-manager")" href="/admin-legacy/file-manager">File Manager</a>
+        <a class="nav-item @Active("/admin-legacy/marketplace")" href="/admin-legacy/marketplace">Marketplace</a>
     </div>
 
     <div class="nav-group">
         <div class="nav-group-title">Settings · Global Settings</div>
-        <a class="nav-item @Active("/admin/overview")" href="/admin/overview">Overview</a>
-        <a class="nav-item @Active("/admin/api-tokens")" href="/admin/api-tokens">API Tokens</a>
-        <a class="nav-item @Active("/admin/content-history")" href="/admin/content-history">Content History</a>
-        <a class="nav-item @Active("/admin/internationalization")" href="/admin/internationalization">Internationalization</a>
-        <a class="nav-item @Active("/admin/file-manager")" href="/admin/file-manager">File Manager</a>
-        <a class="nav-item @Active("/admin/plugins")" href="/admin/plugins">Plugins</a>
-        <a class="nav-item @Active("/admin/transfer")" href="/admin/transfer">Transfer</a>
-        <a class="nav-item @Active("/admin/webhooks")" href="/admin/webhooks">Webhooks</a>
+        <a class="nav-item @Active("/admin-legacy/overview")" href="/admin-legacy/overview">Overview</a>
+        <a class="nav-item @Active("/admin-legacy/api-tokens")" href="/admin-legacy/api-tokens">API Tokens</a>
+        <a class="nav-item @Active("/admin-legacy/content-history")" href="/admin-legacy/content-history">Content History</a>
+        <a class="nav-item @Active("/admin-legacy/internationalization")" href="/admin-legacy/internationalization">Internationalization</a>
+        <a class="nav-item @Active("/admin-legacy/file-manager")" href="/admin-legacy/file-manager">File Manager</a>
+        <a class="nav-item @Active("/admin-legacy/plugins")" href="/admin-legacy/plugins">Plugins</a>
+        <a class="nav-item @Active("/admin-legacy/transfer")" href="/admin-legacy/transfer">Transfer</a>
+        <a class="nav-item @Active("/admin-legacy/webhooks")" href="/admin-legacy/webhooks">Webhooks</a>
     </div>
 
     <div class="nav-group">
         <div class="nav-group-title">Settings · Administration Panel</div>
-        <a class="nav-item @Active("/admin/roles")" href="/admin/roles">Roles</a>
-        <a class="nav-item @Active("/admin/users")" href="/admin/users">Users</a>
-        <a class="nav-item @Active("/admin/audit-logs")" href="/admin/audit-logs">Audit Logs</a>
+        <a class="nav-item @Active("/admin-legacy/roles")" href="/admin-legacy/roles">Roles</a>
+        <a class="nav-item @Active("/admin-legacy/users")" href="/admin-legacy/users">Users</a>
+        <a class="nav-item @Active("/admin-legacy/audit-logs")" href="/admin-legacy/audit-logs">Audit Logs</a>
     </div>
 
     <div class="nav-group">
         <div class="nav-group-title">Settings · Email</div>
-        <a class="nav-item @Active("/admin/email/configuration")" href="/admin/email/configuration">Configuration</a>
-        <a class="nav-item @Active("/admin/email/templates")" href="/admin/email/templates">Templates</a>
+        <a class="nav-item @Active("/admin-legacy/email/configuration")" href="/admin-legacy/email/configuration">Configuration</a>
+        <a class="nav-item @Active("/admin-legacy/email/templates")" href="/admin-legacy/email/templates">Templates</a>
     </div>
 
     <div class="nav-group">
         <div class="nav-group-title">Settings · Users &amp; Permissions Plugin</div>
-        <a class="nav-item @Active("/admin/roles")" href="/admin/roles">Roles</a>
-        <a class="nav-item @Active("/admin/providers")" href="/admin/providers">Providers</a>
-        <a class="nav-item @Active("/admin/advanced-settings")" href="/admin/advanced-settings">Advanced Settings</a>
+        <a class="nav-item @Active("/admin-legacy/roles")" href="/admin-legacy/roles">Roles</a>
+        <a class="nav-item @Active("/admin-legacy/providers")" href="/admin-legacy/providers">Providers</a>
+        <a class="nav-item @Active("/admin-legacy/advanced-settings")" href="/admin-legacy/advanced-settings">Advanced Settings</a>
     </div>
 </nav>

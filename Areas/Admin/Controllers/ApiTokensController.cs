@@ -12,10 +12,10 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// API token management (api_tokens.md). Tokens are shown in plaintext exactly once at creation;
-/// only a salted hash is stored. Restricted to Super Admin / Admin (the API permission area).
+/// API token management (legacy Razor admin). Tokens are shown in plaintext exactly once at
+/// creation; only a salted hash is stored. Restricted to Super Admin / Admin.
 /// </summary>
-[Route("admin/api-tokens")]
+[Route("admin-legacy/api-tokens")]
 [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]
 public sealed class ApiTokensController : AdminControllerBase
 {

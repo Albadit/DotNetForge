@@ -68,7 +68,7 @@ tests/  DotNetForge.Tests/   DotNetForge.IntegrationTests/
 extensions/  (themes/plugins/modules/widgets/providers/connectors/authentication/libraries/admin)
 storage/  (media/backups/logs/updates - git-ignored)
 docs/                     (developer documentation)
-.github/  (workflows/ci.yml, dependabot.yml, agents/ — AI-agent documentation)
+.github/  (workflows/ci.yml, dependabot.yml, agents/ - AI-agent documentation)
 .env.example  .gitignore  .editorconfig  README.md  ARCHITECTURE.md  LICENSE  global.json
 Directory.Build.props  Directory.Packages.props  .config/dotnet-tools.json
 ```

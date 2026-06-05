@@ -48,14 +48,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
-    name: "areas",
-    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
-
-app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", app = env.AppName }));
+
+// Serve the admin SPA (built into wwwroot/admin) for every /admin/* path. The SPA calls the
+// cookie-authenticated /admin-api surface; unauthenticated API calls return 401 and the SPA then
+// redirects to /account/login.
+app.MapFallbackToFile("/admin/{*path}", "admin/index.html");
 
 app.Run();
 return 0;

@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Base for admin-area controllers. Requires an admin-capable role and exposes the active tenant.
-/// The admin area always uses the built-in admin layout, never a public frontend theme (admin_area.md).
+/// Base for the legacy Razor admin (kept as a fallback under /admin-legacy; the primary admin is the
+/// React SPA at /admin). Requires an admin-capable role and exposes the active tenant.
 /// </summary>
 [Area("Admin")]
 [Authorize(Policy = DependencyRegistration.AdminAreaPolicy)]

@@ -15,7 +15,7 @@
   -->
 
   <PropertyGroup>
-    <DefaultItemExcludes>$(DefaultItemExcludes);src/**;tests/**;extensions/**;storage/**;agents/**;docs/**;dotnetforge_prompt/**;.config/**;.vscode/**;node_modules/**;*.md;.env;.env.*;global.json;package.json;package-lock.json;.eslintrc.json</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);src/**;tests/**;extensions/**;storage/**;agents/**;docs/**;dotnetforge_prompt/**;Areas/admin-spa/**;.config/**;.github/**;.vscode/**;node_modules/**;*.md;.env;.env.*;global.json;package.json;package-lock.json;.eslintrc.json</DefaultItemExcludes>
     <UserSecretsId>dotnetforge-cms</UserSecretsId>
     <RootNamespace>DotNetForge.Web</RootNamespace>
     <AssemblyName>DotNetForge.Web</AssemblyName>

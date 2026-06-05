@@ -73,6 +73,30 @@ public static class DependencyRegistration
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
                 options.Cookie.Name = "dnf.auth";
+
+                // The admin SPA expects JSON 401/403 from /admin-api, not browser redirects.
+                options.Events.OnRedirectToLogin = ctx =>
+                {
+                    if (ctx.Request.Path.StartsWithSegments("/admin-api"))
+                    {
+                        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    }
+
+                    ctx.Response.Redirect(ctx.RedirectUri);
+                    return Task.CompletedTask;
+                };
+                options.Events.OnRedirectToAccessDenied = ctx =>
+                {
+                    if (ctx.Request.Path.StartsWithSegments("/admin-api"))
+                    {
+                        ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return Task.CompletedTask;
+                    }
+
+                    ctx.Response.Redirect(ctx.RedirectUri);
+                    return Task.CompletedTask;
+                };
             })
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(
                 ApiTokenDefaults.Scheme, _ => { });
@@ -83,6 +107,9 @@ public static class DependencyRegistration
             options.AddPolicy(AdminAreaPolicy, policy =>
                 policy.RequireRole(Roles.SuperAdmin, Roles.Admin, Roles.Editor, Roles.Author));
         });
+
+        // Antiforgery for the admin SPA: the token is sent back in an X-CSRF-TOKEN header on writes.
+        services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 
         // MVC + the API controllers (the API project is mounted as an application part).
         services.AddControllersWithViews()

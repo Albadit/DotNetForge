@@ -31,6 +31,9 @@ node_modules/
 npm-debug.log*
 yarn-error.log*
 
+# ---- Admin SPA build output (run `npm run build` in Areas/admin-spa/) ----
+wwwroot/admin/
+
 # ---- IDE / OS ----
 .idea/
 *.swp

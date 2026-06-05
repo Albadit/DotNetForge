@@ -7,7 +7,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@title · DotNetForge Admin</title>
+    <title>@title · DotNetForge Admin (legacy)</title>
     @* The admin area uses its own built-in layout and is never restyled by public themes. *@
     <link rel="stylesheet" href="~/css/site.css" />
     <link rel="stylesheet" href="~/css/admin.css" />
@@ -26,6 +26,7 @@
             <header class="admin-topbar">
                 <h1>@title</h1>
                 <div class="admin-user">
+                    <a href="/admin" class="btn small">Open React admin</a>
                     <span>@userName</span>
                     <form method="post" asp-area="" asp-controller="Account" asp-action="Logout" class="inline">
                         @Html.AntiForgeryToken()

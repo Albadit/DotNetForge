@@ -1,4 +1,4 @@
-/* Admin shell - a dedicated, built-in layout isolated from public frontend themes. */
+/* Legacy Razor admin shell - a dedicated, built-in layout isolated from public frontend themes. */
 .admin-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
 
 .admin-sidebar {

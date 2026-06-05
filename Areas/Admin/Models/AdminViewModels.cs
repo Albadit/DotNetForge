@@ -2,7 +2,7 @@ using DotNetForge.Shared.Entities;
 
 namespace DotNetForge.Web.Areas.Admin.Models;
 
-/// <summary>Aggregated counts shown on the admin dashboard (dashboard.md).</summary>
+/// <summary>Aggregated counts shown on the legacy admin dashboard (dashboard.md).</summary>
 public sealed class DashboardViewModel
 {
     public string AppName { get; init; } = string.Empty;
