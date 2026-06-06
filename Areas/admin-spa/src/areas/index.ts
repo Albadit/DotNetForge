@@ -1,11 +1,15 @@
+import { lazy } from "react";
 import { LayoutDashboard, FileText, Image, Users, Settings, Puzzle } from "lucide-react";
 import { registerModules } from "../shared/registry";
-import DashboardPage from "./dashboard/DashboardPage";
-import ContentManagerPage from "./content/ContentManagerPage";
-import MediaPage from "./media/MediaPage";
-import UsersPage from "./users/UsersPage";
-import SettingsPage from "./settings/SettingsPage";
-import ExtensionsPage from "./extensions/ExtensionsPage";
+
+// Lazy-loaded so each area is its own chunk (code-splitting) - the heavy deps (charts, calendar,
+// file tree) only load when that route is opened, keeping the initial bundle small.
+const DashboardPage = lazy(() => import("./dashboard/DashboardPage"));
+const ContentManagerPage = lazy(() => import("./content/ContentManagerPage"));
+const MediaPage = lazy(() => import("./media/MediaPage"));
+const UsersPage = lazy(() => import("./users/UsersPage"));
+const SettingsPage = lazy(() => import("./settings/SettingsPage"));
+const ExtensionsPage = lazy(() => import("./extensions/ExtensionsPage"));
 
 // Built-in admin areas. Each is a module in the registry; the sidebar and router pick them up.
 registerModules([

@@ -22,11 +22,10 @@ public sealed class HomeController : Controller
     public async Task<IActionResult> Index()
     {
         ViewData["AppName"] = _env.AppName;
+        var now = DateTime.UtcNow;
 
-        // The site root renders the root page (slug "/", or legacy "home") when published; else the list.
-        var home = await _db.Pages
-            .AsNoTracking()
-            .Where(p => (p.Slug == "/" || p.Slug == "home") && p.Published && !p.Disabled)
+        // The site root renders the root page (slug "/", or legacy "home") when live; else the list.
+        var home = await Live(_db.Pages.AsNoTracking().Where(p => p.Slug == "/" || p.Slug == "home"), now)
             .OrderBy(p => p.Slug == "/" ? 0 : 1)
             .FirstOrDefaultAsync();
         if (home is not null)
@@ -34,9 +33,7 @@ public sealed class HomeController : Controller
             return View("Page", home);
         }
 
-        var publishedPages = await _db.Pages
-            .AsNoTracking()
-            .Where(p => p.Published && !p.Disabled)
+        var publishedPages = await Live(_db.Pages.AsNoTracking(), now)
             .OrderBy(p => p.SortOrder)
             .Select(p => new { p.Title, p.Slug })
             .ToListAsync();
@@ -59,10 +56,7 @@ public sealed class HomeController : Controller
         }
 
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        var pages = await _db.Pages
-            .AsNoTracking()
-            .Where(p => p.Published && !p.Disabled)
-            .ToListAsync();
+        var pages = await Live(_db.Pages.AsNoTracking(), DateTime.UtcNow).ToListAsync();
 
         // Walk the URL segment by segment down the page tree. Each segment matches a child by exact slug,
         // or by a dynamic "[param]" slug that captures any value (content_manager.md / dynamic_routes.md).
@@ -105,4 +99,15 @@ public sealed class HomeController : Controller
 
     [HttpGet("/error")]
     public IActionResult Error() => View();
+
+    /// <summary>
+    /// A page is publicly live only when published, not disabled, and within its scheduled window: the
+    /// scheduled publish date has been reached (or none set) and the scheduled unpublish date has not
+    /// (or none set). Evaluated per request, so a future "Scheduled publish" hides the page until that
+    /// moment even though Published is checked (content_manager.md).
+    /// </summary>
+    private static IQueryable<Page> Live(IQueryable<Page> pages, DateTime now) =>
+        pages.Where(p => p.Published && !p.Disabled
+            && (p.ScheduledPublishDate == null || p.ScheduledPublishDate <= now)
+            && (p.ScheduledUnpublishDate == null || p.ScheduledUnpublishDate > now));
 }

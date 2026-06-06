@@ -1,9 +1,13 @@
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import AdminLayout from "../layout/AdminLayout";
-import SetupPage from "../setup/SetupPage";
-import ExtensionHost from "../areas/extensions/ExtensionHost";
 import { getModules } from "../shared/registry";
+import { Loading } from "../shared/ui";
 import { NotFoundPage } from "./NotFoundPage";
+
+// Code-split: the setup wizard and the extension host load on demand.
+const SetupPage = lazy(() => import("../setup/SetupPage"));
+const ExtensionHost = lazy(() => import("../areas/extensions/ExtensionHost"));
 
 /**
  * Builds the router from the module registry. Every registered area/extension becomes a child route
@@ -16,7 +20,14 @@ export function buildRouter() {
 
   return createBrowserRouter([
     // First-run setup wizard, rendered standalone (no admin layout).
-    { path: "/setup", element: <SetupPage /> },
+    {
+      path: "/setup",
+      element: (
+        <Suspense fallback={<Loading />}>
+          <SetupPage />
+        </Suspense>
+      ),
+    },
     {
       path: "/admin",
       element: <AdminLayout />,

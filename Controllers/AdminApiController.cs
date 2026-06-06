@@ -284,8 +284,11 @@ public sealed class AdminApiController : ControllerBase
         page.PageType = pageType;
         page.TargetUrl = Trimmed(input.TargetUrl);
         page.FileReference = Trimmed(input.FileReference);
-        page.ScheduledPublishDate = input.ScheduledPublishDate;
-        page.ScheduledUnpublishDate = input.ScheduledUnpublishDate;
+        page.ScheduledPublishDate = ToUtc(input.ScheduledPublishDate);
+        page.ScheduledUnpublishDate = ToUtc(input.ScheduledUnpublishDate);
+
+        // Published is the author's intent; whether the page is actually live is derived from the schedule
+        // at render time (HomeController.Live), so a future scheduled publish keeps it hidden until then.
         return null;
     }
 
@@ -306,8 +309,10 @@ public sealed class AdminApiController : ControllerBase
         type = p.PageType.ToString(),
         p.TargetUrl,
         p.FileReference,
-        p.ScheduledPublishDate,
-        p.ScheduledUnpublishDate,
+        // Label as UTC so the JSON carries a "Z" (SQLite reads DateTimes back as Unspecified); the SPA's
+        // date picker needs an absolute instant to parse.
+        ScheduledPublishDate = ToUtc(p.ScheduledPublishDate),
+        ScheduledUnpublishDate = ToUtc(p.ScheduledUnpublishDate),
         p.CreatedDate,
         p.UpdatedDate,
     };
@@ -316,6 +321,16 @@ public sealed class AdminApiController : ControllerBase
         Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : null;
 
     private static string? Trimmed(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>Normalizes a scheduled date to UTC (the SPA sends UTC; offsets may bind as Local).</summary>
+    private static DateTime? ToUtc(DateTime? value) => value is DateTime d
+        ? d.Kind switch
+        {
+            DateTimeKind.Utc => d,
+            DateTimeKind.Local => d.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(d, DateTimeKind.Utc),
+        }
+        : null;
 
     private static string Slugify(string input)
     {

@@ -112,6 +112,9 @@ public static class DependencyRegistration
         // Antiforgery for the admin SPA: the token is sent back in an X-CSRF-TOKEN header on writes.
         services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 
+        // Background job that applies page publish/unpublish schedules.
+        services.AddHostedService<ScheduledPublishingService>();
+
         // MVC + the API controllers (the API project is mounted as an application part). Runtime Razor
         // compilation lets admin extensions ship a view.cshtml under extensions/ that is compiled and
         // rendered on demand (the content root provider resolves the ~/extensions/... path).

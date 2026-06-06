@@ -123,7 +123,7 @@ export default function ContentManagerPage() {
       seoKeywords: null,
       canonicalUrl: null,
       published: false,
-      disabled: false,
+      disabled: true,
       displayInMenu: false,
       parentPageId: parentId,
       sortOrder: siblings,
@@ -258,7 +258,10 @@ function PageTree({
 function toDateValue(iso: string | null): ZonedDateTime | null {
   if (!iso) return null;
   try {
-    return parseAbsoluteToLocal(iso);
+    // The backend sends UTC; if a timezone marker is missing (e.g. a SQLite Unspecified value), treat it
+    // as UTC so the absolute parse still succeeds.
+    const normalized = /([zZ]|[+-]\d{2}:?\d{2})$/.test(iso) ? iso : `${iso}Z`;
+    return parseAbsoluteToLocal(normalized);
   } catch {
     return null;
   }
@@ -273,9 +276,6 @@ function PageSettingsForm({
 }) {
   const [form, setForm] = useState<PageInput>(() => toInput(page));
   const [error, setError] = useState<string | null>(null);
-  const [scheduleOn, setScheduleOn] = useState(
-    () => Boolean(page.scheduledPublishDate || page.scheduledUnpublishDate),
-  );
   const update = useUpdatePage();
   const remove = useDeletePage();
 
@@ -289,14 +289,6 @@ function PageSettingsForm({
   }
   function setDisabled(value: boolean) {
     setForm((f) => ({ ...f, disabled: value, published: value ? false : f.published }));
-  }
-
-  // Toggling scheduling off clears any scheduled dates.
-  function toggleSchedule(value: boolean) {
-    setScheduleOn(value);
-    if (!value) {
-      setForm((f) => ({ ...f, scheduledPublishDate: null, scheduledUnpublishDate: null }));
-    }
   }
 
   async function save() {
@@ -392,6 +384,7 @@ function PageSettingsForm({
         <Section title="Publishing">
           <CheckRow label="Published" checked={form.published} onChange={setPublished} />
           <CheckRow label="Disabled" checked={form.disabled} onChange={setDisabled} />
+          {/* Display-in-menu and the schedule are only relevant for a published page. */}
           {form.published ? (
             <>
               <CheckRow
@@ -399,21 +392,17 @@ function PageSettingsForm({
                 checked={form.displayInMenu}
                 onChange={(v) => set("displayInMenu", v)}
               />
-              <CheckRow label="Schedule publishing" checked={scheduleOn} onChange={toggleSchedule} />
-              {scheduleOn ? (
-                <>
-                  <DatePickerRow
-                    label="Scheduled publish"
-                    value={form.scheduledPublishDate}
-                    onChange={(v) => set("scheduledPublishDate", v)}
-                  />
-                  <DatePickerRow
-                    label="Scheduled unpublish"
-                    value={form.scheduledUnpublishDate}
-                    onChange={(v) => set("scheduledUnpublishDate", v)}
-                  />
-                </>
-              ) : null}
+              <div />
+              <DatePickerRow
+                label="Scheduled publish"
+                value={form.scheduledPublishDate}
+                onChange={(v) => set("scheduledPublishDate", v)}
+              />
+              <DatePickerRow
+                label="Scheduled unpublish"
+                value={form.scheduledUnpublishDate}
+                onChange={(v) => set("scheduledUnpublishDate", v)}
+              />
             </>
           ) : null}
         </Section>

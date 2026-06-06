@@ -10,6 +10,10 @@ export default defineConfig({
     // Source lives in Areas/admin-spa; build output is served from wwwroot/admin (two levels up).
     outDir: "../../wwwroot/admin",
     emptyOutDir: true,
+    // Routes are code-split (React.lazy), so heavy per-route deps (charts, calendar, file tree) load on
+    // demand. The remaining "shell" chunk is the core React + HeroUI Pro Sidebar, which is inherently
+    // large for a Pro admin SPA; this limit reflects that rather than masking a fixable regression.
+    chunkSizeWarningLimit: 900,
   },
   server: {
     port: 5173,

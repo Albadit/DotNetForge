@@ -1,8 +1,9 @@
-import type { CSSProperties } from "react";
+import { Suspense, type CSSProperties } from "react";
 import { Outlet, useHref, useNavigate } from "react-router-dom";
 import { RouterProvider } from "react-aria-components";
 import { Sidebar } from "@heroui-pro/react";
 import { SidebarInner } from "./Sidebar";
+import { Loading } from "../shared/ui";
 
 /**
  * The admin shell: the HeroUI Pro <Sidebar> (compact style, driven by the module registry) plus the
@@ -26,7 +27,9 @@ export default function AdminLayout() {
 
         <Sidebar.Main>
           <main className="h-screen overflow-y-auto p-6">
-            <Outlet />
+            <Suspense fallback={<Loading />}>
+              <Outlet />
+            </Suspense>
           </main>
         </Sidebar.Main>
       </Sidebar.Provider>
