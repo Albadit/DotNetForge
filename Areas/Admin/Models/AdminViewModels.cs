@@ -47,3 +47,76 @@ public sealed class ModulePlaceholderViewModel
     public string Description { get; init; } = string.Empty;
     public IReadOnlyList<ApiToken> Tokens { get; init; } = Array.Empty<ApiToken>();
 }
+
+/// <summary>The Content Manager screen: the page tree (left) and the selected page's form (right).</summary>
+public sealed class ContentIndexViewModel
+{
+    public IReadOnlyList<PageTreeNode> Tree { get; init; } = Array.Empty<PageTreeNode>();
+    public PageFormModel? Selected { get; init; }
+    public Guid? SelectedId { get; init; }
+    /// <summary>Parent options for the form's parent picker (every page except the one being edited).</summary>
+    public IReadOnlyList<(Guid Id, string Label)> ParentOptions { get; init; } = Array.Empty<(Guid, string)>();
+}
+
+/// <summary>One node in the admin page tree, nested by <see cref="Children"/>.</summary>
+public sealed class PageTreeNode
+{
+    public Guid Id { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public string Slug { get; init; } = string.Empty;
+    public bool Published { get; init; }
+    public bool Disabled { get; init; }
+    public List<PageTreeNode> Children { get; } = new();
+}
+
+/// <summary>Bound from the page settings form; mirrors the page's editable fields.</summary>
+public sealed class PageFormModel
+{
+    public string Title { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public string? SeoKeywords { get; set; }
+    public string? CanonicalUrl { get; set; }
+    public bool Published { get; set; }
+    public bool Disabled { get; set; }
+    public bool DisplayInMenu { get; set; }
+    public Guid? ParentPageId { get; set; }
+    public int SortOrder { get; set; }
+    public string PageType { get; set; } = "Standard";
+    public string? TargetUrl { get; set; }
+    public string? FileReference { get; set; }
+    public DateTime? ScheduledPublishDate { get; set; }
+    public DateTime? ScheduledUnpublishDate { get; set; }
+}
+
+/// <summary>Posted by the drag-and-drop reorder JS: the new parent + position of each moved page.</summary>
+public sealed class ReorderRequest
+{
+    public List<ReorderItem> Items { get; set; } = new();
+}
+
+public sealed class ReorderItem
+{
+    public Guid Id { get; set; }
+    public Guid? ParentPageId { get; set; }
+    public int SortOrder { get; set; }
+}
+
+/// <summary>A row on the read-only Media library list (file_manager.md).</summary>
+public sealed class MediaRowViewModel
+{
+    public Guid Id { get; init; }
+    public string FileName { get; init; } = string.Empty;
+    public string ContentType { get; init; } = string.Empty;
+    public long SizeBytes { get; init; }
+    public bool IsPublic { get; init; }
+    public DateTime UploadedDate { get; init; }
+}
+
+/// <summary>The Settings screen: existing key/value settings (left) and an add/update form (right).</summary>
+public sealed class SettingsIndexViewModel
+{
+    public string AppName { get; init; } = string.Empty;
+    public IReadOnlyList<(string Key, string? Value)> Settings { get; init; } = Array.Empty<(string, string?)>();
+}

@@ -1,0 +1,107 @@
+@model PageFormModel
+@{
+    var selectedId = ViewData["SelectedId"] as Guid?;
+    var parentOptions = ViewData["ParentOptions"] as IReadOnlyList<(Guid Id, string Label)>
+        ?? Array.Empty<(Guid, string)>();
+}
+
+<form method="post" asp-area="Admin" asp-controller="Content" asp-action="Update" asp-route-id="@selectedId"
+      class="form-narrow page-form" id="pageForm">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="validation-summary"></div>
+
+    <div class="form-row">
+        <label asp-for="Title">Title <span class="req">*</span></label>
+        <input asp-for="Title" required />
+    </div>
+    <div class="form-row">
+        <label asp-for="Slug">Slug <span class="req">*</span></label>
+        <input asp-for="Slug" />
+        <span class="muted hint">Use <code>/</code> for the site root, or <code>[id]</code> for a dynamic segment.</span>
+    </div>
+
+    <div class="form-row">
+        <label asp-for="PageType">Page type</label>
+        <select asp-for="PageType" id="PageType">
+            <option value="Standard">Standard</option>
+            <option value="ExistingPage">Existing page</option>
+            <option value="UrlRedirect">URL redirect</option>
+            <option value="File">File</option>
+        </select>
+    </div>
+    <div class="form-row cond" data-when-type="UrlRedirect">
+        <label asp-for="TargetUrl">Target URL</label>
+        <input asp-for="TargetUrl" />
+    </div>
+    <div class="form-row cond" data-when-type="File">
+        <label asp-for="FileReference">File reference</label>
+        <input asp-for="FileReference" />
+    </div>
+
+    <div class="form-row two">
+        <div>
+            <label asp-for="ParentPageId">Parent</label>
+            <select asp-for="ParentPageId">
+                <option value="">(root)</option>
+                @foreach (var opt in parentOptions)
+                {
+                    <option value="@opt.Id">@opt.Label</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label asp-for="SortOrder">Sort order</label>
+            <input asp-for="SortOrder" type="number" />
+        </div>
+    </div>
+
+    <h3>SEO</h3>
+    <div class="form-row">
+        <label asp-for="MetaTitle">Meta title</label>
+        <input asp-for="MetaTitle" />
+    </div>
+    <div class="form-row">
+        <label asp-for="SeoKeywords">Keywords</label>
+        <input asp-for="SeoKeywords" />
+    </div>
+    <div class="form-row">
+        <label asp-for="MetaDescription">Meta description</label>
+        <textarea asp-for="MetaDescription" rows="2"></textarea>
+    </div>
+    <div class="form-row">
+        <label asp-for="CanonicalUrl">Canonical URL</label>
+        <input asp-for="CanonicalUrl" />
+    </div>
+
+    <h3>Publishing</h3>
+    <label class="check"><input asp-for="Published" id="Published" /> Published</label>
+    <label class="check"><input asp-for="Disabled" id="Disabled" /> Disabled</label>
+
+    <div id="publishOpts">
+        <label class="check"><input asp-for="DisplayInMenu" /> Display in menu</label>
+        <div class="form-row two">
+            <div>
+                <label asp-for="ScheduledPublishDate">Scheduled publish (UTC)</label>
+                <input asp-for="ScheduledPublishDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
+            </div>
+            <div>
+                <label asp-for="ScheduledUnpublishDate">Scheduled unpublish (UTC)</label>
+                <input asp-for="ScheduledUnpublishDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
+            </div>
+        </div>
+        <p class="muted hint">
+            Published is the author's intent. A future scheduled publish keeps the page hidden until that time;
+            a scheduled unpublish takes it offline then.
+        </p>
+    </div>
+
+    <div class="page-actions">
+        <button type="submit" class="btn primary">Save</button>
+    </div>
+</form>
+
+<form method="post" asp-area="Admin" asp-controller="Content" asp-action="Delete" asp-route-id="@selectedId"
+      onsubmit="return confirm('Delete this page? Its children are re-parented, not deleted.');">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn danger">Delete page</button>
+</form>

@@ -60,6 +60,7 @@ public static class DependencyRegistration
         services.AddHttpContextAccessor();
         services.AddScoped<AuthService>();
         services.AddScoped<AuditService>();
+        services.AddScoped<PageService>();
 
         // Authentication: cookie for the admin UI, bearer token for the headless API.
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -75,29 +76,8 @@ public static class DependencyRegistration
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
                 options.Cookie.Name = "dnf.auth";
 
-                // The admin SPA expects JSON 401/403 from /admin-api, not browser redirects.
-                options.Events.OnRedirectToLogin = ctx =>
-                {
-                    if (ctx.Request.Path.StartsWithSegments("/admin-api"))
-                    {
-                        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        return Task.CompletedTask;
-                    }
-
-                    ctx.Response.Redirect(ctx.RedirectUri);
-                    return Task.CompletedTask;
-                };
-                options.Events.OnRedirectToAccessDenied = ctx =>
-                {
-                    if (ctx.Request.Path.StartsWithSegments("/admin-api"))
-                    {
-                        ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
-                        return Task.CompletedTask;
-                    }
-
-                    ctx.Response.Redirect(ctx.RedirectUri);
-                    return Task.CompletedTask;
-                };
+                // The admin is server-rendered Razor: unauthenticated requests redirect to the login page
+                // (the default cookie behavior). The headless /api uses the bearer scheme below, not cookies.
             })
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(
                 ApiTokenDefaults.Scheme, _ => { });
@@ -109,7 +89,8 @@ public static class DependencyRegistration
                 policy.RequireRole(Roles.SuperAdmin, Roles.Admin, Roles.Editor, Roles.Author));
         });
 
-        // Antiforgery for the admin SPA: the token is sent back in an X-CSRF-TOKEN header on writes.
+        // Razor forms post the antiforgery token in the hidden field; the Content Manager's drag-and-drop
+        // reorder (a fetch POST) sends it in this X-CSRF-TOKEN header instead.
         services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 
         // Background job that applies page publish/unpublish schedules.

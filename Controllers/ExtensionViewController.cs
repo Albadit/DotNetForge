@@ -11,11 +11,12 @@ namespace DotNetForge.Web.Controllers;
 /// Serves an admin extension's MVC-style views from its <c>extensions/admin/&lt;name&gt;/Views/</c> folder:
 /// <c>Index.cshtml</c> (the page), <c>Shared/_Layout.cshtml</c> (the document shell), and
 /// <c>Resources/css|js/</c> (static assets). The view is compiled on demand via runtime Razor compilation
-/// and rendered server-side, then embedded by the admin SPA at <c>/admin/ext/{id}</c>. The id is matched
-/// against discovered manifests (no path traversal).
+/// and rendered server-side as a standalone document at <c>/admin/ext/{id}/raw</c>, which the admin shell
+/// embeds in an iframe (see the Admin-area <c>ExtensionsController</c>). The id is matched against
+/// discovered manifests (no path traversal).
 /// </summary>
 [Authorize(Policy = DependencyRegistration.AdminAreaPolicy)]
-[Route("admin-api/admin-extensions")]
+[Route("admin/ext")]
 public sealed class ExtensionViewController : Controller
 {
     private readonly IExtensionLoader _loader;
@@ -27,7 +28,7 @@ public sealed class ExtensionViewController : Controller
         _hostEnv = hostEnv;
     }
 
-    [HttpGet("{id}/view")]
+    [HttpGet("{id}/raw")]
     public IActionResult Render(string id)
     {
         var match = FindAdminExtension(id);
@@ -41,7 +42,7 @@ public sealed class ExtensionViewController : Controller
         // Application-relative path the runtime Razor view engine can resolve (content root provider).
         var relative = "~/" + Path.GetRelativePath(_hostEnv.ContentRootPath, indexView).Replace('\\', '/');
         ViewData["Settings"] = match.Manifest.Settings.ToDictionary(kv => kv.Key, kv => Normalize(kv.Value));
-        ViewData["ResourceBase"] = $"/admin-api/admin-extensions/{id}/resources";
+        ViewData["ResourceBase"] = $"/admin/ext/{id}/resources";
 
         return View(relative);
     }

@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
-/// <summary>Roles list (legacy Razor admin). Restricted to Super Admin / Admin.</summary>
-[Route("admin-legacy/roles")]
+/// <summary>Roles list (admin). Restricted to Super Admin / Admin.</summary>
+[Route("admin/roles")]
 [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]
 public sealed class RolesController : AdminControllerBase
 {
@@ -34,8 +34,8 @@ public sealed class RolesController : AdminControllerBase
     public sealed record RoleListItem(string Name, string? Description, bool IsBuiltIn, int Users, int Permissions);
 }
 
-/// <summary>Users list (legacy Razor admin). Restricted to Super Admin / Admin.</summary>
-[Route("admin-legacy/users")]
+/// <summary>Users list (admin). Restricted to Super Admin / Admin.</summary>
+[Route("admin/users")]
 [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]
 public sealed class UsersController : AdminControllerBase
 {
@@ -64,8 +64,8 @@ public sealed class UsersController : AdminControllerBase
     public sealed record UserListItem(string Email, string Name, string Status, DateTime? LastLogin, List<string> Roles);
 }
 
-/// <summary>Audit Logs viewer (legacy Razor admin). Restricted to Super Admin / Admin.</summary>
-[Route("admin-legacy/audit-logs")]
+/// <summary>Audit Logs viewer (admin). Restricted to Super Admin / Admin.</summary>
+[Route("admin/audit-logs")]
 [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]
 public sealed class AuditLogsController : AdminControllerBase
 {
@@ -86,8 +86,8 @@ public sealed class AuditLogsController : AdminControllerBase
     }
 }
 
-/// <summary>Plugins page (legacy Razor admin). Restricted to Super Admin.</summary>
-[Route("admin-legacy/plugins")]
+/// <summary>Plugins page (admin). Restricted to Super Admin.</summary>
+[Route("admin/plugins")]
 [Authorize(Roles = Roles.SuperAdmin)]
 public sealed class PluginsController : AdminControllerBase
 {

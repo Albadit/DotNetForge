@@ -59,5 +59,44 @@ table.data tr:last-child td, table.kv tr:last-child td { border-bottom: none; }
 .badge.warn { background: var(--warn-bg); color: var(--warn-ink); }
 
 .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem; }
-.check { font-weight: 400; display: flex; align-items: center; gap: 0.4rem; }
+.check { font-weight: 400; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; }
 .token-value { background: #11161f; color: #9ef0c0; padding: 0.9rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem; }
+
+/* Form controls beyond the site.css baseline. */
+textarea {
+    padding: 0.55rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;
+    background: #fff; color: var(--ink); font-family: inherit; width: 100%; resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--primary); outline-offset: 0; border-color: var(--primary); }
+.form-row .hint { font-weight: 400; font-size: 0.78rem; }
+.page-form h3 { font-size: 0.95rem; margin: 1.25rem 0 0.6rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+.flash { background: var(--ok-bg); color: var(--ok-ink); border-radius: 8px; padding: 0.5rem 0.75rem; margin-bottom: 1rem; }
+
+/* Content Manager: two panes (tree | form). */
+.content-layout { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 1.25rem; align-items: start; }
+.tree-pane { padding: 1rem; }
+.form-pane { padding: 1.25rem; }
+@media (max-width: 900px) { .content-layout { grid-template-columns: 1fr; } }
+
+.page-tree { list-style: none; margin: 0; padding: 0; }
+.page-tree .page-tree { margin-left: 0.9rem; border-left: 1px solid var(--border); padding-left: 0.4rem; }
+.tree-row { display: flex; align-items: center; gap: 0.4rem; border-radius: 6px; padding: 0.15rem 0.25rem; }
+.tree-row:hover { background: #f1f3f7; }
+.tree-row.active { background: #e7ecfb; }
+.tree-row .tree-link { flex: 1; display: flex; align-items: center; gap: 0.4rem; color: var(--ink); padding: 0.2rem 0; }
+.tree-row .tree-link:hover { text-decoration: none; }
+.drag-handle { cursor: grab; color: var(--muted); font-size: 0.85rem; user-select: none; }
+.tree-item.dragging { opacity: 0.5; }
+.tree-row.drop-target { outline: 2px dashed var(--primary); outline-offset: -2px; }
+.tree-add {
+    border: 1px solid var(--border); background: #fff; color: var(--muted); border-radius: 6px;
+    width: 1.5rem; height: 1.5rem; line-height: 1; cursor: pointer; font-size: 0.9rem;
+}
+.tree-add:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+.dot.on { background: var(--ok-ink); }
+.dot.draft { background: #d9a400; }
+.dot.off { background: var(--warn-ink); }
+
+/* Embedded admin-extension page. */
+.ext-frame { width: 100%; height: calc(100vh - 120px); border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }

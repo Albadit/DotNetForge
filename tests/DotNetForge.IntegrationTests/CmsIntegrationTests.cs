@@ -37,28 +37,13 @@ public sealed class CmsIntegrationTests
     }
 
     [Fact]
-    public async Task Setup_api_is_available_before_install()
+    public async Task Setup_page_is_served_before_install()
     {
-        // The React setup page (/setup) is served from the SPA build; its install API is anonymous
-        // and available before install. We test the API (not the SPA HTML) so this stays decoupled
-        // from the SPA build, which requires a HeroUI Pro license to produce.
+        // The setup wizard is a server-rendered Razor page reachable before install.
         using var factory = new DotNetForgeWebFactory();
         using var client = NoRedirectClient(factory);
 
-        var response = await client.GetAsync("/setup/antiforgery");
-
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("token", body);
-    }
-
-    [Fact]
-    public async Task Legacy_setup_page_is_served_before_install()
-    {
-        using var factory = new DotNetForgeWebFactory();
-        using var client = NoRedirectClient(factory);
-
-        var response = await client.GetAsync("/setup-legacy");
+        var response = await client.GetAsync("/setup");
 
         response.EnsureSuccessStatusCode();
         var html = await response.Content.ReadAsStringAsync();
@@ -79,27 +64,14 @@ public sealed class CmsIntegrationTests
     }
 
     [Fact]
-    public async Task After_install_admin_api_requires_authentication()
+    public async Task After_install_admin_requires_authentication()
     {
         using var factory = new DotNetForgeWebFactory();
         await factory.InstallAsync();
         using var client = NoRedirectClient(factory);
 
-        // The admin SPA shell at /admin is a static file; the auth gate is the cookie-authenticated
-        // admin API, which returns 401 (not a redirect) for the SPA to handle.
-        var response = await client.GetAsync("/admin-api/me");
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task After_install_legacy_admin_requires_authentication()
-    {
-        using var factory = new DotNetForgeWebFactory();
-        await factory.InstallAsync();
-        using var client = NoRedirectClient(factory);
-
-        var response = await client.GetAsync("/admin-legacy");
+        // The admin is server-rendered Razor; an unauthenticated request redirects to the login page.
+        var response = await client.GetAsync("/admin");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains("/account/login", response.Headers.Location?.OriginalString);

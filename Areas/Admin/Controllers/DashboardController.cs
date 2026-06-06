@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
-/// <summary>Legacy Razor admin dashboard, reached at <c>/admin-legacy</c> (dashboard.md).</summary>
-[Route("admin-legacy")]
+/// <summary>The admin dashboard, reached at <c>/admin</c> (dashboard.md).</summary>
+[Route("admin")]
 public sealed class DashboardController : AdminControllerBase
 {
     private readonly DotNetForgeDbContext _db;

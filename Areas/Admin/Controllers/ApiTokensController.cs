@@ -12,10 +12,10 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// API token management (legacy Razor admin). Tokens are shown in plaintext exactly once at
-/// creation; only a salted hash is stored. Restricted to Super Admin / Admin.
+/// API token management (admin). Tokens are shown in plaintext exactly once at creation; only a salted
+/// hash is stored. Restricted to Super Admin / Admin.
 /// </summary>
-[Route("admin-legacy/api-tokens")]
+[Route("admin/api-tokens")]
 [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]
 public sealed class ApiTokensController : AdminControllerBase
 {
@@ -86,7 +86,7 @@ public sealed class ApiTokensController : AdminControllerBase
             Duration = tokenDuration,
             ExpirationDate = ComputeExpiration(tokenDuration),
             PermissionsCsv = string.Join(',', selected),
-            CreatedById = CurrentUserId(),
+            CreatedById = CurrentUserId ?? Guid.Empty,
             CreatedDate = _clock.UtcNow,
             TokenHash = generated.Hash,
             TokenPrefix = generated.Prefix,
@@ -136,9 +136,4 @@ public sealed class ApiTokensController : AdminControllerBase
         "unlimited" => TokenDuration.Unlimited,
         _ => TokenDuration.ThirtyDays,
     };
-
-    private Guid CurrentUserId() =>
-        Guid.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var id)
-            ? id
-            : Guid.Empty;
 }

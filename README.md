@@ -84,33 +84,20 @@ docs/                    # Developer documentation
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full responsibilities of each project.
 
-## Admin panel (React SPA)
+## Admin panel (server-rendered Razor)
 
-The admin UI and the first-run **setup wizard** are a **React + Vite + TypeScript** SPA in
-[`Areas/admin-spa/`](Areas/admin-spa/) (HeroUI v3 + **HeroUI Pro**, Lucide, TanStack Query), served by
-the ASP.NET Core host at **`/admin`** and **`/setup`**. It talks to cookie-authenticated,
-antiforgery-protected APIs (`/admin-api` and the anonymous `/setup` install endpoint) - distinct from
-the token-only `/api`.
+The admin UI and the first-run **setup wizard** are **server-rendered ASP.NET Core MVC** in the
+[`Areas/Admin/`](Areas/Admin/) area, served at **`/admin`** (and **`/setup`** for the wizard). No Node
+build step - it ships with the host; styling is a small hand-rolled stylesheet in
+[`wwwroot/css/admin.css`](wwwroot/css/admin.css). Forms post with antiforgery tokens; the only fetch
+call is the Content Manager's drag-and-drop reorder (sending the token in an `X-CSRF-TOKEN` header).
 
-> **HeroUI Pro is a licensed package.** Building the SPA needs it installed via the authenticated CLI:
-> `npx heroui-pro login` then `npx heroui-pro install` (or set `HEROUI_AUTH_TOKEN` for CI). See
-> [heroui.pro](https://heroui.pro).
+Built screens: Dashboard, **Content Manager** (page tree + settings + scheduling), Media, Settings,
+Users, Roles, Audit Logs, Plugins, API Tokens. Remaining spec areas link to documented placeholders.
 
-```bash
-cd Areas/admin-spa
-npx heroui-pro login && npx heroui-pro install   # one-time: authenticate + add @heroui-pro/react
-npm install
-npm run build      # builds into wwwroot/admin (served at /admin and /setup)
-npm run dev        # optional: Vite dev server with HMR (proxies /admin-api to :5000)
-```
-
-The shell is **module/area-based**: areas and extensions register into one registry, and the sidebar
-and routes are generated from it - so a new area or admin extension appears by registration alone
-(see `Areas/admin-spa/src/extensions/` and the "Hello Extension" sample). Initial areas: Dashboard,
-Content, Media, Users, Settings, Extensions.
-
-> **Without the SPA build** (e.g. no HeroUI Pro license), the server-rendered Razor fallbacks remain
-> fully functional: the setup wizard at **`/setup-legacy`** and the admin at **`/admin-legacy`**.
+**Admin extensions** are server-rendered too: drop an `admin`-type manifest with a `Views/Index.cshtml`
+under [`extensions/admin/`](extensions/) and a sidebar tab appears at **`/admin/ext/{id}`** (rendered via
+runtime Razor compilation, isolated in an iframe) with no code changes - see the audit-dashboard sample.
 
 ## The headless API
 

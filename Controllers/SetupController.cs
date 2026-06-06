@@ -11,11 +11,11 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Controllers;
 
 /// <summary>
-/// Legacy server-rendered setup wizard, kept at /setup-legacy as a fallback for environments that
-/// have not built the React SPA (the primary wizard is the React page at /setup). Creates the first
-/// Super Admin and marks the CMS installed; reachable only while uninstalled.
+/// The server-rendered setup wizard at /setup. Creates the first Super Admin and marks the CMS
+/// installed, then signs them in; reachable only while the CMS is uninstalled (the
+/// InstallationMiddleware redirects here before install and blocks it afterward).
 /// </summary>
-[Route("setup-legacy")]
+[Route("setup")]
 public sealed class SetupController : Controller
 {
     private readonly IInstallationService _installation;

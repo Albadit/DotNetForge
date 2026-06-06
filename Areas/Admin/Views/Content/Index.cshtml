@@ -1,0 +1,46 @@
+@model ContentIndexViewModel
+@{
+    ViewData["Title"] = "Content Manager";
+    ViewData["SelectedId"] = Model.SelectedId;
+}
+
+@if (TempData["Success"] is string ok)
+{
+    <p class="flash ok">@ok</p>
+}
+
+<div class="content-layout">
+    <aside class="tree-pane panel">
+        <div class="page-actions">
+            <strong>Pages</strong>
+            @* One shared form; each "add" button submits it via formaction (keeps mutations POST + antiforgery). *@
+            <form id="treeActions" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn small primary" formaction="/admin/content/create">+ Add page</button>
+            </form>
+        </div>
+
+        @if (Model.Tree.Count == 0)
+        {
+            <p class="muted">No pages yet. Add your first page.</p>
+        }
+        else
+        {
+            <partial name="_TreeNodes" model="Model.Tree" />
+        }
+    </aside>
+
+    <section class="form-pane panel">
+        @if (Model.Selected is null)
+        {
+            <p class="muted">Select a page on the left to edit its settings, or add a new page.</p>
+        }
+        else
+        {
+            ViewData["ParentOptions"] = Model.ParentOptions;
+            <partial name="_PageForm" model="Model.Selected" />
+        }
+    </section>
+</div>
+
+<script src="~/js/admin-content.js" defer></script>
