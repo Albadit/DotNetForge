@@ -15,10 +15,12 @@ obj/
 
 # ---- Runtime artifacts (storage/) ----
 # Uploaded media, backups, logs, and staged updates are never committed.
-storage/media/
-storage/backups/
-storage/logs/
-storage/updates/
+# Ignore the *contents* (trailing /*) so the .gitkeep negations below still
+# apply — git can't re-include a file whose parent directory is excluded.
+storage/media/*
+storage/backups/*
+storage/logs/*
+storage/updates/*
 
 # SQLite database files (default local provider).
 *.db
