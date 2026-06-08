@@ -1,0 +1,17 @@
+@model IReadOnlyList<(string Id, string Name)>
+@{
+    var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "";
+}
+@* Admin-extension tabs, contributed from extensions/admin/* manifests (extensions.md). *@
+@if (Model.Count > 0)
+{
+    <div class="nav-group">
+        <div class="nav-group-title">Extensions</div>
+        @foreach (var ext in Model)
+        {
+            var href = $"/admin/ext/{ext.Id}";
+            var active = string.Equals(path, href, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+            <a class="nav-item @active" href="@href">@ext.Name</a>
+        }
+    </div>
+}

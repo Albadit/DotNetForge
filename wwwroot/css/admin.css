@@ -1,0 +1,102 @@
+/* Legacy Razor admin shell - a dedicated, built-in layout isolated from public frontend themes. */
+.admin-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+
+.admin-sidebar {
+    background: #11161f; color: #c9d1e0; padding: 1rem 0.75rem;
+    /* Full-viewport-height column that stays in view and scrolls independently. */
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+}
+.admin-logo { font-weight: 700; color: #fff; font-size: 1.15rem; padding: 0.25rem 0.5rem 0.75rem; }
+.tenant-switcher {
+    background: #1b2230; border: 1px solid #2a3346; border-radius: 8px; padding: 0.5rem 0.6rem;
+    margin: 0 0.25rem 1rem; display: flex; flex-direction: column;
+}
+.tenant-switcher .tenant-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: #7d889e; }
+.tenant-switcher strong { color: #fff; }
+
+.admin-nav .nav-group { margin-bottom: 1rem; }
+.admin-nav .nav-group-title {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6f7a92;
+    padding: 0.4rem 0.6rem;
+}
+.admin-nav .nav-item {
+    display: block; padding: 0.4rem 0.6rem; border-radius: 6px; color: #c9d1e0; font-size: 0.9rem;
+}
+.admin-nav .nav-item:hover { background: #1b2230; text-decoration: none; color: #fff; }
+.admin-nav .nav-item.active { background: var(--primary); color: #fff; }
+
+.admin-main { display: flex; flex-direction: column; min-width: 0; }
+.admin-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--panel); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem;
+}
+.admin-topbar h1 { font-size: 1.2rem; margin: 0; }
+.admin-user { display: flex; align-items: center; gap: 0.75rem; color: var(--muted); }
+.admin-content { padding: 1.5rem; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0 1.5rem; }
+.stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+.stat-num { font-size: 1.8rem; font-weight: 700; }
+.stat-label { color: var(--muted); font-size: 0.85rem; }
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; }
+.panel.highlight { border-color: var(--primary); }
+.panel h2 { margin-top: 0; font-size: 1.05rem; }
+
+.page-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+
+table.data, table.kv { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+table.data th, table.data td, table.kv th, table.kv td { text-align: left; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: top; }
+table.data thead th { background: #f0f2f6; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+table.kv th { width: 200px; color: var(--muted); }
+table.data tr:last-child td, table.kv tr:last-child td { border-bottom: none; }
+
+.badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.badge.ok { background: var(--ok-bg); color: var(--ok-ink); }
+.badge.warn { background: var(--warn-bg); color: var(--warn-ink); }
+
+.checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem; }
+.check { font-weight: 400; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; }
+.token-value { background: #11161f; color: #9ef0c0; padding: 0.9rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem; }
+
+/* Form controls beyond the site.css baseline. */
+textarea {
+    padding: 0.55rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;
+    background: #fff; color: var(--ink); font-family: inherit; width: 100%; resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--primary); outline-offset: 0; border-color: var(--primary); }
+.form-row .hint { font-weight: 400; font-size: 0.78rem; }
+.page-form h3 { font-size: 0.95rem; margin: 1.25rem 0 0.6rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+.flash { background: var(--ok-bg); color: var(--ok-ink); border-radius: 8px; padding: 0.5rem 0.75rem; margin-bottom: 1rem; }
+
+/* Content Manager: two panes (tree | form). */
+.content-layout { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 1.25rem; align-items: start; }
+.tree-pane { padding: 1rem; }
+.form-pane { padding: 1.25rem; }
+@media (max-width: 900px) { .content-layout { grid-template-columns: 1fr; } }
+
+.page-tree { list-style: none; margin: 0; padding: 0; }
+.page-tree .page-tree { margin-left: 0.9rem; border-left: 1px solid var(--border); padding-left: 0.4rem; }
+.tree-row { display: flex; align-items: center; gap: 0.4rem; border-radius: 6px; padding: 0.15rem 0.25rem; }
+.tree-row:hover { background: #f1f3f7; }
+.tree-row.active { background: #e7ecfb; }
+.tree-row .tree-link { flex: 1; display: flex; align-items: center; gap: 0.4rem; color: var(--ink); padding: 0.2rem 0; }
+.tree-row .tree-link:hover { text-decoration: none; }
+.drag-handle { cursor: grab; color: var(--muted); font-size: 0.85rem; user-select: none; }
+.tree-item.dragging { opacity: 0.5; }
+.tree-row.drop-target { outline: 2px dashed var(--primary); outline-offset: -2px; }
+.tree-add {
+    border: 1px solid var(--border); background: #fff; color: var(--muted); border-radius: 6px;
+    width: 1.5rem; height: 1.5rem; line-height: 1; cursor: pointer; font-size: 0.9rem;
+}
+.tree-add:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+.dot.on { background: var(--ok-ink); }
+.dot.draft { background: #d9a400; }
+.dot.off { background: var(--warn-ink); }
+
+/* Embedded admin-extension page. */
+.ext-frame { width: 100%; height: calc(100vh - 120px); border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }

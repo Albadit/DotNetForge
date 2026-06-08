@@ -1,0 +1,18 @@
+{
+  "id": "dotnetforge.widget.weather",
+  "name": "Weather Widget",
+  "description": "A dashboard widget showing the current local weather.",
+  "version": "1.0.0",
+  "type": "widget",
+  "author": "Tinkerbox",
+  "entryPoint": "WeatherWidget",
+  "permissions": ["core.read"],
+  "website": "https://example.com/extensions/weather-widget",
+  "license": "MIT",
+  "dependencies": [],
+  "routes": [],
+  "settings": {
+    "defaultCity": "Pristina",
+    "units": "metric"
+  }
+}

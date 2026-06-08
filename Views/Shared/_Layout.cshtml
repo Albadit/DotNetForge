@@ -1,0 +1,30 @@
+@{
+    var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] != null ? ViewData["Title"] + " · " : "")@appName</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body class="public">
+    <header class="public-header">
+        <div class="container">
+            <a class="brand" href="/">@appName</a>
+            <nav>
+                <a href="/admin">Admin</a>
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        @RenderBody()
+    </main>
+    <footer class="public-footer">
+        <div class="container">
+            <span>Powered by DotNetForge CMS · built on ASP.NET Core MVC (.NET 10)</span>
+        </div>
+    </footer>
+</body>
+</html>

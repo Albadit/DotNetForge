@@ -1,0 +1,7 @@
+@{
+    ViewData["Title"] = ViewData["Title"] as string ?? "Extension";
+    var extId = ViewData["ExtensionId"] as string ?? "";
+}
+@* The extension ships its own full HTML document, so it is isolated in an iframe; the admin shell around
+   it (sidebar/topbar) comes from _AdminLayout. *@
+<iframe class="ext-frame" src="/admin/ext/@extId/raw" title="@ViewData["Title"]"></iframe>

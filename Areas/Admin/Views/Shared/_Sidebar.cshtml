@@ -1,0 +1,49 @@
+@{
+    var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "/admin";
+    string Active(string href) =>
+        string.Equals(path, href, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+@* Canonical admin sidebar tree (admin_area.md), server-rendered Razor admin served under /admin. *@
+<nav class="admin-nav">
+    <div class="nav-group">
+        <div class="nav-group-title">Main</div>
+        <a class="nav-item @Active("/admin")" href="/admin">Dashboard</a>
+        <a class="nav-item @Active("/admin/content")" href="/admin/content">Content Manager</a>
+        <a class="nav-item @Active("/admin/media")" href="/admin/media">Media</a>
+        <a class="nav-item @Active("/admin/marketplace")" href="/admin/marketplace">Marketplace</a>
+    </div>
+
+    <div class="nav-group">
+        <div class="nav-group-title">Settings · Global Settings</div>
+        <a class="nav-item @Active("/admin/settings")" href="/admin/settings">Settings</a>
+        <a class="nav-item @Active("/admin/api-tokens")" href="/admin/api-tokens">API Tokens</a>
+        <a class="nav-item @Active("/admin/content-history")" href="/admin/content-history">Content History</a>
+        <a class="nav-item @Active("/admin/internationalization")" href="/admin/internationalization">Internationalization</a>
+        <a class="nav-item @Active("/admin/plugins")" href="/admin/plugins">Plugins</a>
+        <a class="nav-item @Active("/admin/transfer")" href="/admin/transfer">Transfer</a>
+        <a class="nav-item @Active("/admin/webhooks")" href="/admin/webhooks">Webhooks</a>
+    </div>
+
+    <div class="nav-group">
+        <div class="nav-group-title">Settings · Administration Panel</div>
+        <a class="nav-item @Active("/admin/roles")" href="/admin/roles">Roles</a>
+        <a class="nav-item @Active("/admin/users")" href="/admin/users">Users</a>
+        <a class="nav-item @Active("/admin/audit-logs")" href="/admin/audit-logs">Audit Logs</a>
+    </div>
+
+    <div class="nav-group">
+        <div class="nav-group-title">Settings · Email</div>
+        <a class="nav-item @Active("/admin/email/configuration")" href="/admin/email/configuration">Configuration</a>
+        <a class="nav-item @Active("/admin/email/templates")" href="/admin/email/templates">Templates</a>
+    </div>
+
+    <div class="nav-group">
+        <div class="nav-group-title">Settings · Users &amp; Permissions Plugin</div>
+        <a class="nav-item @Active("/admin/roles")" href="/admin/roles">Roles</a>
+        <a class="nav-item @Active("/admin/providers")" href="/admin/providers">Providers</a>
+        <a class="nav-item @Active("/admin/advanced-settings")" href="/admin/advanced-settings">Advanced Settings</a>
+    </div>
+
+    @* Admin-extension tabs contributed from extensions/admin/* manifests. *@
+    @await Component.InvokeAsync("AdminExtensionsNav")
+</nav>

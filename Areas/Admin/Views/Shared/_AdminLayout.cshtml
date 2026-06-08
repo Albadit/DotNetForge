@@ -1,0 +1,42 @@
+@{
+    var title = ViewData["Title"] as string ?? "Admin";
+    var userName = User.Identity?.Name ?? "Account";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title · DotNetForge Admin</title>
+    @* The admin area uses its own built-in layout and is never restyled by public themes. *@
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/css/admin.css" />
+</head>
+<body class="admin">
+    <div class="admin-shell">
+        <aside class="admin-sidebar">
+            <div class="admin-logo">DotNetForge</div>
+            <div class="tenant-switcher" title="Active tenant">
+                <span class="tenant-label">Tenant</span>
+                <strong>Default</strong>
+            </div>
+            <partial name="_Sidebar" />
+        </aside>
+        <div class="admin-main">
+            <header class="admin-topbar">
+                <h1>@title</h1>
+                <div class="admin-user">
+                    <span>@userName</span>
+                    <form method="post" asp-area="" asp-controller="Account" asp-action="Logout" class="inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn small">Sign out</button>
+                    </form>
+                </div>
+            </header>
+            <section class="admin-content">
+                @RenderBody()
+            </section>
+        </div>
+    </div>
+</body>
+</html>

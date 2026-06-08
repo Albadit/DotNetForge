@@ -1,0 +1,18 @@
+{
+  "id": "dotnetforge.theme.default",
+  "name": "Default Theme",
+  "description": "The default frontend theme for DotNetForge CMS.",
+  "version": "1.0.0",
+  "type": "theme",
+  "author": "DotNetForge",
+  "entryPoint": "DefaultTheme",
+  "permissions": ["content.read", "media.read"],
+  "website": "https://example.com",
+  "license": "MIT",
+  "dependencies": [],
+  "routes": [],
+  "settings": {
+    "supportsLayouts": true,
+    "supportsDarkMode": false
+  }
+}

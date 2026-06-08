@@ -1,0 +1,29 @@
+# EditorConfig for DotNetForge CMS (testing_quality.md).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{js,ts,json,jsonc,css,html,yml,yaml}]
+indent_size = 2
+
+[*.{md,markdown}]
+trim_trailing_whitespace = false
+
+[*.cs]
+indent_size = 4
+# Naming & style basics
+dotnet_sort_system_directives_first = true
+csharp_using_directive_placement = outside_namespace:suggestion
+csharp_prefer_braces = true:suggestion
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+[*.csproj]
+indent_size = 2

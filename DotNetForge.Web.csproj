@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    DotNetForge.Web - the ASP.NET Core MVC host and composition root.
+
+    This project lives at the REPOSITORY ROOT on purpose: it lets every common
+    workflow run from the root with no extra arguments:
+
+        dotnet run        dotnet watch        dotnet build
+
+    Because this project sits above src/, tests/, extensions/, etc., the default
+    SDK file globs would otherwise try to compile those sibling projects' files.
+    DefaultItemExcludes scopes this project to its own files only.
+    See ARCHITECTURE.md for the full layout and the rationale.
+  -->
+
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);src/**;tests/**;extensions/**;storage/**;docs/**;.config/**;.github/**;.vscode/**;*.md;.env;.env.*;global.json</DefaultItemExcludes>
+    <UserSecretsId>dotnetforge-cms</UserSecretsId>
+    <RootNamespace>DotNetForge.Web</RootNamespace>
+    <AssemblyName>DotNetForge.Web</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <!-- Runtime Razor compilation so admin extensions can ship their own view.cshtml under extensions/. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src/DotNetForge.Abstractions/DotNetForge.Abstractions.csproj" />
+    <ProjectReference Include="src/DotNetForge.Shared/DotNetForge.Shared.csproj" />
+    <ProjectReference Include="src/DotNetForge.Core/DotNetForge.Core.csproj" />
+    <ProjectReference Include="src/DotNetForge.Data/DotNetForge.Data.csproj" />
+    <ProjectReference Include="src/DotNetForge.Infrastructure/DotNetForge.Infrastructure.csproj" />
+    <ProjectReference Include="src/DotNetForge.Extensions/DotNetForge.Extensions.csproj" />
+    <ProjectReference Include="src/DotNetForge.Api/DotNetForge.Api.csproj" />
+  </ItemGroup>
+
+</Project>

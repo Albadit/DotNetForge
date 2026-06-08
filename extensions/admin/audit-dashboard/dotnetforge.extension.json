@@ -1,0 +1,17 @@
+{
+  "id": "dotnetforge.admin.audit-dashboard",
+  "name": "Audit Dashboard",
+  "description": "Adds an at-a-glance audit activity panel to the admin area.",
+  "version": "1.0.0",
+  "type": "admin",
+  "author": "DotNetForge Labs",
+  "entryPoint": "AuditDashboardAdminExtension",
+  "permissions": ["settings.read", "core.read"],
+  "website": "https://example.com/extensions/audit-dashboard",
+  "license": "MIT",
+  "dependencies": [],
+  "routes": ["/admin/ext/audit-dashboard"],
+  "settings": {
+    "showFailedLogins": true
+  }
+}

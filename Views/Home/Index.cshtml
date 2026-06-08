@@ -1,0 +1,30 @@
+@model List<(string Title, string Slug)>
+@{
+    ViewData["Title"] = "Home";
+    var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
+    var publishedCount = (int)(ViewData["PublishedCount"] ?? 0);
+}
+
+<section class="hero">
+    <h1>@appName</h1>
+    <p class="lead">A modular, secure, hybrid CMS built on ASP.NET Core MVC (.NET 10).</p>
+    <p>The CMS is installed and running. This is the public frontend; manage content from the
+        <a href="/admin">admin area</a>.</p>
+</section>
+
+<section>
+    <h2>Published pages</h2>
+    @if (publishedCount == 0)
+    {
+        <p class="muted">No pages have been published yet. Create one from the Content Manager.</p>
+    }
+    else
+    {
+        <ul class="page-list">
+            @foreach (var item in Model)
+            {
+                <li><a href="/@item.Slug">@item.Title</a> <span class="muted">/@item.Slug</span></li>
+            }
+        </ul>
+    }
+</section>

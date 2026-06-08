@@ -1,0 +1,18 @@
+{
+  "id": "dotnetforge.plugin.seo-toolkit",
+  "name": "SEO Toolkit",
+  "description": "Sitemaps, meta tag suggestions, and broken-link checks for content.",
+  "version": "3.1.0",
+  "type": "plugin",
+  "author": "RankForge",
+  "entryPoint": "SeoToolkitPlugin",
+  "permissions": ["content.read", "content.update", "settings.read"],
+  "website": "https://example.com/extensions/seo-toolkit",
+  "license": "MIT",
+  "dependencies": ["dotnetforge.library.markdown-kit"],
+  "routes": ["/admin/ext/seo", "/sitemap.xml"],
+  "settings": {
+    "generateSitemap": true,
+    "defaultTitleSuffix": " | DotNetForge"
+  }
+}

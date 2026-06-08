@@ -1,0 +1,28 @@
+@model CreatedTokenViewModel
+@{
+    ViewData["Title"] = "Token created";
+}
+
+<div class="panel highlight">
+    <h2>Copy your token now</h2>
+    <p class="muted">This is the only time the full token <strong>@Model.Name</strong> will be shown.
+        Store it securely - only its hash is kept.</p>
+    <pre class="token-value">@Model.Plaintext</pre>
+</div>
+
+@{
+    var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    var apiBaseUrl = $"{origin}/api";
+    var exampleUrl = $"{origin}/api/content/pages";
+}
+<div class="panel">
+    <h2>How to use it</h2>
+    <p class="muted">Send the token in an <code>Authorization: Bearer</code> header to the API:</p>
+    <p>API URL: <a href="@apiBaseUrl" target="_blank" rel="noopener"><code>@apiBaseUrl</code></a></p>
+    <p class="muted">Example request (copy-paste ready):</p>
+    <pre class="token-value">curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl</pre>
+</div>
+
+<p>
+    <a class="btn primary" href="/admin/api-tokens">Done</a>
+</p>

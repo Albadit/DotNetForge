@@ -1,0 +1,29 @@
+@model List<AuditLogEntry>
+@{
+    ViewData["Title"] = "Audit Logs";
+}
+
+<p class="muted">The 100 most recent actions. Audit logs are append-only and cannot be edited or deleted.</p>
+
+<table class="data">
+    <thead>
+        <tr><th>When (UTC)</th><th>User</th><th>Action</th><th>Entity</th><th>Result</th><th>IP</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var entry in Model)
+    {
+        <tr>
+            <td class="muted">@entry.Timestamp.ToString("u")</td>
+            <td>@(entry.UserDisplaySnapshot ?? "-")</td>
+            <td><code>@entry.Action</code></td>
+            <td>@(entry.EntityType is null ? "-" : $"{entry.EntityType} {entry.EntityDisplaySnapshot}")</td>
+            <td><span class="badge @(entry.Success ? "ok" : "warn")">@(entry.Success ? "ok" : "fail")</span></td>
+            <td class="muted">@entry.IpAddress</td>
+        </tr>
+    }
+    @if (Model.Count == 0)
+    {
+        <tr><td colspan="6" class="muted">No audit entries yet.</td></tr>
+    }
+    </tbody>
+</table>
