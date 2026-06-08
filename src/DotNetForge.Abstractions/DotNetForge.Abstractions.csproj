@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <!--
-    Contracts layer. Interfaces and extension-point contracts only - no
-    implementation. This is the stable surface extensions compile against.
-    Depends on nothing.
-  -->
-
-</Project>
