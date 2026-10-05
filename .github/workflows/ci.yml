@@ -42,8 +42,8 @@ jobs:
         shell: bash
         run: cp .env.example .env
 
-      - name: Build (web host + referenced libraries)
-        run: dotnet build --configuration Release
+      - name: Build (solution)
+        run: dotnet build DotNetForge.slnx --configuration Release
 
       - name: Unit tests
         run: dotnet test tests/DotNetForge.Tests --configuration Release --verbosity normal
@@ -67,7 +67,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          for proj in DotNetForge.Web.csproj src/*/*.csproj tests/*/*.csproj; do
+          for proj in src/*/*.csproj tests/*/*.csproj; do
             echo "::group::dotnet format $proj"
             dotnet format "$proj" --verify-no-changes --severity error
             echo "::endgroup::"
@@ -126,7 +126,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build image
-        run: docker build -t dotnetforge:ci .
+        run: docker build -f docker/Dockerfile -t dotnetforge:ci .
 
       - name: Run read-only and probe
         shell: bash

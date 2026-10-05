@@ -33,24 +33,24 @@ Every screen in the application. Auth column: **Anon** = anonymous; **AdminArea*
 
 | Screen | Route(s) | Controller → action | View | Auth | Doc |
 | --- | --- | --- | --- | --- | --- |
-| Setup wizard | `GET/POST /setup` (POST rate-limited) | `SetupController.Index` | `Views/Setup/Index.cshtml` | Anon, only before install | [setup](../pages/setup.md) |
-| Sign in | `GET/POST /account/login` (POST rate-limited), `POST /account/logout` | `AccountController.Login`, `.Logout` | `Views/Account/Login.cshtml` | Anon | [login](../pages/login.md) |
-| Access denied | `GET /account/denied` | `AccountController.Denied` | `Views/Account/Denied.cshtml` | Anon | [access-denied](../pages/access-denied.md) |
-| Public home | `GET /` | `HomeController.Index` | `Views/Home/Page.cshtml` or `Views/Home/Index.cshtml` | Anon | [public-home](../pages/public-home.md) |
-| Public content page | any other extension-less path (fallback) | `HomeController.RenderPage` | `Views/Home/Page.cshtml` | Anon | [public-page](../pages/public-page.md) |
+| Setup wizard | `GET/POST /setup` (POST rate-limited) | `SetupController.Index` | `src/DotNetForge.Web/Views/Setup/Index.cshtml` | Anon, only before install | [setup](../pages/setup.md) |
+| Sign in | `GET/POST /account/login` (POST rate-limited), `POST /account/logout` | `AccountController.Login`, `.Logout` | `src/DotNetForge.Web/Views/Account/Login.cshtml` | Anon | [login](../pages/login.md) |
+| Access denied | `GET /account/denied` | `AccountController.Denied` | `src/DotNetForge.Web/Views/Account/Denied.cshtml` | Anon | [access-denied](../pages/access-denied.md) |
+| Public home | `GET /` | `HomeController.Index` | `src/DotNetForge.Web/Views/Home/Page.cshtml` or `src/DotNetForge.Web/Views/Home/Index.cshtml` | Anon | [public-home](../pages/public-home.md) |
+| Public content page | any other extension-less path (fallback) | `HomeController.RenderPage` | `src/DotNetForge.Web/Views/Home/Page.cshtml` | Anon | [public-page](../pages/public-page.md) |
 | Media file | `GET /media/{id:guid}/{fileName?}` | `MediaFilesController.Download` | none - 302 to a presigned URL or a file stream | public file: Anon; private file: AdminArea user of the file's tenant, else 404 | [media storage](../features/media-storage.md#download-flow) |
-| Error | `/error` (any HTTP method) | `HomeController.Error` | `Views/Home/Error.cshtml` | Anon | [error](../pages/error.md) |
-| Dashboard | `GET /admin` | `DashboardController.Index` | `Areas/Admin/Views/Dashboard/Index.cshtml` | AdminArea | [dashboard](../pages/dashboard.md) |
-| Content Manager | `GET /admin/content`, `POST /admin/content/{create,update/{id},delete/{id},reorder}` | `ContentController` | `Areas/Admin/Views/Content/Index.cshtml` (+ `_TreeNodes`, `_PageForm`) | AdminArea + perm (`Collection types`: `create`; `update`/`update.own`; `publish` to change Published or schedule; `delete`/`delete.own`; reorder needs `update`) | [content-manager](../pages/content-manager.md) |
-| Media | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}` | `MediaController` | `Areas/Admin/Views/Media/Index.cshtml` | AdminArea + perm (`Media`: upload needs `create`; delete needs `delete`, or `delete.own` for files the user uploaded) | [media](../pages/media.md) |
-| Settings | `GET /admin/settings`, `POST /admin/settings/save` | `SettingsController` | `Areas/Admin/Views/Settings/Index.cshtml` | SA/Admin | [settings](../pages/settings.md) |
-| API Tokens | `GET /admin/api-tokens`, `GET/POST /admin/api-tokens/create`, `POST /admin/api-tokens/revoke/{id}` | `ApiTokensController` | `Areas/Admin/Views/ApiTokens/{Index,Create,Created}.cshtml` | SA/Admin | [api-tokens](../pages/api-tokens.md) |
-| Roles | `GET /admin/roles` | `RolesController.Index` | `Areas/Admin/Views/Roles/Index.cshtml` | SA/Admin | [roles](../pages/roles.md) |
-| Users | `GET /admin/users` | `UsersController.Index` | `Areas/Admin/Views/Users/Index.cshtml` | SA/Admin | [users](../pages/users.md) |
-| Audit Logs | `GET /admin/audit-logs` | `AuditLogsController.Index` | `Areas/Admin/Views/AuditLogs/Index.cshtml` | SA/Admin | [audit-logs](../pages/audit-logs.md) |
-| Plugins | `GET /admin/plugins` | `PluginsController.Index` | `Areas/Admin/Views/Plugins/Index.cshtml` | SA | [plugins](../pages/plugins.md) |
-| Admin extension tab | `GET /admin/ext/{id}` (shell), `GET /admin/ext/{id}/raw`, `GET /admin/ext/{id}/resources/{**path}` | `ExtensionsController.Host`, `ExtensionViewController.Render` / `.Resource` | `Areas/Admin/Views/Extensions/Host.cshtml` + the extension's own views | AdminArea | [extension-host](../pages/extension-host.md) |
-| Module placeholders | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization`, `/admin/transfer`, `/admin/webhooks`, `/admin/email/configuration`, `/admin/email/templates`, `/admin/providers`, `/admin/advanced-settings` | `ModulesController` | `Areas/Admin/Views/Modules/Placeholder.cshtml` | AdminArea | [module-placeholders](../pages/module-placeholders.md) |
+| Error | `/error` (any HTTP method) | `HomeController.Error` | `src/DotNetForge.Web/Views/Home/Error.cshtml` | Anon | [error](../pages/error.md) |
+| Dashboard | `GET /admin` | `DashboardController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/Dashboard/Index.cshtml` | AdminArea | [dashboard](../pages/dashboard.md) |
+| Content Manager | `GET /admin/content`, `POST /admin/content/{create,update/{id},delete/{id},reorder}` | `ContentController` | `src/DotNetForge.Web/Areas/Admin/Views/Content/Index.cshtml` (+ `_TreeNodes`, `_PageForm`) | AdminArea + perm (`Collection types`: `create`; `update`/`update.own`; `publish` to change Published or schedule; `delete`/`delete.own`; reorder needs `update`) | [content-manager](../pages/content-manager.md) |
+| Media | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}` | `MediaController` | `src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml` | AdminArea + perm (`Media`: upload needs `create`; delete needs `delete`, or `delete.own` for files the user uploaded) | [media](../pages/media.md) |
+| Settings | `GET /admin/settings`, `POST /admin/settings/save` | `SettingsController` | `src/DotNetForge.Web/Areas/Admin/Views/Settings/Index.cshtml` | SA/Admin | [settings](../pages/settings.md) |
+| API Tokens | `GET /admin/api-tokens`, `GET/POST /admin/api-tokens/create`, `POST /admin/api-tokens/revoke/{id}` | `ApiTokensController` | `src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/{Index,Create,Created}.cshtml` | SA/Admin | [api-tokens](../pages/api-tokens.md) |
+| Roles | `GET /admin/roles` | `RolesController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/Roles/Index.cshtml` | SA/Admin | [roles](../pages/roles.md) |
+| Users | `GET /admin/users` | `UsersController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/Users/Index.cshtml` | SA/Admin | [users](../pages/users.md) |
+| Audit Logs | `GET /admin/audit-logs` | `AuditLogsController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/AuditLogs/Index.cshtml` | SA/Admin | [audit-logs](../pages/audit-logs.md) |
+| Plugins | `GET /admin/plugins` | `PluginsController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/Plugins/Index.cshtml` | SA | [plugins](../pages/plugins.md) |
+| Admin extension tab | `GET /admin/ext/{id}` (shell), `GET /admin/ext/{id}/raw`, `GET /admin/ext/{id}/resources/{**path}` | `ExtensionsController.Host`, `ExtensionViewController.Render` / `.Resource` | `src/DotNetForge.Web/Areas/Admin/Views/Extensions/Host.cshtml` + the extension's own views | AdminArea | [extension-host](../pages/extension-host.md) |
+| Module placeholders | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization`, `/admin/transfer`, `/admin/webhooks`, `/admin/email/configuration`, `/admin/email/templates`, `/admin/providers`, `/admin/advanced-settings` | `ModulesController` | `src/DotNetForge.Web/Areas/Admin/Views/Modules/Placeholder.cshtml` | AdminArea | [module-placeholders](../pages/module-placeholders.md) |
 
 Non-screen endpoints: `GET /health` (JSON, bypasses install gate) and `/api/*` ([headless API](../features/headless-api.md)).
 
@@ -62,8 +62,8 @@ There is no registry. A screen exists when:
 
 1. a controller action has an **attribute route** (every admin controller has `[Route("admin/...")]`;
    `ModulesController` uses absolute `[HttpGet("/admin/...")]` per action); and
-2. a view is found by MVC's normal lookup: `Areas/Admin/Views/<Controller>/<Action>.cshtml`, then
-   `Areas/Admin/Views/Shared/`, then `Views/Shared/` - or the action names the view explicitly (`View("Created", ...)`,
+2. a view is found by MVC's normal lookup: `src/DotNetForge.Web/Areas/Admin/Views/<Controller>/<Action>.cshtml`, then
+   `src/DotNetForge.Web/Areas/Admin/Views/Shared/`, then `Views/Shared/` - or the action names the view explicitly (`View("Created", ...)`,
    `View(nameof(Index), ...)`, `View("Placeholder", ...)`, `View("Page", ...)`).
 
 Admin extensions are the exception: their tabs come from manifests on disk (see
@@ -73,11 +73,11 @@ Admin extensions are the exception: their tabs come from manifests on disk (see
 
 | Layout | Set by | Used by | What it renders |
 | --- | --- | --- | --- |
-| `Areas/Admin/Views/Shared/_AdminLayout.cshtml` | `Areas/Admin/Views/_ViewStart.cshtml` | every admin screen | `<title>{Title} · DotNetForge Admin</title>`, `site.css` + `admin.css`, `site.js` (`defer`), sidebar (logo, a hard-coded "Tenant: Default" block, `_Sidebar` partial), top bar with `ViewData["Title"]` as `<h1>`, the user's name and a **Sign out** POST form |
-| `Views/Shared/_Layout.cshtml` | `Views/_ViewStart.cshtml` | public home list, error | `site.css`, header with app name (link `/`) and an **Admin** link, `<main class="container">`, footer |
-| `Views/Shared/_AuthLayout.cshtml` | `Layout = "_AuthLayout"` in the view | setup, login, denied | `site.css`, centered card with the app name |
-| none (`Layout = null`) | `Views/Home/Page.cshtml` | public content page | its own `<!doctype html>` with SEO meta tags and `page.css` |
-| extension's own `Views/Shared/_Layout.cshtml` | the extension's `_ViewStart.cshtml` | admin extension `raw` documents | whatever the extension ships (same CSP applies) |
+| `src/DotNetForge.Web/Areas/Admin/Views/Shared/_AdminLayout.cshtml` | `src/DotNetForge.Web/Areas/Admin/Views/_ViewStart.cshtml` | every admin screen | `<title>{Title} · DotNetForge Admin</title>`, `site.css` + `admin.css`, `site.js` (`defer`), sidebar (logo, a hard-coded "Tenant: Default" block, `_Sidebar` partial), top bar with `ViewData["Title"]` as `<h1>`, the user's name and a **Sign out** POST form |
+| `src/DotNetForge.Web/Views/Shared/_Layout.cshtml` | `src/DotNetForge.Web/Views/_ViewStart.cshtml` | public home list, error | `site.css`, header with app name (link `/`) and an **Admin** link, `<main class="container">`, footer |
+| `src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml` | `Layout = "_AuthLayout"` in the view | setup, login, denied | `site.css`, centered card with the app name |
+| none (`Layout = null`) | `src/DotNetForge.Web/Views/Home/Page.cshtml` | public content page | its own `<!doctype html>` with SEO meta tags and `page.css` |
+| extension's own `src/DotNetForge.Web/Views/Shared/_Layout.cshtml` | the extension's `_ViewStart.cshtml` | admin extension `raw` documents | whatever the extension ships (same CSP applies) |
 
 Layouts read `ViewData["Title"]` and `ViewData["AppName"]` (the public/auth layouts fall back to
 `"DotNetForge CMS"` when `AppName` is not set). Admin views set `ViewData["Title"]` at the top of the view; the admin
@@ -93,8 +93,8 @@ but keep admin styling in `admin.css`/`_AdminLayout` only.
 on every response. For screens this means:
 
 - **No inline script or style**: no `<script>` blocks, `<style>` blocks, `style="..."` attributes or `on*="..."`
-  handlers. Scripts go in `wwwroot/js` and are referenced with `<script src="~/js/..." defer>`; styles go in
-  `wwwroot/css`. This applies to admin extension documents too.
+  handlers. Scripts go in `src/DotNetForge.Web/wwwroot/js` and are referenced with `<script src="~/js/..." defer>`; styles go in
+  `src/DotNetForge.Web/wwwroot/css`. This applies to admin extension documents too.
 - Behaviour hooks are data attributes handled by `site.js` (today `data-confirm`).
 - Forms may only post to this origin; images may also come from `data:` and HTTPS origins (media redirects to
   presigned object-storage URLs).
@@ -244,12 +244,12 @@ There are no inline `onsubmit`/`onclick` handlers (the CSP blocks them). To add 
 
 | Kind | Location | Examples |
 | --- | --- | --- |
-| Layouts | `Views/Shared/`, `Areas/Admin/Views/Shared/` | `_Layout`, `_AuthLayout`, `_AdminLayout` |
+| Layouts | `Views/Shared/`, `src/DotNetForge.Web/Areas/Admin/Views/Shared/` | `_Layout`, `_AuthLayout`, `_AdminLayout` |
 | Partials | next to the screen that owns them, prefixed `_` | `Content/_TreeNodes.cshtml` (recursive), `Content/_PageForm.cshtml`, `Shared/_Sidebar.cshtml` |
-| View components | class in `Areas/Admin/Components/`, view in `Areas/Admin/Views/Shared/Components/<Name>/Default.cshtml` | `AdminExtensionsNavViewComponent` |
+| View components | class in `src/DotNetForge.Web/Areas/Admin/Components/`, view in `src/DotNetForge.Web/Areas/Admin/Views/Shared/Components/<Name>/Default.cshtml` | `AdminExtensionsNavViewComponent` |
 | Tag helpers | built-in only (`@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers` in each `_ViewImports`) | `asp-for`, `asp-action`, `asp-validation-summary` |
-| Styles | `wwwroot/css/site.css` (shared tokens, forms, buttons), `wwwroot/css/admin.css` (shell, tables, tree, badges), `wwwroot/css/page.css` (public content page) | `.btn.primary`, `.panel`, `table.data`, `.badge.ok/.warn` |
-| Scripts | `wwwroot/js/site.js` (every admin screen: `data-confirm`), `wwwroot/js/admin-content.js` (Content Manager only) | confirmations, conditional fields, drag-and-drop |
+| Styles | `src/DotNetForge.Web/wwwroot/css/site.css` (shared tokens, forms, buttons), `src/DotNetForge.Web/wwwroot/css/admin.css` (shell, tables, tree, badges), `src/DotNetForge.Web/wwwroot/css/page.css` (public content page) | `.btn.primary`, `.panel`, `table.data`, `.badge.ok/.warn` |
+| Scripts | `src/DotNetForge.Web/wwwroot/js/site.js` (every admin screen: `data-confirm`), `src/DotNetForge.Web/wwwroot/js/admin-content.js` (Content Manager only) | confirmations, conditional fields, drag-and-drop |
 
 Reusable UI is shared through **CSS classes**, not components: build a new list screen with
 `<table class="data">`, status with `<span class="badge ok|warn">`, a card with `<div class="panel">`, a form with
@@ -350,7 +350,7 @@ to the active tenant → the leaf is marked active and its parent group stays ex
 - [ ] Every sidebar leaf routes to its owning module and no leaf is a dead link - no dead links today, but nine
   leaves are placeholders and Global Settings → File Manager is missing.
 - [x] The admin area is never restyled by a public theme and always uses the built-in admin layout -
-  `Areas/Admin/Views/_ViewStart.cshtml` sets `_AdminLayout`; no theme system exists yet (re-verify when themes land).
+  `src/DotNetForge.Web/Areas/Admin/Views/_ViewStart.cshtml` sets `_AdminLayout`; no theme system exists yet (re-verify when themes land).
 - [x] The setup and sign-in screens are unaffected by public themes - both set `Layout = "_AuthLayout"`.
 - [x] Only `Super Admin`, `Admin`, `Editor`, `Author` enter the admin area; others get 403 - `AdminArea` policy on
   `AdminControllerBase`, forbid → `AccountController.Denied` (status 403).
@@ -369,17 +369,17 @@ to the active tenant → the leaf is marked active and its parent group stays ex
 
 Use the [admin-page skill](../../.claude/skills/admin-page/SKILL.md). In short:
 
-1. Controller in `Areas/Admin/Controllers/` deriving `AdminControllerBase`, with `[Route("admin/<slug>")]` and a
+1. Controller in `src/DotNetForge.Web/Areas/Admin/Controllers/` deriving `AdminControllerBase`, with `[Route("admin/<slug>")]` and a
    role restriction if needed.
-2. View model in `Areas/Admin/Models/AdminViewModels.cs`; view in `Areas/Admin/Views/<Controller>/Index.cshtml`
+2. View model in `src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs`; view in `src/DotNetForge.Web/Areas/Admin/Views/<Controller>/Index.cshtml`
    setting `ViewData["Title"]`.
-3. Business rules in a `Services/` class registered in `DependencyRegistration`, not in the controller. Runtime
+3. Business rules in a `src/DotNetForge.Web/Services/` class registered in `DependencyRegistration`, not in the controller. Runtime
    files go through `IFileStorage`, never the content root.
 4. Mutations: POST + antiforgery + `IAuditService.LogAsync` with a constant from `AuditActions`; validate input
    lengths before saving.
 5. Per-action permissions: check `Can(area, action)` / `CanModify(area, any, own, createdById)` and return
    `Forbid()`; expose the result on the view model (`CanX`) and hide what the user cannot do.
 6. No inline script or style: use classes from `site.css`/`admin.css`, `data-confirm` for destructive forms, and a
-   file in `wwwroot/js` for anything else.
+   file in `src/DotNetForge.Web/wwwroot/js` for anything else.
 7. Link it in `_Sidebar.cshtml` (replace the matching placeholder action in `ModulesController` if one exists).
 8. Add `.docs/pages/<screen>.md` and update the route map above.

@@ -1,7 +1,7 @@
 # Audit logging
 
 Append-only records of security-relevant actions. Written only through `IAuditService`
-(`src/DotNetForge.Shared/Auditing/IAuditService.cs`, implemented by `Services/AuditService.cs`); read on the
+(`src/DotNetForge.Shared/Auditing/IAuditService.cs`, implemented by `src/DotNetForge.Web/Services/AuditService.cs`); read on the
 [Audit Logs screen](../pages/audit-logs.md), counted on the [Dashboard](../pages/dashboard.md), and shown by the
 sample [Audit Dashboard admin extension](../pages/extension-host.md).
 

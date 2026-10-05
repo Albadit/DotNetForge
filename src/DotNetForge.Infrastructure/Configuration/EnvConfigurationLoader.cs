@@ -29,10 +29,11 @@ public static class EnvConfigurationLoader
     public const string S3SecretAccessKeyKey = "STORAGE_S3_SECRET_ACCESS_KEY";
     public const string S3RegionKey = "STORAGE_S3_REGION";
     public const string S3ForcePathStyleKey = "STORAGE_S3_FORCE_PATH_STYLE";
+    public const string ExtensionsPathKey = "EXTENSIONS_PATH";
 
     /// <summary>
-    /// Builds the typed <see cref="AppEnvironment"/> from the <c>.env</c> file in
-    /// <paramref name="contentRoot"/> merged with process environment variables.
+    /// Builds the typed <see cref="AppEnvironment"/> from the <c>.env</c> file (content root, or the repository root
+    /// when running from a checkout - see <see cref="AppPaths"/>) merged with process environment variables.
     /// </summary>
     /// <param name="contentRoot">The application's content root (where <c>.env</c> lives).</param>
     /// <param name="isDevelopment">
@@ -41,7 +42,7 @@ public static class EnvConfigurationLoader
     /// </param>
     public static AppEnvironment Load(string contentRoot, bool isDevelopment = true)
     {
-        var envPath = Path.Combine(contentRoot, ".env");
+        var envPath = AppPaths.Resolve(contentRoot, ".env");
         var fileValues = File.Exists(envPath)
             ? DotEnvParser.Parse(File.ReadAllText(envPath))
             : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -99,8 +100,18 @@ public static class EnvConfigurationLoader
             AppName = Get(AppNameKey) ?? AppEnvironment.DefaultAppName,
             AppUrl = appUrl,
             Storage = LoadStorage(Get, contentRoot, isDevelopment),
+            ExtensionsPath = ResolveExtensionsPath(Get(ExtensionsPathKey), contentRoot),
         };
     }
+
+    /// <summary>
+    /// <c>EXTENSIONS_PATH</c> when set (absolute, or relative to the content root); otherwise <c>extensions/</c> in the
+    /// content root (published app) or at the repository root (source checkout).
+    /// </summary>
+    private static string ResolveExtensionsPath(string? configured, string contentRoot) =>
+        Path.GetFullPath(string.IsNullOrWhiteSpace(configured)
+            ? AppPaths.Resolve(contentRoot, "extensions")
+            : Path.Combine(contentRoot, configured));
 
     private static string ResolveSqlite(string? connectionString, string contentRoot, bool isDevelopment)
     {
@@ -114,8 +125,9 @@ public static class EnvConfigurationLoader
                     "(e.g. 'Data Source=/data/dotnetforge.db') or use PostgreSQL.");
             }
 
-            // Development default, anchored to the content root rather than the process working directory.
-            return $"Data Source={Path.Combine(contentRoot, "storage", "dotnetforge.db")}";
+            // Development default: storage/ at the repository root (or the content root outside a checkout), never
+            // relative to the process working directory.
+            return $"Data Source={Path.Combine(AppPaths.DevelopmentDataRoot(contentRoot), "storage", "dotnetforge.db")}";
         }
 
         var dataSource = SqliteConnectionStrings.GetDataSource(connectionString);
@@ -157,7 +169,7 @@ public static class EnvConfigurationLoader
                     "(an absolute path on a writable volume), or use STORAGE_PROVIDER=s3.");
             }
 
-            path = Path.Combine(contentRoot, "storage", "media");
+            path = Path.Combine(AppPaths.DevelopmentDataRoot(contentRoot), "storage", "media");
         }
         else if (!Path.IsPathRooted(path))
         {
@@ -167,7 +179,8 @@ public static class EnvConfigurationLoader
                     $"{StorageLocalPathKey} must be an absolute path outside Development (got '{path}').");
             }
 
-            path = Path.Combine(contentRoot, path);
+            // Same anchor as the defaults: relative to the repository root, where .env lives in a checkout.
+            path = Path.Combine(AppPaths.DevelopmentDataRoot(contentRoot), path);
         }
 
         return new StorageSettings { Provider = StorageProvider.Local, LocalPath = Path.GetFullPath(path) };

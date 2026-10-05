@@ -16,10 +16,10 @@ Read-only. What gets logged and how: [audit logging](../features/audit-logging.m
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/AdminListControllers.cs   AuditLogsController
-Areas/Admin/Views/AuditLogs/Index.cshtml          table
+src/DotNetForge.Web/Areas/Admin/Controllers/AdminListControllers.cs   AuditLogsController
+src/DotNetForge.Web/Areas/Admin/Views/AuditLogs/Index.cshtml          table
 src/DotNetForge.Shared/Entities/AuditLogEntry.cs  entity
-Services/AuditService.cs                          writer (IAuditService, src/DotNetForge.Shared/Auditing/IAuditService.cs)
+src/DotNetForge.Web/Services/AuditService.cs                          writer (IAuditService, src/DotNetForge.Shared/Auditing/IAuditService.cs)
 ```
 
 ## Page layout

@@ -66,11 +66,11 @@ Full key reference with validation messages: [configuration](../features/configu
 
 ## Docker
 
-The repository's `Dockerfile` builds a framework-dependent image (`mcr.microsoft.com/dotnet/aspnet:10.0`, non-root
-`$APP_UID`, port 8080, `ASPNETCORE_ENVIRONMENT=Production`). `dotnet publish` includes `wwwroot/` and `extensions/`.
+`docker/Dockerfile` builds a framework-dependent image (`mcr.microsoft.com/dotnet/aspnet:10.0`, non-root
+`$APP_UID`, port 8080, `ASPNETCORE_ENVIRONMENT=Production`). `dotnet publish` includes `wwwroot/` and `extensions/`. Build from the repository root (the build context):
 
 ```bash
-docker build -t dotnetforge .
+docker build -f docker/Dockerfile -t dotnetforge .
 
 docker run -d --name dotnetforge \
   --read-only --tmpfs /tmp \
@@ -90,7 +90,7 @@ On first start the app applies the database migrations and seeds baseline data, 
 `/setup` until the first Super Admin is created. `GET /health` returns `{ "status": "ok", "app": "<APP_NAME>" }` and
 is not affected by the install gate - use it for liveness probes.
 
-Without Docker: `dotnet publish DotNetForge.Web.csproj -c Release -o out`, deploy `out/` read-only, set the same
+Without Docker: `dotnet publish src/DotNetForge.Web/DotNetForge.Web.csproj -c Release -o out`, deploy `out/` read-only, set the same
 environment variables, run `dotnet DotNetForge.Web.dll`.
 
 ## Behind a reverse proxy

@@ -17,8 +17,8 @@ it and how many `(area, action)` grants it has. Used by Super Admins and Admins.
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/AdminListControllers.cs   RolesController + nested RoleListItem record
-Areas/Admin/Views/Roles/Index.cshtml              table
+src/DotNetForge.Web/Areas/Admin/Controllers/AdminListControllers.cs   RolesController + nested RoleListItem record
+src/DotNetForge.Web/Areas/Admin/Views/Roles/Index.cshtml              table
 src/DotNetForge.Shared/Entities/Role.cs           Role, RolePermission, UserRole
 src/DotNetForge.Data/DataSeeder.cs                built-in roles and grants
 ```

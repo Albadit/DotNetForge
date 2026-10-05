@@ -1,43 +1,44 @@
-# DotNetForge CMS - Architecture
+# Architecture overview
 
 DotNetForge CMS is a server-rendered **ASP.NET Core MVC** CMS (C#, EF Core, Razor) on **.NET 10**, with **SQLite**
 (default) or **PostgreSQL**, configured through `.env`. It serves a role-gated admin area, a public site resolved from
 a page tree, and a token-secured headless API over the same data, and keeps the core (`src/`) separate from
 user extensions (`extensions/`).
 
-This file is the short overview. The detailed, code-verified architecture lives in `.docs/`:
+This is the one-page overview. The detailed, code-verified architecture:
 
 | Topic | Document |
 | --- | --- |
-| Projects, folders, layers, DI, rules for changes | [.docs/architecture/codebase.md](.docs/architecture/codebase.md) |
-| Startup, request pipeline, routing, auth/API/background flows | [.docs/architecture/data-flow.md](.docs/architecture/data-flow.md) |
-| Screens, route map, layouts, navigation | [.docs/architecture/pages.md](.docs/architecture/pages.md) |
-| Tables, migrations, seeding | [.docs/architecture/database.md](.docs/architecture/database.md) |
-| Project references, packages, DI registrations | [.docs/architecture/dependencies.md](.docs/architecture/dependencies.md) |
-| Built vs. specified | [.docs/implementation-status.md](.docs/implementation-status.md) |
+| Projects, folders, layers, DI, rules for changes | [codebase.md](codebase.md) |
+| Startup, request pipeline, routing, auth/API/background flows | [data-flow.md](data-flow.md) |
+| Screens, route map, layouts, navigation | [pages.md](pages.md) |
+| Tables, migrations, seeding | [database.md](database.md) |
+| Project references, packages, DI registrations | [dependencies.md](dependencies.md) |
+| Built vs. specified | [implementation-status.md](../implementation-status.md) |
 
 ## Layout
 
 ```text
-DotNetForge.Web.csproj + Program.cs, Startup/, Middleware/, Services/, Controllers/, Areas/Admin/, Views/, wwwroot/   (repo root)
+DotNetForge.slnx               solution (every project)
 src/
+  DotNetForge.Web/             MVC web app: Program.cs, Startup/, Middleware/, Services/, Controllers/, Areas/Admin/,
+                               Views/, wwwroot/ - composition root, admin area, public site, setup
   DotNetForge.Abstractions/    contracts only, no dependencies
   DotNetForge.Shared/          entities, enums, constants, DTOs, results, manifest model, store interfaces
   DotNetForge.Core/            installation, permission matrix evaluation, validators (no EF Core)
-  DotNetForge.Data/            EF Core context, migrations, seeding, provider selection
-  DotNetForge.Infrastructure/  BCL implementations: hashing, tokens, signing, .env, storage, email
+  DotNetForge.Data/            EF Core contexts, migrations (SQLite + PostgreSQL), seeding, provider selection
+  DotNetForge.Infrastructure/  BCL implementations: hashing, tokens, signing, .env, paths, file storage
   DotNetForge.Extensions/      manifest validation + discovery
   DotNetForge.Api/             headless API controllers, token auth, permission filter
 tests/        DotNetForge.Tests (unit), DotNetForge.IntegrationTests (real host)
-extensions/   extensions by type (one manifest per folder)
+extensions/   extensions by type (one manifest per folder); copied next to the app on publish
+docker/       Dockerfile (read-only friendly production image) and compose.dev.yml (local PostgreSQL + S3)
 .docs/        technical documentation, incl. planned work per topic
-Dockerfile, compose.dev.yml   production image (read-only friendly), local PostgreSQL + S3 for development
 ```
 
-The only deviation from the spec's canonical tree is that the web host is the **repository root** project (not
-`src/DotNetForge.Web/`), so `dotnet run`, `dotnet watch` and `dotnet build` work from the root with no arguments; the
-host's `DefaultItemExcludes` keeps sibling folders out of its compilation. AI-agent quick references live in
-`.github/agents/` instead of a root `agents/` folder.
+This matches the spec's canonical tree (`src/DotNetForge.Web/` and the libraries under `src/`). Run the app with
+`dotnet run --project src/DotNetForge.Web`; `dotnet build` and `dotnet test` at the root use the solution. AI-agent
+quick references live in `.github/agents/` instead of a root `agents/` folder.
 
 ## Layering
 
@@ -50,14 +51,14 @@ flowchart BT
     Extensions --> Core
     Api --> Core
     Api --> Data
-    Web["Web (root)"] --> Api & Extensions & Infrastructure
+    Web["Web"] --> Api & Extensions & Infrastructure
 ```
 
 - `Core` and `Data` are siblings; `Core` needs persistence only through interfaces in `Shared/Stores`
   (`IInstallationStore`).
 - `Api` queries `Data` directly - a documented shortcut.
 - `PermissionMatrix` lives in `Shared` so the seeder and `PermissionService` share it.
-- All DI is in `Startup/DependencyRegistration.cs`.
+- All DI is in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`.
 
 ## Key decisions
 
@@ -73,7 +74,7 @@ flowchart BT
 - **BCL-only security primitives** (PBKDF2, HMAC, RNG) and an in-house `.env` parser - no extra dependencies.
 - **Read-only deployment directory.** Runtime data goes to the database (incl. the Data Protection key ring) and to
   object storage behind `IFileStorage` (local directory in development, S3-compatible - Cloudflare R2 recommended - in
-  production). Production configuration may not default into the app's folder ([deployment](.docs/guides/deployment.md)).
+  production). Production configuration may not default into the app's folder ([deployment](../guides/deployment.md)).
 - **Both database providers use migrations** (`DotNetForgeDbContext` for SQLite, `PostgreSqlDbContext` for
   PostgreSQL), applied at startup.
 - **Defence in depth on the web layer:** CSP and security headers, rate limiting, session re-validation, content and

@@ -33,7 +33,7 @@ Read first: `.docs/architecture/database.md`.
    move it into `Migrations/PostgreSql/` and delete the stray folder. Read the generated `Up`/`Down` of both. Never
    edit an already-committed migration - add a new one.
 4. **Apply** - both providers migrate at startup (`DatabaseInitializer` → `MigrateAsync`). Verify PostgreSQL by
-   running the integration tests with `DNF_TEST_POSTGRES` (e.g. against `docker compose -f compose.dev.yml up -d`).
+   running the integration tests with `DNF_TEST_POSTGRES` (e.g. against `docker compose -f docker/compose.dev.yml up -d`).
    Writing `DateTime` values: always UTC (`timestamp with time zone` rejects other kinds on PostgreSQL).
 5. **Seed data** - only in `src/DotNetForge.Data/DataSeeder.cs`, guarded so it is idempotent (it runs on every start).
    Use constants from `src/DotNetForge.Shared/Constants`.

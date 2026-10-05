@@ -15,7 +15,7 @@ only reserved folders, a version column and a few flags exist.
 | `InstalledExtension.UpdateAvailable` | `src/DotNetForge.Shared/Entities/InstalledExtension.cs` | returned by `GET /api/extensions`; `InstalledExtensions` is never written, so always empty |
 | Schema creation | `src/DotNetForge.Data/DatabaseInitializer.cs` | `MigrateAsync` for both providers, each with its own migration set (`Migrations/` for SQLite, `Migrations/PostgreSql/` for PostgreSQL), applied at startup ([database](../architecture/database.md)) |
 | Provider selection | `DATABASE_PROVIDER` = `sqlite` \| `postgresql` (`postgres` accepted), `DbProviderConfigurator` | ✔ one provider per process; no cross-provider tooling |
-| Core / extensions / runtime split | web host at the repository root + `src/`; `extensions/` (excluded from the host build by `DefaultItemExcludes`, discovered by `ExtensionLoader` under `<contentRoot>/extensions`); `storage/` | ✔ folders separated |
+| Core / extensions / runtime split | `src/` (web host in `src/DotNetForge.Web`); `extensions/` at the repository root (outside every project, discovered by `ExtensionLoader` under `AppEnvironment.ExtensionsPath`); `storage/` | ✔ folders separated |
 | `.gitignore` | repository root | ignores `.env`/`.env.*` (keeps `.env.example`), `bin/`, `obj/`, `storage/{media,backups,logs,updates}/*`, `*.db*`, `node_modules/`, test output; **not** `out/`, `publish/`, `*.log`, `.cache/` |
 
 No audit actions exist for transfer, update or rollback. `InstalledExtension`, `SystemState` and `AuthProvider`
@@ -44,7 +44,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 ### Folder layout
 
 ```text
-<repo>/                 CORE - replaced by the updater (web host at the root + src/)
+src/                    CORE - replaced by the updater (web host in src/DotNetForge.Web)
 extensions/             CUSTOM EXTENSIONS - never written by updates
 storage/                RUNTIME DATA - git-ignored, preserved across updates
   media/                uploads
@@ -53,8 +53,8 @@ storage/                RUNTIME DATA - git-ignored, preserved across updates
   updates/              downloaded / staged update packages
 ```
 
-Note: the spec places the web host under `src/`; here it is the repository root, so an updater must treat the
-root files (except `extensions/`, `storage/`, `.env`) as core.
+In a published deployment the core is the publish output (`/app`), with `extensions/` copied inside it; an updater
+must replace everything there except `extensions/` and `.env`.
 
 Proposed `.gitignore` additions: `out/`, `publish/`, `*.log`, `.cache/`.
 
@@ -156,7 +156,7 @@ transfers and core updates stay with the global Super Admin. Every action is aud
 - [ ] Long-running export/import shows progress.
 - [ ] Every export and import writes a transfer result log entry (status, counts, duration, errors).
 - [ ] Import/export can be scoped per tenant; *All tenants* is Super Admin only.
-- [x] Core files and custom extensions are in separate folders, with extensions in a dedicated `extensions/` folder (`ExtensionLoader` root `<contentRoot>/extensions`, `DefaultItemExcludes` in `DotNetForge.Web.csproj`).
+- [x] Core files and custom extensions are in separate folders, with extensions in a dedicated `extensions/` folder (`ExtensionLoader` root `AppEnvironment.ExtensionsPath`; copied into the publish output by `src/DotNetForge.Web/DotNetForge.Web.csproj`).
 - [ ] Core update checks exist and update status is shown on the Settings overview / Dashboard (the Dashboard shows only `SystemState.CmsVersion`).
 - [ ] Applying an update creates and verifies a backup first; a failed backup aborts the update.
 - [ ] An update never overwrites or deletes anything under `extensions/` or `storage/`.

@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DotNetForge.Abstractions/DotNetForge.Abstractions.csproj" />
+    <Project Path="src/DotNetForge.Api/DotNetForge.Api.csproj" />
+    <Project Path="src/DotNetForge.Core/DotNetForge.Core.csproj" />
+    <Project Path="src/DotNetForge.Data/DotNetForge.Data.csproj" />
+    <Project Path="src/DotNetForge.Extensions/DotNetForge.Extensions.csproj" />
+    <Project Path="src/DotNetForge.Infrastructure/DotNetForge.Infrastructure.csproj" />
+    <Project Path="src/DotNetForge.Shared/DotNetForge.Shared.csproj" />
+    <Project Path="src/DotNetForge.Web/DotNetForge.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DotNetForge.IntegrationTests/DotNetForge.IntegrationTests.csproj" />
+    <Project Path="tests/DotNetForge.Tests/DotNetForge.Tests.csproj" />
+  </Folder>
+</Solution>

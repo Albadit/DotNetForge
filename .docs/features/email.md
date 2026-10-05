@@ -151,7 +151,7 @@ tenants' email. Role model: [authorization](authorization.md).
 
 - **SMTP sender**: a new `SmtpEmailSender` in `src/DotNetForge.Infrastructure/Messaging/` implementing `IEmailSender`, BCL
   first (architecture rule 12, [codebase](../architecture/codebase.md#architectural-rules-for-changes)), registered in
-  `Startup/DependencyRegistration.cs`. For development, log messages via `ILogger` or use a local SMTP catcher
+  `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. For development, log messages via `ILogger` or use a local SMTP catcher
   (e.g. a Mailpit container) - never write mail files into the deployment directory.
 - **Contract**: if a sender name, reply-to or the template key must travel with the message, extend `EmailMessage`
   in `Abstractions` - it must stay dependency-free and entity-free.

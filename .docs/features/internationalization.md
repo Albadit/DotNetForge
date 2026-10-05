@@ -14,7 +14,7 @@ for missing translations), and how content is translated. Today the CMS is Engli
 Not present: locale entities or settings, request-culture middleware (`UseRequestLocalization`), `IStringLocalizer`
 or resource files, per-user admin language, localized fields on `Page`, and any locale parameter on the
 [headless API](headless-api.md). Every UI string is hard-coded English and every layout (`_Layout`,
-`_AuthLayout`, `_AdminLayout`, `Views/Home/Page.cshtml`) writes `<html lang="en">`.
+`_AuthLayout`, `_AdminLayout`, `src/DotNetForge.Web/Views/Home/Page.cshtml`) writes `<html lang="en">`.
 
 ## Planned (not implemented)
 
@@ -119,9 +119,9 @@ A global Super Admin manages locales of every tenant; a tenant-scoped Admin only
   `src/DotNetForge.Shared/Entities`, configured in `DotNetForgeDbContext` with a unique (`TenantId`, `Code`) index,
   plus a migration (`database-change` skill). Decide whether `Tenant.DefaultLocale` stays as the source of truth or is
   derived from the default `Locale` row - keep one source only.
-- **Rules** (one default, default enabled, last locale, atomic switch): one `Services/LocaleService` running the
+- **Rules** (one default, default enabled, last locale, atomic switch): one `src/DotNetForge.Web/Services/LocaleService` running the
   switch in a single `SaveChangesAsync`/transaction; pure code validation in `src/DotNetForge.Core/Validation`.
-- **Request culture**: register localization in `Startup/DependencyRegistration.cs` and add
+- **Request culture**: register localization in `src/DotNetForge.Web/Startup/DependencyRegistration.cs` and add
   `UseRequestLocalization` in `Program.cs` with a provider that reads the tenant's enabled locales; set `<html lang>`
   from the resolved culture in every layout.
 - **Translated content**: a translation table keyed by (`PageId`, locale) rather than per-locale columns on `Page`;

@@ -16,8 +16,8 @@ The protections that exist in the code, where they are, and the known gaps. Targ
 | Session re-validation | every cookie request checks that the user still exists and is `Enabled` (`AuthService.IsActiveAsync`, cached 30 s per user); otherwise the session is rejected and signed out. Roles stay as issued at sign-in | `DependencyRegistration.ValidateSessionAsync` ([authentication](authentication.md#session-re-validation)) |
 | CSRF | antiforgery token on every admin/account/setup POST (`[ValidateAntiForgeryToken]`); `X-CSRF-TOKEN` header for the reorder `fetch` | controllers, `admin-content.js` |
 | Open redirect | after login: `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - an external `returnUrl` falls back to the dashboard | `AccountController.Login` |
-| Security headers | on every response: `Content-Security-Policy` (`Content-Security-Policy-Report-Only` in Development), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` | `Middleware/SecurityHeadersMiddleware.cs` |
-| Content Security Policy | `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'`. Views carry no inline script or style (delete confirms use `data-confirm` handled by `site.js`; the denied screen's sign-out is a real POST form; public page styles are in `wwwroot/css/page.css`) | `SecurityHeadersMiddleware.ContentSecurityPolicy` |
+| Security headers | on every response: `Content-Security-Policy` (`Content-Security-Policy-Report-Only` in Development), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` | `src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs` |
+| Content Security Policy | `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'`. Views carry no inline script or style (delete confirms use `data-confirm` handled by `site.js`; the denied screen's sign-out is a real POST form; public page styles are in `src/DotNetForge.Web/wwwroot/css/page.css`) | `SecurityHeadersMiddleware.ContentSecurityPolicy` |
 | Admin access | `AdminArea` policy + role restrictions; `(area, action)` checks in the Content Manager and Media | [authorization](authorization.md) |
 | API tokens | 256-bit secret, only a salted hash stored, prefix lookup, expiry, revocation, per-endpoint permission keys; verification cached 10 min under a SHA-256 of the token, revocation/expiry re-read every request | [headless API](headless-api.md), [authentication](authentication.md#api-token-authentication) |
 | Tenant isolation | manual `TenantId` filters in admin and API queries; Audit Logs and the Dashboard audit count are scoped; private media checks the file's tenant | [multi-tenancy](multi-tenancy.md) (gaps listed there) |
@@ -76,7 +76,7 @@ Verified in the current code; each is a candidate for a hardening change.
 - Never build file paths from request input without the `GetFullPath` + prefix check; storage keys go through
   `StorageKey`.
 - Never return entities from the API (they contain `PasswordHash`, `TokenHash`, `Secret`).
-- No inline `<script>`/`<style>` or event-handler attributes in views - the CSP blocks them; put code in `wwwroot/js`.
+- No inline `<script>`/`<style>` or event-handler attributes in views - the CSP blocks them; put code in `src/DotNetForge.Web/wwwroot/js`.
 - Check input lengths against the column limits before saving (PostgreSQL rejects over-long values).
 - New credential-like endpoints get `[EnableRateLimiting(RateLimitPolicies.Credentials)]`.
 
@@ -116,7 +116,7 @@ documents hold the details.
 - [x] All database access uses EF Core / parameterized queries; no SQL is built from concatenated input (no `FromSql`/`ExecuteSql` in the code).
 - [ ] Input is validated on all admin forms and all API endpoints (lengths ✔, reorder ✔ `PageService.ReorderAsync`, uploads ✔ `MediaService`; login has no server-side format check).
 - [ ] Output is encoded/sanitized against XSS across page content, history diffs and extension/widget output (Razor encoding ✔ and CSP ✔; no sanitizing, no history, extensions unrestricted).
-- [x] CSRF protection is enforced on all state-changing admin form submissions (every `[HttpPost]` in `Controllers/` and `Areas/Admin/` has `[ValidateAntiForgeryToken]`).
+- [x] CSRF protection is enforced on all state-changing admin form submissions (every `[HttpPost]` in `src/DotNetForge.Web/Controllers/` and `src/DotNetForge.Web/Areas/Admin/` has `[ValidateAntiForgeryToken]`).
 - [ ] File uploads pass secure validation; allowed file types and max upload size are configurable (validation ✔ `MediaService.AllowedTypes` / `MaxUploadBytes`; constants, not configurable).
 - [x] Private media is access-controlled and never served to unauthorized callers (`MediaFilesController.CanReadPrivate`: admin-capable user of the file's tenant, else 404; presigned URLs for private files expire after 5 min).
 - [x] API tokens are generated with a cryptographically secure method and stored only as hashes; plaintext is shown once at creation (`ApiTokenFactory` uses `RandomNumberGenerator`; `ApiTokensController`).

@@ -20,12 +20,12 @@ page, so every anonymous request to a protected admin screen ends up here. Mecha
 ## Relevant source files
 
 ```text
-Controllers/AccountController.cs        Login (GET/POST), Logout, Denied
-Views/Account/Login.cshtml              form (uses _AuthLayout)
-Views/Shared/_AuthLayout.cshtml         layout
-Services/AuthService.cs                 ValidateAsync (credentials, lockout, principal), GetDefaultTenantIdAsync, IsActiveAsync
-Services/AuditService.cs                user.login / user.login.failed / user.logout (via IAuditService)
-Startup/DependencyRegistration.cs       cookie options (paths, lifetime, flags), ValidateSessionAsync, AddRateLimits
+src/DotNetForge.Web/Controllers/AccountController.cs        Login (GET/POST), Logout, Denied
+src/DotNetForge.Web/Views/Account/Login.cshtml              form (uses _AuthLayout)
+src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml         layout
+src/DotNetForge.Web/Services/AuthService.cs                 ValidateAsync (credentials, lockout, principal), GetDefaultTenantIdAsync, IsActiveAsync
+src/DotNetForge.Web/Services/AuditService.cs                user.login / user.login.failed / user.logout (via IAuditService)
+src/DotNetForge.Web/Startup/DependencyRegistration.cs       cookie options (paths, lifetime, flags), ValidateSessionAsync, AddRateLimits
 src/DotNetForge.Shared/Constants/RateLimitPolicies.cs   policy names (credentials, api)
 ```
 

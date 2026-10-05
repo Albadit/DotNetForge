@@ -29,7 +29,7 @@ Entry point: `.docs/README.md`. The layout is fixed - put new material where it 
 | `.docs/glossary.md` | fixed terminology - "screen" = UI view, "content page"/`Page` = entity, "live" vs `Published`, "extension" vs `plugin` | - |
 | `.docs/implementation-status.md` | built vs. planned per module (links to each Planned section) + registered-but-unused code | - |
 | `.docs/product.md` | product goals, the three modes, target users, MVP scope | - |
-| `/README.md`, `/ARCHITECTURE.md`, `/CLAUDE.md`, `/.github/agents/*.md` | short overviews that link into `.docs/` - keep them short, don't duplicate | - |
+| `/README.md`, `/CLAUDE.md`, `/.github/agents/*.md`, `.docs/architecture/overview.md` | short overviews that link into `.docs/` - keep them short, don't duplicate | - |
 
 Planned work has no separate folder: every document that owns a topic ends with a `## Planned (not implemented)`
 section (Requirements, User flows, Rules and validation, Edge cases, Acceptance criteria with `- [x]` only for

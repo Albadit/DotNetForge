@@ -18,11 +18,11 @@ yet; they are readable through `GET /api/settings`.
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/SettingsController.cs   Index, Save, BuildAsync, MaxKeyLength / MaxValueLength
-Areas/Admin/Models/AdminViewModels.cs           SettingsIndexViewModel
-Areas/Admin/Views/Settings/Index.cshtml         table + add/update form
+src/DotNetForge.Web/Areas/Admin/Controllers/SettingsController.cs   Index, Save, BuildAsync, MaxKeyLength / MaxValueLength
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs           SettingsIndexViewModel
+src/DotNetForge.Web/Areas/Admin/Views/Settings/Index.cshtml         table + add/update form
 src/DotNetForge.Shared/Entities/SystemState.cs  Setting entity (same file)
-Services/AuditService.cs                        settings.changed (via IAuditService)
+src/DotNetForge.Web/Services/AuditService.cs                        settings.changed (via IAuditService)
 ```
 
 ## Page layout

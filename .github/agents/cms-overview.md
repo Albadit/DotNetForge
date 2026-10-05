@@ -10,8 +10,8 @@ same data. Full documentation: [`.docs/README.md`](../../.docs/README.md).
   See [configuration](../../.docs/features/configuration.md).
 - First run: every request redirects to `/setup`; it creates the first **Super Admin** and sets
   `SystemState.Installed`. Afterwards `/setup` redirects to `/admin`. See [installation](../../.docs/features/installation.md).
-- Run from the repository root: `dotnet run`, `dotnet watch`, `dotnet build`. Tests:
-  `dotnet test tests/DotNetForge.Tests`, `dotnet test tests/DotNetForge.IntegrationTests`.
+- From the repository root: `dotnet run --project src/DotNetForge.Web` (or `dotnet watch --project ...`),
+  `dotnet build` and `dotnet test` (solution `DotNetForge.slnx`).
 
 ## Where things live
 

@@ -5,7 +5,7 @@
 | Project | References | Runs against | Count (Oct 2026) |
 | --- | --- | --- | --- |
 | `tests/DotNetForge.Tests` | `src/` libraries (not the host, not `Api`) | pure code, fakes, temp folders; optionally a live S3 bucket | 104 tests: 99 run, 5 live-S3 tests skipped unless `DNF_TEST_S3_*` is set |
-| `tests/DotNetForge.IntegrationTests` | `DotNetForge.Web.csproj` | the real host via `WebApplicationFactory<Program>`, a temp SQLite file (or PostgreSQL) and a temp media folder | 40 tests |
+| `tests/DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj` | the real host via `WebApplicationFactory<Program>`, a temp SQLite file (or PostgreSQL) and a temp media folder | 40 tests |
 
 ```bash
 dotnet test tests/DotNetForge.Tests            # Passed: 99, Skipped: 5
@@ -48,7 +48,7 @@ The five `[S3Fact]` tests in `S3FileStorageTests` are skipped unless these envir
 | `DNF_TEST_S3_REGION` | | default `auto` |
 | `DNF_TEST_S3_FORCE_PATH_STYLE` | | `true` for SeaweedFS/MinIO (default `false`) |
 
-A local S3-compatible server - either `docker compose -f compose.dev.yml up -d` (SeaweedFS on port 8333, bucket
+A local S3-compatible server - either `docker compose -f docker/compose.dev.yml up -d` (SeaweedFS on port 8333, bucket
 `dotnetforge` created by the `s3-bucket` service; use `DNF_TEST_S3_BUCKET=dotnetforge`) or a standalone container:
 
 ```bash
@@ -96,7 +96,7 @@ Set `DNF_TEST_POSTGRES` to a server connection string **without** a database, an
 database `dnf_it_<guid>` (through the PostgreSQL migrations) and drops it on dispose:
 
 ```bash
-docker compose -f compose.dev.yml up -d postgres
+docker compose -f docker/compose.dev.yml up -d postgres
 DNF_TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres;GSS Encryption Mode=Disable" \
   dotnet test tests/DotNetForge.IntegrationTests
 ```
@@ -181,7 +181,7 @@ Never write into the repository from a test: use `factory.StoragePath`, the fact
 - **postgres-and-s3** (`PostgreSQL + S3 storage`) on Ubuntu: a `postgres:17-alpine` service and a SeaweedFS container
   (`chrislusf/seaweedfs server -s3`, bucket `dnf-test`); runs the unit tests **including** the live S3 tests
   (`DNF_TEST_S3_*` set) and the integration tests on PostgreSQL (`DNF_TEST_POSTGRES` set).
-- **read-only-container** (`Read-only container`) on Ubuntu: `docker build -t dotnetforge:ci .`, then
+- **read-only-container** (`Read-only container`) on Ubuntu: `docker build -f docker/Dockerfile -t dotnetforge:ci .`, then
   `docker run --read-only --tmpfs /tmp` with SQLite at `/tmp/cms.db` and media at `/tmp/media`; probes `/health` and
   `/setup` and asserts `docker diff app` is empty ([deployment](deployment.md#docker)).
 
@@ -233,7 +233,7 @@ Target behaviour from the original product specification. Nothing in this sectio
   `postgres-and-s3`).
 - Code coverage collectable with `dotnet test --collect:"XPlat Code Coverage"` (needs `coverlet.collector`, not
   referenced today).
-- **Frontend linting:** an ESLint configuration wherever JavaScript/TypeScript exists (`wwwroot/js`, admin extension
+- **Frontend linting:** an ESLint configuration wherever JavaScript/TypeScript exists (`src/DotNetForge.Web/wwwroot/js`, admin extension
   and theme assets), runnable as `npm run lint` locally and in CI, failing the build on errors; JS/TS formatting
   enforced alongside it.
 
@@ -243,8 +243,8 @@ Target behaviour from the original product specification. Nothing in this sectio
 - Integration tests boot the real host and use a disposable database; never a pre-seeded or shared environment.
 - One test framework and assertion style across both projects (✔ xUnit only).
 - Tests run on Windows, macOS and Linux, in CI on every push and pull request (✔ `ci.yml`).
-- The spec runs the whole suite with a bare `dotnet test` from the root; this repository has no solution file by
-  design ([why](development.md#why-there-is-no-solution-file)), so each test project is run by path.
+- ✔ The whole suite runs with a bare `dotnet test` from the root (`DotNetForge.slnx`); one project runs by path
+  (`dotnet test tests/DotNetForge.Tests`).
 - Naming: `PascalCase` for types, methods and public members, `camelCase` for locals and parameters, interfaces
   prefixed `I`; descriptive names, no cryptic abbreviations. `.editorconfig` has no `dotnet_naming_rule` entries to
   enforce this.

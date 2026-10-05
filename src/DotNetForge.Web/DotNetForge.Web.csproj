@@ -1,48 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <!--
-    DotNetForge.Web - the ASP.NET Core MVC host and composition root.
-
-    This project lives at the REPOSITORY ROOT on purpose: it lets every common
-    workflow run from the root with no extra arguments:
-
-        dotnet run        dotnet watch        dotnet build
-
-    Because this project sits above src/, tests/, extensions/, etc., the default
-    SDK file globs would otherwise try to compile those sibling projects' files.
-    DefaultItemExcludes scopes this project to its own files only.
-    See ARCHITECTURE.md for the full layout and the rationale.
+    DotNetForge.Web - the ASP.NET Core MVC host and composition root (.docs/architecture/codebase.md).
+    Run it from the repository root with "dotnet run" and the project option pointing at src/DotNetForge.Web.
   -->
 
   <PropertyGroup>
-    <DefaultItemExcludes>$(DefaultItemExcludes);src/**;tests/**;extensions/**;storage/**;.docs/**;.claude/**;.config/**;.github/**;.vscode/**;*.md;.env;.env.*;global.json</DefaultItemExcludes>
     <UserSecretsId>dotnetforge-cms</UserSecretsId>
     <RootNamespace>DotNetForge.Web</RootNamespace>
     <AssemblyName>DotNetForge.Web</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Runtime Razor compilation so admin extensions can ship their own view.cshtml under extensions/. -->
+    <!-- Runtime Razor compilation so admin extensions can ship their own views under extensions/. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
   </ItemGroup>
 
   <!--
-    Extensions ship with the app and are only read at runtime (admin extension views are compiled in memory).
-    They are excluded from compilation above; this copies them into the publish output as plain files - None
-    items, so the Razor SDK does not try to precompile extension views as part of the host.
+    Extensions live at the repository root (separate from the core) and are only read at runtime. They are copied
+    into the publish output as extensions/ - None items, so the Razor SDK does not precompile extension views as
+    part of the host. In development the app reads them from the repository root (see AppPaths).
   -->
   <ItemGroup>
-    <None Include="extensions/**" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../extensions/**" LinkBase="extensions" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="src/DotNetForge.Abstractions/DotNetForge.Abstractions.csproj" />
-    <ProjectReference Include="src/DotNetForge.Shared/DotNetForge.Shared.csproj" />
-    <ProjectReference Include="src/DotNetForge.Core/DotNetForge.Core.csproj" />
-    <ProjectReference Include="src/DotNetForge.Data/DotNetForge.Data.csproj" />
-    <ProjectReference Include="src/DotNetForge.Infrastructure/DotNetForge.Infrastructure.csproj" />
-    <ProjectReference Include="src/DotNetForge.Extensions/DotNetForge.Extensions.csproj" />
-    <ProjectReference Include="src/DotNetForge.Api/DotNetForge.Api.csproj" />
+    <ProjectReference Include="../DotNetForge.Abstractions/DotNetForge.Abstractions.csproj" />
+    <ProjectReference Include="../DotNetForge.Shared/DotNetForge.Shared.csproj" />
+    <ProjectReference Include="../DotNetForge.Core/DotNetForge.Core.csproj" />
+    <ProjectReference Include="../DotNetForge.Data/DotNetForge.Data.csproj" />
+    <ProjectReference Include="../DotNetForge.Infrastructure/DotNetForge.Infrastructure.csproj" />
+    <ProjectReference Include="../DotNetForge.Extensions/DotNetForge.Extensions.csproj" />
+    <ProjectReference Include="../DotNetForge.Api/DotNetForge.Api.csproj" />
   </ItemGroup>
 
 </Project>

@@ -7,7 +7,7 @@ stored state after a schedule has passed. The fields are edited on the
 
 ## `ScheduledPublishingService`
 
-`Services/ScheduledPublishingService.cs`, registered with `AddHostedService`.
+`src/DotNetForge.Web/Services/ScheduledPublishingService.cs`, registered with `AddHostedService`.
 
 | Aspect | Behaviour |
 | --- | --- |

@@ -10,16 +10,17 @@ configures logging and `AllowedHosts`. Production values and a deployment checkl
 | Key | Required | Default | Validation | Used by |
 | --- | --- | --- | --- | --- |
 | `DATABASE_PROVIDER` | **yes** | - (`.env.example` ships `sqlite`) | `sqlite`, `postgresql` or `postgres` (case-insensitive) | `DbProviderConfigurator`, `DependencyRegistration` (picks `PostgreSqlDbContext` for PostgreSQL) |
-| `DATABASE_CONNECTION_STRING` | PostgreSQL: always. SQLite: outside Development | SQLite in Development: `Data Source=<contentRoot>/storage/dotnetforge.db` | PostgreSQL: non-empty. SQLite outside Development: set, and its `Data Source` an **absolute** path (in-memory `:memory:` / `file::memory:` allowed) | `DbProviderConfigurator` via `AppEnvironment.ResolveConnectionString()` |
+| `DATABASE_CONNECTION_STRING` | PostgreSQL: always. SQLite: outside Development | SQLite in Development: `Data Source=<devRoot>/storage/dotnetforge.db` | PostgreSQL: non-empty. SQLite outside Development: set, and its `Data Source` an **absolute** path (in-memory `:memory:` / `file::memory:` allowed) | `DbProviderConfigurator` via `AppEnvironment.ResolveConnectionString()` |
 | `APP_NAME` | no | `DotNetForge CMS` | - | layouts and screens via `ViewData["AppName"]`, Dashboard, Settings, `/health` |
 | `APP_URL` | no | `http://localhost:5000` | must be an absolute URI | validated only - **not used anywhere else** (Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS`) |
 | `STORAGE_PROVIDER` | no | `local` | `local` or `s3` (case-insensitive) | `DependencyRegistration` registers `IFileStorage` as `LocalFileStorage` or `S3FileStorage` |
-| `STORAGE_LOCAL_PATH` | `local` outside Development | Development: `<contentRoot>/storage/media` | outside Development: set and **absolute**. In Development a relative path is resolved against the content root | `LocalFileStorage` |
+| `STORAGE_LOCAL_PATH` | `local` outside Development | Development: `<devRoot>/storage/media` | outside Development: set and **absolute**. In Development a relative path is resolved against `<devRoot>` | `LocalFileStorage` |
 | `STORAGE_S3_SERVICE_URL` | no | empty = AWS S3 | absolute URL | `S3FileStorage` (R2, MinIO, Supabase, SeaweedFS endpoint) |
 | `STORAGE_S3_BUCKET` | `s3` | - | non-empty | `S3FileStorage` |
 | `STORAGE_S3_ACCESS_KEY_ID` | `s3` | - | non-empty | `S3FileStorage` |
 | `STORAGE_S3_SECRET_ACCESS_KEY` | `s3` | - | non-empty; **secret** | `S3FileStorage` |
 | `STORAGE_S3_REGION` | `s3` without a service URL (AWS) | `auto` when `STORAGE_S3_SERVICE_URL` is set | - | `S3FileStorage` (signing region) |
+| `EXTENSIONS_PATH` | no | `extensions/` next to the app, else at the repository root | absolute, or relative to the content root | `ExtensionLoader`, runtime Razor compilation of extension views ([extensions](extensions.md#discovery)) |
 | `STORAGE_S3_FORCE_PATH_STYLE` | no | `false` | `true` or `false` (`bool.TryParse`, case-insensitive) | `S3FileStorage` (`endpoint/bucket/key` URLs for MinIO, Supabase, SeaweedFS) |
 
 `STORAGE_LOCAL_PATH` is read only when `STORAGE_PROVIDER=local`, the `STORAGE_S3_*` keys only when it is `s3`. How
@@ -36,30 +37,32 @@ Changing any key requires a restart.
 
 `Program.cs` calls `EnvConfigurationLoader.Load(builder.Environment.ContentRootPath,
 builder.Environment.IsDevelopment())` (`isDevelopment` defaults to `true` for tests and tools). Outside Development
-(`ASPNETCORE_ENVIRONMENT` other than `Development`; the `Dockerfile` sets `Production`) the deployment directory is
+(`ASPNETCORE_ENVIRONMENT` other than `Development`; `docker/Dockerfile` sets `Production`) the deployment directory is
 treated as **read-only**: nothing may default to a path inside it.
 
 | Setting | Development | Any other environment |
 | --- | --- | --- |
-| SQLite database | `DATABASE_CONNECTION_STRING` optional; default `<contentRoot>/storage/dotnetforge.db` | required; absolute `Data Source` on a writable volume (or in-memory), or use PostgreSQL |
-| Local media directory | `STORAGE_LOCAL_PATH` optional; default `<contentRoot>/storage/media`; relative paths resolve against the content root | required and absolute, or use `STORAGE_PROVIDER=s3` |
+| SQLite database | `DATABASE_CONNECTION_STRING` optional; default `<devRoot>/storage/dotnetforge.db` | required; absolute `Data Source` on a writable volume (or in-memory), or use PostgreSQL |
+| Local media directory | `STORAGE_LOCAL_PATH` optional; default `<devRoot>/storage/media`; relative paths resolve against `<devRoot>` | required and absolute, or use `STORAGE_PROVIDER=s3` |
 | PostgreSQL, S3 | same rules | same rules |
 
-Defaults are anchored to the **content root**, not the process working directory, so running from another folder
-or under a test host never scatters `storage/` folders. `DbProviderConfigurator` creates the SQLite file's
+`<devRoot>` is `AppPaths.DevelopmentDataRoot`: the repository root when running from a checkout (the folder containing
+`DotNetForge.slnx`), otherwise the content root. Defaults never depend on the process working directory, so
+`dotnet run --project src/DotNetForge.Web`, F5 and the test host all use the same `storage/` at the repository root. `DbProviderConfigurator` creates the SQLite file's
 directory if missing (skipped for in-memory databases) - outside Development that is the configured volume, never
 the deployment directory. `AppEnvironment.ResolveConnectionString()` still has a relative
-`Data Source=storage/dotnetforge.db` fallback; the loader always sets a connection string, so only design-time
-tooling reaches it.
+`Data Source=storage/dotnetforge.db` fallback; the loader always sets a connection string, so only hand-built
+instances reach it.
 
 Requirements for a read-only container (`/tmp`, volumes, Data Protection keys in the database):
 [deployment → read-only deployment requirements](../guides/deployment.md#read-only-deployment-requirements).
 
 ## Resolution rules
 
-1. The `.env` file is read from the **content root** (`builder.Environment.ContentRootPath`, the repository root when
-   run with `dotnet run`). It is optional when the process environment supplies `DATABASE_PROVIDER` (the usual case
-   in containers; `.dockerignore` keeps `.env` out of the image).
+1. The `.env` file is read from the **content root** (`builder.Environment.ContentRootPath`) if it exists there,
+   otherwise from the **repository root** (the folder containing `DotNetForge.slnx`; `AppPaths.Resolve`). In a
+   checkout the content root is `src/DotNetForge.Web`, so the repository root's `.env` is used. It is optional when the process environment supplies `DATABASE_PROVIDER` (the usual case
+   in containers; `docker/Dockerfile.dockerignore` keeps `.env` out of the image).
 2. For each key, a **non-empty process environment variable wins**; otherwise a non-empty `.env` value; otherwise
    unset. An empty value (`STORAGE_S3_REGION=`) counts as unset.
 3. `DotEnvParser` supports `KEY=VALUE`, `#` comments, blank lines, an `export ` prefix, and matching single or
@@ -103,7 +106,7 @@ The tracked template lists **every** key in three sections (Database, Applicatio
 - PostgreSQL example connection string ending in `GSS Encryption Mode=Disable` (avoids a Kerberos library probe in
   slim containers, see [logging](logging-and-error-handling.md#expected-startup-log-lines)).
 - S3 examples for Cloudflare R2 (`STORAGE_S3_REGION=auto`), AWS S3 (no service URL, real region) and the local S3
-  server from `compose.dev.yml` (`http://localhost:8333`, `STORAGE_S3_FORCE_PATH_STYLE=true`).
+  server from `docker/compose.dev.yml` (`http://localhost:8333`, `STORAGE_S3_FORCE_PATH_STYLE=true`).
 
 ## ASP.NET Core variables
 
@@ -112,7 +115,7 @@ Read by the framework, not by `EnvConfigurationLoader`:
 | Variable | Effect in this app |
 | --- | --- |
 | `ASPNETCORE_ENVIRONMENT` | `Development` enables the defaults above, the developer exception page, cookie `SecurePolicy = SameAsRequest` and a report-only CSP; anything else gets the strict rules, `UseExceptionHandler("/error")`, HSTS and `Secure` cookies ([security](security.md)) |
-| `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS` | Kestrel listen addresses; the `Dockerfile` sets `ASPNETCORE_HTTP_PORTS=8080` |
+| `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS` | Kestrel listen addresses; `docker/Dockerfile` sets `ASPNETCORE_HTTP_PORTS=8080` |
 | `ASPNETCORE_FORWARDEDHEADERS_ENABLED` | set `true` behind a TLS-terminating reverse proxy: ASP.NET Core's built-in forwarded-headers handling takes the scheme and client IP from `X-Forwarded-Proto` / `X-Forwarded-For`, so `Secure` cookies, rate-limit partitions and audit IP addresses are right. There is no `UseHttpsRedirection`. See [behind a reverse proxy](../guides/deployment.md#behind-a-reverse-proxy) |
 | `ASPNETCORE_TEMP` | where ASP.NET Core buffers request bodies over 64 KB (multipart media uploads); default the OS temp directory (`/tmp` on Linux). It must be writable: a read-only container needs `--tmpfs /tmp` (or `ASPNETCORE_TEMP` pointing at a writable volume) |
 
@@ -120,7 +123,7 @@ Read by the framework, not by `EnvConfigurationLoader`:
 
 | Kind | Where | Never |
 | --- | --- | --- |
-| Development config | `.env` copied from `.env.example`, `Properties/launchSettings.json`, `appsettings.Development.json`; runtime data in `<contentRoot>/storage/` (git-ignored) | committed `.env` |
+| Development config | `.env` copied from `.env.example`, `src/DotNetForge.Web/Properties/launchSettings.json`, `src/DotNetForge.Web/appsettings.Development.json`; runtime data in `<contentRoot>/storage/` (git-ignored) | committed `.env` |
 | Production config | process environment variables set by the host or orchestrator ([environment variables](../guides/deployment.md#environment-variables)); the image contains no configuration | files inside the deployment directory |
 | Secrets | `DATABASE_CONNECTION_STRING` (database password), `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY` - in `.env` locally, in the host's secret store in production | documentation, `.env.example`, logs |
 | Uploaded media | `STORAGE_*`: object storage or an absolute path on a volume ([media storage](media-storage.md#storage-architecture)) | the deployment directory |
@@ -130,12 +133,12 @@ Read by the framework, not by `EnvConfigurationLoader`:
 
 | Source | Contents |
 | --- | --- |
-| `appsettings.json` | log levels (`Default: Information`, `Microsoft.AspNetCore: Warning`, `Microsoft.EntityFrameworkCore.Database.Command: Warning`), `AllowedHosts: *` |
-| `appsettings.Development.json` | `Microsoft.AspNetCore: Information` |
-| `Properties/launchSettings.json` | profiles `http` (`http://localhost:5000`) and `https` (`https://localhost:5001;http://localhost:5000`), `ASPNETCORE_ENVIRONMENT=Development` |
+| `src/DotNetForge.Web/appsettings.json` | log levels (`Default: Information`, `Microsoft.AspNetCore: Warning`, `Microsoft.EntityFrameworkCore.Database.Command: Warning`), `AllowedHosts: *` |
+| `src/DotNetForge.Web/appsettings.Development.json` | `Microsoft.AspNetCore: Information` |
+| `src/DotNetForge.Web/Properties/launchSettings.json` | profiles `http` (`http://localhost:5000`) and `https` (`https://localhost:5001;http://localhost:5000`), `ASPNETCORE_ENVIRONMENT=Development` |
 | `.vscode/launch.json` | F5 profile with `ASPNETCORE_ENVIRONMENT=Development`, `ASPNETCORE_URLS=http://localhost:5000` |
-| `Dockerfile` | `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=8080` ([Docker](../guides/deployment.md#docker)) |
-| `compose.dev.yml` | development-only PostgreSQL 17 (port 5432) and SeaweedFS S3 (port 8333, bucket `dotnetforge`) to run against |
+| `docker/Dockerfile` | `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=8080` ([Docker](../guides/deployment.md#docker)) |
+| `docker/compose.dev.yml` | development-only PostgreSQL 17 (port 5432) and SeaweedFS S3 (port 8333, bucket `dotnetforge`) to run against |
 | `UserSecretsId` `dotnetforge-cms` in the csproj | present but unused - secrets belong in `.env` or the environment |
 | `Setting` rows | runtime key/value settings edited on the [Settings screen](../pages/settings.md); no code reads them yet |
 | Extension manifest `settings` | passed to admin extension views as `ViewData["Settings"]` ([extensions](extensions.md)) |
@@ -155,7 +158,7 @@ Migration commands: [database](../architecture/database.md).
 ## Secrets
 
 `.env` and `.env.*` are git-ignored (only `.env.example` is tracked), excluded from the build and from the Docker
-build context (`.dockerignore`). `StorageSettings.S3SecretAccessKey` is never logged or rendered. Never put real
+build context (`docker/Dockerfile.dockerignore`). `StorageSettings.S3SecretAccessKey` is never logged or rendered. Never put real
 connection strings or keys in documentation or `.env.example`.
 
 ## Planned (not implemented)

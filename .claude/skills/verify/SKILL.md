@@ -14,9 +14,8 @@ Run from the repository root. Report real output (counts, failures), never assum
 ## 1. Build and test
 
 ```bash
-dotnet build
-dotnet test tests/DotNetForge.Tests
-dotnet test tests/DotNetForge.IntegrationTests
+dotnet build          # the solution, DotNetForge.slnx
+dotnet test           # both test projects (or: dotnet test tests/DotNetForge.Tests, tests/DotNetForge.IntegrationTests)
 ```
 
 Baseline (October 2026): 0 errors, 0 warnings; 99 unit tests pass (+5 live-S3 tests skipped unless `DNF_TEST_S3_*`
@@ -26,7 +25,7 @@ uses a temp directory) and must not run in parallel.
 Production-like backends (recommended when touching persistence or storage):
 
 ```bash
-docker compose -f compose.dev.yml up -d
+docker compose -f docker/compose.dev.yml up -d
 DNF_TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres" dotnet test tests/DotNetForge.IntegrationTests
 DNF_TEST_S3_SERVICE_URL=http://localhost:8333 DNF_TEST_S3_BUCKET=dotnetforge DNF_TEST_S3_ACCESS_KEY_ID=dev \
   DNF_TEST_S3_SECRET_ACCESS_KEY=dev DNF_TEST_S3_FORCE_PATH_STYLE=true dotnet test tests/DotNetForge.Tests
@@ -35,7 +34,7 @@ DNF_TEST_S3_SERVICE_URL=http://localhost:8333 DNF_TEST_S3_BUCKET=dotnetforge DNF
 ## 2. Style (what CI runs)
 
 ```bash
-for p in DotNetForge.Web.csproj src/*/*.csproj tests/*/*.csproj; do dotnet format "$p" --verify-no-changes --severity error; done
+for p in src/*/*.csproj tests/*/*.csproj; do dotnet format "$p" --verify-no-changes --severity error; done
 ```
 
 ## 3. Smoke test the running app (UI / routing / auth changes)
@@ -45,14 +44,14 @@ Use a throwaway database and storage folder so the developer's `storage/` is unt
 ```bash
 export DATABASE_PROVIDER=sqlite DATABASE_CONNECTION_STRING="Data Source=<scratch>/verify.db" \
        STORAGE_LOCAL_PATH=<scratch>/media ASPNETCORE_URLS=http://localhost:5077 ASPNETCORE_ENVIRONMENT=Development
-dotnet bin/Debug/net10.0/DotNetForge.Web.dll &      # after dotnet build
+dotnet run --project src/DotNetForge.Web --no-build --no-launch-profile &   # after dotnet build; honours ASPNETCORE_URLS
 curl -s http://localhost:5077/health                 # {"status":"ok",...}
 ```
 
 Read-only check of the real image (what CI's `read-only-container` job does):
 
 ```bash
-docker build -t dnf-check .
+docker build -f docker/Dockerfile -t dnf-check .
 docker run -d --name dnf-check --read-only --tmpfs /tmp -p 5078:8080 -e DATABASE_PROVIDER=sqlite \
   -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" -e STORAGE_LOCAL_PATH=/tmp/media dnf-check
 curl -s http://localhost:5078/health && docker diff dnf-check   # diff must be empty

@@ -10,6 +10,7 @@ namespace DotNetForge.Tests;
 /// Tests run serially within the class and save/restore the relevant environment variables so the
 /// file-based path is exercised deterministically.
 /// </summary>
+[Collection(EnvironmentVariables.Collection)]
 public sealed class EnvConfigurationTests
 {
     private static readonly string[] Keys =

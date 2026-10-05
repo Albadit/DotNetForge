@@ -1,6 +1,6 @@
 # Authentication
 
-Two independent schemes, both registered in `Startup/DependencyRegistration.cs`:
+Two independent schemes, both registered in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`:
 
 | Scheme | Name | Used for | Credential | Selected by |
 | --- | --- | --- | --- | --- |
@@ -311,9 +311,9 @@ These settings belong to the **Users** and **Settings** permission areas.
 
 ## Where to change things
 
-- Credential rules, lockout constants, claims, the active-user check: `Services/AuthService.cs`.
+- Credential rules, lockout constants, claims, the active-user check: `src/DotNetForge.Web/Services/AuthService.cs`.
 - Cookie options, schemes, session re-validation (`ValidateSessionAsync`), rate-limit policies (`AddRateLimits`),
-  Data Protection: `Startup/DependencyRegistration.cs`. Policy names: `RateLimitPolicies`.
+  Data Protection: `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. Policy names: `RateLimitPolicies`.
 - Token validation, verification cache, `LastUsedDate` throttle: `ApiTokenAuthenticationHandler`. Token format:
   `ApiTokenFactory`.
 - Never build a `ClaimsPrincipal` for a user anywhere else - reuse `AuthService` so claims stay consistent.

@@ -17,8 +17,8 @@ Admins and Admins to see who has access. After a fresh install it contains only 
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/AdminListControllers.cs   UsersController + nested UserListItem record
-Areas/Admin/Views/Users/Index.cshtml              table
+src/DotNetForge.Web/Areas/Admin/Controllers/AdminListControllers.cs   UsersController + nested UserListItem record
+src/DotNetForge.Web/Areas/Admin/Views/Users/Index.cshtml              table
 src/DotNetForge.Shared/Entities/User.cs           entity
 ```
 

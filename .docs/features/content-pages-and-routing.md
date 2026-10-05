@@ -36,7 +36,7 @@ dynamic route values and a fixed note.
 ## Page rules (`IPageService`)
 
 Every content-page rule lives in one place: `IPageService` (`src/DotNetForge.Shared/Content/IPageService.cs`),
-implemented by `Services/PageService.cs` (registered scoped). The Content Manager and the headless API call the same
+implemented by `src/DotNetForge.Web/Services/PageService.cs` (registered scoped). The Content Manager and the headless API call the same
 methods. Each method returns the first user-facing error message or `null`, validates and mutates tracked entities,
 and **never saves** - the caller saves and writes the audit entry.
 
@@ -113,7 +113,7 @@ The form's `datetime-local` inputs post zoneless values (`DateTimeKind.Unspecifi
 | --- | --- |
 | New page defaults: title `Untitled page`, slug `new-page-<8 hex>`, `Published = false`, `Disabled = true`, `Standard`, last among siblings, `CreatedById` = current user. The parent (if any) must exist in the tenant, else 404. Does not call `ApplyAsync` | `ContentController.Create` |
 | Who may create, edit, publish, delete and reorder ([Permissions](#permissions)) | `ContentController` via `AdminControllerBase.Can` / `CanModify` |
-| `Published` and `Disabled` are mutually exclusive in the form | client-side only, `wwwroot/js/admin-content.js` |
+| `Published` and `Disabled` are mutually exclusive in the form | client-side only, `src/DotNetForge.Web/wwwroot/js/admin-content.js` |
 | API create defaults: `Published = false`, `Disabled = false`, root level, `SortOrder = 0`, `Standard`, no `CreatedById` (fields then validated by `ApplyAsync`) | `ContentApiController.CreatePage` ([headless API](headless-api.md#create-a-page)) |
 
 ## Permissions
@@ -165,8 +165,8 @@ clears passed unpublish dates) - it never makes a page live by itself. See
 ### `GET /` - `HomeController.Index`
 
 1. Find a live page whose slug is `/` (preferred) or `home` - **any tenant, any parent**.
-2. Found → render `Views/Home/Page.cshtml` with it.
-3. Otherwise render `Views/Home/Index.cshtml` with every live page (title, slug) ordered by `SortOrder`.
+2. Found → render `src/DotNetForge.Web/Views/Home/Page.cshtml` with it.
+3. Otherwise render `src/DotNetForge.Web/Views/Home/Index.cshtml` with every live page (title, slug) ordered by `SortOrder`.
 
 ### Any other path - `HomeController.RenderPage` (fallback)
 

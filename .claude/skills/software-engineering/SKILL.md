@@ -26,7 +26,7 @@ also use the **documentation** skill - documentation is part of the change.
 Before changing code, read the relevant part of `.docs/` - it is verified against the code and tells you where
 things belong:
 
-- `.docs/architecture/codebase.md` → *Architectural rules for changes* (DI only in `Startup/DependencyRegistration.cs`,
+- `.docs/architecture/codebase.md` → *Architectural rules for changes* (DI only in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`,
   `Core` never references EF/`Data`, content-page rules only in `PageService`, admin controllers derive from
   `AdminControllerBase`, API controllers from `ApiControllerBase`, every query filters by `TenantId`, every admin
   POST has antiforgery + an `AuditService` entry, every API action has `[RequireApiPermission]`).

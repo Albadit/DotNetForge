@@ -16,9 +16,9 @@ Tells them so and offers a way back or to sign out as someone else.
 ## Relevant source files
 
 ```text
-Controllers/AccountController.cs     Denied()
-Views/Account/Denied.cshtml          message, back link, sign-out form
-Views/Shared/_AuthLayout.cshtml      layout
+src/DotNetForge.Web/Controllers/AccountController.cs     Denied()
+src/DotNetForge.Web/Views/Account/Denied.cshtml          message, back link, sign-out form
+src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml      layout
 ```
 
 ## Page layout
@@ -84,5 +84,5 @@ flowchart LR
 
 ## Extension points
 
-To avoid denied visits, filter sidebar links by role in `Areas/Admin/Views/Shared/_Sidebar.cshtml`
+To avoid denied visits, filter sidebar links by role in `src/DotNetForge.Web/Areas/Admin/Views/Shared/_Sidebar.cshtml`
 (`User.IsInRole(...)`) - keep the controller attributes as the real gate.

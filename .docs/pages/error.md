@@ -17,9 +17,9 @@ architecture: [logging and error handling](../features/logging-and-error-handlin
 
 ```text
 Program.cs                    UseExceptionHandler("/error") when !IsDevelopment()
-Controllers/HomeController.cs Error()
-Views/Home/Error.cshtml        hero with message and "Return home"
-Views/Shared/_Layout.cshtml   public layout
+src/DotNetForge.Web/Controllers/HomeController.cs Error()
+src/DotNetForge.Web/Views/Home/Error.cshtml        hero with message and "Return home"
+src/DotNetForge.Web/Views/Shared/_Layout.cshtml   public layout
 ```
 
 ## Page layout

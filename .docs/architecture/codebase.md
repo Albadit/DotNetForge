@@ -35,16 +35,16 @@ behaviour under **Planned (not implemented)**; the gap is tracked in
 | Concern | Technology | Where |
 | --- | --- | --- |
 | Runtime | .NET 10 (`net10.0`), SDK pinned to `10.0.100` with `rollForward: latestFeature` | `Directory.Build.props`, `global.json` |
-| Web framework | ASP.NET Core MVC: controllers + Razor views, one MVC **Area** (`Admin`), view components, tag helpers | root project |
+| Web framework | ASP.NET Core MVC: controllers + Razor views, one MVC **Area** (`Admin`), view components, tag helpers | `src/DotNetForge.Web` |
 | Runtime view compilation | `Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation` (always on) - compiles extension views from `extensions/` **in memory** | `DependencyRegistration` |
 | ORM | EF Core 10 with SQLite (default) or Npgsql/PostgreSQL; one migration set per provider | `src/DotNetForge.Data` |
 | Auth | ASP.NET Core cookie authentication + a custom `ApiToken` bearer scheme; Data Protection key ring persisted to the database | `DependencyRegistration`, `ApiTokenAuthenticationHandler` |
 | File storage | `IFileStorage`: local directory or any S3-compatible service (`AWSSDK.S3`) | `src/DotNetForge.Infrastructure/Storage` |
-| Request hardening | `SecurityHeadersMiddleware` (CSP and friends), built-in rate limiter (`AddRateLimiter`) | `Middleware/`, `DependencyRegistration` |
+| Request hardening | `SecurityHeadersMiddleware` (CSP and friends), built-in rate limiter (`AddRateLimiter`) | `src/DotNetForge.Web/Middleware/`, `DependencyRegistration` |
 | Crypto | BCL only: PBKDF2-SHA256 (`Rfc2898DeriveBytes.Pbkdf2`), HMAC-SHA256, SHA-256, `RandomNumberGenerator` | `src/DotNetForge.Infrastructure/Security`, `ApiTokenAuthenticationHandler` |
 | Configuration | In-house `.env` parser + environment variables, typed as `AppEnvironment` | `src/DotNetForge.Infrastructure/Configuration` |
-| Frontend | Hand-written CSS (`wwwroot/css`) and two vanilla JS files (`site.js` on every admin screen, `admin-content.js` on the Content Manager). No inline script or style. No bundler, no Node build. | `wwwroot/` |
-| Container | `Dockerfile` (`sdk:10.0` build → `aspnet:10.0`, non-root `$APP_UID`, port 8080); `compose.dev.yml` for local PostgreSQL + S3 | repository root |
+| Frontend | Hand-written CSS (`src/DotNetForge.Web/wwwroot/css`) and two vanilla JS files (`site.js` on every admin screen, `admin-content.js` on the Content Manager). No inline script or style. No bundler, no Node build. | `src/DotNetForge.Web/wwwroot/` |
+| Container | `docker/Dockerfile` (`sdk:10.0` build → `aspnet:10.0`, non-root `$APP_UID`, port 8080); `docker/compose.dev.yml` for local PostgreSQL + S3 | `docker/` |
 | Tests | xUnit 2.9, `Microsoft.AspNetCore.Mvc.Testing` (`WebApplicationFactory<Program>`) | `tests/` |
 | CI | GitHub Actions: build + tests on Ubuntu/Windows/macOS, `dotnet format` check, PostgreSQL + S3 job, read-only container job; Dependabot | `.github/` |
 
@@ -52,13 +52,13 @@ behaviour under **Planned (not implemented)**; the gap is tracked in
 
 ```mermaid
 flowchart TB
-    subgraph Host["DotNetForge.Web (repo root)"]
-        Program["Program.cs"]
-        DI["Startup/DependencyRegistration.cs"]
-        MW["Middleware/ (SecurityHeaders, Installation)"]
-        PubCtl["Controllers/ (Home, Account, Setup, MediaFiles, ExtensionView)"]
-        AdminCtl["Areas/Admin/Controllers"]
-        Svc["Services/ (AuthService, AuditService, PageService, MediaService, ...)"]
+    subgraph Host["DotNetForge.Web (src/DotNetForge.Web)"]
+        Program["src/DotNetForge.Web/Program.cs"]
+        DI["src/DotNetForge.Web/Startup/DependencyRegistration.cs"]
+        MW["src/DotNetForge.Web/Middleware/ (SecurityHeaders, Installation)"]
+        PubCtl["src/DotNetForge.Web/Controllers/ (Home, Account, Setup, MediaFiles, ExtensionView)"]
+        AdminCtl["src/DotNetForge.Web/Areas/Admin/Controllers"]
+        Svc["src/DotNetForge.Web/Services/ (AuthService, AuditService, PageService, MediaService, ...)"]
     end
     Api["DotNetForge.Api"]
     Ext["DotNetForge.Extensions"]
@@ -87,53 +87,58 @@ documented shortcut: API controllers query `DotNetForgeDbContext` directly.
 
 | Entry point | What starts there |
 | --- | --- |
-| `Program.cs` | The only process entry point. Loads `.env` with `EnvConfigurationLoader.Load(ContentRootPath, IsDevelopment())`, registers services (`AddDotNetForge(env, builder.Environment)`), migrates + seeds the database, builds the middleware pipeline, maps routes, runs Kestrel. Exits with code `1` on a `ConfigurationException`. |
+| `src/DotNetForge.Web/Program.cs` | The only process entry point. Loads `.env` with `EnvConfigurationLoader.Load(ContentRootPath, IsDevelopment())`, registers services (`AddDotNetForge(env, builder.Environment)`), migrates + seeds the database, builds the middleware pipeline, maps routes, runs Kestrel. Exits with code `1` on a `ConfigurationException`. |
 | `public partial class Program` (end of `Program.cs`) | Exposed so `WebApplicationFactory<Program>` can host the app in integration tests. |
-| `Services/ScheduledPublishingService` | `BackgroundService` started by the host; the only background process. |
+| `src/DotNetForge.Web/Services/ScheduledPublishingService` | `BackgroundService` started by the host; the only background process. |
 | `src/DotNetForge.Data/DesignTimeDbContextFactory.cs` | `DesignTimeDbContextFactory` (SQLite) and `PostgreSqlDesignTimeDbContextFactory` - entry points for `dotnet ef` design-time tooling (do not boot the web host or connect). |
-| `Dockerfile` | `ENTRYPOINT ["dotnet", "DotNetForge.Web.dll"]` with `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=8080`. |
+| `docker/Dockerfile` | `ENTRYPOINT ["dotnet", "DotNetForge.Web.dll"]` with `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=8080`. |
 
 Startup order is detailed in [data-flow.md → Application startup](data-flow.md#application-startup).
 
 ## Project structure
 
 ```text
-DotNetForge/                         repository root = DotNetForge.Web project
-├── DotNetForge.Web.csproj           web host; DefaultItemExcludes keeps it from compiling src/, tests/, extensions/ ...
-├── Program.cs                       composition + pipeline + route map
-├── Startup/
-│   └── DependencyRegistration.cs    every DI registration, auth schemes, session validation, policies, rate limits
-├── Middleware/
-│   ├── SecurityHeadersMiddleware.cs CSP, nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
-│   └── InstallationMiddleware.cs    redirects to /setup until installed; blocks /setup after
-├── Services/                        web-host application services (need HttpContext or the DbContext)
-├── Controllers/                     non-area controllers: public site, media files, account, setup, extension renderer
-├── Areas/Admin/
-│   ├── Controllers/                 one controller per admin screen (+ AdminControllerBase)
-│   ├── Components/                  view components (sidebar extension tabs)
-│   ├── Models/AdminViewModels.cs    every admin view model
-│   └── Views/                       admin Razor views, _AdminLayout, _Sidebar
-├── Views/                           public, auth and setup Razor views + _Layout/_AuthLayout
-├── wwwroot/                         static CSS/JS served by UseStaticFiles
+DotNetForge/                         repository root
+├── DotNetForge.slnx                 solution: every project below (dotnet build / dotnet test)
 ├── src/
+│   ├── DotNetForge.Web/             web host (ASP.NET Core MVC) = content root when running
+│   │   ├── DotNetForge.Web.csproj   links ../../extensions/** into the publish output
+│   │   ├── Program.cs               composition + pipeline + route map
+│   │   ├── Startup/
+│   │   │   └── DependencyRegistration.cs  every DI registration, auth schemes, session validation, policies, rate limits
+│   │   ├── Middleware/
+│   │   │   ├── SecurityHeadersMiddleware.cs  CSP, nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
+│   │   │   └── InstallationMiddleware.cs     redirects to /setup until installed; blocks /setup after
+│   │   ├── Services/                web-host application services (need HttpContext or the DbContext)
+│   │   ├── Controllers/             non-area controllers: public site, media files, account, setup, extension renderer
+│   │   ├── Areas/Admin/
+│   │   │   ├── Controllers/         one controller per admin screen (+ AdminControllerBase)
+│   │   │   ├── Components/          view components (sidebar extension tabs)
+│   │   │   ├── Models/AdminViewModels.cs  every admin view model
+│   │   │   └── Views/               admin Razor views, _AdminLayout, _Sidebar
+│   │   ├── Views/                   public, auth and setup Razor views + _Layout/_AuthLayout
+│   │   ├── wwwroot/                 static CSS/JS served by UseStaticFiles
+│   │   ├── Properties/launchSettings.json  http / https profiles
+│   │   └── appsettings*.json        logging levels and AllowedHosts
 │   ├── DotNetForge.Abstractions/    contracts only (no implementation, no dependencies)
 │   ├── DotNetForge.Shared/          entities, enums, constants, DTOs, results, manifest model, store/service contracts
 │   ├── DotNetForge.Core/            pure domain logic: installation, permission evaluation, validators
 │   ├── DotNetForge.Data/            EF Core contexts (SQLite + PostgreSQL), two migration sets, seeding, stores
-│   ├── DotNetForge.Infrastructure/  hashing, tokens, signing, .env loading, file storage (local, S3)
+│   ├── DotNetForge.Infrastructure/  hashing, tokens, signing, .env loading, AppPaths, file storage (local, S3)
 │   ├── DotNetForge.Extensions/      manifest validation + cached on-disk discovery
 │   └── DotNetForge.Api/             headless API controllers, token auth handler, permission filter
 ├── tests/
 │   ├── DotNetForge.Tests/           unit tests (no host, no real DB; live S3 tests opt-in)
 │   └── DotNetForge.IntegrationTests/ real host over a throwaway SQLite file (or PostgreSQL via DNF_TEST_POSTGRES)
 ├── extensions/<type>/<name>/        user extensions, one folder per manifest; copied to the publish output
+├── docker/
+│   ├── Dockerfile                   production image (read-only root filesystem capable); build context = repository root
+│   ├── Dockerfile.dockerignore      keeps the build context to what `dotnet publish` needs
+│   └── compose.dev.yml              development only: postgres:17-alpine (5432) + SeaweedFS S3 (8333, bucket dotnetforge)
 ├── .docs/                           this documentation (current behaviour + planned sections)
 ├── .github/                         CI workflow, Dependabot, AI-agent quick references (agents/)
 ├── .claude/skills/                  project skills for Claude Code
 ├── .vscode/                         build/run/test/migration tasks and F5 launch config
-├── Dockerfile                       production image (read-only root filesystem capable)
-├── .dockerignore                    keeps the build context to what `dotnet publish` needs
-├── compose.dev.yml                  development only: postgres:17-alpine (5432) + SeaweedFS S3 (8333, bucket dotnetforge)
 ├── Directory.Build.props            net10.0, nullable, implicit usings, central package management
 ├── Directory.Packages.props         every NuGet version
 ├── global.json                      SDK pin
@@ -145,16 +150,17 @@ default location of the SQLite database and local media - see [`storage/`](#stor
 
 ### Folder responsibilities
 
-#### Repository root (the web host)
+#### `src/DotNetForge.Web/` (the web host)
 
-The web host lives at the root so `dotnet run`, `dotnet watch` and `dotnet build` work with no arguments. Its
-`DefaultItemExcludes` (in `DotNetForge.Web.csproj`) excludes `src/**`, `tests/**`, `extensions/**`, `storage/**`,
-`.docs/**`, `.claude/**`, `.config/**`, `.github/**`, `.vscode/**`, `*.md`, `.env`, `.env.*` and `global.json` so
-sibling projects' files are not compiled into the host. `extensions/**` is added back as `None` items with
-`CopyToPublishDirectory="PreserveNewest"`, so published output carries the extensions as plain files (the Razor SDK
-does not precompile them).
+The composition root and everything that needs `HttpContext`: controllers, views, middleware, web-host services,
+static files. It is the **content root** when the app runs, from a checkout or published. Repository-level folders
+(`.env`, `extensions/`, the Development `storage/`) are located by `AppPaths`
+(`src/DotNetForge.Infrastructure/Configuration/AppPaths.cs`): next to the app first, then the repository root (the
+folder containing `DotNetForge.slnx`) - see [where the app finds its files](../guides/development.md#where-the-app-finds-its-files).
+The csproj adds `../../extensions/**` as `None` items with `CopyToPublishDirectory="PreserveNewest"`, so published
+output carries the extensions as plain files (the Razor SDK does not precompile them).
 
-#### `Startup/`
+#### `src/DotNetForge.Web/Startup/`
 
 - **Belongs here:** service registration (`AddDotNetForge(env, hostEnv)`), persistence and storage provider
   selection, Data Protection, authentication schemes and cookie session validation (`ValidateSessionAsync`),
@@ -163,7 +169,7 @@ does not precompile them).
 - **Depends on:** every project. **Used by:** `Program.cs`; controllers reference
   `DependencyRegistration.AdminAreaPolicy`.
 
-#### `Middleware/`
+#### `src/DotNetForge.Web/Middleware/`
 
 - **Belongs here:** cross-cutting request gates that run for every request.
 - `SecurityHeadersMiddleware` runs right after the exception handler/HSTS (outside Development) and before
@@ -173,7 +179,7 @@ does not precompile them).
 - `InstallationMiddleware` ([installation](../features/installation.md)) runs after `UseRouting` and before
   `UseAuthentication`, so an uninstalled CMS redirects even API calls to `/setup`.
 
-#### `Services/` (web host)
+#### `src/DotNetForge.Web/Services/` (web host)
 
 Application services that need `HttpContext`, the cookie scheme or the DbContext, so they cannot live in `Core`.
 
@@ -194,7 +200,7 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
   register the host class against it. Inject the interface, never the
   concrete class.
 
-#### `Controllers/` (non-area)
+#### `src/DotNetForge.Web/Controllers/` (non-area)
 
 | Controller | Routes | Purpose |
 | --- | --- | --- |
@@ -204,32 +210,32 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 | `SetupController` | `/setup` (GET/POST, POST rate-limited) | Setup wizard; writes `cms.installed` |
 | `ExtensionViewController` | `/admin/ext/{id}/raw`, `/admin/ext/{id}/resources/{**path}` | Renders an admin extension's own Razor document and assets. Lives outside the area so its views resolve from `extensions/` with no admin layout. Protected by the `AdminArea` policy. |
 
-#### `Areas/Admin/`
+#### `src/DotNetForge.Web/Areas/Admin/`
 
 The admin UI. Every controller derives from `AdminControllerBase` (`[Area("Admin")]`,
 `[Authorize(Policy = "AdminArea")]`), which exposes `TenantId` and `CurrentUserId` from claims and the permission
 checks `Can(area, action)` and `CanModify(area, anyAction, ownAction, createdById)` (via `IPermissionService`). Each
 controller declares an attribute `[Route("admin/...")]`. Views use `_AdminLayout` via
-`Areas/Admin/Views/_ViewStart.cshtml`. All view models are in one file, `Areas/Admin/Models/AdminViewModels.cs`,
+`src/DotNetForge.Web/Areas/Admin/Views/_ViewStart.cshtml`. All view models are in one file, `src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs`,
 except `RoleListItem` and `UserListItem`, which are nested records inside their controllers; the Content Manager
 form binds `PageInput` from `Shared/Content`. See [pages.md](pages.md) for the screen architecture.
 
 - **Belongs here:** admin screens, their view models, admin-only view components.
-- **Does not belong:** business rules (put them in a `Services/` class like `PageService` or `MediaService`), API
+- **Does not belong:** business rules (put them in a `src/DotNetForge.Web/Services/` class like `PageService` or `MediaService`), API
   endpoints (`DotNetForge.Api`).
 
-#### `Views/` and `wwwroot/`
+#### `Views/` and `src/DotNetForge.Web/wwwroot/`
 
 `Views/` holds the public site, setup, login and denied screens with two layouts: `_Layout` (public) and
-`_AuthLayout` (setup/login/denied). `Views/Home/Page.cshtml` sets `Layout = null` and renders its own document.
+`_AuthLayout` (setup/login/denied). `src/DotNetForge.Web/Views/Home/Page.cshtml` sets `Layout = null` and renders its own document.
 
 | File | Loaded by |
 | --- | --- |
-| `wwwroot/css/site.css` | every layout |
-| `wwwroot/css/admin.css` | `_AdminLayout` |
-| `wwwroot/css/page.css` | `Views/Home/Page.cshtml` (public content page) |
-| `wwwroot/js/site.js` | `_AdminLayout` (`defer`) - handles `data-confirm` on forms |
-| `wwwroot/js/admin-content.js` | Content Manager only |
+| `src/DotNetForge.Web/wwwroot/css/site.css` | every layout |
+| `src/DotNetForge.Web/wwwroot/css/admin.css` | `_AdminLayout` |
+| `src/DotNetForge.Web/wwwroot/css/page.css` | `src/DotNetForge.Web/Views/Home/Page.cshtml` (public content page) |
+| `src/DotNetForge.Web/wwwroot/js/site.js` | `_AdminLayout` (`defer`) - handles `data-confirm` on forms |
+| `src/DotNetForge.Web/wwwroot/js/admin-content.js` | Content Manager only |
 
 No view contains inline `<script>`, `<style>`, `style=` or `on*=` handlers: the CSP (`script-src 'self'; style-src
 'self'`) would block them.
@@ -317,7 +323,7 @@ implementation (the former `FileSystemEmailSender` was removed). Provider choice
 #### `src/DotNetForge.Extensions`
 
 `ManifestValidator` (required fields, type, semver, permission-key shape) and `ExtensionLoader` (recursive search for
-`dotnetforge.extension.json` under the root given at construction, `<contentRoot>/extensions`). Results are cached and
+`dotnetforge.extension.json` under the root given at construction, `AppEnvironment.ExtensionsPath`). Results are cached and
 invalidated by a `FileSystemWatcher` (a version counter discards scans that overlapped a change); if the watcher
 cannot be created, every call rescans. No assembly loading, no lifecycle. See [extensions](../features/extensions.md).
 
@@ -376,7 +382,7 @@ Full route table: [pages.md → Route map](pages.md#route-map) (screens) and
 
 There is no generic service layer. Controllers either call one of the web-host services above or query
 `DotNetForgeDbContext` directly (all list screens, Settings, API Tokens, most API controllers). This is the
-established pattern; follow it for simple reads, and extract a `Services/` class when a rule is shared or non-trivial
+established pattern; follow it for simple reads, and extract a `src/DotNetForge.Web/Services/` class when a rule is shared or non-trivial
 (as `PageService` and `MediaService` do). Services validate and mutate; for content pages the caller saves and audits.
 
 ### Repositories
@@ -399,7 +405,7 @@ before saving because PostgreSQL enforces column lengths. See [database.md](data
 | --- | --- |
 | Entities | `src/DotNetForge.Shared/Entities` |
 | Content-page input (Content Manager form, API create) | `src/DotNetForge.Shared/Content/IPageService.cs` (`PageInput`, `PagePosition`) |
-| Admin view models | `Areas/Admin/Models/AdminViewModels.cs` (+ two nested records in `AdminListControllers.cs`) |
+| Admin view models | `src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs` (+ two nested records in `AdminListControllers.cs`) |
 | Setup DTO | `src/DotNetForge.Shared/Dtos/SetupRequest.cs` |
 | API request models | nested in the controller (`ContentApiController.CreatePageRequest`) |
 | API responses | anonymous objects projected in each action |
@@ -421,7 +427,7 @@ production values: [deployment](../guides/deployment.md#environment-variables).
 
 ### Dependency injection
 
-All registrations are in `Startup/DependencyRegistration.AddDotNetForge`. Lifetimes and consumers are listed in
+All registrations are in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge`. Lifetimes and consumers are listed in
 [dependencies.md → DI registrations](dependencies.md#di-registrations). Rules:
 
 - stateless primitives (hasher, clock, token factory, validators, loader) and the `IFileStorage` provider are
@@ -483,8 +489,8 @@ providers exist only as entities, contracts or sample manifests.
 | Utility | Location |
 | --- | --- |
 | `Result` | `Shared/Results` |
-| `PageService.Slugify`, `.ToUtc`, `.IsDynamic` | `Services/PageService.cs` (the slug rules actually used) |
-| `MediaService.IsInline`, `.UrlFor`, `.AllowedTypes` | `Services/MediaService.cs` |
+| `PageService.Slugify`, `.ToUtc`, `.IsDynamic` | `src/DotNetForge.Web/Services/PageService.cs` (the slug rules actually used) |
+| `MediaService.IsInline`, `.UrlFor`, `.AllowedTypes` | `src/DotNetForge.Web/Services/MediaService.cs` |
 | `EmailValidator`, `PasswordPolicy` | `Core/Validation` |
 | `StorageKey` | `Abstractions/Storage` |
 | `SqliteConnectionStrings` | `Shared/Configuration` |
@@ -510,14 +516,15 @@ migration set per provider, migrate + seed on every start. See [database.md](dat
 MSBuild with `Directory.Build.props` (target framework, nullable, `ManagePackageVersionsCentrally`,
 `InvariantGlobalization`) and `Directory.Packages.props` (all versions, transitive pinning). Local tool `dotnet-ef`
 10.0.12 pinned in `.config/dotnet-tools.json`. `Microsoft.EntityFrameworkCore.Design` is referenced only by `Data`
-with `PrivateAssets="all"`, so it never reaches the published app. No solution file - see
-[development guide](../guides/development.md#why-there-is-no-solution-file).
+with `PrivateAssets="all"`, so it never reaches the published app. `DotNetForge.slnx` at the root lists every
+project, so `dotnet build` and `dotnet test` work without arguments - see
+[development guide](../guides/development.md#everyday-commands-repository-root).
 
 ### Development environment
 
 `.vscode/tasks.json` (build, watch, run, tests, clean, restore tools, add migration) and `.vscode/launch.json`
-(F5 debug of `bin/Debug/net10.0/DotNetForge.Web.dll`). `Properties/launchSettings.json` profiles `http`
-(`http://localhost:5000`) and `https` (`https://localhost:5001`), both `Development`. `compose.dev.yml` starts
+(F5 debug of `src/DotNetForge.Web/bin/Debug/net10.0/DotNetForge.Web.dll`). `src/DotNetForge.Web/Properties/launchSettings.json` profiles `http`
+(`http://localhost:5000`) and `https` (`https://localhost:5001`), both `Development`. `docker/compose.dev.yml` starts
 PostgreSQL and an S3-compatible server for production-like local runs. See
 [development guide](../guides/development.md).
 
@@ -576,12 +583,11 @@ Product goals and modes: [product overview](../product.md).
 
 ### Requirements
 
-**Layout.** The specification's tree differs from the repository in three deliberate ways; keep the current layout
-unless the architecture is changed on purpose:
+**Layout.** The specification's tree differs from the repository in two deliberate ways; keep the current layout
+unless the architecture is changed on purpose (the web host in `src/DotNetForge.Web/` matches the specification):
 
 | Spec | Repository |
 | --- | --- |
-| web host in `src/DotNetForge.Web/` | web host at the root ([why](../guides/development.md#why-there-is-no-solution-file)) |
 | `agents/` at the root | `.github/agents/` |
 | `docs/` (`developer-guide.md`, `extension-development.md`, `theme-development.md`, `module-development.md`, `api-guide.md`) | `.docs/` |
 
@@ -677,16 +683,17 @@ Update/rollback and import/export criteria are tracked in [transfer and updates]
 - [x] The app builds and runs on Windows, macOS and Linux and applies migrations before serving traffic - CI
   `build-and-test` matrix on all three; `Program.cs` runs `DatabaseInitializer.InitializeAsync` (both providers)
   before `app.Run()`.
-- [ ] `ARCHITECTURE.md` documents structure, core, extension, database, authentication, authorization, content,
-  media, theme, API, update/rollback, security, testing and deployment architecture (it is a short summary pointing
-  here; update/rollback and themes have no architecture yet).
+- [ ] The architecture overview ([overview.md](overview.md); the spec's root `ARCHITECTURE.md`) documents
+  structure, core, extension, database, authentication, authorization, content, media, theme, API, update/rollback,
+  security, testing and deployment architecture (it is a short summary pointing here; update/rollback and themes
+  have no architecture yet).
 
 ## Architectural rules for changes
 
 These rules keep the codebase consistent; follow them unless you are deliberately changing the architecture (then
 update this document in the same change).
 
-1. **All DI goes in `Startup/DependencyRegistration.cs`.** Don't register services in `Program.cs` or extensions.
+1. **All DI goes in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`.** Don't register services in `Program.cs` or extensions.
 2. **`Abstractions` stays dependency-free and entity-free.** Contracts that need entities go in `Shared`.
 3. **`Core` never references EF Core or `Data`.** Put a store interface in `Shared/Stores`, implement it in `Data`.
 4. **Content-page rules belong in `IPageService`** (`PageService`). Controllers and API endpoints must not
@@ -714,7 +721,7 @@ update this document in the same change).
     user input (`StorageKey` validates them). New configuration must not default to a path inside the deployment
     directory outside Development.
 13. **No inline script or style in views** (the CSP forbids it). Add behaviour as a data attribute handled in
-    `wwwroot/js` (e.g. `data-confirm` in `site.js`) and styles in `wwwroot/css`.
+    `src/DotNetForge.Web/wwwroot/js` (e.g. `data-confirm` in `site.js`) and styles in `src/DotNetForge.Web/wwwroot/css`.
 14. **Extension discovery goes through `IExtensionLoader`** (`Discover()`, `FindAdminExtension(id)`); never scan
     `extensions/` directly or build file paths from request input (see `ExtensionViewController.Resource` for the
     traversal guard).

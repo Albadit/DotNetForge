@@ -1,8 +1,8 @@
 using System.Text.Json;
 using DotNetForge.Core.Extensions;
+using DotNetForge.Shared.Configuration;
 using DotNetForge.Web.Startup;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DotNetForge.Web.Controllers;
@@ -20,12 +20,12 @@ namespace DotNetForge.Web.Controllers;
 public sealed class ExtensionViewController : Controller
 {
     private readonly IExtensionLoader _loader;
-    private readonly IWebHostEnvironment _hostEnv;
+    private readonly string _viewRoot;
 
-    public ExtensionViewController(IExtensionLoader loader, IWebHostEnvironment hostEnv)
+    public ExtensionViewController(IExtensionLoader loader, AppEnvironment env)
     {
         _loader = loader;
-        _hostEnv = hostEnv;
+        _viewRoot = DependencyRegistration.ExtensionViewRoot(env);
     }
 
     [HttpGet("{id}/raw")]
@@ -39,8 +39,8 @@ public sealed class ExtensionViewController : Controller
             return NotFound();
         }
 
-        // Application-relative path the runtime Razor view engine can resolve (content root provider).
-        var relative = "~/" + Path.GetRelativePath(_hostEnv.ContentRootPath, indexView).Replace('\\', '/');
+        // Path the runtime Razor view engine resolves through the extension file provider (see DependencyRegistration).
+        var relative = "~/" + Path.GetRelativePath(_viewRoot, indexView).Replace('\\', '/');
         ViewData["Settings"] = match.Manifest.Settings.ToDictionary(kv => kv.Key, kv => Normalize(kv.Value));
         ViewData["ResourceBase"] = $"/admin/ext/{id}/resources";
 

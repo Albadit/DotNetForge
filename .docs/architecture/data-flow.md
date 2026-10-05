@@ -81,7 +81,7 @@ Key properties:
   Development), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`,
   `Referrer-Policy: strict-origin-when-cross-origin` and `Permissions-Policy` on every response, including static
   files and re-executed error pages. Policy: [security](../features/security.md).
-- **Static files** in `wwwroot/` are served before routing, so the install gate never blocks CSS/JS.
+- **Static files** in `src/DotNetForge.Web/wwwroot/` are served before routing, so the install gate never blocks CSS/JS.
 - `InstallationMiddleware` lets through, without a DB check, any path starting with `/css`, `/js`, `/lib`, `/images`,
   `/img`, `/fonts`, `/favicon`, `/health`, **and any path with a file extension** (`Path.HasExtension`).
   Everything else is redirected to `/setup` until installed - including `/api/*` (a `302`, not a `401`).
@@ -419,7 +419,7 @@ flowchart LR
     AE --> DbCfg["DbProviderConfigurator + context type"]
     AE --> Storage["IFileStorage: LocalFileStorage or S3FileStorage"]
     AE --> Views["AppName in ViewData / layouts"]
-    AppSettings["appsettings.json / .Development.json"] --> Logging["Logging levels, AllowedHosts"]
+    AppSettings["src/DotNetForge.Web/appsettings.json / .Development.json"] --> Logging["Logging levels, AllowedHosts"]
 ```
 
 See [configuration](../features/configuration.md) and

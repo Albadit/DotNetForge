@@ -42,7 +42,6 @@ public static class DependencyRegistration
     public static IServiceCollection AddDotNetForge(
         this IServiceCollection services, AppEnvironment env, IWebHostEnvironment hostEnv)
     {
-        var contentRoot = hostEnv.ContentRootPath;
         services.AddSingleton(env);
         services.AddMemoryCache();
 
@@ -83,7 +82,7 @@ public static class DependencyRegistration
         services.AddSingleton<IPermissionService, PermissionService>();
         services.AddSingleton<IManifestValidator, ManifestValidator>();
         services.AddSingleton<IExtensionLoader>(sp =>
-            new ExtensionLoader(sp.GetRequiredService<IManifestValidator>(), Path.Combine(contentRoot, "extensions")));
+            new ExtensionLoader(sp.GetRequiredService<IManifestValidator>(), env.ExtensionsPath));
         services.AddScoped<IInstallationStore, InstallationStore>();
         services.AddScoped<IInstallationService, InstallationService>();
 
@@ -132,12 +131,13 @@ public static class DependencyRegistration
         services.AddHostedService<ScheduledPublishingService>();
 
         // MVC + the API controllers (the API project is mounted as an application part). Runtime Razor
-        // compilation lets admin extensions ship views under extensions/ that are compiled in memory and
-        // rendered on demand (the content root provider resolves the ~/extensions/... path; nothing is written).
+        // compilation lets admin extensions ship views under extensions/ that are compiled in memory and rendered
+        // on demand; the extra file provider is rooted at the folder that contains extensions/ (the app folder when
+        // published, the repository root in a checkout), so views resolve as ~/extensions/... and nothing is written.
         services.AddControllersWithViews()
             .AddApplicationPart(typeof(ContentApiController).Assembly)
             .AddRazorRuntimeCompilation(options =>
-                options.FileProviders.Add(new PhysicalFileProvider(contentRoot)));
+                options.FileProviders.Add(new PhysicalFileProvider(ExtensionViewRoot(env))));
 
         return services;
     }
@@ -195,6 +195,10 @@ public static class DependencyRegistration
                 }));
         });
     }
+
+    /// <summary>The folder that contains <c>extensions/</c>; extension view paths are relative to it.</summary>
+    public static string ExtensionViewRoot(AppEnvironment env) =>
+        Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(env.ExtensionsPath))!;
 
     /// <summary>The client IP (behind a proxy, enable forwarded headers so this is the real client).</summary>
     private static string ClientKey(HttpContext http) => http.Connection.RemoteIpAddress?.ToString() ?? "unknown";

@@ -21,18 +21,18 @@ transaction, concurrency) is in [installation](../features/installation.md).
 ## Relevant source files
 
 ```text
-Controllers/SetupController.cs                   GET/POST actions, sign-in after install, cms.installed audit
-Views/Setup/Index.cshtml                         the form (uses _AuthLayout)
-Views/Shared/_AuthLayout.cshtml                  centered card layout
+src/DotNetForge.Web/Controllers/SetupController.cs                   GET/POST actions, sign-in after install, cms.installed audit
+src/DotNetForge.Web/Views/Setup/Index.cshtml                         the form (uses _AuthLayout)
+src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml                  centered card layout
 src/DotNetForge.Shared/Dtos/SetupRequest.cs      form model
 src/DotNetForge.Core/Installation/InstallationService.cs   validation + user creation
 src/DotNetForge.Core/Validation/PasswordPolicy.cs, InputValidation.cs (EmailValidator)
 src/DotNetForge.Data/InstallationStore.cs        transactional persistence
-Services/InstallationStatusCache.cs              flipped to installed after success
-Services/AuthService.cs                          GetDefaultTenantIdAsync, signs the new admin in
-Services/AuditService.cs                         cms.installed (via IAuditService)
-Middleware/InstallationMiddleware.cs             the gate that routes users here
-Startup/DependencyRegistration.cs                credentials rate-limit policy
+src/DotNetForge.Web/Services/InstallationStatusCache.cs              flipped to installed after success
+src/DotNetForge.Web/Services/AuthService.cs                          GetDefaultTenantIdAsync, signs the new admin in
+src/DotNetForge.Web/Services/AuditService.cs                         cms.installed (via IAuditService)
+src/DotNetForge.Web/Middleware/InstallationMiddleware.cs             the gate that routes users here
+src/DotNetForge.Web/Startup/DependencyRegistration.cs                credentials rate-limit policy
 ```
 
 ## Page layout
@@ -181,4 +181,4 @@ flowchart TD
 ## Extension points
 
 - New setup fields: add to `SetupRequest`, validate in `InstallationService`, persist in
-  `InstallationStore.InstallFirstAdminAsync` (inside the transaction), render in `Views/Setup/Index.cshtml`.
+  `InstallationStore.InstallFirstAdminAsync` (inside the transaction), render in `src/DotNetForge.Web/Views/Setup/Index.cshtml`.

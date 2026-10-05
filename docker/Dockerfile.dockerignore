@@ -1,4 +1,5 @@
-# Keep the build context to what `dotnet publish` of the web host needs.
+# Build-context filter for docker/Dockerfile (BuildKit reads <Dockerfile>.dockerignore next to the Dockerfile).
+# Keep the context to what `dotnet publish` of the web host needs.
 **/bin/
 **/obj/
 .git/

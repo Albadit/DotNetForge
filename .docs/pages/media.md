@@ -18,12 +18,12 @@ directory. Used by every admin-capable role; what each role may do differs (see 
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/MediaController.cs     list, upload, delete; permission checks; request size limits
-Areas/Admin/Models/AdminViewModels.cs          MediaIndexViewModel (CanUpload, Files), MediaRowViewModel (+ Url, CanDelete)
-Areas/Admin/Views/Media/Index.cshtml           upload panel, file table, delete forms (data-confirm)
-Services/MediaService.cs                       upload/delete rules, allowed types, size cap, keys, audit
-Controllers/MediaFilesController.cs            the /media/{id} links in the table
-wwwroot/js/site.js                             data-confirm handler for the Delete button
+src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs     list, upload, delete; permission checks; request size limits
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs          MediaIndexViewModel (CanUpload, Files), MediaRowViewModel (+ Url, CanDelete)
+src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml           upload panel, file table, delete forms (data-confirm)
+src/DotNetForge.Web/Services/MediaService.cs                       upload/delete rules, allowed types, size cap, keys, audit
+src/DotNetForge.Web/Controllers/MediaFilesController.cs            the /media/{id} links in the table
+src/DotNetForge.Web/wwwroot/js/site.js                             data-confirm handler for the Delete button
 ```
 
 ## Page layout
@@ -236,5 +236,5 @@ picker, folders, clickable breadcrumbs, search/filter/sort, public/private, acce
 ## Extension points
 
 See [media storage → Where to change things](../features/media-storage.md#where-to-change-things). When the screen
-becomes the File Manager, update the sidebar label in `Areas/Admin/Views/Shared/_Sidebar.cshtml`,
+becomes the File Manager, update the sidebar label in `src/DotNetForge.Web/Areas/Admin/Views/Shared/_Sidebar.cshtml`,
 [pages.md](../architecture/pages.md) and this document.

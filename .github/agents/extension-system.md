@@ -13,8 +13,8 @@ Required (validated by `ManifestValidator`): `id`, `name`, `description`, `versi
 
 ## What the host does today
 
-- `ExtensionLoader.Discover(<contentRoot>/extensions)` finds every manifest recursively, parses and validates it
-  (uncached, on each use). Invalid manifests are listed as invalid and never rendered.
+- `ExtensionLoader.Discover()` finds every manifest under `AppEnvironment.ExtensionsPath` recursively, parses and
+  validates it (cached until a manifest changes). Invalid manifests are listed as invalid and never rendered.
 - The **Plugins** screen (Super Admin) lists discovered manifests with validity.
 - `admin` extensions with `Views/Index.cshtml` get a sidebar tab at `/admin/ext/{id}`, rendered by runtime Razor
   compilation inside an iframe; manifest `settings` arrive as `ViewData["Settings"]`.

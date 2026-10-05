@@ -8,8 +8,8 @@ namespace DotNetForge.IntegrationTests;
 
 /// <summary>
 /// The deployment directory must be treated as read-only (.docs/guides/deployment.md). These tests run the real
-/// host through install, sign-in, uploads, downloads and deletes, and assert that nothing in the content root was
-/// created, changed or deleted.
+/// host through install, sign-in, uploads, downloads and deletes, and assert that nothing in the checkout (content
+/// root and repository root) was created, changed or deleted.
 /// </summary>
 public sealed class ReadOnlyDeploymentTests
 {
@@ -19,15 +19,18 @@ public sealed class ReadOnlyDeploymentTests
     };
 
     [Fact]
-    public async Task A_full_session_writes_nothing_into_the_content_root()
+    public async Task A_full_session_writes_nothing_into_the_checkout()
     {
         using var factory = new DotNetForgeWebFactory("Production");
+        // The content root is src/DotNetForge.Web; .env, extensions/ and development storage/ resolve to the repository
+        // root, so watch the whole checkout.
         var contentRoot = factory.Services.GetRequiredService<IWebHostEnvironment>().ContentRootPath;
-        var before = Snapshot(contentRoot);
+        var root = AppPaths.FindRepositoryRoot(contentRoot) ?? contentRoot;
+        var before = Snapshot(root);
 
         await RunFullSessionAsync(factory);
 
-        var after = Snapshot(contentRoot);
+        var after = Snapshot(root);
         Assert.Equal(before.Keys.OrderBy(k => k), after.Keys.OrderBy(k => k)); // nothing created or deleted
         var changed = before.Where(kv => after[kv.Key] != kv.Value).Select(kv => kv.Key).ToList();
         Assert.Empty(changed);

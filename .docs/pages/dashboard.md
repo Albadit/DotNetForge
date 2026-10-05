@@ -17,10 +17,10 @@ user lands here after sign-in or setup. Read-only.
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/DashboardController.cs   counts + system state
-Areas/Admin/Models/AdminViewModels.cs            DashboardViewModel
-Areas/Admin/Views/Dashboard/Index.cshtml         stat grid + system panel
-wwwroot/css/admin.css                            .stat-grid, .stat-card, .panel, table.kv
+src/DotNetForge.Web/Areas/Admin/Controllers/DashboardController.cs   counts + system state
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs            DashboardViewModel
+src/DotNetForge.Web/Areas/Admin/Views/Dashboard/Index.cshtml         stat grid + system panel
+src/DotNetForge.Web/wwwroot/css/admin.css                            .stat-grid, .stat-card, .panel, table.kv
 ```
 
 ## Page layout

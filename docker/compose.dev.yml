@@ -1,5 +1,5 @@
 # Optional local services for developing against production-like backends (.docs/guides/development.md):
-#   docker compose -f compose.dev.yml up -d
+#   docker compose -f docker/compose.dev.yml up -d
 # Then in .env:
 #   DATABASE_PROVIDER=postgresql
 #   DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable

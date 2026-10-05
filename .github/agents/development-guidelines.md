@@ -4,20 +4,21 @@ Full guide: [development.md](../../.docs/guides/development.md). Testing: [testi
 
 ## Build, run, test
 
-- From the repository root: `dotnet run`, `dotnet watch`, `dotnet build`.
+- From the repository root: `dotnet run --project src/DotNetForge.Web`, `dotnet watch --project src/DotNetForge.Web`,
+  `dotnet build`, `dotnet test` (solution `DotNetForge.slnx`).
 - Tests: `dotnet test tests/DotNetForge.Tests`, `dotnet test tests/DotNetForge.IntegrationTests`.
 - Migrations: `dotnet tool restore`, then add the migration for **both** contexts (`--context DotNetForgeDbContext
   --output-dir Migrations` and `--context PostgreSqlDbContext --output-dir Migrations/PostgreSql --namespace
   DotNetForge.Data.Migrations.PostgreSql`, with `--project/--startup-project src/DotNetForge.Data`); see the
   `database-change` skill.
-- Optional backends: `docker compose -f compose.dev.yml up -d` (PostgreSQL + S3); `DNF_TEST_POSTGRES` and
+- Optional backends: `docker compose -f docker/compose.dev.yml up -d` (PostgreSQL + S3); `DNF_TEST_POSTGRES` and
   `DNF_TEST_S3_*` run the tests against them.
 
 ## Layering rules
 
 - `Abstractions` has no dependencies and no entities.
 - `Core` and `Data` are siblings; bridge them with an interface in `Shared/Stores` implemented in `Data`.
-- All DI in `Startup/DependencyRegistration.cs`.
+- All DI in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`.
 - Admin controllers derive from `AdminControllerBase`; API controllers from `ApiControllerBase` and carry
   `[RequireApiPermission]` on every action.
 - Filter tenant-scoped queries by `TenantId`; content-page rules only in `PageService` (via `IPageService`).

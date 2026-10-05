@@ -22,12 +22,18 @@ public sealed class AppEnvironment
 
     public string AppUrl { get; set; } = DefaultAppUrl;
 
+    /// <summary>
+    /// Absolute path of the read-only <c>extensions/</c> folder (.docs/features/extensions.md): next to the published
+    /// app, or at the repository root when running from a checkout; <c>EXTENSIONS_PATH</c> overrides it.
+    /// </summary>
+    public string ExtensionsPath { get; set; } = string.Empty;
+
     /// <summary>Where uploaded media is stored (.docs/features/media-storage.md).</summary>
     public StorageSettings Storage { get; set; } = new();
 
     /// <summary>
-    /// The effective connection string. The loader always sets one for the running host; the relative SQLite
-    /// fallback only serves design-time tooling (<c>dotnet ef</c>) run from the repository root.
+    /// The effective connection string. The loader and the design-time factories always set one; the relative SQLite
+    /// fallback only applies to an <see cref="AppEnvironment"/> built by hand without a connection string.
     /// </summary>
     public string ResolveConnectionString()
     {

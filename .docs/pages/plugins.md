@@ -17,9 +17,9 @@ enable, disable, configure, update or remove. Extension mechanics: [extensions](
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/AdminListControllers.cs   PluginsController
-Areas/Admin/Models/AdminViewModels.cs             PluginRowViewModel
-Areas/Admin/Views/Plugins/Index.cshtml            table
+src/DotNetForge.Web/Areas/Admin/Controllers/AdminListControllers.cs   PluginsController
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs             PluginRowViewModel
+src/DotNetForge.Web/Areas/Admin/Views/Plugins/Index.cshtml            table
 src/DotNetForge.Extensions/ExtensionLoader.cs     discovery (cached, FileSystemWatcher invalidation)
 src/DotNetForge.Extensions/ManifestValidator.cs   validity
 ```
@@ -50,7 +50,7 @@ Display only.
 ## Data used by the page
 
 `InstalledExtensions` (all) and the result of `IExtensionLoader.Discover()` - the loader is a singleton rooted at
-`<contentRoot>/extensions` and caches the scan until a manifest file changes (see
+`AppEnvironment.ExtensionsPath` and caches the scan until a manifest file changes (see
 [extension host → Important implementation details](extension-host.md#important-implementation-details)).
 
 ## State
@@ -112,7 +112,7 @@ flowchart LR
 - "Disabled" for on-disk rows is a literal, not state - admin extensions are shown as tabs regardless.
 - Validation errors are computed but discarded by this screen.
 - The listed `extensions/` folder is the one next to the running app: it is copied to the publish output
-  (`DotNetForge.Web.csproj`, `CopyToPublishDirectory="PreserveNewest"`), so a published or containerized app lists
+  (`src/DotNetForge.Web/DotNetForge.Web.csproj`, `CopyToPublishDirectory="PreserveNewest"`), so a published or containerized app lists
   the same samples. The folder is read-only at runtime; adding an extension means redeploying (or, in a writable
   development checkout, dropping in a manifest - the cache refreshes automatically).
 

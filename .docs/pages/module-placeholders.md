@@ -8,7 +8,7 @@ behaviour.
 
 ## Route / Navigation
 
-All handled by `Areas/Admin/Controllers/ModulesController.cs`, rendered with `Areas/Admin/Views/Modules/Placeholder.cshtml`.
+All handled by `src/DotNetForge.Web/Areas/Admin/Controllers/ModulesController.cs`, rendered with `src/DotNetForge.Web/Areas/Admin/Views/Modules/Placeholder.cshtml`.
 
 | Route | Action | Title | Sidebar location | Planned behaviour |
 | --- | --- | --- | --- | --- |
@@ -27,10 +27,10 @@ All are `GET` only, no parameters.
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/ModulesController.cs        one action per placeholder + Placeholder() helper
-Areas/Admin/Models/AdminViewModels.cs               ModulePlaceholderViewModel (Title, DocPath, Description)
-Areas/Admin/Views/Modules/Placeholder.cshtml        panel
-Areas/Admin/Views/Shared/_Sidebar.cshtml            links
+src/DotNetForge.Web/Areas/Admin/Controllers/ModulesController.cs        one action per placeholder + Placeholder() helper
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs               ModulePlaceholderViewModel (Title, DocPath, Description)
+src/DotNetForge.Web/Areas/Admin/Views/Modules/Placeholder.cshtml        panel
+src/DotNetForge.Web/Areas/Admin/Views/Shared/_Sidebar.cshtml            links
 ```
 
 ## Page layout

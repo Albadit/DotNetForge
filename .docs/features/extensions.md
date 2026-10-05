@@ -33,8 +33,11 @@ commas and is case-insensitive on property names.
 ## Discovery
 
 `IExtensionLoader` (`src/DotNetForge.Core/Extensions/IExtensionContracts.cs`) is implemented by `ExtensionLoader`
-(`src/DotNetForge.Extensions/`), registered as a singleton whose root, `<contentRoot>/extensions`, is fixed at
-construction (`DependencyRegistration`).
+(`src/DotNetForge.Extensions/`), registered as a singleton whose root, `AppEnvironment.ExtensionsPath`, is fixed at construction
+(`DependencyRegistration`). That root is `EXTENSIONS_PATH` when set (relative to the content root), otherwise the
+`extensions/` folder next to the app, otherwise the one at the repository root - so a checkout run with
+`dotnet run --project src/DotNetForge.Web` and a published `/app` both find it
+([where the app finds its files](../guides/development.md#where-the-app-finds-its-files)).
 
 | Member | Returns |
 | --- | --- |
@@ -63,11 +66,11 @@ detected - the first match in file-system order wins.
 
 ## Deployment
 
-`extensions/**` is excluded from the host's compilation (`DefaultItemExcludes`) but copied to the publish output as
-plain files (`<None Include="extensions/**" CopyToPublishDirectory="PreserveNewest" />` in `DotNetForge.Web.csproj`),
-so `dotnet publish` and the Docker image contain them at `<contentRoot>/extensions`. Admin extension views are
-compiled **in memory** by runtime Razor compilation (`AddRazorRuntimeCompilation` with a `PhysicalFileProvider` on
-the content root); nothing is written to disk, so they work on a read-only filesystem
+`extensions/` sits at the repository root, outside every project, and is copied to the publish output as plain
+files (`<None Include="../../extensions/**" LinkBase="extensions" CopyToPublishDirectory="PreserveNewest" />` in
+`src/DotNetForge.Web/DotNetForge.Web.csproj`), so `dotnet publish` and the Docker image contain them at
+`/app/extensions`. Admin extension views are compiled **in memory** by runtime Razor compilation
+(`AddRazorRuntimeCompilation` with a `PhysicalFileProvider` on the folder that contains `extensions/`); nothing is written to disk, so they work on a read-only filesystem
 ([deployment](../guides/deployment.md#read-only-deployment-requirements)). Adding or changing an extension therefore
 means a new publish or image.
 
@@ -291,6 +294,6 @@ sidebar **Main**, `AdminArea` policy). Planned:
   scan `extensions/` or build their own cache.
 - Admin extension rendering: `ExtensionViewController` (document/assets) and `ExtensionsController` (shell).
 - Lookup by id: `IExtensionLoader.FindAdminExtension` - use it instead of filtering `Discover()` in a caller.
-- What ships with a deployment: the `extensions/**` `None` item in `DotNetForge.Web.csproj`.
+- What ships with a deployment: the `extensions/**` `None` item in `src/DotNetForge.Web/DotNetForge.Web.csproj`.
 - Never resolve a file under `extensions/` from request input without the `GetFullPath` + prefix check used in
   `Resource`.

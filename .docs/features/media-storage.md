@@ -12,9 +12,9 @@ Screen: [Media](../pages/media.md). Still-unbuilt File Manager features: [Planne
 | `IFileStorage`, `StoredFile`, `StorageKey` | `src/DotNetForge.Abstractions/Storage/IFileStorage.cs` | Provider-neutral contract and key validation |
 | `LocalFileStorage` | `src/DotNetForge.Infrastructure/Storage/LocalFileStorage.cs` | Directory provider: development default, or a mounted volume |
 | `S3FileStorage` | `src/DotNetForge.Infrastructure/Storage/S3FileStorage.cs` | Any S3-compatible service (Cloudflare R2, AWS S3, MinIO, Supabase Storage) |
-| `MediaService` | `Services/MediaService.cs` | Upload/delete rules: allowed types, size cap, generated keys, audit, failure handling |
-| Admin screen | `Areas/Admin/Controllers/MediaController.cs` | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}` |
-| Download endpoint | `Controllers/MediaFilesController.cs` | `GET /media/{id}/{fileName?}`: authorization, then presigned redirect or stream |
+| `MediaService` | `src/DotNetForge.Web/Services/MediaService.cs` | Upload/delete rules: allowed types, size cap, generated keys, audit, failure handling |
+| Admin screen | `src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs` | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}` |
+| Download endpoint | `src/DotNetForge.Web/Controllers/MediaFilesController.cs` | `GET /media/{id}/{fileName?}`: authorization, then presigned redirect or stream |
 | `MediaFile` entity | `src/DotNetForge.Shared/Entities/Content.cs` | Metadata row (`RelativePath` holds the storage key) |
 | API list | `GET /api/media` (`media.read`) | Lists the token tenant's media ([headless API](headless-api.md)) |
 | Configuration | `StorageSettings` on `AppEnvironment`; `STORAGE_*` keys | Provider selection and credentials ([configuration](configuration.md)) |
@@ -50,13 +50,13 @@ Design decisions:
 - **Objects stay private in the bucket.** Access control is decided by the application, then the browser gets a
   presigned URL that expires (public files: 1 hour, private files: 5 minutes). No public bucket and no CDN rules to
   keep in sync.
-- **Provider code stays behind the interface.** Only `Startup/DependencyRegistration.cs` decides which implementation
+- **Provider code stays behind the interface.** Only `src/DotNetForge.Web/Startup/DependencyRegistration.cs` decides which implementation
   is used; controllers and services depend on `IFileStorage`.
 
 ## Provider choice
 
 **Recommendation: Cloudflare R2** for production, through the S3 API (`STORAGE_PROVIDER=s3`). Use `local` for
-development, and `compose.dev.yml` (an S3-compatible server) to test the S3 path locally.
+development, and `docker/compose.dev.yml` (an S3-compatible server) to test the S3 path locally.
 
 Prices researched October 2026 (check the providers' pages before committing; they change):
 
@@ -176,7 +176,7 @@ nothing ever points at a missing object), then the object; if the object delete 
 
 - Default: `STORAGE_PROVIDER=local` with no path → `<contentRoot>/storage/media` (Development only; `storage/` is
   git-ignored).
-- S3 path locally: `docker compose -f compose.dev.yml up -d` starts PostgreSQL and an S3-compatible server on
+- S3 path locally: `docker compose -f docker/compose.dev.yml up -d` starts PostgreSQL and an S3-compatible server on
   `http://localhost:8333` with bucket `dotnetforge`; the settings to put in `.env` are in the compose file header.
 - Live S3 contract tests: set `DNF_TEST_S3_*` ([testing](../guides/testing.md)).
 
@@ -269,7 +269,7 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 
 - **New provider** (e.g. Azure Blob): implement `IFileStorage` in `src/DotNetForge.Infrastructure/Storage/`, add a
   `StorageProvider` value, its keys in `EnvConfigurationLoader`, the registration branch in
-  `Startup/DependencyRegistration.cs`, and run the shared contract tests in `tests/DotNetForge.Tests/FileStorageTests.cs`
+  `src/DotNetForge.Web/Startup/DependencyRegistration.cs`, and run the shared contract tests in `tests/DotNetForge.Tests/FileStorageTests.cs`
   against it. Never call a provider SDK outside its `IFileStorage` implementation.
 - **Upload rules** (types, size, naming, duplicates, image processing): `MediaService` only - the admin controller and
   a future API upload must share it.

@@ -138,9 +138,9 @@ gif and woff2.
 
 ## 4. Ship it
 
-`extensions/` is part of the app: `DotNetForge.Web.csproj` copies it to the publish output
-(`<None Include="extensions/**" CopyToPublishDirectory="PreserveNewest" />`), so `dotnet publish` and the `Dockerfile`
-include your folder. Extension views are not precompiled; they compile in memory on first use. In a read-only
+`extensions/` (at the repository root) is part of the app: `src/DotNetForge.Web/DotNetForge.Web.csproj` copies it
+to the publish output (`<None Include="../../extensions/**" LinkBase="extensions" .../>`), so `dotnet publish` and
+`docker/Dockerfile` include your folder. Extension views are not precompiled; they compile in memory on first use. In a read-only
 deployment an extension is added, changed or removed only by redeploying ([deployment](deployment.md#docker)).
 
 ## Troubleshooting
@@ -152,7 +152,7 @@ deployment an extension is added, changed or removed only by redeploying ([deplo
 | Compilation error inside the iframe | Razor error in your views; `_ViewImports.cshtml` `@using`s |
 | Unstyled page | `_ViewStart.cshtml` sets the layout; link paths use `@ViewData["ResourceBase"]` |
 | Styles or scripts work locally but not in production | inline `<style>`, `style="..."`, `<script>` or `on...=` - blocked by the CSP; move them to `Views/Resources/` |
-| Extension missing after publish | the folder is under `extensions/` (copied by the csproj), not excluded by `.dockerignore` |
+| Extension missing after publish | the folder is under `extensions/` (copied by the csproj), not excluded by `docker/Dockerfile.dockerignore` |
 | `IOException` / `UnauthorizedAccessException` in production | the view writes to disk; use `IFileStorage` or the database |
 
 ## Reference sample

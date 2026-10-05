@@ -24,19 +24,19 @@ role may change differs (see [Permissions](#permissions)). Rules for content pag
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/ContentController.cs     actions, permission checks, tree building
-Areas/Admin/Controllers/AdminControllerBase.cs   TenantId, CurrentUserId, Can(area, action), CanModify(area, any, own, createdById)
-Areas/Admin/Models/AdminViewModels.cs            ContentIndexViewModel, PageTreeNode, ReorderRequest, ReorderItem
+src/DotNetForge.Web/Areas/Admin/Controllers/ContentController.cs     actions, permission checks, tree building
+src/DotNetForge.Web/Areas/Admin/Controllers/AdminControllerBase.cs   TenantId, CurrentUserId, Can(area, action), CanModify(area, any, own, createdById)
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs            ContentIndexViewModel, PageTreeNode, ReorderRequest, ReorderItem
 src/DotNetForge.Shared/Content/IPageService.cs   IPageService, PagePosition, PageInput (form model, PageInput.From)
-Services/PageService.cs                          ApplyAsync, ReorderAsync, DeleteAsync, Slugify, ToUtc
-src/DotNetForge.Shared/Auditing/IAuditService.cs IAuditService (implemented by Services/AuditService.cs)
+src/DotNetForge.Web/Services/PageService.cs                          ApplyAsync, ReorderAsync, DeleteAsync, Slugify, ToUtc
+src/DotNetForge.Shared/Auditing/IAuditService.cs IAuditService (implemented by src/DotNetForge.Web/Services/AuditService.cs)
 src/DotNetForge.Shared/Authorization/PermissionMatrix.cs   role defaults for the "Collection types" area
-Areas/Admin/Views/Content/Index.cshtml           two-pane layout, flash message, "+ Add page" form
-Areas/Admin/Views/Content/_TreeNodes.cshtml      recursive tree partial
-Areas/Admin/Views/Content/_PageForm.cshtml       settings form + delete form (data-confirm)
-wwwroot/js/admin-content.js                      conditional fields, Published/Disabled exclusivity, drag-and-drop reorder
-wwwroot/js/site.js                               data-confirm handler (loaded by _AdminLayout)
-wwwroot/css/admin.css                            .content-layout, .tree-pane, .page-tree, .tree-row, .dot, .form-pane
+src/DotNetForge.Web/Areas/Admin/Views/Content/Index.cshtml           two-pane layout, flash message, "+ Add page" form
+src/DotNetForge.Web/Areas/Admin/Views/Content/_TreeNodes.cshtml      recursive tree partial
+src/DotNetForge.Web/Areas/Admin/Views/Content/_PageForm.cshtml       settings form + delete form (data-confirm)
+src/DotNetForge.Web/wwwroot/js/admin-content.js                      conditional fields, Published/Disabled exclusivity, drag-and-drop reorder
+src/DotNetForge.Web/wwwroot/js/site.js                               data-confirm handler (loaded by _AdminLayout)
+src/DotNetForge.Web/wwwroot/css/admin.css                            .content-layout, .tree-pane, .page-tree, .tree-row, .dot, .form-pane
 src/DotNetForge.Shared/Entities/Content.cs       Page entity
 ```
 
@@ -506,4 +506,4 @@ Tracked once in [content pages and routing → Acceptance criteria](../features/
 - Hide actions the user cannot perform: compute flags with `Can` / `CanModify` in `BuildIndexAsync` (as
   `MediaIndexViewModel.CanUpload` / `MediaRowViewModel.CanDelete` do on [Media](media.md)) and keep the server
   checks.
-- Client behaviour: `wwwroot/js/admin-content.js` (keep the screen working without JS; no inline script or style).
+- Client behaviour: `src/DotNetForge.Web/wwwroot/js/admin-content.js` (keep the screen working without JS; no inline script or style).

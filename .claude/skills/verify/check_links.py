@@ -13,7 +13,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 SCAN = [ROOT / ".docs", ROOT / ".claude" / "skills", ROOT / ".github" / "agents"]
-ROOT_FILES = ["README.md", "ARCHITECTURE.md", "CLAUDE.md"]
+ROOT_FILES = ["README.md", "CLAUDE.md"]
 SKIP_DIRS: set[str] = set()
 
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")

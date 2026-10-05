@@ -1,6 +1,6 @@
 # Architecture Summary (for AI agents)
 
-Layered solution; the web host is the repository root project. Full detail:
+Layered solution (`DotNetForge.slnx`); the web host is `src/DotNetForge.Web`, Docker files are in `docker/`. Full detail:
 [codebase.md](../../.docs/architecture/codebase.md), [dependencies.md](../../.docs/architecture/dependencies.md).
 
 | Project | Role |
@@ -17,7 +17,7 @@ Layered solution; the web host is the repository root project. Full detail:
 ## Composition (`Program.cs`)
 
 1. `EnvConfigurationLoader.Load(...)` → `AppEnvironment` (exit code 1 on invalid config).
-2. `AddDotNetForge(env, contentRoot)` (`Startup/DependencyRegistration.cs`) registers everything.
+2. `AddDotNetForge(env, contentRoot)` (`src/DotNetForge.Web/Startup/DependencyRegistration.cs`) registers everything.
 3. `DatabaseInitializer.InitializeAsync` → `MigrateAsync` (both providers) + seed.
 4. Pipeline: exception handler/HSTS (non-Development) → `SecurityHeadersMiddleware` → static files → routing →
    `InstallationMiddleware` → authentication → rate limiter → authorization → controllers, `/health`, fallback to

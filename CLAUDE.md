@@ -1,7 +1,7 @@
 # DotNetForge CMS
 
-Server-rendered ASP.NET Core MVC CMS on .NET 10 (EF Core, SQLite/PostgreSQL). The web host is the repository root
-project; libraries are in `src/`.
+Server-rendered ASP.NET Core MVC CMS on .NET 10 (EF Core, SQLite/PostgreSQL). Solution `DotNetForge.slnx`; the web
+app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker files are in `docker/`.
 
 - **Documentation:** start at `.docs/README.md`. It is verified against the code. Planned-but-unbuilt behaviour is
   only in each doc's `## Planned (not implemented)` section - check `.docs/implementation-status.md` before assuming a
@@ -16,19 +16,18 @@ project; libraries are in `src/`.
 
 ```bash
 cp .env.example .env                              # once
-dotnet run                                        # http://localhost:5000 → /setup on a fresh DB
-dotnet build
-dotnet test tests/DotNetForge.Tests
-dotnet test tests/DotNetForge.IntegrationTests
+dotnet run --project src/DotNetForge.Web          # http://localhost:5000 → /setup on a fresh DB
+dotnet build                                      # whole solution
+dotnet test                                       # unit + integration tests
 python .claude/skills/verify/check_links.py       # docs link check
 ```
 
 ## Must know
 
-- All DI in `Startup/DependencyRegistration.cs`. Admin controllers derive from `AdminControllerBase`; API
+- All DI in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. Admin controllers derive from `AdminControllerBase`; API
   controllers from `ApiControllerBase` with `[RequireApiPermission]` on every action.
 - Filter every tenant-scoped query by `TenantId` from the base controller - there are no global query filters.
-- Content-page rules live only in `Services/PageService.cs`; public visibility only in `HomeController.Live`.
+- Content-page rules live only in `src/DotNetForge.Web/Services/PageService.cs`; public visibility only in `HomeController.Live`.
 - Every admin POST: `[ValidateAntiForgeryToken]` + `AuditService.LogAsync(AuditActions.X, ...)`.
 - The deployment directory is read-only: never write runtime files under the content root - use `IFileStorage`
   (media) or the database; `ReadOnlyDeploymentTests` fails otherwise. No inline script/style in views (CSP).
@@ -37,5 +36,7 @@ python .claude/skills/verify/check_links.py       # docs link check
 - Schema changes need a migration for **both** `DotNetForgeDbContext` (SQLite) and `PostgreSqlDbContext`.
 - `IEmailSender` has no implementation and webhooks are not delivered (see `.docs/implementation-status.md`).
 - Optional: `DNF_TEST_POSTGRES` runs the integration tests on PostgreSQL; `DNF_TEST_S3_*` runs live S3 tests
-  (`compose.dev.yml` provides both servers).
+  (`docker/compose.dev.yml` provides both servers).
+- In a checkout the app reads `.env`, `extensions/` and development `storage/` from the repository root
+  (`AppPaths`); a published app keeps them next to itself.
 - Documentation is part of every change - update the owning `.docs/` file (mapping in the `documentation` skill).

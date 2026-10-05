@@ -10,13 +10,14 @@ built to run from a **read-only deployment directory** ([deployment](guides/depl
 
 New here? Read in this order:
 
-1. [Codebase architecture](architecture/codebase.md) - projects, folders, layers, rules for changes
-2. [Data flow](architecture/data-flow.md) - startup, request pipeline, routing, auth and API flows
-3. [Page (screen) architecture](architecture/pages.md) - route map, layouts, navigation, how screens talk to the backend
-4. [Feature documents](#features) - one authoritative document per concept
-5. [Screen documents](#screens) - one per screen
-6. [Development guide](guides/development.md) - run, debug, troubleshoot
-7. [Deployment guide](guides/deployment.md) - production configuration, Docker, read-only filesystem, object storage
+1. [Architecture overview](architecture/overview.md) - one page: layout, layering, key decisions
+2. [Codebase architecture](architecture/codebase.md) - projects, folders, layers, rules for changes
+3. [Data flow](architecture/data-flow.md) - startup, request pipeline, routing, auth and API flows
+4. [Page (screen) architecture](architecture/pages.md) - route map, layouts, navigation, how screens talk to the backend
+5. [Feature documents](#features) - one authoritative document per concept
+6. [Screen documents](#screens) - one per screen
+7. [Development guide](guides/development.md) - run, debug, troubleshoot
+8. [Deployment guide](guides/deployment.md) - production configuration, Docker, read-only filesystem, object storage
 
 Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen** is a UI view and a **content page**
 (`Page`) is the content entity.
@@ -30,6 +31,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 ├── glossary.md                  one term per concept
 ├── implementation-status.md     built vs. planned per module, unused code
 ├── architecture/
+│   ├── overview.md              one-page summary: layout, layering, key decisions
 │   ├── codebase.md              projects, folders, layers, DI, architectural rules
 │   ├── data-flow.md             startup, pipeline, routing, auth/API/DB/background/error flows
 │   ├── pages.md                 screen architecture + full route map
@@ -44,6 +46,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 
 | Document | Answers |
 | --- | --- |
+| [overview.md](architecture/overview.md) | What is this system, how is it layered, which decisions shape it? (one page) |
 | [codebase.md](architecture/codebase.md) | What is each project/folder for? Where does new code go? Which rules must changes follow? |
 | [data-flow.md](architecture/data-flow.md) | What happens at startup and on each request? How are URLs routed? |
 | [pages.md](architecture/pages.md) | Which screens exist, at which routes, with which permissions? How is a screen built? |
@@ -131,7 +134,6 @@ against the code), tick or remove the acceptance criteria it satisfies, and upda
 | File | Role |
 | --- | --- |
 | [`/README.md`](../README.md) | project overview and quick start |
-| [`/ARCHITECTURE.md`](../ARCHITECTURE.md) | short architecture summary (spec deliverable) pointing here |
 | [`/CLAUDE.md`](../CLAUDE.md) | orientation for Claude Code sessions |
 | [`/.github/agents/`](../.github/agents/) | short AI-agent quick references (spec deliverable) pointing here |
 | `extensions/themes/default-theme/README.md` | sample theme note |

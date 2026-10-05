@@ -15,8 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- References the Web host at the repository root. -->
-    <ProjectReference Include="..\..\DotNetForge.Web.csproj" />
+    <!-- References the web host. -->
+    <ProjectReference Include="..\..\src\DotNetForge.Web\DotNetForge.Web.csproj" />
   </ItemGroup>
 
 </Project>

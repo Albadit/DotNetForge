@@ -5,7 +5,7 @@
   "tasks": [
     {
       "label": "build",
-      "detail": "dotnet build - web host + referenced libraries (from repo root)",
+      "detail": "dotnet build - the whole solution (DotNetForge.slnx)",
       "type": "process",
       "command": "dotnet",
       "args": ["build"],
@@ -15,10 +15,10 @@
     },
     {
       "label": "watch (hot reload)",
-      "detail": "dotnet watch - run the web host with hot reload",
+      "detail": "dotnet watch - run the web host (src/DotNetForge.Web) with hot reload",
       "type": "process",
       "command": "dotnet",
-      "args": ["watch"],
+      "args": ["watch", "--project", "src/DotNetForge.Web"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",
       "isBackground": true,
@@ -33,10 +33,10 @@
     },
     {
       "label": "run",
-      "detail": "dotnet run - start the web host (http://localhost:5000)",
+      "detail": "dotnet run - start the web host (src/DotNetForge.Web, http://localhost:5000)",
       "type": "process",
       "command": "dotnet",
-      "args": ["run"],
+      "args": ["run", "--project", "src/DotNetForge.Web"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",
       "isBackground": true,

@@ -16,7 +16,7 @@ introduced. Layer responsibilities are in [codebase.md](codebase.md).
 | `DotNetForge.Api` | Abstractions, Shared, Core, Data; `FrameworkReference Microsoft.AspNetCore.App` | the web host |
 | `DotNetForge.Web` (root) | all seven `src/` projects | test projects |
 | `DotNetForge.Tests` | Abstractions, Shared, Core, Data, Infrastructure, Extensions | Web, Api |
-| `DotNetForge.IntegrationTests` | `DotNetForge.Web.csproj` | - |
+| `DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj` | - |
 
 ```mermaid
 flowchart BT
@@ -78,7 +78,7 @@ hashing and signing are deliberately in-house; `AWSSDK.S3` is the exception, for
 
 ## DI registrations
 
-All in `Startup/DependencyRegistration.AddDotNetForge(env, hostEnv)`.
+All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, hostEnv)`.
 
 | Service | Implementation | Lifetime | Injected by |
 | --- | --- | --- | --- |
@@ -92,7 +92,7 @@ All in `Startup/DependencyRegistration.AddDotNetForge(env, hostEnv)`.
 | `IApiTokenFactory` | `ApiTokenFactory` | singleton | `ApiTokensController`, `ApiTokenAuthenticationHandler` |
 | `IPermissionService` | `PermissionService` | singleton | `AdminControllerBase.Can` / `CanModify` (resolved from `RequestServices`) |
 | `IManifestValidator` | `ManifestValidator` | singleton | `ExtensionLoader` |
-| `IExtensionLoader` | `ExtensionLoader(validator, <contentRoot>/extensions)` | singleton (factory) | `PluginsController`, `ExtensionsController`, `ExtensionViewController`, `AdminExtensionsNavViewComponent` |
+| `IExtensionLoader` | `ExtensionLoader(validator, env.ExtensionsPath)` | singleton (factory) | `PluginsController`, `ExtensionsController`, `ExtensionViewController`, `AdminExtensionsNavViewComponent` |
 | `IInstallationStore` | `InstallationStore` | scoped | `InstallationService`, `InstallationMiddleware`, integration tests |
 | `IInstallationService` | `InstallationService` | scoped | `SetupController` |
 | `InstallationStatusCache` | self | singleton | `InstallationMiddleware`, `SetupController` |

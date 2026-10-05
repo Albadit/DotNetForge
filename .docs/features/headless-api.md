@@ -76,7 +76,7 @@ is not used by any endpoint.
 ## Rate limiting
 
 `ApiControllerBase` carries `[EnableRateLimiting(RateLimitPolicies.Api)]`, so every API controller shares the `api`
-policy (`Startup/DependencyRegistration.cs`): a fixed window of **300 requests per minute per client IP**
+policy (`src/DotNetForge.Web/Startup/DependencyRegistration.cs`): a fixed window of **300 requests per minute per client IP**
 (`Connection.RemoteIpAddress`), no queue. Excess requests get `429` with an empty body.
 
 - The limiter runs before the API token is checked, so requests with bad tokens count too and a limited client sees

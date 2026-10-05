@@ -21,11 +21,11 @@ create form → created view → **Done** → list.
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/ApiTokensController.cs    Index, Create (GET/POST), Revoke, duration helpers
-Areas/Admin/Views/ApiTokens/Index.cshtml          list + revoke buttons
-Areas/Admin/Views/ApiTokens/Create.cshtml         form with permission checkboxes
-Areas/Admin/Views/ApiTokens/Created.cshtml        one-time secret + usage example
-Areas/Admin/Models/AdminViewModels.cs             CreatedTokenViewModel
+src/DotNetForge.Web/Areas/Admin/Controllers/ApiTokensController.cs    Index, Create (GET/POST), Revoke, duration helpers
+src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Index.cshtml          list + revoke buttons
+src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Create.cshtml         form with permission checkboxes
+src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Created.cshtml        one-time secret + usage example
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs             CreatedTokenViewModel
 src/DotNetForge.Shared/Entities/ApiToken.cs       entity
 src/DotNetForge.Shared/Constants/Permissions.cs   PermissionKeys.All, IsKnown
 src/DotNetForge.Infrastructure/Security/ApiTokenFactory.cs   Generate (plaintext, hash, prefix)

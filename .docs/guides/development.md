@@ -6,14 +6,14 @@ Set up, run, debug and change DotNetForge CMS locally. Architecture: [codebase.m
 
 - .NET SDK 10.0 - `global.json` pins `10.0.100` with `rollForward: latestFeature` (any 10.0.1xx+ feature band works).
 - Optional: PostgreSQL, only if you switch provider.
-- No Node.js: the frontend is plain CSS/JS in `wwwroot/`.
+- No Node.js: the frontend is plain CSS/JS in `src/DotNetForge.Web/wwwroot/`.
 
 ## First run
 
 ```bash
 cp .env.example .env          # PowerShell: Copy-Item .env.example .env
 dotnet tool restore           # restores the pinned dotnet-ef tool (only needed for migrations)
-dotnet run                    # or: dotnet watch
+dotnet run --project src/DotNetForge.Web      # or: dotnet watch --project src/DotNetForge.Web
 ```
 
 Open <http://localhost:5000>. You are redirected to `/setup`; create the first administrator (email + a password with
@@ -25,26 +25,32 @@ Starting without `.env` fails fast with
 
 ## Everyday commands (repository root)
 
+`DotNetForge.slnx` at the root is the solution; `dotnet build` and `dotnet test` without arguments use it.
+
 | Command | Purpose |
 | --- | --- |
-| `dotnet run` | build and run the web host (profile `http`, `http://localhost:5000`) |
-| `dotnet run --launch-profile https` | also listen on `https://localhost:5001` |
-| `dotnet watch` | run with hot reload |
-| `dotnet build` | build the host and every referenced `src/` project |
-| `dotnet test tests/DotNetForge.Tests` | unit tests |
-| `dotnet test tests/DotNetForge.IntegrationTests` | integration tests |
-| `dotnet format DotNetForge.Web.csproj --verify-no-changes --severity error` | the CI style check (run per project; see [testing](testing.md#ci)) |
+| `dotnet run --project src/DotNetForge.Web` | build and run the web app (profile `http`, `http://localhost:5000`) |
+| `dotnet run --project src/DotNetForge.Web --launch-profile https` | also listen on `https://localhost:5001` |
+| `dotnet watch --project src/DotNetForge.Web` | run with hot reload |
+| `dotnet build` | build the whole solution |
+| `dotnet test` | unit and integration tests (or one project: `dotnet test tests/DotNetForge.Tests`) |
+| `dotnet format src/DotNetForge.Web --verify-no-changes --severity error` | the CI style check (run per project; see [testing](testing.md#ci)) |
 
 VS Code: **Terminal → Run Build Task** offers `build`, `watch (hot reload)`, `run`, `test: all`, `test: unit`,
-`test: integration`, `clean`, `restore tools`, `ef: add migration (SQLite)`, `ef: add migration (PostgreSQL)`. **F5** runs "Debug DotNetForge.Web" (builds first,
-opens the browser when Kestrel is listening).
+`test: integration`, `clean`, `restore tools`, `ef: add migration (SQLite)`, `ef: add migration (PostgreSQL)`.
+**F5** runs "Debug DotNetForge.Web" (builds first, opens the browser when Kestrel is listening).
 
-### Why there is no solution file
+### Where the app finds its files
 
-`dotnet run`/`dotnet watch` need a project file in the current directory, and a directory that contains both a
-runnable project and a `.sln` makes bare `dotnet build`/`dotnet test` ambiguous. The web project therefore lives at
-the root and there is no solution; test projects are run by path. The host's `DefaultItemExcludes` keeps `src/`,
-`tests/`, `extensions/` etc. out of its compilation.
+The web app's content root is `src/DotNetForge.Web` (views, `wwwroot/`, `appsettings*.json`). Repository-level
+folders are found by `AppPaths` (`src/DotNetForge.Infrastructure/Configuration/AppPaths.cs`), which looks next to
+the app first and then at the repository root (the folder holding `DotNetForge.slnx`):
+
+| What | In a checkout | Published (`/app`) |
+| --- | --- | --- |
+| `.env` | repository root | next to the app (optional; environment variables are the norm) |
+| `extensions/` | repository root (or `EXTENSIONS_PATH`) | `/app/extensions` (copied by `dotnet publish`) |
+| Development `storage/` (SQLite + media) | repository root | not used - explicit paths are required outside Development |
 
 ## Resetting local state
 
@@ -54,21 +60,21 @@ the root and there is no solution; test projects are run by path. The host's `De
 | Re-create the starter pages | delete all pages in the Content Manager, restart (seeding re-creates them when the tenant has no pages) |
 | Unlock a locked account | wait 15 minutes, or clear `LockoutEndUtc` on the `Users` row |
 
-In Development the default SQLite database (`storage/dotnetforge.db`) and local media (`storage/media/`) are under the
-**content root** (the repository root), whatever the working directory. `storage/` is git-ignored and only exists in
+In Development the default SQLite database (`storage/dotnetforge.db`) and local media (`storage/media/`) are in the
+repository root's `storage/`, whatever the working directory. `storage/` is git-ignored and only exists in
 Development; production never writes there ([deployment](deployment.md#read-only-deployment-requirements)).
 
 ## Developing against PostgreSQL and S3
 
-`compose.dev.yml` starts PostgreSQL 17 and an S3-compatible server (SeaweedFS) with a `dotnetforge` bucket:
+`docker/compose.dev.yml` starts PostgreSQL 17 and an S3-compatible server (SeaweedFS) with a `dotnetforge` bucket:
 
 ```bash
-docker compose -f compose.dev.yml up -d
+docker compose -f docker/compose.dev.yml up -d
 ```
 
-Copy the `.env` values from the header of `compose.dev.yml` (provider `postgresql`, `STORAGE_PROVIDER=s3`,
+Copy the `.env` values from the header of `docker/compose.dev.yml` (provider `postgresql`, `STORAGE_PROVIDER=s3`,
 `STORAGE_S3_SERVICE_URL=http://localhost:8333`, `STORAGE_S3_FORCE_PATH_STYLE=true`) and run the app as usual. The S3
-server runs without authentication: development only. Stop with `docker compose -f compose.dev.yml down`
+server runs without authentication: development only. Stop with `docker compose -f docker/compose.dev.yml down`
 (add `-v` to delete the data).
 
 To run the production image locally with a read-only filesystem, see [deployment → Docker](deployment.md#docker).
@@ -102,7 +108,7 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
   [logging and errors](../features/logging-and-error-handling.md).
 - **Exception details:** run with `ASPNETCORE_ENVIRONMENT=Development` (default for the launch profiles) to get the
   developer exception page.
-- **SQL:** raise `Microsoft.EntityFrameworkCore.Database.Command` to `Information` in `appsettings.Development.json`.
+- **SQL:** raise `Microsoft.EntityFrameworkCore.Database.Command` to `Information` in `src/DotNetForge.Web/appsettings.Development.json`.
 - **Inspect the DB:** open `storage/dotnetforge.db` with any SQLite browser (stop the app first if you write to it).
 - **Uploaded media (local provider):** files are under `storage/media/<tenant>/<yyyy>/<MM>/`; the `MediaFiles.RelativePath`
   column holds each file's key.
@@ -121,7 +127,7 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 - Never write runtime files under the content root; use `IFileStorage` (or the OS temp directory for transient
   work). `ReadOnlyDeploymentTests` enforces this.
 - No inline `<script>`, event-handler attributes or `<style>` in views (the Content-Security-Policy blocks them in
-  production); put behaviour in `wwwroot/js` (e.g. `data-confirm` handled by `site.js`) and styles in `wwwroot/css`.
+  production); put behaviour in `src/DotNetForge.Web/wwwroot/js` (e.g. `data-confirm` handled by `site.js`) and styles in `src/DotNetForge.Web/wwwroot/css`.
 - Follow the [architectural rules](../architecture/codebase.md#architectural-rules-for-changes).
 
 ## Troubleshooting
@@ -130,7 +136,7 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 - **Cause:** missing/invalid `.env` or environment variable.
 - **Fix:** copy `.env.example` to `.env`; `DATABASE_PROVIDER` must be `sqlite` or `postgresql`; PostgreSQL needs
   `DATABASE_CONNECTION_STRING`; `APP_URL` must be absolute; `STORAGE_PROVIDER=s3` needs the bucket and keys.
-- **Outside Development** (e.g. `dotnet run --launch-profile` with `ASPNETCORE_ENVIRONMENT=Production`) the SQLite
+- **Outside Development** (e.g. `dotnet run --project src/DotNetForge.Web --no-launch-profile` with `ASPNETCORE_ENVIRONMENT=Production`) the SQLite
   database and `STORAGE_LOCAL_PATH` must be explicit absolute paths ([configuration](../features/configuration.md)).
 
 ### Every page redirects to `/setup`
@@ -178,7 +184,7 @@ testing and linting targets in [testing → Planned](testing.md#planned-not-impl
 | --- | --- | --- |
 | Node.js + npm (optional) | `npm install`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | no `package.json`, no ESLint |
 | Run URL | the app is reached at `APP_URL` | Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS`; see [configuration → Planned](../features/configuration.md#planned-not-implemented) |
-| PostgreSQL end to end | create the database and a user; set `DATABASE_PROVIDER=postgresql` and the connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `compose.dev.yml` |
+| PostgreSQL end to end | create the database and a user; set `DATABASE_PROVIDER=postgresql` and the connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `docker/compose.dev.yml` |
 | Switching provider | only a `.env` change plus migrations | ✔ for an empty database; moving existing data between providers belongs to [transfer and updates](../features/transfer-and-updates.md) |
 
 **Adding API endpoints** (beyond the [conventions for new endpoints](../features/headless-api.md#conventions-for-new-endpoints),

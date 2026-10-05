@@ -22,13 +22,13 @@ theme. Extension discovery and manifests: [extensions](extensions.md). Per-page 
 
 | Screen | View | Layout and styles |
 | --- | --- | --- |
-| [Public content page](../pages/public-page.md) and root page | `Views/Home/Page.cshtml` | `Layout = null`; own document with inline CSS |
-| [Public home](../pages/public-home.md) fallback list, error | `Views/Home/Index.cshtml`, `Views/Home/Error.cshtml` | `Views/Shared/_Layout.cshtml` + `wwwroot/css/site.css` |
+| [Public content page](../pages/public-page.md) and root page | `src/DotNetForge.Web/Views/Home/Page.cshtml` | `Layout = null`; own document with inline CSS |
+| [Public home](../pages/public-home.md) fallback list, error | `src/DotNetForge.Web/Views/Home/Index.cshtml`, `src/DotNetForge.Web/Views/Home/Error.cshtml` | `src/DotNetForge.Web/Views/Shared/_Layout.cshtml` + `src/DotNetForge.Web/wwwroot/css/site.css` |
 
 ### Isolation today
 
-- Admin screens use `Areas/Admin/Views/Shared/_AdminLayout.cshtml` (`site.css` + `admin.css`).
-- Setup, sign-in and access denied use `Views/Shared/_AuthLayout.cshtml` (`site.css`).
+- Admin screens use `src/DotNetForge.Web/Areas/Admin/Views/Shared/_AdminLayout.cshtml` (`site.css` + `admin.css`).
+- Setup, sign-in and access denied use `src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml` (`site.css`).
 - `site.css` is shared by `_Layout`, `_AuthLayout` and `_AdminLayout`, so a theme must ship its own stylesheet and
   never replace `site.css`.
 - `UseStaticFiles` serves only `wwwroot`; nothing serves files from `extensions/themes/`.
@@ -171,7 +171,7 @@ In multi-tenant deployments theme management is limited to the user's tenants, e
 | Discover theme manifests | `ExtensionLoader.Discover` (already finds them); filter `type == "theme"` in a new theme service, not in controllers |
 | Theme-specific manifest checks (layouts, assets, compatibility) | `ManifestValidator` + `tests/DotNetForge.Tests/ManifestValidationTests.cs` |
 | Read/edit the default theme | `Tenant.DefaultTheme` (column exists); add the edit to a Settings screen ([admin screens](../architecture/pages.md)) |
-| Choose layout/view per request | `HomeController.Index` / `RenderPage` after a page matches; replace `Layout = null` in `Views/Home/Page.cshtml` with the theme layout |
+| Choose layout/view per request | `HomeController.Index` / `RenderPage` after a page matches; replace `Layout = null` in `src/DotNetForge.Web/Views/Home/Page.cshtml` with the theme layout |
 | Theme views | runtime Razor compilation already resolves `~/extensions/...` (`DependencyRegistration`) |
 | Serve theme assets | a guarded endpoint like `ExtensionViewController.Resource` (`Path.GetFullPath` + prefix check); never expose `extensions/` through `UseStaticFiles` |
 | Per-page theme/layout fields | `Page` entity → migration → form, following [content pages and routing → Where to change things](content-pages-and-routing.md#where-to-change-things) |

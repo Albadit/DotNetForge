@@ -52,4 +52,4 @@ Removed as dead code in the production-readiness pass: `FileSystemEmailSender`, 
 `SlugHelper`, `Result<T>`, `Roles.IsBuiltIn`, `AuthService.GetRolesAsync`, `InstallationStatusCache.KnownInstalled`,
 `ModulePlaceholderViewModel.Tokens`, and the unused `storage/backups|logs|updates` folders. Now in use:
 `IPermissionService` (content and media permission checks), `IFileStorage`, `Roles.AdminCapable` (the `AdminArea`
-policy), `wwwroot/js/site.js` (`data-confirm`), `AuditActions.MediaUploaded`/`CmsInstalled`.
+policy), `src/DotNetForge.Web/wwwroot/js/site.js` (`data-confirm`), `AuditActions.MediaUploaded`/`CmsInstalled`.

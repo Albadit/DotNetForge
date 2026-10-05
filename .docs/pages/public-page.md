@@ -19,10 +19,10 @@ Rules: [content pages and routing](../features/content-pages-and-routing.md).
 
 ```text
 Program.cs                      app.MapFallbackToController("RenderPage", "Home")
-Controllers/HomeController.cs   RenderPage(), Live()
-Views/Home/Page.cshtml          standalone document (Layout = null), links page.css
-wwwroot/css/page.css            styles of the standalone page (moved out of an inline <style>)
-Middleware/SecurityHeadersMiddleware.cs   CSP and other security headers on every response
+src/DotNetForge.Web/Controllers/HomeController.cs   RenderPage(), Live()
+src/DotNetForge.Web/Views/Home/Page.cshtml          standalone document (Layout = null), links page.css
+src/DotNetForge.Web/wwwroot/css/page.css            styles of the standalone page (moved out of an inline <style>)
+src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs   CSP and other security headers on every response
 ```
 
 ## Page layout
@@ -123,7 +123,7 @@ flowchart TD
   are shadowed by real routes.
 - Matching is case-insensitive; slugs are stored lower-case.
 - A dynamic page matches **any** value; the value is displayed, not validated or looked up.
-- The view links its own stylesheet `wwwroot/css/page.css` and does not use `site.css` or `_Layout`. It carries no
+- The view links its own stylesheet `src/DotNetForge.Web/wwwroot/css/page.css` and does not use `site.css` or `_Layout`. It carries no
   inline `<style>` or script.
 - Security headers on every response (`SecurityHeadersMiddleware`): `Content-Security-Policy` with
   `script-src 'self'; style-src 'self'` (report-only in Development), `X-Content-Type-Options: nosniff`,
@@ -187,4 +187,4 @@ and [themes → Acceptance criteria](../features/themes.md#acceptance-criteria).
 - Rendering/theme: replace the `View("Page", ...)` call with a theme-aware view selection; keep resolution in the
   controller. Theme views must not use inline `<script>`/`<style>` or `style="..."` attributes (blocked by the CSP);
   ship them as files under `wwwroot` or the theme's assets.
-- If resolution grows, move it (and `Live`) into a `Services/` class shared with `Index`.
+- If resolution grows, move it (and `Live`) into a `src/DotNetForge.Web/Services/` class shared with `Index`.

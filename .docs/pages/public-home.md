@@ -18,19 +18,19 @@ liveness rules: [content pages and routing](../features/content-pages-and-routin
 ## Relevant source files
 
 ```text
-Controllers/HomeController.cs     Index(), Live()
-Views/Home/Page.cshtml            used when a root page is live (no layout, links wwwroot/css/page.css)
-Views/Home/Index.cshtml           fallback list (uses _Layout)
-Views/Shared/_Layout.cshtml       public layout: header (brand, Admin link), footer
-wwwroot/css/site.css              .hero, .page-list, .public-header, .public-footer
-wwwroot/css/page.css              styles of Page.cshtml (variant A)
-Middleware/SecurityHeadersMiddleware.cs   CSP and other security headers on every response
+src/DotNetForge.Web/Controllers/HomeController.cs     Index(), Live()
+src/DotNetForge.Web/Views/Home/Page.cshtml            used when a root page is live (no layout, links src/DotNetForge.Web/wwwroot/css/page.css)
+src/DotNetForge.Web/Views/Home/Index.cshtml           fallback list (uses _Layout)
+src/DotNetForge.Web/Views/Shared/_Layout.cshtml       public layout: header (brand, Admin link), footer
+src/DotNetForge.Web/wwwroot/css/site.css              .hero, .page-list, .public-header, .public-footer
+src/DotNetForge.Web/wwwroot/css/page.css              styles of Page.cshtml (variant A)
+src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs   CSP and other security headers on every response
 ```
 
 ## Page layout
 
 Variant A - a live root page exists: identical to the [public content page](public-page.md) (styles from
-`wwwroot/css/page.css`, no inline `<style>`).
+`src/DotNetForge.Web/wwwroot/css/page.css`, no inline `<style>`).
 
 Variant B - fallback list:
 

@@ -9,12 +9,12 @@ and `/setup` is redirected to `/setup`. Setup creates the first user with the `S
 
 | Component | File | Responsibility |
 | --- | --- | --- |
-| `InstallationMiddleware` | `Middleware/InstallationMiddleware.cs` | Redirects to `/setup` while uninstalled; redirects `/setup*` to `/admin` once installed |
-| `InstallationStatusCache` | `Services/InstallationStatusCache.cs` | Singleton `volatile bool`; once `true` the DB is never asked again |
+| `InstallationMiddleware` | `src/DotNetForge.Web/Middleware/InstallationMiddleware.cs` | Redirects to `/setup` while uninstalled; redirects `/setup*` to `/admin` once installed |
+| `InstallationStatusCache` | `src/DotNetForge.Web/Services/InstallationStatusCache.cs` | Singleton `volatile bool`; once `true` the DB is never asked again |
 | `IInstallationStore` | `src/DotNetForge.Shared/Stores/IInstallationStore.cs` | Contract: `IsInstalledAsync`, `InstallFirstAdminAsync(User)` |
 | `InstallationStore` | `src/DotNetForge.Data/InstallationStore.cs` | Transactional EF implementation |
 | `IInstallationService` / `InstallationService` | `src/DotNetForge.Core/Installation/` | Validates `SetupRequest`, hashes the password, calls the store |
-| `SetupController` | `Controllers/SetupController.cs` | The wizard screen (`POST` rate limited by the `credentials` policy); marks the cache, signs the new admin in, writes `cms.installed` |
+| `SetupController` | `src/DotNetForge.Web/Controllers/SetupController.cs` | The wizard screen (`POST` rate limited by the `credentials` policy); marks the cache, signs the new admin in, writes `cms.installed` |
 | `SystemState` | `src/DotNetForge.Shared/Entities/SystemState.cs` | Single row (`Id = 1`): `Installed`, `InstalledAtUtc`, `CmsVersion` |
 | `DataSeeder.EnsureSystemStateAsync` | `src/DotNetForge.Data/DataSeeder.cs` | Creates the row with `Installed = false` on first start |
 
@@ -154,7 +154,7 @@ The `.env` part of the same specification is in [configuration → Planned](conf
 - [x] On first run with no installation, all non-setup requests are redirected to the setup screen
   (`InstallationMiddleware`; static assets and `/health` bypass).
 - [x] The setup screen presents First name (optional), Last name (optional), Email, Password and Confirm password
-  (`Views/Setup/Index.cshtml`, `SetupRequest`).
+  (`src/DotNetForge.Web/Views/Setup/Index.cshtml`, `SetupRequest`).
 - [x] Mismatched Password and Confirm password is rejected without creating a user (`InstallationService`).
 - [x] A weak password is rejected without creating a user (`InstallationService`, `PasswordPolicy`).
 - [x] A valid submission creates the first user with the `Super Admin` role and stores the password only as a hash

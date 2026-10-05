@@ -5,9 +5,9 @@
 - Providers: ASP.NET Core defaults (console, debug, event source; EventLog on Windows). No file logging, no
   Serilog - nothing is written to disk, which suits the read-only deployment. In a container, read the console
   output (`docker logs`).
-- Levels: `appsettings.json` → `Default: Information`, `Microsoft.AspNetCore: Warning`,
+- Levels: `src/DotNetForge.Web/appsettings.json` → `Default: Information`, `Microsoft.AspNetCore: Warning`,
   `Microsoft.EntityFrameworkCore.Database.Command: Warning` (SQL is not logged, failed commands are).
-  `appsettings.Development.json` raises `Microsoft.AspNetCore` to `Information`.
+  `src/DotNetForge.Web/appsettings.Development.json` raises `Microsoft.AspNetCore` to `Information`.
 - Startup configuration errors are written to **stderr** with `Console.Error.WriteLine`, before logging exists.
 - User and security actions are recorded as **audit entries**, not logs - see [audit logging](audit-logging.md).
 
@@ -43,7 +43,7 @@ Seen on a healthy start; none needs action unless noted.
 | --- | --- |
 | Startup | `ConfigurationException` → stderr + exit code 1 ([configuration](configuration.md#failure-behaviour)); any DB/migration exception crashes the process |
 | Global (Development) | developer exception page (default when `ASPNETCORE_ENVIRONMENT=Development`) |
-| Global (other) | `app.UseExceptionHandler("/error")` re-executes the request at `/error` **with its original HTTP method** → `HomeController.Error` (`[Route("/error")]`, accepts every method) → `Views/Home/Error.cshtml` ([error screen](../pages/error.md)). A failing form POST therefore renders the error page too |
+| Global (other) | `app.UseExceptionHandler("/error")` re-executes the request at `/error` **with its original HTTP method** → `HomeController.Error` (`[Route("/error")]`, accepts every method) → `src/DotNetForge.Web/Views/Home/Error.cshtml` ([error screen](../pages/error.md)). A failing form POST therefore renders the error page too |
 | Validation | services return a message (`IPageService`, `MediaService.UploadAsync` → `(MediaFile?, string? Error)`) or `Result` (`InstallationService`); controllers add it to `ModelState` and re-render |
 | Storage | see [below](#storage-failures) |
 | Not found | `NotFound()` - empty body; no status-code pages middleware |

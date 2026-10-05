@@ -6,7 +6,7 @@ namespace DotNetForge.Shared.Stores;
 /// <summary>
 /// Persistence operations behind the first-run installation flow. Implemented by the Data layer so
 /// the Core <c>InstallationService</c> can orchestrate setup without depending on EF Core directly
-/// (keeps the Core/Data dependency direction intact - see ARCHITECTURE.md).
+/// (keeps the Core/Data dependency direction intact - see .docs/architecture/overview.md).
 /// </summary>
 public interface IInstallationStore
 {

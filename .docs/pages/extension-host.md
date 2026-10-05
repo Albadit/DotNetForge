@@ -22,16 +22,16 @@ admin extension exists).
 ## Relevant source files
 
 ```text
-Areas/Admin/Controllers/ExtensionsController.cs                         Host
-Areas/Admin/Views/Extensions/Host.cshtml                                iframe (.ext-frame)
-Areas/Admin/Components/AdminExtensionsNavViewComponent.cs               sidebar group
-Areas/Admin/Views/Shared/Components/AdminExtensionsNav/Default.cshtml   sidebar links
-Controllers/ExtensionViewController.cs                                  Render, Resource, settings normalization
-Startup/DependencyRegistration.cs                                       AddRazorRuntimeCompilation + PhysicalFileProvider(contentRoot); IExtensionLoader singleton (root <contentRoot>/extensions)
+src/DotNetForge.Web/Areas/Admin/Controllers/ExtensionsController.cs                         Host
+src/DotNetForge.Web/Areas/Admin/Views/Extensions/Host.cshtml                                iframe (.ext-frame)
+src/DotNetForge.Web/Areas/Admin/Components/AdminExtensionsNavViewComponent.cs               sidebar group
+src/DotNetForge.Web/Areas/Admin/Views/Shared/Components/AdminExtensionsNav/Default.cshtml   sidebar links
+src/DotNetForge.Web/Controllers/ExtensionViewController.cs                                  Render, Resource, settings normalization
+src/DotNetForge.Web/Startup/DependencyRegistration.cs                                       AddRazorRuntimeCompilation + PhysicalFileProvider(ExtensionViewRoot); IExtensionLoader singleton (root env.ExtensionsPath)
 src/DotNetForge.Extensions/ExtensionLoader.cs                           Discover (cached), FindAdminExtension, FileSystemWatcher
 src/DotNetForge.Core/Extensions/IExtensionContracts.cs                  IExtensionLoader, DiscoveredExtension
-Middleware/SecurityHeadersMiddleware.cs                                 CSP / X-Frame-Options for the shell and the iframe document
-DotNetForge.Web.csproj                                                  <None Include="extensions/**" CopyToPublishDirectory="PreserveNewest" />
+src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs                                 CSP / X-Frame-Options for the shell and the iframe document
+src/DotNetForge.Web/DotNetForge.Web.csproj                                                  <None Include="extensions/**" CopyToPublishDirectory="PreserveNewest" />
 extensions/admin/audit-dashboard/**                                     the sample extension
 ```
 
@@ -117,7 +117,7 @@ Inside the iframe, whatever the extension provides (the sample has none).
 
 ```text
 ExtensionsController / ExtensionViewController / AdminExtensionsNavViewComponent
-├── IExtensionLoader (singleton) → ExtensionLoader(IManifestValidator, <contentRoot>/extensions) + FileSystemWatcher
+├── IExtensionLoader (singleton) → ExtensionLoader(IManifestValidator, env.ExtensionsPath) + FileSystemWatcher
 ├── IWebHostEnvironment (ContentRootPath; ExtensionViewController only, for the view path)
 ├── Runtime Razor compilation (PhysicalFileProvider over the content root)
 └── SecurityHeadersMiddleware (CSP, X-Frame-Options: SAMEORIGIN)
@@ -148,7 +148,7 @@ sequenceDiagram
 
 - The URL uses the manifest `id`; the manifest's `routes` array is ignored (the sample declares
   `/admin/ext/audit-dashboard`, which 404s).
-- Discovery is cached in the `ExtensionLoader` singleton. A `FileSystemWatcher` on `<contentRoot>/extensions`
+- Discovery is cached in the `ExtensionLoader` singleton. A `FileSystemWatcher` on `AppEnvironment.ExtensionsPath`
   (filter `dotnetforge.extension.json`, subdirectories included) clears the cache when a manifest is created,
   changed, renamed or deleted, or when the watcher reports an error; a version counter keeps a scan that overlapped a
   change from being cached. If the watcher cannot be created (missing folder at startup, unsupported file system),

@@ -50,7 +50,7 @@ deliverables and the generated-solution deliverables of the specification.
 
 | Item | Status | Notes | Docs |
 | --- | :-: | --- | --- |
-| ASP.NET Core MVC solution | ✔ | web host at the root, no `.sln` | [codebase](architecture/codebase.md) |
+| ASP.NET Core MVC solution | ✔ | `DotNetForge.slnx`; web host in `src/DotNetForge.Web` | [codebase](architecture/codebase.md) |
 | Setup / registration flow | ✔ | | [installation](features/installation.md) |
 | Admin dashboard | ✔ | count cards + system panel; no widgets | [dashboard](pages/dashboard.md) |
 | Admin sidebar / shell | ✔ | full sidebar tree; unbuilt items are placeholders | [pages architecture](architecture/pages.md), [module placeholders](pages/module-placeholders.md) |
@@ -69,7 +69,7 @@ deliverables and the generated-solution deliverables of the specification.
 | Documentation (developer + extension development) | ✔ | `.docs/` | [README](README.md) |
 | Agents folder | ✔ | in `.github/agents/`, not a root `agents/` | [development → Planned](guides/development.md#planned-not-implemented) |
 | Unit test project | ✔ | | [testing](guides/testing.md) |
-| `.env.example`, `.gitignore`, `README.md`, `ARCHITECTURE.md`, `LICENSE` | ✔ | | |
+| `.env.example`, `.gitignore`, `README.md`, `ARCHITECTURE.md`, `LICENSE` | ✔ | architecture summary is [architecture/overview.md](architecture/overview.md), not a root file | |
 
 ## Implementation principles
 
@@ -128,7 +128,8 @@ tenant switching and no private content pages ([authorization](features/authoriz
 ### Rules and validation
 
 - `DATABASE_PROVIDER` is `sqlite` or `postgresql`; anything else is rejected at startup (✔ `EnvConfigurationLoader`).
-- `.env.example`, `.gitignore`, `README.md` and `ARCHITECTURE.md` exist at the repository root (✔).
+- `.env.example`, `.gitignore`, `README.md` and `ARCHITECTURE.md` exist at the repository root (✔, except the
+  architecture summary, kept as `.docs/architecture/overview.md`).
 - Secrets come only from `.env`, which is git-ignored (✔); generated files, logs, uploads, cache and build output are
   git-ignored (✔).
 - Normal operation is impossible until the CMS is installed (✔ `InstallationMiddleware`); the first user gets
@@ -157,7 +158,8 @@ tenant switching and no private content pages ([authorization](features/authoriz
 - [x] The application runs on Windows, macOS and Linux from the same codebase (`ci.yml` matrix).
 - [ ] The CMS operates in Traditional, Headless and Hybrid modes against the same content (headless covers reads and
   content-page creation only).
-- [x] `.env.example`, `.gitignore`, `README.md` and `ARCHITECTURE.md` exist at the repository root.
+- [x] `.env.example`, `.gitignore` and `README.md` exist at the repository root; the architecture summary is
+  `.docs/architecture/overview.md`.
 - [x] Copying `.env.example` to `.env` lets the app start; a missing or invalid `DATABASE_PROVIDER` gives a clear
   error (`EnvConfigurationLoader`).
 - [x] First start redirects to setup; setup creates a Super Admin, marks the CMS installed and redirects to the
