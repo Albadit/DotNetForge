@@ -17,12 +17,9 @@ public sealed class ConfigurationException : Exception
 /// </summary>
 public static class EnvConfigurationLoader
 {
-    public const string ProviderKey = "DATABASE_PROVIDER";
     public const string ConnectionKey = "DATABASE_CONNECTION_STRING";
     public const string AppNameKey = "APP_NAME";
     public const string AppUrlKey = "APP_URL";
-    public const string StorageProviderKey = "STORAGE_PROVIDER";
-    public const string StorageLocalPathKey = "STORAGE_LOCAL_PATH";
     public const string S3ServiceUrlKey = "STORAGE_S3_SERVICE_URL";
     public const string S3BucketKey = "STORAGE_S3_BUCKET";
     public const string S3AccessKeyIdKey = "STORAGE_S3_ACCESS_KEY_ID";
@@ -52,35 +49,8 @@ public static class EnvConfigurationLoader
                 ? envVal
                 : fileValues.TryGetValue(key, out var fileVal) && fileVal.Length > 0 ? fileVal : null;
 
-        var rawProvider = Get(ProviderKey);
-        if (string.IsNullOrWhiteSpace(rawProvider))
-        {
-            if (!File.Exists(envPath))
-            {
-                throw new ConfigurationException(
-                    "Configuration is missing. Copy '.env.example' to '.env' and set DATABASE_PROVIDER " +
-                    "(sqlite or postgresql) before starting the application.");
-            }
-
-            throw new ConfigurationException(
-                $"'{ProviderKey}' is required in .env and must be 'sqlite' or 'postgresql'.");
-        }
-
-        var provider = rawProvider.Trim().ToLowerInvariant() switch
-        {
-            "sqlite" => DatabaseProvider.Sqlite,
-            "postgresql" or "postgres" => DatabaseProvider.PostgreSql,
-            _ => throw new ConfigurationException(
-                $"Invalid {ProviderKey} value '{rawProvider}'. Must be 'sqlite' or 'postgresql'."),
-        };
-
         var connectionString = Get(ConnectionKey);
-        if (provider == DatabaseProvider.PostgreSql && string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new ConfigurationException(
-                $"{ConnectionKey} is required and must be non-empty when {ProviderKey}=postgresql.");
-        }
-
+        var provider = DetectProvider(connectionString);
         if (provider == DatabaseProvider.Sqlite)
         {
             connectionString = ResolveSqlite(connectionString, contentRoot, isDevelopment);
@@ -95,13 +65,52 @@ public static class EnvConfigurationLoader
         return new AppEnvironment
         {
             Provider = provider,
-            RawProvider = rawProvider.Trim(),
             ConnectionString = connectionString,
             AppName = Get(AppNameKey) ?? AppEnvironment.DefaultAppName,
             AppUrl = appUrl,
             Storage = LoadStorage(Get, contentRoot, isDevelopment),
             ExtensionsPath = ResolveExtensionsPath(Get(ExtensionsPathKey), contentRoot),
         };
+    }
+
+    /// <summary>
+    /// The database follows from <c>DATABASE_CONNECTION_STRING</c> (.docs/features/configuration.md#database): empty
+    /// means the SQLite default, <c>Data Source=</c>/<c>Filename=</c> means SQLite, <c>Host=</c>/<c>Server=</c> means
+    /// PostgreSQL. Queries are provider-neutral LINQ, but EF Core still needs the matching driver and migration set.
+    /// </summary>
+    private static DatabaseProvider DetectProvider(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return DatabaseProvider.Sqlite;
+        }
+
+        var trimmed = connectionString.Trim();
+        if (trimmed.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConfigurationException(
+                $"{ConnectionKey} must use the key=value form, not a URL: " +
+                "'Host=<host>;Port=5432;Database=<db>;Username=<user>;Password=<password>'.");
+        }
+
+        var keys = trimmed.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => part.Split('=', 2)[0].Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (keys.Contains("Host") || keys.Contains("Server"))
+        {
+            return DatabaseProvider.PostgreSql;
+        }
+
+        if (keys.Contains("Data Source") || keys.Contains("DataSource") || keys.Contains("Filename"))
+        {
+            return DatabaseProvider.Sqlite;
+        }
+
+        throw new ConfigurationException(
+            $"Cannot tell which database {ConnectionKey} is for. Use 'Data Source=<file>' for SQLite or " +
+            "'Host=<host>;Database=<db>;Username=<user>;Password=<password>' for PostgreSQL, " +
+            "or leave it empty for the development SQLite database.");
     }
 
     /// <summary>
@@ -120,9 +129,9 @@ public static class EnvConfigurationLoader
             if (!isDevelopment)
             {
                 throw new ConfigurationException(
-                    $"{ConnectionKey} is required outside Development when {ProviderKey}=sqlite: the deployment " +
-                    "directory is read-only, so point it at a writable volume " +
-                    "(e.g. 'Data Source=/data/dotnetforge.db') or use PostgreSQL.");
+                    $"{ConnectionKey} is required outside Development: the deployment directory is read-only, so " +
+                    "point it at PostgreSQL ('Host=...;Database=...;Username=...;Password=...') or at a SQLite file on " +
+                    "a writable volume ('Data Source=/data/dotnetforge.db').");
             }
 
             // Development default: storage/ at the repository root (or the content root outside a checkout), never
@@ -141,56 +150,39 @@ public static class EnvConfigurationLoader
         return connectionString;
     }
 
+    /// <summary>
+    /// Uploaded media lives in S3-compatible object storage (.docs/features/media-storage.md). Without any
+    /// <c>STORAGE_S3_*</c> setting, Development falls back to <c>storage/media</c> at the repository root so a fresh
+    /// checkout runs without a bucket; every other environment must configure S3.
+    /// </summary>
     private static StorageSettings LoadStorage(Func<string, string?> get, string contentRoot, bool isDevelopment)
     {
-        var raw = get(StorageProviderKey) ?? "local";
-        var provider = raw.Trim().ToLowerInvariant() switch
+        string[] s3Keys = { S3ServiceUrlKey, S3BucketKey, S3AccessKeyIdKey, S3SecretAccessKeyKey, S3RegionKey };
+        if (s3Keys.Any(key => get(key) is not null))
         {
-            "local" => StorageProvider.Local,
-            "s3" => StorageProvider.S3,
-            _ => throw new ConfigurationException(
-                $"Invalid {StorageProviderKey} value '{raw}'. Must be 'local' or 's3'."),
+            return LoadS3Storage(get);
+        }
+
+        if (!isDevelopment)
+        {
+            throw new ConfigurationException(
+                "File storage is not configured: outside Development uploaded media is stored in S3-compatible object " +
+                $"storage. Set {S3BucketKey}, {S3AccessKeyIdKey} and {S3SecretAccessKeyKey}, plus {S3ServiceUrlKey} " +
+                $"(Cloudflare R2, MinIO, Supabase) or {S3RegionKey} (AWS S3).");
+        }
+
+        return new StorageSettings
+        {
+            Provider = StorageProvider.Local,
+            LocalPath = Path.Combine(AppPaths.DevelopmentDataRoot(contentRoot), "storage", "media"),
         };
-
-        return provider == StorageProvider.Local
-            ? LoadLocalStorage(get, contentRoot, isDevelopment)
-            : LoadS3Storage(get);
-    }
-
-    private static StorageSettings LoadLocalStorage(Func<string, string?> get, string contentRoot, bool isDevelopment)
-    {
-        var path = get(StorageLocalPathKey);
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            if (!isDevelopment)
-            {
-                throw new ConfigurationException(
-                    $"{StorageLocalPathKey} is required outside Development when {StorageProviderKey}=local " +
-                    "(an absolute path on a writable volume), or use STORAGE_PROVIDER=s3.");
-            }
-
-            path = Path.Combine(AppPaths.DevelopmentDataRoot(contentRoot), "storage", "media");
-        }
-        else if (!Path.IsPathRooted(path))
-        {
-            if (!isDevelopment)
-            {
-                throw new ConfigurationException(
-                    $"{StorageLocalPathKey} must be an absolute path outside Development (got '{path}').");
-            }
-
-            // Same anchor as the defaults: relative to the repository root, where .env lives in a checkout.
-            path = Path.Combine(AppPaths.DevelopmentDataRoot(contentRoot), path);
-        }
-
-        return new StorageSettings { Provider = StorageProvider.Local, LocalPath = Path.GetFullPath(path) };
     }
 
     private static StorageSettings LoadS3Storage(Func<string, string?> get)
     {
         string Require(string key) => get(key) is { } value && !string.IsNullOrWhiteSpace(value)
             ? value.Trim()
-            : throw new ConfigurationException($"{key} is required when {StorageProviderKey}=s3.");
+            : throw new ConfigurationException($"{key} is required for S3 storage.");
 
         var serviceUrl = get(S3ServiceUrlKey)?.Trim();
         if (serviceUrl is not null && !Uri.TryCreate(serviceUrl, UriKind.Absolute, out _))

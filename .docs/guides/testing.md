@@ -71,7 +71,7 @@ variables** before the host builds:
 
 | Variable | Value |
 | --- | --- |
-| `DATABASE_PROVIDER` / `DATABASE_CONNECTION_STRING` | `sqlite` / `Data Source=<workdir>/cms.db`, or PostgreSQL when `DNF_TEST_POSTGRES` is set |
+| `DATABASE_CONNECTION_STRING` | `Data Source=<workdir>/cms.db` (SQLite), or a fresh PostgreSQL database when `DNF_TEST_POSTGRES` is set |
 | `STORAGE_PROVIDER` / `STORAGE_LOCAL_PATH` | `local` / `<workdir>/media` (exposed as `factory.StoragePath`) |
 | `APP_URL` | `http://localhost` |
 

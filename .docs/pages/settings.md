@@ -159,7 +159,7 @@ diagnostics, two logo uploads, a **Check for updates** action, a system health i
 | Available CMS updates | version or "Up to date" | update check service, links to [transfer and updates](../features/transfer-and-updates.md) | ✘ |
 | C# language version | string | build/runtime | ✘ |
 | ASP.NET Core version | string | runtime | ✘ |
-| Database provider | `sqlite` \| `postgresql` | `.env` `DATABASE_PROVIDER` | ✔ `AppEnvironment.Provider` / `RawProvider` (not displayed) |
+| Database provider | `sqlite` \| `postgresql` | detected from `DATABASE_CONNECTION_STRING` | ✔ `AppEnvironment.Provider` (not displayed) |
 | Environment | e.g. `Development`, `Production` | hosting environment | ✔ `IWebHostEnvironment.EnvironmentName` (not displayed) |
 | Installed extensions | count (optional list) | extension registry ([extensions](../features/extensions.md)) | `InstalledExtensions` is never written; on-disk discovery is `IExtensionLoader.Discover` |
 | System health | `Healthy` \| `Degraded` \| `Unhealthy` + per-check detail | health check service | ✘ (`GET /health` returns a static `ok`) |
@@ -255,7 +255,7 @@ and `Admin` can open this screen and save tenant settings (fixed role check, not
 - [ ] The Overview shows CMS version, available updates, C# version, ASP.NET Core version, database provider,
   environment, installed extensions and system health.
 - [ ] All diagnostic fields are read-only.
-- [ ] The provider shown matches `DATABASE_PROVIDER`, and no connection string or secret is displayed.
+- [ ] The provider shown matches the configured database, and no connection string or secret is displayed.
 - [ ] A user with `Settings` write can upload an admin menu logo, and it appears in the admin sidebar/header.
 - [ ] A user with `Settings` write can upload a login logo, and it appears on the sign-in and setup screens.
 - [ ] Clearing either logo reverts the surface to the built-in default.

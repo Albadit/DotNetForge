@@ -81,7 +81,9 @@ To run the production image locally with a read-only filesystem, see [deployment
 
 ## Database and migrations
 
-The provider is chosen by `DATABASE_PROVIDER`. Each provider has its own migration set, applied at startup:
+The database follows from `DATABASE_CONNECTION_STRING`: empty or `Data Source=…` is SQLite, `Host=…` is PostgreSQL
+([configuration → Database](../features/configuration.md#database)). Each provider has its own migration set,
+applied at startup:
 SQLite `src/DotNetForge.Data/Migrations/` (`DotNetForgeDbContext`), PostgreSQL
 `src/DotNetForge.Data/Migrations/PostgreSql/` (`PostgreSqlDbContext`). Details: [database.md](../architecture/database.md).
 
@@ -134,8 +136,8 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 
 ### The app exits immediately with "Configuration error"
 - **Cause:** missing/invalid `.env` or environment variable.
-- **Fix:** copy `.env.example` to `.env`; `DATABASE_PROVIDER` must be `sqlite` or `postgresql`; PostgreSQL needs
-  `DATABASE_CONNECTION_STRING`; `APP_URL` must be absolute; `STORAGE_PROVIDER=s3` needs the bucket and keys.
+- **Fix:** `DATABASE_CONNECTION_STRING` must be empty (SQLite, Development only), `Data Source=…` (SQLite) or
+  `Host=…;Database=…` (PostgreSQL); `APP_URL` must be absolute; `STORAGE_PROVIDER=s3` needs the bucket and keys.
 - **Outside Development** (e.g. `dotnet run --project src/DotNetForge.Web --no-launch-profile` with `ASPNETCORE_ENVIRONMENT=Production`) the SQLite
   database and `STORAGE_LOCAL_PATH` must be explicit absolute paths ([configuration](../features/configuration.md)).
 
@@ -184,7 +186,7 @@ testing and linting targets in [testing → Planned](testing.md#planned-not-impl
 | --- | --- | --- |
 | Node.js + npm (optional) | `npm install`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | no `package.json`, no ESLint |
 | Run URL | the app is reached at `APP_URL` | Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS`; see [configuration → Planned](../features/configuration.md#planned-not-implemented) |
-| PostgreSQL end to end | create the database and a user; set `DATABASE_PROVIDER=postgresql` and the connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `docker/compose.dev.yml` |
+| PostgreSQL end to end | create the database and a user; set the `Host=…` connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `docker/compose.dev.yml` |
 | Switching provider | only a `.env` change plus migrations | ✔ for an empty database; moving existing data between providers belongs to [transfer and updates](../features/transfer-and-updates.md) |
 
 **Adding API endpoints** (beyond the [conventions for new endpoints](../features/headless-api.md#conventions-for-new-endpoints),
@@ -231,7 +233,7 @@ repository keeps the same six files in `.github/agents/`, as short quick referen
 - [x] Using SQLite is documented end to end, including the connection string and migrations (this guide,
   [configuration](../features/configuration.md), [database](../architecture/database.md)).
 - [x] Using PostgreSQL is documented end to end, including migrations ([Developing against PostgreSQL and S3](#developing-against-postgresql-and-s3), [Database and migrations](#database-and-migrations); `PostgreSqlDbContext` migrations).
-- [x] Switching providers requires only a `DATABASE_PROVIDER`/connection-string change plus migrations (both providers migrate at startup - `DatabaseInitializer`; data is not copied).
+- [x] Switching providers requires only a connection-string change plus migrations (both providers migrate at startup - `DatabaseInitializer`; data is not copied).
 - [ ] Creating API endpoints is documented with permission checks, input validation **and tenant-aware resolution**
   (first two ✔ in [headless API](../features/headless-api.md#conventions-for-new-endpoints); tenant resolution does
   not exist).

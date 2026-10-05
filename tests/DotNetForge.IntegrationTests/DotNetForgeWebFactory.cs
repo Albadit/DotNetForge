@@ -1,13 +1,16 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using DotNetForge.Abstractions.Security;
+using DotNetForge.Abstractions.Storage;
 using DotNetForge.Data;
+using DotNetForge.Infrastructure.Storage;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Shared.Stores;
 using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +21,12 @@ namespace DotNetForge.IntegrationTests;
 /// so each test gets a fresh, fully-migrated CMS and nothing is written inside the repository. Configuration is
 /// supplied through environment variables (read by the host's .env loader) before the host builds.
 /// </summary>
+/// <remarks>
+/// Media storage: the host requires S3 outside Development, so the factory supplies placeholder S3 settings and
+/// replaces <see cref="IFileStorage"/> with a <see cref="LocalFileStorage"/> in <see cref="StoragePath"/>. Tests
+/// therefore need no S3 server; the S3 implementation itself is covered by the live contract tests
+/// (<c>DNF_TEST_S3_*</c>, .docs/guides/testing.md).
+/// </remarks>
 /// <remarks>
 /// SQLite by default. Set <c>DNF_TEST_POSTGRES</c> to a server connection string without a database (e.g.
 /// <c>Host=localhost;Port=5432;Username=postgres;Password=postgres</c>) to run the same tests against PostgreSQL;
@@ -41,25 +50,29 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
         var postgres = Environment.GetEnvironmentVariable("DNF_TEST_POSTGRES");
         if (string.IsNullOrWhiteSpace(postgres))
         {
-            Environment.SetEnvironmentVariable("DATABASE_PROVIDER", "sqlite");
             Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING", $"Data Source={Path.Combine(_workDir, "cms.db")}");
         }
         else
         {
-            Environment.SetEnvironmentVariable("DATABASE_PROVIDER", "postgresql");
             Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING",
                 $"{postgres.TrimEnd(';')};Database=dnf_it_{Guid.NewGuid():N}");
         }
 
         Environment.SetEnvironmentVariable("APP_URL", "http://localhost");
-        Environment.SetEnvironmentVariable("STORAGE_PROVIDER", "local");
-        Environment.SetEnvironmentVariable("STORAGE_LOCAL_PATH", StoragePath);
+        Environment.SetEnvironmentVariable("STORAGE_S3_SERVICE_URL", "http://127.0.0.1:9");
+        Environment.SetEnvironmentVariable("STORAGE_S3_BUCKET", "test");
+        Environment.SetEnvironmentVariable("STORAGE_S3_ACCESS_KEY_ID", "test");
+        Environment.SetEnvironmentVariable("STORAGE_S3_SECRET_ACCESS_KEY", "test");
     }
 
     /// <summary>Where this factory's uploaded media is stored.</summary>
     public string StoragePath { get; }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment(_environment);
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment(_environment);
+        builder.ConfigureTestServices(services => services.AddSingleton<IFileStorage>(new LocalFileStorage(StoragePath)));
+    }
 
     /// <summary>Programmatically completes installation (creates the first Super Admin).</summary>
     public async Task InstallAsync()

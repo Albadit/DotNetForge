@@ -7,10 +7,12 @@ storage key ([media storage](../features/media-storage.md#storage-architecture))
 
 ## Providers
 
-| `DATABASE_PROVIDER` | EF provider | Context type | Schema at startup | Default connection |
+The provider is detected from `DATABASE_CONNECTION_STRING` ([configuration → Database](../features/configuration.md#database)):
+
+| Connection string | EF provider | Context type | Schema at startup | Default connection |
 | --- | --- | --- | --- | --- |
-| `sqlite` | `UseSqlite` | `DotNetForgeDbContext` | `Database.MigrateAsync()` - applies `Migrations/` | Development: `Data Source=<contentRoot>/storage/dotnetforge.db` (anchored to the content root). Elsewhere none: `DATABASE_CONNECTION_STRING` is required with an **absolute** `Data Source` (or in-memory). |
-| `postgresql` / `postgres` | `UseNpgsql` | `PostgreSqlDbContext` | `Database.MigrateAsync()` - applies `Migrations/PostgreSql/` | none - `DATABASE_CONNECTION_STRING` is required |
+| empty, or `Data Source=…` / `Filename=…` | `UseSqlite` | `DotNetForgeDbContext` | `Database.MigrateAsync()` - applies `Migrations/` | Development: `Data Source=<repository root>/storage/dotnetforge.db`. Elsewhere none: an **absolute** `Data Source` (or in-memory) is required. |
+| `Host=…` / `Server=…` | `UseNpgsql` | `PostgreSqlDbContext` | `Database.MigrateAsync()` - applies `Migrations/PostgreSql/` | none |
 
 Both providers are on real migrations; `EnsureCreated` is no longer used (`DatabaseInitializer.InitializeAsync`).
 PostgreSQL is the recommended production database ([deployment → database](../guides/deployment.md#database)).

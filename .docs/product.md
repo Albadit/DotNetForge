@@ -127,7 +127,8 @@ tenant switching and no private content pages ([authorization](features/authoriz
 
 ### Rules and validation
 
-- `DATABASE_PROVIDER` is `sqlite` or `postgresql`; anything else is rejected at startup (✔ `EnvConfigurationLoader`).
+- The database is SQLite or PostgreSQL, detected from `DATABASE_CONNECTION_STRING`; anything else is rejected at
+  startup (✔ `EnvConfigurationLoader`; the spec's `DATABASE_PROVIDER` key was removed).
 - `.env.example`, `.gitignore`, `README.md` and `ARCHITECTURE.md` exist at the repository root (✔, except the
   architecture summary, kept as `.docs/architecture/overview.md`).
 - Secrets come only from `.env`, which is git-ignored (✔); generated files, logs, uploads, cache and build output are
@@ -160,8 +161,8 @@ tenant switching and no private content pages ([authorization](features/authoriz
   content-page creation only).
 - [x] `.env.example`, `.gitignore` and `README.md` exist at the repository root; the architecture summary is
   `.docs/architecture/overview.md`.
-- [x] Copying `.env.example` to `.env` lets the app start; a missing or invalid `DATABASE_PROVIDER` gives a clear
-  error (`EnvConfigurationLoader`).
+- [x] Copying `.env.example` to `.env` lets the app start; an unsupported connection string gives a clear error
+  (`EnvConfigurationLoader`).
 - [x] First start redirects to setup; setup creates a Super Admin, marks the CMS installed and redirects to the
   dashboard (`InstallationMiddleware`, `InstallationService`, `SetupController`).
 - [x] SQLite (default) and PostgreSQL are both selectable and functional (`DbProviderConfigurator`; both migrate at startup,

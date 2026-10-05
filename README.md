@@ -39,7 +39,7 @@ to S3-compatible object storage (Cloudflare R2 recommended), and the Data Protec
 
 ```bash
 docker build -f docker/Dockerfile -t dotnetforge .
-docker run --read-only --tmpfs /tmp -p 8080:8080 -e DATABASE_PROVIDER=postgresql -e DATABASE_CONNECTION_STRING=... \
+docker run --read-only --tmpfs /tmp -p 8080:8080 -e "DATABASE_CONNECTION_STRING=Host=...;Database=..." \
   -e STORAGE_PROVIDER=s3 -e STORAGE_S3_SERVICE_URL=... -e STORAGE_S3_BUCKET=... \
   -e STORAGE_S3_ACCESS_KEY_ID=... -e STORAGE_S3_SECRET_ACCESS_KEY=... dotnetforge
 ```
@@ -67,8 +67,7 @@ Copy `.env.example` to `.env` and set the values. Secrets are **never** committe
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `DATABASE_PROVIDER` | Yes | `sqlite` (default) or `postgresql`. Any other value aborts startup. |
-| `DATABASE_CONNECTION_STRING` | Conditional | Empty allowed for SQLite in Development (uses `storage/dotnetforge.db` at the repository root); **required** for PostgreSQL. |
+| `DATABASE_CONNECTION_STRING` | Outside Development | Decides the database: empty = SQLite at `storage/dotnetforge.db` (Development only), `Data Source=…` = SQLite, `Host=…` = PostgreSQL. |
 | `APP_NAME` | No | Display name. Defaults to `DotNetForge CMS`. |
 | `APP_URL` | No | Public base URL, e.g. `http://localhost:5000`. Must be absolute; currently only validated. |
 | `STORAGE_PROVIDER` | No | `local` (default) or `s3`; S3 needs `STORAGE_S3_*` (bucket, keys, endpoint). |
@@ -81,9 +80,10 @@ Full reference: [.docs/features/configuration.md](.docs/features/configuration.m
 ### Switching to PostgreSQL
 
 ```env
-DATABASE_PROVIDER=postgresql
 DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres
 ```
+
+The `Host=` key is what selects PostgreSQL; there is no separate provider setting.
 
 Both providers apply their committed EF Core migrations on startup; see
 [.docs/architecture/database.md](.docs/architecture/database.md).

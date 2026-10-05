@@ -14,7 +14,7 @@ only reserved folders, a version column and a few flags exist.
 | `PermissionAreas.Updates` | `src/DotNetForge.Shared/Constants/Permissions.cs` | in `PermissionMatrix` only Super Admin is granted it (Admin gets nothing - asserted in `PermissionTests`); seeded as `RolePermission` rows, **not enforced** ([authorization](authorization.md)) |
 | `InstalledExtension.UpdateAvailable` | `src/DotNetForge.Shared/Entities/InstalledExtension.cs` | returned by `GET /api/extensions`; `InstalledExtensions` is never written, so always empty |
 | Schema creation | `src/DotNetForge.Data/DatabaseInitializer.cs` | `MigrateAsync` for both providers, each with its own migration set (`Migrations/` for SQLite, `Migrations/PostgreSql/` for PostgreSQL), applied at startup ([database](../architecture/database.md)) |
-| Provider selection | `DATABASE_PROVIDER` = `sqlite` \| `postgresql` (`postgres` accepted), `DbProviderConfigurator` | ✔ one provider per process; no cross-provider tooling |
+| Provider selection | detected from `DATABASE_CONNECTION_STRING` (`EnvConfigurationLoader`), applied by `DbProviderConfigurator` | ✔ one provider per process; no cross-provider tooling |
 | Core / extensions / runtime split | `src/` (web host in `src/DotNetForge.Web`); `extensions/` at the repository root (outside every project, discovered by `ExtensionLoader` under `AppEnvironment.ExtensionsPath`); `storage/` | ✔ folders separated |
 | `.gitignore` | repository root | ignores `.env`/`.env.*` (keeps `.env.example`), `bin/`, `obj/`, `storage/{media,backups,logs,updates}/*`, `*.db*`, `node_modules/`, test output; **not** `out/`, `publish/`, `*.log`, `.cache/` |
 

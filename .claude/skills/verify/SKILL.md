@@ -42,7 +42,7 @@ for p in src/*/*.csproj tests/*/*.csproj; do dotnet format "$p" --verify-no-chan
 Use a throwaway database and storage folder so the developer's `storage/` is untouched, and a free port:
 
 ```bash
-export DATABASE_PROVIDER=sqlite DATABASE_CONNECTION_STRING="Data Source=<scratch>/verify.db" \
+export DATABASE_CONNECTION_STRING="Data Source=<scratch>/verify.db" \
        STORAGE_LOCAL_PATH=<scratch>/media ASPNETCORE_URLS=http://localhost:5077 ASPNETCORE_ENVIRONMENT=Development
 dotnet run --project src/DotNetForge.Web --no-build --no-launch-profile &   # after dotnet build; honours ASPNETCORE_URLS
 curl -s http://localhost:5077/health                 # {"status":"ok",...}
@@ -52,7 +52,7 @@ Read-only check of the real image (what CI's `read-only-container` job does):
 
 ```bash
 docker build -f docker/Dockerfile -t dnf-check .
-docker run -d --name dnf-check --read-only --tmpfs /tmp -p 5078:8080 -e DATABASE_PROVIDER=sqlite \
+docker run -d --name dnf-check --read-only --tmpfs /tmp -p 5078:8080 \
   -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" -e STORAGE_LOCAL_PATH=/tmp/media dnf-check
 curl -s http://localhost:5078/health && docker diff dnf-check   # diff must be empty
 docker rm -f dnf-check

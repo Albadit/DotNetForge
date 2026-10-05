@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Data;
 
 /// <summary>
-/// Centralizes how the EF Core context is bound to the active provider selected from <c>.env</c>
+/// Centralizes how the EF Core context is bound to the provider detected from the connection string
 /// (SQLite default / PostgreSQL). Used by both the web host and the design-time factories so provider
 /// selection lives in exactly one place (.docs/architecture/database.md).
 /// </summary>

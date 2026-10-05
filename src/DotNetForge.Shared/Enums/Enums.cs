@@ -1,13 +1,16 @@
 namespace DotNetForge.Shared.Enums;
 
-/// <summary>Supported database providers, selected from <c>DATABASE_PROVIDER</c> in <c>.env</c>.</summary>
+/// <summary>Supported database providers, detected from <c>DATABASE_CONNECTION_STRING</c> (empty = SQLite).</summary>
 public enum DatabaseProvider
 {
     Sqlite = 0,
     PostgreSql = 1,
 }
 
-/// <summary>Object-storage backend, selected from <c>STORAGE_PROVIDER</c> in <c>.env</c>.</summary>
+/// <summary>
+/// Where uploaded media is stored: <see cref="S3"/> whenever <c>STORAGE_S3_*</c> is configured; <see cref="Local"/>
+/// only as the Development fallback (<c>storage/media</c>) when it is not.
+/// </summary>
 public enum StorageProvider
 {
     Local = 0,

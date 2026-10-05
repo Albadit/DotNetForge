@@ -6,7 +6,8 @@ same data. Full documentation: [`.docs/README.md`](../../.docs/README.md).
 
 ## Orientation
 
-- Configuration: `.env` (copy `.env.example`). `DATABASE_PROVIDER` is `sqlite` (default) or `postgresql`.
+- Configuration: `.env` (copy `.env.example`). `DATABASE_CONNECTION_STRING` decides the database: empty or
+  `Data Source=…` is SQLite, `Host=…` is PostgreSQL.
   See [configuration](../../.docs/features/configuration.md).
 - First run: every request redirects to `/setup`; it creates the first **Super Admin** and sets
   `SystemState.Installed`. Afterwards `/setup` redirects to `/admin`. See [installation](../../.docs/features/installation.md).

@@ -39,13 +39,17 @@ public sealed class ReadOnlyDeploymentTests
     [Theory]
     [InlineData("DATABASE_CONNECTION_STRING", "Data Source=relative.db", "absolute path")]
     [InlineData("DATABASE_CONNECTION_STRING", "", "DATABASE_CONNECTION_STRING is required outside Development")]
-    [InlineData("STORAGE_LOCAL_PATH", "", "STORAGE_LOCAL_PATH is required outside Development")]
-    [InlineData("STORAGE_LOCAL_PATH", "storage/media", "must be an absolute path")]
     public void Production_refuses_paths_inside_the_deployment_directory(string key, string value, string expected)
     {
         using var factory = new DotNetForgeWebFactory("Production"); // sets valid values first
-        var saved = new[] { key, "DATABASE_PROVIDER" }.ToDictionary(k => k, Environment.GetEnvironmentVariable);
-        Environment.SetEnvironmentVariable("DATABASE_PROVIDER", "sqlite"); // the SQLite path rules are under test
+        var saved = new[] { key, "DATABASE_CONNECTION_STRING" }.Distinct().ToDictionary(k => k, Environment.GetEnvironmentVariable);
+        if (key != "DATABASE_CONNECTION_STRING")
+        {
+            // The SQLite path rules are under test, also when DNF_TEST_POSTGRES points the factory at PostgreSQL.
+            Environment.SetEnvironmentVariable(
+                "DATABASE_CONNECTION_STRING", $"Data Source={Path.Combine(Path.GetTempPath(), "dnf.db")}");
+        }
+
         Environment.SetEnvironmentVariable(key, value);
         try
         {

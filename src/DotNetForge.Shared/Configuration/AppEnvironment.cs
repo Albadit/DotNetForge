@@ -11,10 +11,8 @@ public sealed class AppEnvironment
     public const string DefaultAppName = "DotNetForge CMS";
     public const string DefaultAppUrl = "http://localhost:5000";
 
+    /// <summary>Detected from <see cref="ConnectionString"/> by the loader (empty = SQLite).</summary>
     public DatabaseProvider Provider { get; set; } = DatabaseProvider.Sqlite;
-
-    /// <summary>Raw provider value as written in <c>.env</c> (for diagnostics).</summary>
-    public string RawProvider { get; set; } = "sqlite";
 
     public string? ConnectionString { get; set; }
 
@@ -46,21 +44,20 @@ public sealed class AppEnvironment
         {
             DatabaseProvider.Sqlite => "Data Source=storage/dotnetforge.db",
             _ => throw new InvalidOperationException(
-                "DATABASE_CONNECTION_STRING is required when DATABASE_PROVIDER=postgresql."),
+                "A PostgreSQL connection string is required (DATABASE_CONNECTION_STRING=Host=...)."),
         };
     }
 }
 
 /// <summary>
-/// Object-storage configuration. <see cref="StorageProvider.Local"/> writes to a directory (development, or a
-/// mounted volume); <see cref="StorageProvider.S3"/> talks to any S3-compatible service (Cloudflare R2, AWS S3,
+/// Object-storage configuration. <see cref="StorageProvider.S3"/> talks to any S3-compatible service (Cloudflare R2, AWS S3,
 /// MinIO, Supabase Storage's S3 endpoint).
 /// </summary>
 public sealed class StorageSettings
 {
     public StorageProvider Provider { get; set; } = StorageProvider.Local;
 
-    /// <summary>Absolute directory for <see cref="StorageProvider.Local"/>.</summary>
+    /// <summary>Absolute directory for <see cref="StorageProvider.Local"/> (the Development fallback).</summary>
     public string LocalPath { get; set; } = string.Empty;
 
     /// <summary>Custom endpoint (R2, MinIO, Supabase). Empty means AWS S3 in <see cref="S3Region"/>.</summary>

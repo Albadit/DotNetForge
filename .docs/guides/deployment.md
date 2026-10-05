@@ -45,8 +45,7 @@ your platform's secret store, never in the image or the repository.
 | Variable | Production value | Secret | Notes |
 | --- | --- | :-: | --- |
 | `ASPNETCORE_ENVIRONMENT` | `Production` (image default) | | Enables the production rules, HSTS, enforced CSP, Secure cookies |
-| `DATABASE_PROVIDER` | `postgresql` (or `sqlite`) | | |
-| `DATABASE_CONNECTION_STRING` | `Host=…;Database=dotnetforge;Username=…;Password=…;GSS Encryption Mode=Disable` | ✔ | SQLite: `Data Source=/data/dotnetforge.db` on a volume |
+| `DATABASE_CONNECTION_STRING` | `Host=…;Database=dotnetforge;Username=…;Password=…;GSS Encryption Mode=Disable` | ✔ | decides the database: `Host=…` is PostgreSQL; SQLite: `Data Source=/data/dotnetforge.db` on a volume |
 | `APP_NAME` | display name | | |
 | `APP_URL` | public base URL | | validated, not used for links yet |
 | `STORAGE_PROVIDER` | `s3` (or `local` with a volume) | | |
@@ -75,7 +74,6 @@ docker build -f docker/Dockerfile -t dotnetforge .
 docker run -d --name dotnetforge \
   --read-only --tmpfs /tmp \
   -p 8080:8080 \
-  -e DATABASE_PROVIDER=postgresql \
   -e "DATABASE_CONNECTION_STRING=Host=db;Database=dotnetforge;Username=dotnetforge;Password=<secret>;GSS Encryption Mode=Disable" \
   -e STORAGE_PROVIDER=s3 \
   -e STORAGE_S3_SERVICE_URL=https://<account-id>.r2.cloudflarestorage.com \

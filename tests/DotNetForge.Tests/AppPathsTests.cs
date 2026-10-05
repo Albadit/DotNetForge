@@ -10,7 +10,7 @@ namespace DotNetForge.Tests;
 [Collection(EnvironmentVariables.Collection)]
 public sealed class AppPathsTests : IDisposable
 {
-    private static readonly string[] Keys = { "DATABASE_PROVIDER", "DATABASE_CONNECTION_STRING", "EXTENSIONS_PATH", "STORAGE_LOCAL_PATH", "STORAGE_PROVIDER" };
+    private static readonly string[] Keys = { "DATABASE_CONNECTION_STRING", "EXTENSIONS_PATH", "STORAGE_S3_BUCKET" };
 
     private readonly string _repo = Path.Combine(Path.GetTempPath(), "dnf-paths-" + Guid.NewGuid().ToString("N"));
     private readonly string _contentRoot;
@@ -57,7 +57,7 @@ public sealed class AppPathsTests : IDisposable
     {
         MarkAsCheckout();
         Directory.CreateDirectory(Path.Combine(_repo, "extensions"));
-        File.WriteAllText(Path.Combine(_repo, ".env"), "DATABASE_PROVIDER=sqlite\nAPP_NAME=From repo root\n");
+        File.WriteAllText(Path.Combine(_repo, ".env"), "APP_NAME=From repo root\n");
 
         var env = EnvConfigurationLoader.Load(_contentRoot);
 
@@ -68,22 +68,12 @@ public sealed class AppPathsTests : IDisposable
     }
 
     [Fact]
-    public void Relative_development_media_path_is_relative_to_the_repository_root()
-    {
-        MarkAsCheckout();
-        Environment.SetEnvironmentVariable("DATABASE_PROVIDER", "sqlite");
-        Environment.SetEnvironmentVariable("STORAGE_LOCAL_PATH", "uploads");
-
-        Assert.Equal(Path.Combine(_repo, "uploads"), EnvConfigurationLoader.Load(_contentRoot).Storage.LocalPath);
-    }
-
-    [Fact]
     public void Files_next_to_the_app_win_over_the_repository_root()
     {
         MarkAsCheckout();
         Directory.CreateDirectory(Path.Combine(_repo, "extensions"));
         Directory.CreateDirectory(Path.Combine(_contentRoot, "extensions"));
-        File.WriteAllText(Path.Combine(_contentRoot, ".env"), "DATABASE_PROVIDER=sqlite\nAPP_NAME=Local\n");
+        File.WriteAllText(Path.Combine(_contentRoot, ".env"), "APP_NAME=Local\n");
 
         var env = EnvConfigurationLoader.Load(_contentRoot);
 
@@ -94,7 +84,6 @@ public sealed class AppPathsTests : IDisposable
     [Fact]
     public void Extensions_path_can_be_configured()
     {
-        Environment.SetEnvironmentVariable("DATABASE_PROVIDER", "sqlite");
         var custom = Path.Combine(_repo, "custom-extensions");
         Environment.SetEnvironmentVariable("EXTENSIONS_PATH", custom);
 

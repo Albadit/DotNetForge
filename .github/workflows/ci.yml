@@ -132,7 +132,7 @@ jobs:
         shell: bash
         run: |
           docker run -d --name app --read-only --tmpfs /tmp -p 8080:8080 \
-            -e DATABASE_PROVIDER=sqlite -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" \
+            -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" \
             -e STORAGE_PROVIDER=local -e STORAGE_LOCAL_PATH=/tmp/media \
             dotnetforge:ci
           for i in $(seq 1 30); do curl -sf http://localhost:8080/health && break; sleep 1; done

@@ -3,8 +3,8 @@ using DotNetForge.Abstractions.Storage;
 namespace DotNetForge.Infrastructure.Storage;
 
 /// <summary>
-/// <see cref="IFileStorage"/> on a local directory: the development default (<c>storage/media</c>) or, in
-/// production, an explicitly configured absolute path on a writable volume - never the deployment directory
+/// <see cref="IFileStorage"/> on a local directory: the Development fallback (<c>storage/media</c> at the repository
+/// root) when no S3 storage is configured, and the test double in the integration tests. Deployments always use S3
 /// (.docs/features/media-storage.md). It cannot issue download URLs, so the application streams files itself.
 /// </summary>
 public sealed class LocalFileStorage : IFileStorage
