@@ -72,7 +72,7 @@ Development; production never writes there ([deployment](deployment.md#read-only
 docker compose -f docker/compose.dev.yml up -d
 ```
 
-Copy the `.env` values from the header of `docker/compose.dev.yml` (provider `postgresql`, `STORAGE_PROVIDER=s3`,
+Copy the `.env` values from the header of `docker/compose.dev.yml` (a `Host=…` connection string,
 `STORAGE_S3_SERVICE_URL=http://localhost:8333`, `STORAGE_S3_FORCE_PATH_STYLE=true`) and run the app as usual. The S3
 server runs without authentication: development only. Stop with `docker compose -f docker/compose.dev.yml down`
 (add `-v` to delete the data).
@@ -137,9 +137,10 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 ### The app exits immediately with "Configuration error"
 - **Cause:** missing/invalid `.env` or environment variable.
 - **Fix:** `DATABASE_CONNECTION_STRING` must be empty (SQLite, Development only), `Data Source=…` (SQLite) or
-  `Host=…;Database=…` (PostgreSQL); `APP_URL` must be absolute; `STORAGE_PROVIDER=s3` needs the bucket and keys.
+  `Host=…;Database=…` (PostgreSQL); `APP_URL` must be absolute; once any `STORAGE_S3_*` key is set, the bucket and keys
+  are required.
 - **Outside Development** (e.g. `dotnet run --project src/DotNetForge.Web --no-launch-profile` with `ASPNETCORE_ENVIRONMENT=Production`) the SQLite
-  database and `STORAGE_LOCAL_PATH` must be explicit absolute paths ([configuration](../features/configuration.md)).
+  database must be an explicit absolute path and S3 storage must be configured ([configuration](../features/configuration.md)).
 
 ### Every page redirects to `/setup`
 - **Cause:** the database is not installed (fresh or replaced DB).

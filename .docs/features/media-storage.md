@@ -10,14 +10,14 @@ Screen: [Media](../pages/media.md). Still-unbuilt File Manager features: [Planne
 | Piece | Location | Responsibility |
 | --- | --- | --- |
 | `IFileStorage`, `StoredFile`, `StorageKey` | `src/DotNetForge.Abstractions/Storage/IFileStorage.cs` | Provider-neutral contract and key validation |
-| `LocalFileStorage` | `src/DotNetForge.Infrastructure/Storage/LocalFileStorage.cs` | Directory provider: development default, or a mounted volume |
+| `LocalFileStorage` | `src/DotNetForge.Infrastructure/Storage/LocalFileStorage.cs` | Development fallback (`storage/media`) when no S3 storage is configured; the integration tests' stand-in |
 | `S3FileStorage` | `src/DotNetForge.Infrastructure/Storage/S3FileStorage.cs` | Any S3-compatible service (Cloudflare R2, AWS S3, MinIO, Supabase Storage) |
 | `MediaService` | `src/DotNetForge.Web/Services/MediaService.cs` | Upload/delete rules: allowed types, size cap, generated keys, audit, failure handling |
 | Admin screen | `src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs` | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}` |
 | Download endpoint | `src/DotNetForge.Web/Controllers/MediaFilesController.cs` | `GET /media/{id}/{fileName?}`: authorization, then presigned redirect or stream |
 | `MediaFile` entity | `src/DotNetForge.Shared/Entities/Content.cs` | Metadata row (`RelativePath` holds the storage key) |
 | API list | `GET /api/media` (`media.read`) | Lists the token tenant's media ([headless API](headless-api.md)) |
-| Configuration | `StorageSettings` on `AppEnvironment`; `STORAGE_*` keys | Provider selection and credentials ([configuration](configuration.md)) |
+| Configuration | `StorageSettings` on `AppEnvironment`; `STORAGE_S3_*` keys | Endpoint and credentials ([configuration](configuration.md)) |
 
 ## Storage architecture
 
@@ -31,8 +31,8 @@ flowchart LR
         MS --> DB[("MediaFiles table")]
         Dl --> DB
     end
-    FS -- "STORAGE_PROVIDER=local" --> Local[("LocalFileStorage<br/>dev: storage/media<br/>prod: mounted volume")]
-    FS -- "STORAGE_PROVIDER=s3" --> S3[("S3-compatible bucket<br/>R2 / S3 / MinIO / Supabase")]
+    FS -- "STORAGE_S3_* set (required outside Development)" --> S3[("S3-compatible bucket<br/>R2 / S3 / MinIO / Supabase")]
+    FS -. "Development, no STORAGE_S3_*" .-> Local[("LocalFileStorage<br/>storage/media")]
     Browser([Browser]) -- "GET /media/{id}" --> Dl
     Dl -. "302 presigned URL (S3)" .-> Browser
     Browser -. "GET object" .-> S3
@@ -55,8 +55,11 @@ Design decisions:
 
 ## Provider choice
 
-**Recommendation: Cloudflare R2** for production, through the S3 API (`STORAGE_PROVIDER=s3`). Use `local` for
-development, and `docker/compose.dev.yml` (an S3-compatible server) to test the S3 path locally.
+S3 is the only storage for deployments, and no provider name is configured: every service below speaks the S3 API,
+so choosing one means setting its endpoint (`STORAGE_S3_SERVICE_URL`), region and path style.
+
+**Recommendation: Cloudflare R2** for production. In development, either leave `STORAGE_S3_*` empty (uploads go to
+`storage/media`) or run `docker/compose.dev.yml` (an S3-compatible server) to use the S3 path locally.
 
 Prices researched October 2026 (check the providers' pages before committing; they change):
 
@@ -174,17 +177,17 @@ nothing ever points at a missing object), then the object; if the object delete 
 
 ## Local development
 
-- Default: `STORAGE_PROVIDER=local` with no path → `<contentRoot>/storage/media` (Development only; `storage/` is
-  git-ignored).
+- Default: no `STORAGE_S3_*` key set → uploads go to `storage/media` at the repository root (Development only;
+  `storage/` is git-ignored).
 - S3 path locally: `docker compose -f docker/compose.dev.yml up -d` starts PostgreSQL and an S3-compatible server on
   `http://localhost:8333` with bucket `dotnetforge`; the settings to put in `.env` are in the compose file header.
 - Live S3 contract tests: set `DNF_TEST_S3_*` ([testing](../guides/testing.md)).
 
 ## Backups
 
-The bucket (or volume) and the database must be backed up together: rows reference keys, keys hold the bytes.
-R2/S3: enable bucket versioning or replicate with `rclone sync` / `aws s3 sync` on a schedule; local volume:
-snapshot the volume. See [deployment → Backups](../guides/deployment.md#backups).
+The bucket and the database must be backed up together: rows reference keys, keys hold the bytes. Enable bucket
+versioning or replicate with `rclone sync` / `aws s3 sync` on a schedule. See
+[deployment → Backups](../guides/deployment.md#backups).
 
 ## Planned (not implemented)
 
@@ -257,8 +260,8 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 - [ ] Responsive friendly upload generates small/medium/large variants when on.
 - [ ] Size optimization reduces image size when on.
 - [ ] Auto orientation rotates images using EXIF when on.
-- [x] Local storage is the default and an external provider can be selected and used (`STORAGE_PROVIDER=local|s3`; via configuration rather than a connector extension).
-- [x] A broken storage provider fails gracefully and the failure is logged (`MediaService.UploadAsync` returns a message and logs; existing local files are unaffected).
+- [ ] Local storage is the default and an external provider can be selected - deliberately not: deployments always use S3-compatible storage (any provider, chosen by endpoint); local storage remains only as the Development fallback.
+- [x] A broken storage provider fails gracefully and the failure is logged (`MediaService.UploadAsync` returns a message and logs; existing files are unaffected).
 - [ ] Deleting a file referenced by a page/content is blocked or needs explicit confirmation, with dependents listed.
 - [x] All media operations are tenant-scoped with no cross-tenant access (admin list/upload/delete filter by tenant; private downloads check the tenant; public downloads are public by design).
 - [ ] `media.create`, `media.update` and `media.delete` webhook events fire.

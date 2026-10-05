@@ -119,7 +119,7 @@ public sealed class EnvConfigurationTests
     public void Any_s3_setting_selects_s3_even_in_development()
     {
         var ex = Assert.Throws<ConfigurationException>(() =>
-            WithCleanEnv(d => EnvConfigurationLoader.Load(d), "STORAGE_S3_BUCKET=media\n"));
+            WithCleanEnv(d => EnvConfigurationLoader.Load(d), "STORAGE_S3_SERVICE_URL=https://x\nSTORAGE_S3_BUCKET=media\n"));
         Assert.Contains("STORAGE_S3_ACCESS_KEY_ID is required for S3 storage", ex.Message);
     }
 

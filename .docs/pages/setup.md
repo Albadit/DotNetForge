@@ -160,9 +160,9 @@ flowchart TD
 - Installation is audited as `cms.installed` (shown on [Audit Logs](audit-logs.md)).
 - The new user belongs to the **oldest** tenant.
 - `.env` is not edited here; configuration must already be valid for the process to start. Outside Development
-  that means an explicit `DATABASE_CONNECTION_STRING` (SQLite: absolute `Data Source`) and, for local storage, an
-  absolute `STORAGE_LOCAL_PATH` - nothing may default to a path inside the read-only deployment directory, otherwise
-  the process exits with a `ConfigurationException` before this screen is reachable. See
+  that means an explicit `DATABASE_CONNECTION_STRING` (SQLite: absolute `Data Source`) and S3 storage
+  (`STORAGE_S3_*`) - nothing may default to a path inside the read-only deployment directory, otherwise the process
+  exits with a `ConfigurationException` before this screen is reachable. See
   [deployment → read-only deployment requirements](../guides/deployment.md#read-only-deployment-requirements) and
   [environment variables](../guides/deployment.md#environment-variables).
 - Setup itself writes nothing to the deployment directory (verified by

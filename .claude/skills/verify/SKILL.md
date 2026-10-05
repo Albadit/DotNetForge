@@ -39,11 +39,12 @@ for p in src/*/*.csproj tests/*/*.csproj; do dotnet format "$p" --verify-no-chan
 
 ## 3. Smoke test the running app (UI / routing / auth changes)
 
-Use a throwaway database and storage folder so the developer's `storage/` is untouched, and a free port:
+Use a throwaway database and a free port. Without `STORAGE_S3_*`, uploads land in the repository's git-ignored
+`storage/media` - delete what you upload:
 
 ```bash
 export DATABASE_CONNECTION_STRING="Data Source=<scratch>/verify.db" \
-       STORAGE_LOCAL_PATH=<scratch>/media ASPNETCORE_URLS=http://localhost:5077 ASPNETCORE_ENVIRONMENT=Development
+       ASPNETCORE_URLS=http://localhost:5077 ASPNETCORE_ENVIRONMENT=Development
 dotnet run --project src/DotNetForge.Web --no-build --no-launch-profile &   # after dotnet build; honours ASPNETCORE_URLS
 curl -s http://localhost:5077/health                 # {"status":"ok",...}
 ```
@@ -53,7 +54,9 @@ Read-only check of the real image (what CI's `read-only-container` job does):
 ```bash
 docker build -f docker/Dockerfile -t dnf-check .
 docker run -d --name dnf-check --read-only --tmpfs /tmp -p 5078:8080 \
-  -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" -e STORAGE_LOCAL_PATH=/tmp/media dnf-check
+  -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" -e STORAGE_S3_SERVICE_URL=http://s3.invalid \
+  -e STORAGE_S3_BUCKET=check -e STORAGE_S3_ACCESS_KEY_ID=check -e STORAGE_S3_SECRET_ACCESS_KEY=check dnf-check
+# (S3 is required outside Development; placeholders suffice because this check uploads nothing.)
 curl -s http://localhost:5078/health && docker diff dnf-check   # diff must be empty
 docker rm -f dnf-check
 ```
@@ -72,8 +75,8 @@ curl -s -b $J -o /dev/null -w '%{http_code}\n' $B/admin/content
 ```
 
 Use `ASPNETCORE_ENVIRONMENT=Production` when checking error handling or the enforced CSP (Development shows the
-exception page and sends CSP report-only). Production also requires explicit absolute `DATABASE_CONNECTION_STRING`
-and `STORAGE_LOCAL_PATH`, and the auth cookie is Secure-only (use HTTPS or `X-Forwarded-Proto: https` with
+exception page and sends CSP report-only). Production also requires an explicit absolute `DATABASE_CONNECTION_STRING`
+and `STORAGE_S3_*` settings (the compose S3 server works), and the auth cookie is Secure-only (use HTTPS or `X-Forwarded-Proto: https` with
 `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`).
 Stop the process afterwards (PowerShell:
 `Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | ? CommandLine -like '*DotNetForge.Web.dll*' | % { Stop-Process -Id $_.ProcessId }`)

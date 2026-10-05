@@ -12,22 +12,23 @@ configures logging and `AllowedHosts`. Production values and a deployment checkl
 | `DATABASE_CONNECTION_STRING` | outside Development | empty = SQLite at `<devRoot>/storage/dotnetforge.db` (Development only) | **decides the database** ([Database](#database)): `Data Source=`/`Filename=` → SQLite, `Host=`/`Server=` → PostgreSQL, anything else is rejected. SQLite outside Development: an **absolute** `Data Source` (in-memory `:memory:` / `file::memory:` allowed) | `DbProviderConfigurator`, `DependencyRegistration` (PostgreSQL → `PostgreSqlDbContext`) |
 | `APP_NAME` | no | `DotNetForge CMS` | - | layouts and screens via `ViewData["AppName"]`, Dashboard, Settings, `/health` |
 | `APP_URL` | no | `http://localhost:5000` | must be an absolute URI | validated only - **not used anywhere else** (Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS`) |
-| `STORAGE_PROVIDER` | no | `local` | `local` or `s3` (case-insensitive) | `DependencyRegistration` registers `IFileStorage` as `LocalFileStorage` or `S3FileStorage` |
-| `STORAGE_LOCAL_PATH` | `local` outside Development | Development: `<devRoot>/storage/media` | outside Development: set and **absolute**. In Development a relative path is resolved against `<devRoot>` | `LocalFileStorage` |
 | `STORAGE_S3_SERVICE_URL` | no | empty = AWS S3 | absolute URL | `S3FileStorage` (R2, MinIO, Supabase, SeaweedFS endpoint) |
-| `STORAGE_S3_BUCKET` | `s3` | - | non-empty | `S3FileStorage` |
-| `STORAGE_S3_ACCESS_KEY_ID` | `s3` | - | non-empty | `S3FileStorage` |
-| `STORAGE_S3_SECRET_ACCESS_KEY` | `s3` | - | non-empty; **secret** | `S3FileStorage` |
-| `STORAGE_S3_REGION` | `s3` without a service URL (AWS) | `auto` when `STORAGE_S3_SERVICE_URL` is set | - | `S3FileStorage` (signing region) |
+| `STORAGE_S3_BUCKET` | outside Development | - | non-empty | `S3FileStorage` |
+| `STORAGE_S3_ACCESS_KEY_ID` | outside Development | - | non-empty | `S3FileStorage` |
+| `STORAGE_S3_SECRET_ACCESS_KEY` | outside Development | - | non-empty; **secret** | `S3FileStorage` |
+| `STORAGE_S3_REGION` | without a service URL (AWS) | `auto` when `STORAGE_S3_SERVICE_URL` is set | - | `S3FileStorage` (signing region) |
 | `EXTENSIONS_PATH` | no | `extensions/` next to the app, else at the repository root | absolute, or relative to the content root | `ExtensionLoader`, runtime Razor compilation of extension views ([extensions](extensions.md#discovery)) |
 | `STORAGE_S3_FORCE_PATH_STYLE` | no | `false` | `true` or `false` (`bool.TryParse`, case-insensitive) | `S3FileStorage` (`endpoint/bucket/key` URLs for MinIO, Supabase, SeaweedFS) |
 
-`STORAGE_LOCAL_PATH` is read only when `STORAGE_PROVIDER=local`, the `STORAGE_S3_*` keys only when it is `s3`. How
-the providers behave and which to choose: [media storage](media-storage.md#storage-architecture),
-[provider choice](media-storage.md#provider-choice).
+Uploaded media always goes to S3-compatible object storage; there is no provider key, because R2, AWS S3, MinIO,
+Supabase and SeaweedFS all speak the same API and differ only in endpoint, region and path style. When **no**
+`STORAGE_S3_*` key is set, Development stores uploads in `<devRoot>/storage/media` instead, so a fresh checkout runs
+without a bucket; every other environment refuses to start. Setting any one of the keys selects S3 and makes the
+required ones mandatory, in Development too. Details and provider choice:
+[media storage](media-storage.md#storage-architecture), [provider choice](media-storage.md#provider-choice).
 
 All keys are read by `EnvConfigurationLoader` (`src/DotNetForge.Infrastructure/Configuration/`); constants:
-`ConnectionKey`, `AppNameKey`, `AppUrlKey`, `StorageProviderKey`, `StorageLocalPathKey`, `S3ServiceUrlKey`,
+`ConnectionKey`, `AppNameKey`, `AppUrlKey`, `S3ServiceUrlKey`,
 `S3BucketKey`, `S3AccessKeyIdKey`, `S3SecretAccessKeyKey`, `S3RegionKey`, `S3ForcePathStyleKey`, `ExtensionsPathKey`.
 
 Changing any key requires a restart.
@@ -60,8 +61,8 @@ treated as **read-only**: nothing may default to a path inside it.
 | Setting | Development | Any other environment |
 | --- | --- | --- |
 | SQLite database | `DATABASE_CONNECTION_STRING` optional; default `<devRoot>/storage/dotnetforge.db` | required; absolute `Data Source` on a writable volume (or in-memory), or use PostgreSQL |
-| Local media directory | `STORAGE_LOCAL_PATH` optional; default `<devRoot>/storage/media`; relative paths resolve against `<devRoot>` | required and absolute, or use `STORAGE_PROVIDER=s3` |
-| PostgreSQL, S3 | same rules | same rules |
+| Uploaded media | S3 when any `STORAGE_S3_*` key is set, otherwise `<devRoot>/storage/media` | S3 required |
+| PostgreSQL | same rules | same rules |
 
 `<devRoot>` is `AppPaths.DevelopmentDataRoot`: the repository root when running from a checkout (the folder containing
 `DotNetForge.slnx`), otherwise the content root. Defaults never depend on the process working directory, so
@@ -100,13 +101,11 @@ the first failure is reported: database (connection string), SQLite location, `A
 | Empty connection string, outside Development | `DATABASE_CONNECTION_STRING is required outside Development: the deployment directory is read-only, so point it at PostgreSQL ('Host=...;Database=...;Username=...;Password=...') or at a SQLite file on a writable volume ('Data Source=/data/dotnetforge.db').` |
 | SQLite with a relative `Data Source`, outside Development | `The SQLite data source must be an absolute path outside Development (got '<x>').` |
 | Bad `APP_URL` | `APP_URL must be a valid absolute URL. Got '<x>'.` |
-| Unknown storage provider | `Invalid STORAGE_PROVIDER value '<x>'. Must be 'local' or 's3'.` |
-| `local` without a path, outside Development | `STORAGE_LOCAL_PATH is required outside Development when STORAGE_PROVIDER=local (an absolute path on a writable volume), or use STORAGE_PROVIDER=s3.` |
-| `local` with a relative path, outside Development | `STORAGE_LOCAL_PATH must be an absolute path outside Development (got '<x>').` |
-| `s3` with an invalid service URL | `STORAGE_S3_SERVICE_URL must be an absolute URL. Got '<x>'.` |
-| `s3` without service URL and region | `STORAGE_S3_REGION is required when STORAGE_S3_SERVICE_URL is not set (AWS S3).` |
-| `s3` with a non-boolean path-style flag | `STORAGE_S3_FORCE_PATH_STYLE must be 'true' or 'false'. Got '<x>'.` |
-| `s3` without bucket, access key id or secret | `<KEY> is required when STORAGE_PROVIDER=s3.` (e.g. `STORAGE_S3_BUCKET is required when STORAGE_PROVIDER=s3.`) |
+| No S3 storage, outside Development | `File storage is not configured: outside Development uploaded media is stored in S3-compatible object storage. Set STORAGE_S3_BUCKET, STORAGE_S3_ACCESS_KEY_ID and STORAGE_S3_SECRET_ACCESS_KEY, plus STORAGE_S3_SERVICE_URL (Cloudflare R2, MinIO, Supabase) or STORAGE_S3_REGION (AWS S3).` |
+| Invalid service URL | `STORAGE_S3_SERVICE_URL must be an absolute URL. Got '<x>'.` |
+| No service URL and no region | `STORAGE_S3_REGION is required when STORAGE_S3_SERVICE_URL is not set (AWS S3).` |
+| Non-boolean path-style flag | `STORAGE_S3_FORCE_PATH_STYLE must be 'true' or 'false'. Got '<x>'.` |
+| S3 selected without bucket, access key id or secret | `<KEY> is required for S3 storage.` (e.g. `STORAGE_S3_BUCKET is required for S3 storage.`) |
 
 Configuration is only validated, never probed: an unreachable database or S3 endpoint is not a configuration error
 (a database failure crashes startup; a storage failure surfaces on the first upload - see
@@ -116,9 +115,9 @@ Configuration is only validated, never probed: an unreachable database or S3 end
 
 The tracked template lists **every** key in three sections (Database, Application, File storage) with comments:
 
-- Works as-is in Development (empty `DATABASE_CONNECTION_STRING` = SQLite, `STORAGE_PROVIDER=local`, everything
-  else empty or default), writing to `storage/` at the repository root.
-- Outside Development: PostgreSQL or an absolute SQLite path, and S3-compatible storage or an absolute local path.
+- Works as-is in Development (empty `DATABASE_CONNECTION_STRING` = SQLite, empty `STORAGE_S3_*` = local
+  `storage/media`), writing to `storage/` at the repository root.
+- Outside Development: PostgreSQL or an absolute SQLite path, and S3-compatible storage.
 - PostgreSQL example connection string ending in `GSS Encryption Mode=Disable` (avoids a Kerberos library probe in
   slim containers, see [logging](logging-and-error-handling.md#expected-startup-log-lines)).
 - S3 examples for Cloudflare R2 (`STORAGE_S3_REGION=auto`), AWS S3 (no service URL, real region) and the local S3

@@ -20,7 +20,7 @@ and on PostgreSQL 17 ([below](#postgresql-dnf_test_postgres)).
 
 | File | Classes (tests) | Covers |
 | --- | --- | --- |
-| `EnvConfigurationTests.cs` | `EnvConfigurationTests` (13), `DotEnvParserTests` (1) | `EnvConfigurationLoader`: provider parsing, PostgreSQL connection requirement, missing `.env` guidance, Development defaults under the content root (`storage/dotnetforge.db`, `storage/media`), Production requiring explicit absolute locations, S3 settings with R2-style defaults (`STORAGE_S3_REGION=auto`), invalid storage configuration (`STORAGE_PROVIDER`, missing bucket, missing region, malformed service URL, `STORAGE_S3_FORCE_PATH_STYLE`); `DotEnvParser` |
+| `EnvConfigurationTests.cs` | `EnvConfigurationTests` (13), `DotEnvParserTests` (1) | `EnvConfigurationLoader`: provider parsing, PostgreSQL connection requirement, missing `.env` guidance, Development defaults under the content root (`storage/dotnetforge.db`, `storage/media`), Production requiring explicit absolute locations, S3 settings with R2-style defaults (`STORAGE_S3_REGION=auto`), S3 required outside Development, any S3 key selecting S3, invalid S3 configuration (missing bucket, missing region, malformed service URL, `STORAGE_S3_FORCE_PATH_STYLE`); `DotEnvParser` |
 | `FileStorageTests.cs` | `LocalFileStorageTests` (8), `StorageKeyTests` (13), `S3FileStorageTests` (8, 5 of them live) | the shared `IFileStorage` contract (`FileStorageContract`: save/read, overwrite, missing → `null`, idempotent delete, invalid keys) for the local provider; local-only: files stay inside the root, no temp files left, a failed upload leaves no partial object, no download URLs; `StorageKey.IsValid`; S3 offline: presigned URLs signed, short-lived and carrying `response-content-disposition`, presigning follows a plain `http://` endpoint, invalid keys rejected before any request; S3 live (`[S3Fact]`): the contract plus a download through a presigned URL |
 | `ExtensionLoaderTests.cs` | `ExtensionLoaderTests` (3) | `ExtensionLoader`: finds valid admin extensions by id case-insensitively, cache invalidated when a manifest is added (file watcher), missing root → no extensions |
 | `InstallationServiceTests.cs` | `InstallationServiceTests` (5) | `InstallationService` with a `FakeInstallationStore`: success, mismatch, weak password, invalid email, already installed |
@@ -72,7 +72,7 @@ variables** before the host builds:
 | Variable | Value |
 | --- | --- |
 | `DATABASE_CONNECTION_STRING` | `Data Source=<workdir>/cms.db` (SQLite), or a fresh PostgreSQL database when `DNF_TEST_POSTGRES` is set |
-| `STORAGE_PROVIDER` / `STORAGE_LOCAL_PATH` | `local` / `<workdir>/media` (exposed as `factory.StoragePath`) |
+| `STORAGE_S3_*` | placeholder values (startup requires S3 outside Development); `IFileStorage` is replaced through `ConfigureTestServices` with a `LocalFileStorage` in `<workdir>/media` (exposed as `factory.StoragePath`), so no S3 server is needed |
 | `APP_URL` | `http://localhost` |
 
 So each factory gets a fresh, migrated, seeded database and its own media folder; the work directory is deleted on
@@ -132,7 +132,7 @@ DNF_TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres;
 | | `Duplicate_api_token_name_is_a_validation_error_not_a_crash` | second token with the same name → 200 "already exists" |
 | | `Api_page_creation_applies_the_content_rules_and_is_audited` | API create slugifies (`our-pricing`), duplicate root slug → 400, `content.created` with `UserId = null` and `API token ...` |
 | `ReadOnlyDeploymentTests.cs` | `A_full_session_writes_nothing_into_the_content_root` | snapshot (path, length, last write) of the content root - minus `bin`, `obj`, `.git`, `.vs`, `TestResults`, `node_modules` - is identical before and after a Production session: setup POST, sign-in, admin screens, public pages, the sample admin extension, upload, download, delete |
-| | `Production_refuses_paths_inside_the_deployment_directory` (4 cases) | outside Development: relative SQLite `Data Source`, missing `DATABASE_CONNECTION_STRING`, missing or relative `STORAGE_LOCAL_PATH` → `ConfigurationException` |
+| | `Production_refuses_paths_inside_the_deployment_directory` (2 cases) | outside Development: relative SQLite `Data Source`, missing `DATABASE_CONNECTION_STRING` → `ConfigurationException` (missing S3 storage is covered by `EnvConfigurationTests`) |
 | `PageServiceTests.cs` | `Slugifies_and_applies_valid_input`, `Rejects_duplicate_slug_under_the_same_parent_including_root`, `Rejects_a_parent_that_creates_a_cycle`, `Rejects_a_second_dynamic_segment_under_one_parent`, `Rejects_overlong_fields_before_saving`, `Reorder_rejects_moves_that_duplicate_a_slug`, `Reorder_rejects_pages_of_another_tenant`, `Delete_reparents_children_or_refuses_when_slugs_would_clash` | `PageService` rules against an in-memory SQLite `DotNetForgeDbContext` (`EnsureCreated`, no host) |
 
 Not covered: the Users, Roles, Audit Logs and API Tokens list screens (Dashboard, Content Manager, Media and Plugins

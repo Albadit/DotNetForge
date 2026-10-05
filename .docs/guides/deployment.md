@@ -8,7 +8,7 @@ everything it writes at runtime goes to the database or to object storage, never
 | Runtime data | Where it goes | Never |
 | --- | --- | --- |
 | Content, users, settings, audit log | the database (PostgreSQL recommended, or SQLite on a mounted volume) | `storage/` next to the app |
-| Uploaded media | object storage via `IFileStorage` (`STORAGE_PROVIDER=s3`, or `local` on a mounted volume) | the content root |
+| Uploaded media | S3-compatible object storage via `IFileStorage` (`STORAGE_S3_*`, required) | the content root |
 | Data Protection key ring (auth cookies, antiforgery tokens) | the `DataProtectionKeys` table | the default `~/.aspnet/DataProtection-Keys` folder |
 | Upload buffering (multipart bodies over 64 KB) | the OS temp directory: `ASPNETCORE_TEMP`, else `/tmp` | - must be writable (tmpfs), is not storage |
 | Logs | stdout/stderr (console logger) | log files |
@@ -17,8 +17,8 @@ everything it writes at runtime goes to the database or to object storage, never
 What enforces this:
 
 - Outside Development, `EnvConfigurationLoader` refuses any default that points inside the deployment directory: a
-  SQLite database needs an explicit **absolute** `Data Source`, and `STORAGE_PROVIDER=local` needs an absolute
-  `STORAGE_LOCAL_PATH`. The process exits with code 1 and a clear message otherwise ([configuration](../features/configuration.md)).
+  SQLite database needs an explicit **absolute** `Data Source`, and media needs S3 settings. The process exits with
+  code 1 and a clear message otherwise ([configuration](../features/configuration.md)).
 - `ReadOnlyDeploymentTests` runs setup, sign-in, admin screens, uploads, downloads and deletes, and fails if any file
   under the content root changed. CI also boots the Docker image with `--read-only` (job `read-only-container`).
 - Verified manually (October 2026): the image with `--read-only --tmpfs /tmp` against PostgreSQL 17 and an
@@ -48,14 +48,12 @@ your platform's secret store, never in the image or the repository.
 | `DATABASE_CONNECTION_STRING` | `Host=…;Database=dotnetforge;Username=…;Password=…;GSS Encryption Mode=Disable` | ✔ | decides the database: `Host=…` is PostgreSQL; SQLite: `Data Source=/data/dotnetforge.db` on a volume |
 | `APP_NAME` | display name | | |
 | `APP_URL` | public base URL | | validated, not used for links yet |
-| `STORAGE_PROVIDER` | `s3` (or `local` with a volume) | | |
 | `STORAGE_S3_SERVICE_URL` | `https://<account-id>.r2.cloudflarestorage.com` | | empty = AWS S3 |
 | `STORAGE_S3_BUCKET` | bucket name | | |
 | `STORAGE_S3_ACCESS_KEY_ID` | bucket-scoped key id | ✔ | |
 | `STORAGE_S3_SECRET_ACCESS_KEY` | bucket-scoped secret | ✔ | |
 | `STORAGE_S3_REGION` | `auto` (R2) / AWS region | | required for AWS S3 |
 | `STORAGE_S3_FORCE_PATH_STYLE` | `false` (R2, AWS); `true` (MinIO, Supabase) | | |
-| `STORAGE_LOCAL_PATH` | absolute volume path | | only with `STORAGE_PROVIDER=local` |
 | `ASPNETCORE_FORWARDEDHEADERS_ENABLED` | `true` behind a proxy | | see [Behind a reverse proxy](#behind-a-reverse-proxy) |
 | `ASPNETCORE_HTTP_PORTS` | `8080` (image default) | | |
 | `ASPNETCORE_TEMP` | optional | | upload buffer directory (default `/tmp`) |
@@ -75,7 +73,6 @@ docker run -d --name dotnetforge \
   --read-only --tmpfs /tmp \
   -p 8080:8080 \
   -e "DATABASE_CONNECTION_STRING=Host=db;Database=dotnetforge;Username=dotnetforge;Password=<secret>;GSS Encryption Mode=Disable" \
-  -e STORAGE_PROVIDER=s3 \
   -e STORAGE_S3_SERVICE_URL=https://<account-id>.r2.cloudflarestorage.com \
   -e STORAGE_S3_BUCKET=dotnetforge-media \
   -e STORAGE_S3_ACCESS_KEY_ID=<key-id> \

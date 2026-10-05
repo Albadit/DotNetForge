@@ -113,8 +113,8 @@ you query tenant data.
 - **Never write files at runtime.** The deployment directory - `extensions/` included - is read-only in production
   ([deployment](deployment.md#read-only-deployment-requirements)). Don't write to your extension folder, the content
   root or `storage/`; keep state in the database or in object storage.
-- **Storing files:** inject the host's `IFileStorage` (local directory or S3-compatible bucket, chosen by
-  `STORAGE_PROVIDER` - see [media storage](../features/media-storage.md#storage-architecture)):
+- **Storing files:** inject the host's `IFileStorage` (the S3-compatible bucket; a local folder in Development
+  without S3 settings - see [media storage](../features/media-storage.md#storage-architecture)):
 
   ```cshtml
   @inject DotNetForge.Abstractions.Storage.IFileStorage Storage

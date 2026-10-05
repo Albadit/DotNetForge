@@ -105,9 +105,8 @@ columns, so an over-long value is a validation message instead of a database err
 
 Configuration is validated at process start, before the wizard can run ([configuration](configuration.md)). Outside
 Development the defaults inside the deployment directory are refused: SQLite needs an explicit
-`DATABASE_CONNECTION_STRING` with an absolute `Data Source` (in-memory allowed), and local media storage an absolute
-`STORAGE_LOCAL_PATH` - both must point outside the read-only deployment directory, otherwise the process exits with
-a configuration error. See [deployment](../guides/deployment.md#read-only-deployment-requirements) and
+`DATABASE_CONNECTION_STRING` with an absolute `Data Source` (in-memory allowed), and media needs S3 storage
+(`STORAGE_S3_*`) - otherwise the process exits with a configuration error. See [deployment](../guides/deployment.md#read-only-deployment-requirements) and
 [environment variables](../guides/deployment.md#environment-variables).
 
 ## Not implemented

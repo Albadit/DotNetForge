@@ -35,9 +35,8 @@ Notes:
 
 - Configuration is loaded **before** the host's own configuration system is used; `.env` values never enter
   `IConfiguration`. Outside Development the loader refuses defaults inside the deployment directory: SQLite needs an
-  explicit `DATABASE_CONNECTION_STRING` with an absolute `Data Source` (in-memory allowed), and
-  `STORAGE_PROVIDER=local` needs an absolute `STORAGE_LOCAL_PATH`. In Development the defaults are
-  `<contentRoot>/storage/dotnetforge.db` and `<contentRoot>/storage/media`. See
+  explicit `DATABASE_CONNECTION_STRING` with an absolute `Data Source` (in-memory allowed), and media needs S3
+  settings. In Development the defaults are `storage/dotnetforge.db` and `storage/media` at the repository root. See
   [configuration](../features/configuration.md).
 - The scoped `DotNetForgeDbContext` resolves to `PostgreSqlDbContext` when the provider is PostgreSQL, so
   `MigrateAsync` applies that provider's own migration set. `EnsureCreated` is no longer used
@@ -413,11 +412,11 @@ stateDiagram-v2
 flowchart LR
     EnvVar["Process environment variable"] -- "wins when non-empty" --> Get["EnvConfigurationLoader.Get(key)"]
     File[".env in content root (DotEnvParser)"] -- "used when env var empty/missing" --> Get
-    Get --> Validate{"valid? (outside Development:<br/>absolute SQLite path and STORAGE_LOCAL_PATH)"}
+    Get --> Validate{"valid? (outside Development:<br/>database configured, S3 configured)"}
     Validate -- no --> Ex["ConfigurationException → exit 1"]
     Validate -- yes --> AE["AppEnvironment singleton"]
     AE --> DbCfg["DbProviderConfigurator + context type"]
-    AE --> Storage["IFileStorage: LocalFileStorage or S3FileStorage"]
+    AE --> Storage["IFileStorage: S3FileStorage (dev fallback: LocalFileStorage)"]
     AE --> Views["AppName in ViewData / layouts"]
     AppSettings["src/DotNetForge.Web/appsettings.json / .Development.json"] --> Logging["Logging levels, AllowedHosts"]
 ```
@@ -452,7 +451,7 @@ Details and gaps: [logging and errors](../features/logging-and-error-handling.md
 
 ## External integrations
 
-Out-of-process dependencies at runtime: the database (SQLite file or PostgreSQL server) and, with
-`STORAGE_PROVIDER=s3`, an S3-compatible object store - the app uploads, reads and deletes objects through
+Out-of-process dependencies at runtime: the database (SQLite file or PostgreSQL server) and an S3-compatible object
+store (outside Development always) - the app uploads, reads and deletes objects through
 `S3FileStorage`, and browsers download directly from presigned URLs. Planned integrations and their current state
 are listed in [implementation-status.md](../implementation-status.md).

@@ -86,7 +86,7 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | `IMemoryCache` | `AddMemoryCache()` | singleton | cookie session check (`ValidateSessionAsync`, key `dnf:session:{userId}`), `ApiTokenAuthenticationHandler` (key `dnf:apitoken:{sha256}`) |
 | `DotNetForgeDbContext` | `AddDbContext<DotNetForgeDbContext>` (SQLite) or `AddDbContext<DotNetForgeDbContext, PostgreSqlDbContext>` (PostgreSQL), configured by `DbProviderConfigurator.Configure` | scoped | almost every controller, all API controllers, `MediaFilesController`, `AuthService`, `AuditService`, `PageService`, `MediaService`, `InstallationStore`, `ApiTokenAuthenticationHandler`, the Data Protection key repository, admin extension views (`@inject`) |
 | Data Protection | `AddDataProtection().SetApplicationName("DotNetForge").PersistKeysToDbContext<DotNetForgeDbContext>()` | framework | auth cookie, antiforgery, TempData |
-| `IFileStorage` | `S3FileStorage(env.Storage)` when `STORAGE_PROVIDER=s3`, else `LocalFileStorage(env.Storage.LocalPath)` | singleton (factory) | `MediaService`, `MediaFilesController` |
+| `IFileStorage` | `S3FileStorage(env.Storage)`; `LocalFileStorage(env.Storage.LocalPath)` only in Development without `STORAGE_S3_*` | singleton (factory) | `MediaService`, `MediaFilesController` |
 | `IPasswordHasher` | `Pbkdf2PasswordHasher` | singleton | `AuthService`, `InstallationService` |
 | `IDateTimeProvider` | `SystemClock` | singleton | `AuthService`, `ApiTokensController`, `ApiTokenAuthenticationHandler` |
 | `IApiTokenFactory` | `ApiTokenFactory` | singleton | `ApiTokensController`, `ApiTokenAuthenticationHandler` |

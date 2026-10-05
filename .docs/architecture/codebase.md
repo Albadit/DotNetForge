@@ -313,8 +313,8 @@ Implementations of `Abstractions` contracts plus configuration loading. BCL only
 | `Security/ApiTokenFactory.cs` | `IApiTokenFactory` (`dnf_<hex>_<secret>`, hash `60000$salt$hash`) | yes |
 | `Security/SystemClock.cs` | `IDateTimeProvider` | yes |
 | `Security/HmacWebhookSigner.cs` | `IWebhookSigner` | no - not registered (kept, with tests, for planned webhooks) |
-| `Storage/LocalFileStorage.cs` | `IFileStorage` on a directory: atomic writes (temp sibling + move), path containment, no download URLs | when `STORAGE_PROVIDER=local` |
-| `Storage/S3FileStorage.cs` | `IFileStorage` on any S3-compatible service: private objects, presigned GET URLs with `response-content-disposition` | when `STORAGE_PROVIDER=s3` |
+| `Storage/LocalFileStorage.cs` | `IFileStorage` on a directory: atomic writes (temp sibling + move), path containment, no download URLs | Development fallback when no `STORAGE_S3_*` key is set |
+| `Storage/S3FileStorage.cs` | `IFileStorage` on any S3-compatible service: private objects, presigned GET URLs with `response-content-disposition` | when `STORAGE_S3_*` is set (always outside Development) |
 
 Exactly one `IFileStorage` is registered, chosen from `AppEnvironment.Storage.Provider`. There is no `IEmailSender`
 implementation (the former `FileSystemEmailSender` was removed). Provider choice and setup:
@@ -352,8 +352,8 @@ manifest `type` matters. The folder is read-only at runtime.
 Not in the repository and never written outside Development. In Development, `EnvConfigurationLoader` defaults the
 SQLite database to `<contentRoot>/storage/dotnetforge.db` and local media to `<contentRoot>/storage/media` (anchored
 to the content root, not the process working directory); both folders are created on first use. Outside Development
-`DATABASE_CONNECTION_STRING` (absolute SQLite `Data Source`, or PostgreSQL) and, for local storage, an absolute
-`STORAGE_LOCAL_PATH` are required - see [deployment](../guides/deployment.md#environment-variables).
+`DATABASE_CONNECTION_STRING` (absolute SQLite `Data Source`, or PostgreSQL) and the `STORAGE_S3_*` settings are
+required - see [deployment](../guides/deployment.md#environment-variables).
 
 ## Domain boundaries
 
@@ -480,7 +480,7 @@ Only `ScheduledPublishingService`, on every instance (idempotent). See
 
 ### External integrations
 
-The database server (PostgreSQL, when selected) and, with `STORAGE_PROVIDER=s3`, an S3-compatible object store
+The database server (PostgreSQL, when selected) and an S3-compatible object store
 (`S3FileStorage`; browsers download directly from it through presigned URLs). Webhook delivery, SMTP and OAuth
 providers exist only as entities, contracts or sample manifests.
 
@@ -540,7 +540,7 @@ runs `docker run --read-only --tmpfs /tmp` and asserts an empty `docker diff`). 
 | --- | --- |
 | Relational data | PostgreSQL (recommended), or a SQLite file at an absolute `Data Source` on a writable volume |
 | Data Protection key ring (auth cookie, antiforgery, TempData) | `DataProtectionKeys` table - shared by all instances, survives restarts; unencrypted at rest, so database access = key access |
-| Uploaded media | `IFileStorage`: private objects in an S3-compatible bucket, or an absolute `STORAGE_LOCAL_PATH` on a volume ([storage architecture](../features/media-storage.md#storage-architecture)) |
+| Uploaded media | `IFileStorage`: private objects in an S3-compatible bucket ([storage architecture](../features/media-storage.md#storage-architecture)) |
 | Compiled extension views | memory (runtime Razor compilation reads `extensions/` from the publish output) |
 | Multipart bodies over 64 KB | OS temp directory (`ASPNETCORE_TEMP` or `/tmp`) - must be writable (tmpfs in containers) |
 | Session/token caches, rate-limit counters, extension cache | process memory, per instance |
@@ -568,7 +568,7 @@ flowchart LR
         MVC -- "runtime Razor compile, in memory" --> ExtFiles[("extensions/ (read-only)")]
     end
     Ctx --> DB[("PostgreSQL, or SQLite on a volume")]
-    Store --> Obj[("S3-compatible bucket, or local volume")]
+    Store --> Obj[("S3-compatible bucket")]
     Browser -. "302 to presigned GET URL" .-> Obj
 ```
 

@@ -40,7 +40,7 @@ to S3-compatible object storage (Cloudflare R2 recommended), and the Data Protec
 ```bash
 docker build -f docker/Dockerfile -t dotnetforge .
 docker run --read-only --tmpfs /tmp -p 8080:8080 -e "DATABASE_CONNECTION_STRING=Host=...;Database=..." \
-  -e STORAGE_PROVIDER=s3 -e STORAGE_S3_SERVICE_URL=... -e STORAGE_S3_BUCKET=... \
+  -e STORAGE_S3_SERVICE_URL=... -e STORAGE_S3_BUCKET=... \
   -e STORAGE_S3_ACCESS_KEY_ID=... -e STORAGE_S3_SECRET_ACCESS_KEY=... dotnetforge
 ```
 
@@ -70,10 +70,10 @@ Copy `.env.example` to `.env` and set the values. Secrets are **never** committe
 | `DATABASE_CONNECTION_STRING` | Outside Development | Decides the database: empty = SQLite at `storage/dotnetforge.db` (Development only), `Data Source=…` = SQLite, `Host=…` = PostgreSQL. |
 | `APP_NAME` | No | Display name. Defaults to `DotNetForge CMS`. |
 | `APP_URL` | No | Public base URL, e.g. `http://localhost:5000`. Must be absolute; currently only validated. |
-| `STORAGE_PROVIDER` | No | `local` (default) or `s3`; S3 needs `STORAGE_S3_*` (bucket, keys, endpoint). |
+| `STORAGE_S3_*` | Outside Development | S3-compatible storage for uploads (bucket, keys, endpoint). Any provider works: the endpoint decides (R2, AWS S3, MinIO, Supabase). Empty in Development = `storage/media`. |
 
-Outside Development no path may default into the deployment directory: SQLite and local storage need explicit
-absolute paths.
+Outside Development nothing may default into the deployment directory: SQLite needs an absolute path and media needs
+S3.
 
 Full reference: [.docs/features/configuration.md](.docs/features/configuration.md).
 
