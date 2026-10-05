@@ -1,0 +1,44 @@
+# Optional local services for developing against production-like backends (.docs/guides/development.md):
+#   docker compose -f compose.dev.yml up -d
+# Then in .env:
+#   DATABASE_PROVIDER=postgresql
+#   DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+#   STORAGE_PROVIDER=s3
+#   STORAGE_S3_SERVICE_URL=http://localhost:8333
+#   STORAGE_S3_BUCKET=dotnetforge
+#   STORAGE_S3_ACCESS_KEY_ID=dev
+#   STORAGE_S3_SECRET_ACCESS_KEY=dev
+#   STORAGE_S3_FORCE_PATH_STYLE=true
+# Development only: the S3 server below runs without authentication. Never expose these ports publicly.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dotnetforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  # SeaweedFS's S3 gateway: a small S3-compatible server (MinIO images are no longer on Docker Hub).
+  s3:
+    image: chrislusf/seaweedfs
+    command: server -s3 -dir=/data
+    ports:
+      - "8333:8333"
+    volumes:
+      - s3-data:/data
+
+  # Creates the bucket once the S3 server answers.
+  s3-bucket:
+    image: curlimages/curl
+    depends_on:
+      - s3
+    command: ["sh", "-c", "until curl -sf -X PUT http://s3:8333/dotnetforge; do sleep 1; done"]
+    restart: "no"
+
+volumes:
+  postgres-data:
+  s3-data:

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
-/// <summary>The admin dashboard, reached at <c>/admin</c> (dashboard.md).</summary>
+/// <summary>The admin dashboard, reached at <c>/admin</c> (.docs/pages/dashboard.md).</summary>
 [Route("admin")]
 public sealed class DashboardController : AdminControllerBase
 {
@@ -34,7 +34,7 @@ public sealed class DashboardController : AdminControllerBase
             ApiTokens = await _db.ApiTokens.CountAsync(t => t.TenantId == TenantId && !t.Revoked),
             Webhooks = await _db.Webhooks.CountAsync(w => w.TenantId == TenantId),
             Extensions = await _db.InstalledExtensions.CountAsync(),
-            AuditEntries = await _db.AuditLogs.CountAsync(),
+            AuditEntries = await _db.AuditLogs.CountAsync(a => a.TenantId == TenantId || a.TenantId == null),
             InstalledAtUtc = state?.InstalledAtUtc,
             CmsVersion = state?.CmsVersion ?? "1.0.0",
         };

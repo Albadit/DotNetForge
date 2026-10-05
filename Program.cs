@@ -2,17 +2,17 @@ using DotNetForge.Data;
 using DotNetForge.Infrastructure.Configuration;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Web.Middleware;
-using DotNetForge.Web.Services;
 using DotNetForge.Web.Startup;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Load and validate the .env configuration contract. Missing/invalid config aborts startup
-//    with a clear, actionable message (installation_setup.md).
+// 1. Load and validate the .env configuration contract. Missing/invalid config aborts startup with a clear,
+//    actionable message (.docs/features/configuration.md). Outside Development nothing may default to a path
+//    inside the (read-only) deployment directory.
 AppEnvironment env;
 try
 {
-    env = EnvConfigurationLoader.Load(builder.Environment.ContentRootPath);
+    env = EnvConfigurationLoader.Load(builder.Environment.ContentRootPath, builder.Environment.IsDevelopment());
 }
 catch (ConfigurationException ex)
 {
@@ -20,7 +20,7 @@ catch (ConfigurationException ex)
     return 1;
 }
 
-builder.Services.AddDotNetForge(env, builder.Environment.ContentRootPath);
+builder.Services.AddDotNetForge(env, builder.Environment);
 
 var app = builder.Build();
 
@@ -28,16 +28,18 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<DotNetForgeDbContext>();
-    await DatabaseInitializer.InitializeAsync(db, env, app.Lifetime.ApplicationStopping);
+    await DatabaseInitializer.InitializeAsync(db, app.Lifetime.ApplicationStopping);
 }
 
-// 3. Middleware pipeline.
+// 3. Middleware pipeline. Behind a TLS-terminating proxy set ASPNETCORE_FORWARDEDHEADERS_ENABLED=true so the
+//    scheme and client IP (rate limits, audit) come from the proxy's X-Forwarded-* headers.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
     app.UseHsts();
 }
 
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseStaticFiles();
 app.UseRouting();
 
@@ -45,6 +47,7 @@ app.UseRouting();
 app.UseMiddleware<InstallationMiddleware>();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllerRoute(

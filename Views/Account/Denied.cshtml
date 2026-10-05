@@ -4,5 +4,8 @@
 }
 <h2>Access denied</h2>
 <p class="muted">Your account does not have permission to view this page.</p>
-<p><a href="/admin">Back to admin</a> · <a href="/account/logout" onclick="event.preventDefault();document.getElementById('lo').submit();">Sign out</a></p>
-<form id="lo" method="post" asp-controller="Account" asp-action="Logout">@Html.AntiForgeryToken()</form>
+<p><a href="/admin">Back to admin</a></p>
+<form method="post" asp-controller="Account" asp-action="Logout">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn">Sign out</button>
+</form>

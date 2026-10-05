@@ -1,10 +1,10 @@
 using DotNetForge.Abstractions.Security;
 using DotNetForge.Data;
+using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Shared.Enums;
 using DotNetForge.Web.Areas.Admin.Models;
-using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,10 +22,13 @@ public sealed class ApiTokensController : AdminControllerBase
     private readonly DotNetForgeDbContext _db;
     private readonly IApiTokenFactory _tokenFactory;
     private readonly IDateTimeProvider _clock;
-    private readonly AuditService _audit;
+    private const int MaxNameLength = 200;
+    private const int MaxDescriptionLength = 1000;
+
+    private readonly IAuditService _audit;
 
     public ApiTokensController(
-        DotNetForgeDbContext db, IApiTokenFactory tokenFactory, IDateTimeProvider clock, AuditService audit)
+        DotNetForgeDbContext db, IApiTokenFactory tokenFactory, IDateTimeProvider clock, IAuditService audit)
     {
         _db = db;
         _tokenFactory = tokenFactory;
@@ -64,6 +67,22 @@ public sealed class ApiTokensController : AdminControllerBase
             return View();
         }
 
+        name = name.Trim();
+        description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        if (name.Length > MaxNameLength || description?.Length > MaxDescriptionLength)
+        {
+            ModelState.AddModelError(string.Empty,
+                $"Name is limited to {MaxNameLength} characters and description to {MaxDescriptionLength}.");
+            return View();
+        }
+
+        // Names are unique per tenant (revoked tokens included) - say so instead of failing at save time.
+        if (await _db.ApiTokens.AnyAsync(t => t.TenantId == TenantId && t.Name == name))
+        {
+            ModelState.AddModelError(string.Empty, $"A token named '{name}' already exists. Choose another name.");
+            return View();
+        }
+
         var selected = (permissions ?? Array.Empty<string>())
             .Where(PermissionKeys.IsKnown)
             .Distinct()
@@ -81,7 +100,7 @@ public sealed class ApiTokensController : AdminControllerBase
         var token = new ApiToken
         {
             TenantId = TenantId,
-            Name = name.Trim(),
+            Name = name,
             Description = description,
             Duration = tokenDuration,
             ExpirationDate = ComputeExpiration(tokenDuration),

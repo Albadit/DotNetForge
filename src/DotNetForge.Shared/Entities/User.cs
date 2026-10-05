@@ -4,7 +4,7 @@ namespace DotNetForge.Shared.Entities;
 
 /// <summary>
 /// A user account. Email is the login identifier and is unique within the tenant. The password is
-/// stored only as a secure hash (security.md). Effective permissions are the union of all roles.
+/// stored only as a secure hash (.docs/features/security.md). Effective permissions are the union of all roles.
 /// </summary>
 public class User
 {

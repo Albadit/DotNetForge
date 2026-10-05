@@ -3,7 +3,7 @@ using DotNetForge.Shared.Enums;
 namespace DotNetForge.Shared.Entities;
 
 /// <summary>
-/// A webhook subscription (webhooks.md). Fires a signed POST to <see cref="Url"/> for each
+/// A webhook subscription (.docs/features/webhooks.md). Fires a signed POST to <see cref="Url"/> for each
 /// subscribed event. The signing <see cref="Secret"/> is system-managed and never displayed
 /// after creation/rotation.
 /// </summary>
@@ -40,7 +40,7 @@ public class Webhook
             : EventsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }
 
-/// <summary>A single webhook delivery attempt, logged for troubleshooting (webhooks.md).</summary>
+/// <summary>A single webhook delivery attempt, logged for troubleshooting (.docs/features/webhooks.md).</summary>
 public class WebhookDelivery
 {
     public Guid Id { get; set; } = Guid.NewGuid();

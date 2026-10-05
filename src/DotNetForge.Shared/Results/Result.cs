@@ -23,21 +23,3 @@ public class Result
 
     public static Result Fail(IReadOnlyList<string> errors) => new(false, errors);
 }
-
-/// <summary>A success/failure result carrying a value on success.</summary>
-public sealed class Result<T> : Result
-{
-    private Result(bool succeeded, T? value, IReadOnlyList<string> errors)
-        : base(succeeded, errors)
-    {
-        Value = value;
-    }
-
-    public T? Value { get; }
-
-    public static Result<T> Ok(T value) => new(true, value, Array.Empty<string>());
-
-    public static new Result<T> Fail(string error) => new(false, default, new[] { error });
-
-    public static new Result<T> Fail(IReadOnlyList<string> errors) => new(false, default, errors);
-}

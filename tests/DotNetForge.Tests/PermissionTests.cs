@@ -6,7 +6,7 @@ namespace DotNetForge.Tests;
 
 /// <summary>
 /// Verifies the default Permission Matrix is enforced by <see cref="PermissionService.Has"/>
-/// (user_roles_permissions.md, testing_quality.md).
+/// (.docs/features/authorization.md, .docs/guides/testing.md).
 /// </summary>
 public sealed class PermissionTests
 {

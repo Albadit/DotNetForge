@@ -1,7 +1,7 @@
 namespace DotNetForge.Shared.Constants;
 
 /// <summary>
-/// The ten canonical permission areas (owned by user_roles_permissions.md / security.md).
+/// The ten canonical permission areas (owned by .docs/features/authorization.md / .docs/features/security.md).
 /// Used by the RBAC check <c>IPermissionService.Has(role, area, action)</c>.
 /// </summary>
 public static class PermissionAreas
@@ -50,7 +50,7 @@ public static class PermissionActions
 }
 
 /// <summary>
-/// The dotted API-token / extension permission keys (owned by api_tokens.md). These are the
+/// The dotted API-token / extension permission keys (owned by .docs/features/headless-api.md). These are the
 /// granular scopes an <see cref="DotNetForge.Shared.Entities.ApiToken"/> may carry and that an
 /// extension manifest may request.
 /// </summary>

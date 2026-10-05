@@ -4,7 +4,7 @@ namespace DotNetForge.Shared.Entities;
 
 /// <summary>
 /// A tenant (site). The tenant is resolved first in the request pipeline (by domain, subdomain,
-/// or path prefix) and every scoped entity is filtered by <see cref="Id"/> (multi_tenancy.md).
+/// or path prefix) and every scoped entity is filtered by <see cref="Id"/> (.docs/features/multi-tenancy.md).
 /// </summary>
 public class Tenant
 {

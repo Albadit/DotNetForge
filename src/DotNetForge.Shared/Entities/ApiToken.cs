@@ -3,7 +3,7 @@ using DotNetForge.Shared.Enums;
 namespace DotNetForge.Shared.Entities;
 
 /// <summary>
-/// A scoped API token (api_tokens.md). The plaintext secret is shown exactly once at creation;
+/// A scoped API token (.docs/features/headless-api.md). The plaintext secret is shown exactly once at creation;
 /// only the salted <see cref="TokenHash"/> is persisted. <see cref="TokenPrefix"/> is a short,
 /// non-secret identifier used in list views.
 /// </summary>

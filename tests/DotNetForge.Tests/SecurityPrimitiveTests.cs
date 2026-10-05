@@ -3,7 +3,7 @@ using Xunit;
 
 namespace DotNetForge.Tests;
 
-/// <summary>Password hashing must be salted, one-way, and verify correctly (security.md).</summary>
+/// <summary>Password hashing must be salted, one-way, and verify correctly (.docs/features/security.md).</summary>
 public sealed class PasswordHasherTests
 {
     private readonly Pbkdf2PasswordHasher _hasher = new();
@@ -32,7 +32,8 @@ public sealed class PasswordHasherTests
         Assert.False(_hasher.Verify("whatever", "not-a-valid-hash"));
 }
 
-/// <summary>API tokens are generated with a prefix and verified against a salted hash (api_tokens.md).</summary>
+/// <summary>API tokens are generated with a prefix and verified against a salted hash
+/// (.docs/features/headless-api.md).</summary>
 public sealed class ApiTokenFactoryTests
 {
     private readonly ApiTokenFactory _factory = new();
@@ -57,7 +58,7 @@ public sealed class ApiTokenFactoryTests
     }
 }
 
-/// <summary>Webhook payloads are signed deterministically with HMAC-SHA256 (webhooks.md).</summary>
+/// <summary>Webhook payloads are signed deterministically with HMAC-SHA256 (.docs/features/webhooks.md).</summary>
 public sealed class WebhookSignerTests
 {
     private readonly HmacWebhookSigner _signer = new();

@@ -9,7 +9,7 @@ namespace DotNetForge.Data;
 /// <summary>
 /// EF Core implementation of <see cref="IInstallationStore"/>. Creating the first admin and setting
 /// the installed flag happen inside one transaction so two concurrent setup submissions can never
-/// both create a Super Admin - the first to commit wins (installation_setup.md).
+/// both create a Super Admin - the first to commit wins (.docs/features/installation.md).
 /// </summary>
 public sealed class InstallationStore : IInstallationStore
 {

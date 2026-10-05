@@ -1,13 +1,14 @@
 @model IReadOnlyList<DotNetForge.Web.Areas.Admin.Models.PageTreeNode>
 @{
     var selectedId = ViewData["SelectedId"] as Guid?;
+    var canReorder = ViewData["CanReorder"] as bool? == true;
 }
 <ul class="page-tree">
     @foreach (var node in Model)
     {
         var isSelected = selectedId == node.Id;
         var dot = node.Disabled ? "off" : node.Published ? "on" : "draft";
-        <li class="tree-item" draggable="true" data-id="@node.Id">
+        <li class="tree-item" draggable="@(canReorder ? "true" : "false")" data-id="@node.Id">
             <div class="tree-row @(isSelected ? "active" : "")">
                 <span class="drag-handle" title="Drag to reorder">⠿</span>
                 <a class="tree-link" href="/admin/content?selected=@node.Id">

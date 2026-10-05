@@ -1,4 +1,4 @@
-@model PageFormModel
+@model PageInput
 @{
     var selectedId = ViewData["SelectedId"] as Guid?;
     var parentOptions = ViewData["ParentOptions"] as IReadOnlyList<(Guid Id, string Label)>
@@ -101,7 +101,7 @@
 </form>
 
 <form method="post" asp-area="Admin" asp-controller="Content" asp-action="Delete" asp-route-id="@selectedId"
-      onsubmit="return confirm('Delete this page? Its children are re-parented, not deleted.');">
+      data-confirm="Delete this page? Its children are re-parented, not deleted.">
     @Html.AntiForgeryToken()
     <button type="submit" class="btn danger">Delete page</button>
 </form>

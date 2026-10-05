@@ -1,11 +1,39 @@
-@model IReadOnlyList<MediaRowViewModel>
+@using DotNetForge.Web.Services
+@model MediaIndexViewModel
 @{
     ViewData["Title"] = "Media";
+    var accept = string.Join(",", MediaService.AllowedTypes.Keys);
 }
 
-<p class="muted">Uploaded files for the active tenant. Uploading is handled through the API / file manager (file_manager.md).</p>
+@if (TempData["Success"] is string ok)
+{
+    <p class="flash ok">@ok</p>
+}
 
-@if (Model.Count == 0)
+<div asp-validation-summary="All" class="validation-summary"></div>
+
+@if (Model.CanUpload)
+{
+    <div class="panel">
+        <h2>Upload</h2>
+        <form method="post" asp-area="Admin" asp-controller="Media" asp-action="Upload" enctype="multipart/form-data"
+              class="form-narrow">
+            @Html.AntiForgeryToken()
+            <div class="form-row">
+                <label for="files">Files <span class="req">*</span></label>
+                <input id="files" name="files" type="file" multiple required accept="@accept" />
+                <span class="muted hint">
+                    Up to @MediaService.MaxFilesPerUpload files, @(MediaService.MaxUploadBytes / (1024 * 1024)) MB each.
+                    Allowed: @string.Join(", ", MediaService.AllowedTypes.Keys).
+                </span>
+            </div>
+            <label class="check"><input type="checkbox" name="isPublic" value="true" checked /> Public (anyone with the link)</label>
+            <button type="submit" class="btn primary">Upload</button>
+        </form>
+    </div>
+}
+
+@if (Model.Files.Count == 0)
 {
     <div class="panel"><p class="muted">No media files yet.</p></div>
 }
@@ -13,13 +41,13 @@ else
 {
     <table class="data">
         <thead>
-            <tr><th>File</th><th>Type</th><th>Size</th><th>Access</th><th>Uploaded</th></tr>
+            <tr><th>File</th><th>Type</th><th>Size</th><th>Access</th><th>Uploaded</th><th></th></tr>
         </thead>
         <tbody>
-            @foreach (var file in Model)
+            @foreach (var file in Model.Files)
             {
                 <tr>
-                    <td>@file.FileName</td>
+                    <td><a href="@file.Url" target="_blank" rel="noopener">@file.FileName</a></td>
                     <td><code>@file.ContentType</code></td>
                     <td>@($"{file.SizeBytes / 1024.0:0.#} KB")</td>
                     <td>
@@ -33,6 +61,16 @@ else
                         }
                     </td>
                     <td>@file.UploadedDate.ToString("u")</td>
+                    <td>
+                        @if (file.CanDelete)
+                        {
+                            <form method="post" asp-area="Admin" asp-controller="Media" asp-action="Delete" asp-route-id="@file.Id"
+                                  class="inline" data-confirm="Delete this file? Links to it will stop working.">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn small danger">Delete</button>
+                            </form>
+                        }
+                    </td>
                 </tr>
             }
         </tbody>

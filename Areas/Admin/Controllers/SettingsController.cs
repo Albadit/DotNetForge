@@ -1,26 +1,32 @@
 using DotNetForge.Data;
+using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Areas.Admin.Models;
 using DotNetForge.Web.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Global / tenant settings (settings.md): lists key/value settings visible to the tenant (global rows
+/// Global / tenant settings (.docs/pages/settings.md): lists key/value settings visible to the tenant (global rows
 /// have a null tenant) and lets an admin add or update a tenant-scoped setting.
 /// </summary>
 [Route("admin/settings")]
+[Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]
 public sealed class SettingsController : AdminControllerBase
 {
     private readonly DotNetForgeDbContext _db;
     private readonly AppEnvironment _env;
-    private readonly AuditService _audit;
+    private const int MaxKeyLength = 200;
+    private const int MaxValueLength = 4000;
 
-    public SettingsController(DotNetForgeDbContext db, AppEnvironment env, AuditService audit)
+    private readonly IAuditService _audit;
+
+    public SettingsController(DotNetForgeDbContext db, AppEnvironment env, IAuditService audit)
     {
         _db = db;
         _env = env;
@@ -40,6 +46,15 @@ public sealed class SettingsController : AdminControllerBase
         if (string.IsNullOrWhiteSpace(key))
         {
             ModelState.AddModelError(string.Empty, "Key is required.");
+        }
+        else if (key.Trim().Length > MaxKeyLength || value?.Length > MaxValueLength)
+        {
+            ModelState.AddModelError(string.Empty,
+                $"Keys are limited to {MaxKeyLength} characters and values to {MaxValueLength}.");
+        }
+
+        if (!ModelState.IsValid)
+        {
             return View(nameof(Index), await BuildAsync());
         }
 

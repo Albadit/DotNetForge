@@ -1,6 +1,6 @@
 namespace DotNetForge.Shared.Dtos;
 
-/// <summary>The setup-wizard submission that creates the first Super Admin (installation_setup.md).</summary>
+/// <summary>The setup-wizard submission that creates the first Super Admin (.docs/features/installation.md).</summary>
 public sealed class SetupRequest
 {
     public string? FirstName { get; set; }

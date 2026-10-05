@@ -6,7 +6,7 @@ namespace DotNetForge.Shared.Manifests;
 /// The parsed contents of a <c>dotnetforge.extension.json</c> manifest. Property names map to the
 /// camelCase JSON keys via <see cref="JsonPropertyNameAttribute"/>. The eight required fields are
 /// <c>id, name, description, version, type, author, entryPoint, permissions</c>
-/// (owned by extensions.md / architecture.md). There is exactly one <c>version</c> field.
+/// (owned by .docs/features/extensions.md / .docs/architecture/codebase.md). There is exactly one <c>version</c> field.
 /// </summary>
 public sealed class ExtensionManifest
 {

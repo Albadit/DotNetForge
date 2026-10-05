@@ -1,6 +1,6 @@
-// DotNetForge CMS - minimal frontend script.
-// The CMS is server-rendered (ASP.NET Core MVC + Razor); this file is the entry point
-// for any progressive enhancement and is covered by ESLint (see .eslintrc.json).
+// DotNetForge CMS - shared admin script, loaded by _AdminLayout.
+// The CMS is server-rendered (ASP.NET Core MVC + Razor). Pages carry no inline script, so the
+// Content-Security-Policy can forbid it; behaviour hooks are data attributes handled here.
 
 (function () {
   "use strict";

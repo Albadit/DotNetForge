@@ -31,7 +31,7 @@ public sealed class ExtensionViewController : Controller
     [HttpGet("{id}/raw")]
     public IActionResult Render(string id)
     {
-        var match = FindAdminExtension(id);
+        var match = _loader.FindAdminExtension(id);
         var folder = match is null ? null : Path.GetDirectoryName(match.Path);
         var indexView = folder is null ? null : Path.Combine(folder, "Views", "Index.cshtml");
         if (match?.Manifest is null || folder is null || indexView is null || !System.IO.File.Exists(indexView))
@@ -51,7 +51,7 @@ public sealed class ExtensionViewController : Controller
     [HttpGet("{id}/resources/{**path}")]
     public IActionResult Resource(string id, string path)
     {
-        var match = FindAdminExtension(id);
+        var match = _loader.FindAdminExtension(id);
         var folder = match is null ? null : Path.GetDirectoryName(match.Path);
         if (folder is null)
         {
@@ -82,12 +82,6 @@ public sealed class ExtensionViewController : Controller
         };
         return PhysicalFile(requested, contentType);
     }
-
-    private DiscoveredExtension? FindAdminExtension(string id) =>
-        _loader.Discover(Path.Combine(_hostEnv.ContentRootPath, "extensions")).FirstOrDefault(d =>
-            d.IsValid && d.Manifest is not null &&
-            string.Equals(d.Manifest.Type, "admin", StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(d.Manifest.Id, id, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>JSON manifest values arrive as <see cref="JsonElement"/>; flatten to plain CLR types so
     /// the view can use them directly (e.g. `is bool`).</summary>

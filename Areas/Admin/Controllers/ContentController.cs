@@ -1,5 +1,7 @@
 using DotNetForge.Data;
+using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Constants;
+using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Areas.Admin.Models;
 using DotNetForge.Web.Services;
@@ -9,19 +11,22 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Content Manager (content_manager.md): a two-pane page manager - the page tree on the left, the selected
-/// page's settings form on the right. Page validation/rules live in <see cref="PageService"/>; the public
-/// site derives liveness from the schedule at render time (HomeController.Live), so the form's Published
-/// checkbox is the author's intent only.
+/// Content Manager (.docs/pages/content-manager.md): a two-pane page manager - the page tree on the left, the
+/// selected page's settings form on the right. Page rules live in <see cref="IPageService"/>; this controller
+/// enforces who may do what (content permissions in the "Collection types" area: Authors create and edit their own
+/// pages but cannot publish, reorder or touch other pages; Editors and Admins can do everything). The public site
+/// derives liveness from the schedule at render time, so the form's Published checkbox is the author's intent only.
 /// </summary>
 [Route("admin/content")]
 public sealed class ContentController : AdminControllerBase
 {
-    private readonly DotNetForgeDbContext _db;
-    private readonly PageService _pages;
-    private readonly AuditService _audit;
+    private const string Area = PermissionAreas.CollectionTypes;
 
-    public ContentController(DotNetForgeDbContext db, PageService pages, AuditService audit)
+    private readonly DotNetForgeDbContext _db;
+    private readonly IPageService _pages;
+    private readonly IAuditService _audit;
+
+    public ContentController(DotNetForgeDbContext db, IPageService pages, IAuditService audit)
     {
         _db = db;
         _pages = pages;
@@ -34,17 +39,34 @@ public sealed class ContentController : AdminControllerBase
         return View(await BuildIndexAsync(selected, form: null));
     }
 
+    /// <summary>Lets the tree offer drag-and-drop only to users who may reorder (the POST checks again).</summary>
+    public override void OnActionExecuted(Microsoft.AspNetCore.Mvc.Filters.ActionExecutedContext context)
+    {
+        ViewData["CanReorder"] = Can(Area, PermissionActions.Update);
+        base.OnActionExecuted(context);
+    }
+
     [HttpPost("create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Guid? parent)
     {
+        if (!Can(Area, PermissionActions.Create))
+        {
+            return Forbid();
+        }
+
+        if (parent is Guid parentId && !await _db.Pages.AnyAsync(p => p.Id == parentId && p.TenantId == TenantId))
+        {
+            return NotFound();
+        }
+
         var siblings = await _db.Pages.CountAsync(p => p.TenantId == TenantId && p.ParentPageId == parent);
         var page = new Page
         {
             TenantId = TenantId,
             CreatedById = CurrentUserId,
             Title = "Untitled page",
-            Slug = "new-page-" + Guid.NewGuid().ToString("N")[..6],
+            Slug = "new-page-" + Guid.NewGuid().ToString("N")[..8],
             Published = false,
             Disabled = true,
             PageType = Shared.Enums.PageType.Standard,
@@ -60,7 +82,7 @@ public sealed class ContentController : AdminControllerBase
 
     [HttpPost("update/{id:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Update(Guid id, PageFormModel form)
+    public async Task<IActionResult> Update(Guid id, PageInput form)
     {
         var page = await _db.Pages.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == TenantId);
         if (page is null)
@@ -68,7 +90,14 @@ public sealed class ContentController : AdminControllerBase
             return NotFound();
         }
 
-        var error = await _pages.ApplyAsync(page, form, TenantId, HttpContext.RequestAborted);
+        if (!CanModify(Area, PermissionActions.Update, PermissionActions.UpdateOwn, page.CreatedById))
+        {
+            return Forbid();
+        }
+
+        var error = ChangesPublishing(page, form) && !Can(Area, PermissionActions.Publish)
+            ? "You don't have permission to publish, unpublish or schedule pages."
+            : await _pages.ApplyAsync(page, form, TenantId, HttpContext.RequestAborted);
         if (error is not null)
         {
             ModelState.AddModelError(string.Empty, error);
@@ -92,14 +121,18 @@ public sealed class ContentController : AdminControllerBase
             return NotFound();
         }
 
-        // Never orphan children: re-parent them to the deleted page's parent.
-        var children = await _db.Pages.Where(p => p.TenantId == TenantId && p.ParentPageId == id).ToListAsync();
-        foreach (var child in children)
+        if (!CanModify(Area, PermissionActions.Delete, PermissionActions.DeleteOwn, page.CreatedById))
         {
-            child.ParentPageId = page.ParentPageId;
+            return Forbid();
         }
 
-        _db.Pages.Remove(page);
+        var error = await _pages.DeleteAsync(page, HttpContext.RequestAborted);
+        if (error is not null)
+        {
+            ModelState.AddModelError(string.Empty, error);
+            return View(nameof(Index), await BuildIndexAsync(id, form: null));
+        }
+
         await _db.SaveChangesAsync();
         await _audit.LogAsync(AuditActions.ContentDeleted, "Page", id.ToString(), page.Title);
         TempData["Success"] = $"Deleted '{page.Title}'.";
@@ -111,25 +144,30 @@ public sealed class ContentController : AdminControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reorder([FromBody] ReorderRequest request)
     {
-        var ids = request.Items.Select(i => i.Id).ToList();
-        var pages = await _db.Pages.Where(p => p.TenantId == TenantId && ids.Contains(p.Id)).ToListAsync();
-        var byId = pages.ToDictionary(p => p.Id);
-
-        foreach (var item in request.Items)
+        if (!Can(Area, PermissionActions.Update))
         {
-            if (byId.TryGetValue(item.Id, out var page))
-            {
-                page.ParentPageId = item.ParentPageId;
-                page.SortOrder = item.SortOrder;
-                page.UpdatedDate = DateTime.UtcNow;
-            }
+            return Forbid();
+        }
+
+        var positions = request.Items.Select(i => new PagePosition(i.Id, i.ParentPageId, i.SortOrder)).ToList();
+        var error = await _pages.ReorderAsync(positions, TenantId, HttpContext.RequestAborted);
+        if (error is not null)
+        {
+            return BadRequest(new { error });
         }
 
         await _db.SaveChangesAsync();
+        await _audit.LogAsync(AuditActions.ContentReordered, "Page", entityDisplay: $"{positions.Count} page(s)");
         return Ok(new { ok = true });
     }
 
-    private async Task<ContentIndexViewModel> BuildIndexAsync(Guid? selectedId, PageFormModel? form)
+    /// <summary>Whether the form changes anything that decides when the page is public.</summary>
+    private static bool ChangesPublishing(Page page, PageInput form) =>
+        form.Published != page.Published ||
+        PageService.ToUtc(form.ScheduledPublishDate) != page.ScheduledPublishDate ||
+        PageService.ToUtc(form.ScheduledUnpublishDate) != page.ScheduledUnpublishDate;
+
+    private async Task<ContentIndexViewModel> BuildIndexAsync(Guid? selectedId, PageInput? form)
     {
         var pages = await _db.Pages
             .AsNoTracking()
@@ -143,7 +181,7 @@ public sealed class ContentController : AdminControllerBase
             var page = pages.FirstOrDefault(p => p.Id == id);
             if (page is not null)
             {
-                selectedForm = ToForm(page);
+                selectedForm = PageInput.From(page);
             }
         }
 
@@ -190,24 +228,4 @@ public sealed class ContentController : AdminControllerBase
 
         return roots;
     }
-
-    private static PageFormModel ToForm(Page p) => new()
-    {
-        Title = p.Title,
-        Slug = p.Slug,
-        MetaTitle = p.MetaTitle,
-        MetaDescription = p.MetaDescription,
-        SeoKeywords = p.SeoKeywords,
-        CanonicalUrl = p.CanonicalUrl,
-        Published = p.Published,
-        Disabled = p.Disabled,
-        DisplayInMenu = p.DisplayInMenu,
-        ParentPageId = p.ParentPageId,
-        SortOrder = p.SortOrder,
-        PageType = p.PageType.ToString(),
-        TargetUrl = p.TargetUrl,
-        FileReference = p.FileReference,
-        ScheduledPublishDate = p.ScheduledPublishDate,
-        ScheduledUnpublishDate = p.ScheduledUnpublishDate,
-    };
 }

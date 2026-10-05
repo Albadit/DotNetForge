@@ -7,6 +7,13 @@ public enum DatabaseProvider
     PostgreSql = 1,
 }
 
+/// <summary>Object-storage backend, selected from <c>STORAGE_PROVIDER</c> in <c>.env</c>.</summary>
+public enum StorageProvider
+{
+    Local = 0,
+    S3 = 1,
+}
+
 /// <summary>Account status for a user. Disabled users cannot sign in.</summary>
 public enum UserStatus
 {

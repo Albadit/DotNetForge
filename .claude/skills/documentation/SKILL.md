@@ -1,13 +1,12 @@
 ---
 name: documentation
 description: >-
-  Writes and maintains a project's documentation for the people who use the application and the developers who
-  take it over: README, user guide, docs/ folder (configuration, troubleshooting, architecture, development,
-  database, API, testing, deployment, security), ADRs, changelog, code comments and Mermaid diagrams - all verified
-  against the code. Use when asked to document, write or update docs, a user guide or a README, set up or reorganize
-  a docs folder, explain the architecture or data flow, draw diagrams, prepare a handover, write release notes, or
-  when a code change affects documented behaviour, UI, architecture, configuration, APIs, the database, setup or
-  deployment. Works for any language or framework.
+  Writes and maintains DotNetForge CMS documentation in .docs/ (architecture, data flow, screen docs in pages/,
+  feature docs in features/, guides, glossary, implementation status), the root README/ARCHITECTURE/CLAUDE.md and
+  .github/agents quick references, code comments and Mermaid diagrams - all verified against the code. Use when asked
+  to document, write or update docs or a README, reorganize .docs, explain the architecture or data flow, draw
+  diagrams, prepare a handover, or when a code change affects documented behaviour, screens, routes, permissions,
+  configuration, the API, the database, setup or deployment.
 ---
 
 # Documentation
@@ -16,6 +15,42 @@ Documentation is part of the implementation, not a final chore. It has two reade
 **users**, who must install, use and troubleshoot the application from the user guide without asking anyone; and
 **developers** new to the project, who must run, understand, debug, extend and deploy it without the original
 developer.
+
+## This project's documentation
+
+Entry point: `.docs/README.md`. The layout is fixed - put new material where it belongs instead of inventing files:
+
+| Folder / file | Holds | One document per |
+| --- | --- | --- |
+| `.docs/architecture/` | `codebase.md`, `data-flow.md`, `pages.md` (route map), `database.md`, `dependencies.md` | architectural view |
+| `.docs/features/` | cross-screen concepts (installation, authentication, authorization, content pages and routing, headless API, extensions, audit logging, ...) - the **authoritative** place for rules | concept |
+| `.docs/pages/` | one file per screen (UI view), in the fixed section template of [screen-template.md](reference/screen-template.md) | screen |
+| `.docs/guides/` | how-tos: development, testing, extension development | task |
+| `.docs/glossary.md` | fixed terminology - "screen" = UI view, "content page"/`Page` = entity, "live" vs `Published`, "extension" vs `plugin` | - |
+| `.docs/implementation-status.md` | built vs. planned per module (links to each Planned section) + registered-but-unused code | - |
+| `.docs/product.md` | product goals, the three modes, target users, MVP scope | - |
+| `/README.md`, `/ARCHITECTURE.md`, `/CLAUDE.md`, `/.github/agents/*.md` | short overviews that link into `.docs/` - keep them short, don't duplicate | - |
+
+Planned work has no separate folder: every document that owns a topic ends with a `## Planned (not implemented)`
+section (Requirements, User flows, Rules and validation, Edge cases, Acceptance criteria with `- [x]` only for
+criteria verified in code). Never describe planned behaviour outside that section, and never leave built behaviour
+inside it. Code comments cite the owning doc by path (e.g. `(.docs/features/headless-api.md)`).
+
+When code changes, update in the same change:
+
+| Code change | Documents to update |
+| --- | --- |
+| New/changed admin screen or route | `pages/<screen>.md`, route map in `architecture/pages.md`, `.docs/README.md` screen table, sidebar section of `architecture/pages.md` |
+| Rule in `PageService` / `HomeController.Live` / `RenderPage` | `features/content-pages-and-routing.md` (and the screen docs only if what the user sees changes) |
+| New API endpoint or permission key | `features/headless-api.md` endpoint table, `features/authorization.md` key list |
+| `[Authorize]` / policy change | `features/authorization.md` matrix, `architecture/pages.md` route map auth column |
+| Entity, index, migration, seed | `architecture/database.md` |
+| DI registration, project reference, package | `architecture/dependencies.md` |
+| `.env` key | `features/configuration.md`, `.env.example`, `guides/deployment.md#environment-variables` |
+| Storage provider, upload rules, `IFileStorage` | `features/media-storage.md`, `pages/media.md` |
+| Anything that writes files, Dockerfile, proxy/TLS, runtime requirements | `guides/deployment.md` |
+| New audit action written | `features/audit-logging.md` |
+| Something from a **Planned (not implemented)** section built | move it into the document body (verified), tick/remove its acceptance criteria, update `implementation-status.md` (+ "Registered but unused") |
 
 ## Workflow
 

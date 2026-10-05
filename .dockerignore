@@ -1,0 +1,16 @@
+# Keep the build context to what `dotnet publish` of the web host needs.
+**/bin/
+**/obj/
+.git/
+.vs/
+.vscode/
+.idea/
+.env
+.env.*
+!.env.example
+storage/
+tests/
+TestResults/
+.docs/
+.claude/
+*.md

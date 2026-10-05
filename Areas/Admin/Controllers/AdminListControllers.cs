@@ -3,7 +3,6 @@ using DotNetForge.Data;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Web.Areas.Admin.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -76,8 +75,11 @@ public sealed class AuditLogsController : AdminControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
+        // Entries without a tenant (failed sign-ins: no account was resolved) belong to the sign-in tenant and stay
+        // visible; entries of other tenants never are.
         var entries = await _db.AuditLogs
             .AsNoTracking()
+            .Where(a => a.TenantId == TenantId || a.TenantId == null)
             .OrderByDescending(a => a.Id)
             .Take(100)
             .ToListAsync();
@@ -93,13 +95,11 @@ public sealed class PluginsController : AdminControllerBase
 {
     private readonly DotNetForgeDbContext _db;
     private readonly IExtensionLoader _loader;
-    private readonly IWebHostEnvironment _hostEnv;
 
-    public PluginsController(DotNetForgeDbContext db, IExtensionLoader loader, IWebHostEnvironment hostEnv)
+    public PluginsController(DotNetForgeDbContext db, IExtensionLoader loader)
     {
         _db = db;
         _loader = loader;
-        _hostEnv = hostEnv;
     }
 
     [HttpGet("")]
@@ -122,8 +122,7 @@ public sealed class PluginsController : AdminControllerBase
 
         var installedIds = installed.Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var extensionsRoot = Path.Combine(_hostEnv.ContentRootPath, "extensions");
-        foreach (var discovered in _loader.Discover(extensionsRoot))
+        foreach (var discovered in _loader.Discover())
         {
             var m = discovered.Manifest;
             var id = m?.Id ?? Path.GetFileName(Path.GetDirectoryName(discovered.Path)) ?? discovered.Path;

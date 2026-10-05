@@ -6,26 +6,25 @@ namespace DotNetForge.Data;
 
 /// <summary>
 /// Centralizes how the EF Core context is bound to the active provider selected from <c>.env</c>
-/// (SQLite default / PostgreSQL). Used by both the web host and the design-time factory so provider
-/// selection lives in exactly one place (architecture.md).
+/// (SQLite default / PostgreSQL). Used by both the web host and the design-time factories so provider
+/// selection lives in exactly one place (.docs/architecture/database.md).
 /// </summary>
 public static class DbProviderConfigurator
 {
     public static void Configure(DbContextOptionsBuilder options, AppEnvironment env)
     {
         var connectionString = env.ResolveConnectionString();
+        var migrationsAssembly = typeof(DotNetForgeDbContext).Assembly.FullName;
 
         switch (env.Provider)
         {
             case DatabaseProvider.Sqlite:
                 EnsureSqliteDirectory(connectionString);
-                options.UseSqlite(connectionString, sql =>
-                    sql.MigrationsAssembly(typeof(DotNetForgeDbContext).Assembly.FullName));
+                options.UseSqlite(connectionString, sql => sql.MigrationsAssembly(migrationsAssembly));
                 break;
 
             case DatabaseProvider.PostgreSql:
-                options.UseNpgsql(connectionString, sql =>
-                    sql.MigrationsAssembly(typeof(DotNetForgeDbContext).Assembly.FullName));
+                options.UseNpgsql(connectionString, sql => sql.MigrationsAssembly(migrationsAssembly));
                 break;
 
             default:
@@ -33,21 +32,19 @@ public static class DbProviderConfigurator
         }
     }
 
-    /// <summary>Ensures the directory for a SQLite <c>Data Source</c> file exists.</summary>
+    /// <summary>
+    /// Ensures the directory of a file-based SQLite database exists. The path is configured explicitly outside
+    /// Development (a writable volume), so this never writes into the deployment directory there.
+    /// </summary>
     private static void EnsureSqliteDirectory(string connectionString)
     {
-        const string marker = "data source=";
-        var idx = connectionString.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-        if (idx < 0)
+        var dataSource = SqliteConnectionStrings.GetDataSource(connectionString);
+        if (string.IsNullOrEmpty(dataSource) || SqliteConnectionStrings.IsInMemory(dataSource))
         {
             return;
         }
 
-        var rest = connectionString[(idx + marker.Length)..];
-        var end = rest.IndexOf(';');
-        var path = (end >= 0 ? rest[..end] : rest).Trim();
-
-        var dir = Path.GetDirectoryName(Path.GetFullPath(path));
+        var dir = Path.GetDirectoryName(Path.GetFullPath(dataSource));
         if (!string.IsNullOrEmpty(dir))
         {
             Directory.CreateDirectory(dir);

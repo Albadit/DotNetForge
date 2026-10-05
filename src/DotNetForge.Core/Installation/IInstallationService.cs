@@ -4,7 +4,7 @@ using DotNetForge.Shared.Results;
 namespace DotNetForge.Core.Installation;
 
 /// <summary>
-/// Orchestrates first-run installation (installation_setup.md): install detection and the one-time
+/// Orchestrates first-run installation (.docs/features/installation.md): install detection and the one-time
 /// creation of the first Super Admin.
 /// </summary>
 public interface IInstallationService

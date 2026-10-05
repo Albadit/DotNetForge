@@ -12,10 +12,14 @@ namespace DotNetForge.Core.Installation;
 /// Default installation orchestrator. Validates the setup submission (email format, password
 /// policy, confirm match) and delegates atomic persistence to the <see cref="IInstallationStore"/>.
 /// The first writer to commit wins under concurrent submissions; later callers are told the CMS is
-/// already installed (installation_setup.md).
+/// already installed (.docs/features/installation.md).
 /// </summary>
 public sealed class InstallationService : IInstallationService
 {
+    // Column limits of User (DotNetForgeDbContext), checked before saving.
+    private const int MaxEmailLength = 256;
+    private const int MaxNameLength = 100;
+
     private readonly IInstallationStore _store;
     private readonly IPasswordHasher _passwordHasher;
 
@@ -38,9 +42,14 @@ public sealed class InstallationService : IInstallationService
         }
 
         var email = request.Email?.Trim() ?? string.Empty;
-        if (!EmailValidator.IsValid(email))
+        if (!EmailValidator.IsValid(email) || email.Length > MaxEmailLength)
         {
             return Result.Fail("A valid email address is required.");
+        }
+
+        if (request.FirstName?.Trim().Length > MaxNameLength || request.LastName?.Trim().Length > MaxNameLength)
+        {
+            return Result.Fail($"First and last name must be at most {MaxNameLength} characters.");
         }
 
         if (PasswordPolicy.Validate(request.Password) is { } passwordError)

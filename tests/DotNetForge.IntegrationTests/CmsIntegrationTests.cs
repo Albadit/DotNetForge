@@ -6,7 +6,7 @@ namespace DotNetForge.IntegrationTests;
 
 /// <summary>
 /// End-to-end checks over the real host: install detection, the setup gate, admin auth gating, and
-/// API token enforcement (installation_setup.md, admin_area.md, api_tokens.md).
+/// API token enforcement (.docs/features/installation.md, .docs/architecture/pages.md, .docs/features/headless-api.md).
 /// </summary>
 public sealed class CmsIntegrationTests
 {

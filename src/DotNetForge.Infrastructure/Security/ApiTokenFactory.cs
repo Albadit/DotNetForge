@@ -7,7 +7,7 @@ namespace DotNetForge.Infrastructure.Security;
 /// Generates cryptographically strong API tokens of the form <c>dnf_{prefix}_{secret}</c>. The full
 /// value is returned once at creation; only a salted PBKDF2 hash is persisted, and the non-secret
 /// <c>dnf_{prefix}</c> portion is stored in clear to look up candidates at verification time
-/// (api_tokens.md, security.md).
+/// (.docs/features/headless-api.md, .docs/features/security.md).
 /// </summary>
 public sealed class ApiTokenFactory : IApiTokenFactory
 {

@@ -1,29 +1,31 @@
 # Architecture Summary (for AI agents)
 
-Layered ASP.NET Core MVC solution. Dependencies flow inward. Full detail in
-[ARCHITECTURE.md](../../ARCHITECTURE.md).
+Layered solution; the web host is the repository root project. Full detail:
+[codebase.md](../../.docs/architecture/codebase.md), [dependencies.md](../../.docs/architecture/dependencies.md).
 
 | Project | Role |
 | --- | --- |
-| `DotNetForge.Abstractions` | Primitive-only contracts + extension-point interfaces. No dependencies. |
-| `DotNetForge.Shared` | Entities, enums, constants, results, manifest models, `AppEnvironment`, `PermissionMatrix`, store interfaces. |
-| `DotNetForge.Core` | `PermissionService`, `InstallationService`, validators, manifest/extension contracts. Pure logic. |
-| `DotNetForge.Data` | EF Core `DotNetForgeDbContext`, migrations, provider selection, seeder, `InstallationStore`. |
-| `DotNetForge.Infrastructure` | PBKDF2 hasher, clock, HMAC webhook signer, API token factory, `.env` loader, local storage, email. |
-| `DotNetForge.Extensions` | `ManifestValidator`, `ExtensionLoader`. |
-| `DotNetForge.Api` | Headless API controllers + API-token auth handler + permission filter. |
-| `DotNetForge.Web` | MVC host (repo root): admin area, setup, auth, install middleware, DI composition. |
+| `DotNetForge.Abstractions` | Contracts + extension-point interfaces. No dependencies, no entities. |
+| `DotNetForge.Shared` | Entities, enums, constants, DTOs, `Result`, manifest model, `AppEnvironment`, `PermissionMatrix`, store interfaces. |
+| `DotNetForge.Core` | `InstallationService`, `PermissionService` (content/media permission checks), validators. No EF Core. |
+| `DotNetForge.Data` | `DotNetForgeDbContext` (SQLite migrations, Data Protection keys), `PostgreSqlDbContext` (PostgreSQL migrations), provider selection, `DataSeeder`, `InstallationStore`. |
+| `DotNetForge.Infrastructure` | PBKDF2 hasher, clock, API token factory, HMAC signer, `.env` loader, `LocalFileStorage` and `S3FileStorage`. |
+| `DotNetForge.Extensions` | `ManifestValidator`, `ExtensionLoader` (discovery only). |
+| `DotNetForge.Api` | Headless API controllers, `ApiTokenAuthenticationHandler`, `RequireApiPermissionAttribute`. |
+| `DotNetForge.Web` (root) | Composition root, install middleware, admin area, public site, setup, account, web-host services. |
 
-## Composition flow (`Program.cs`)
+## Composition (`Program.cs`)
 
-1. `EnvConfigurationLoader.Load(...)` → `AppEnvironment` (aborts on invalid `.env`).
-2. `AddDotNetForge(env, contentRoot)` registers everything (`Startup/DependencyRegistration.cs`).
-3. `DatabaseInitializer.InitializeAsync` → migrate (SQLite) / create (PostgreSQL) + seed.
-4. `InstallationMiddleware` gates the app until setup completes.
+1. `EnvConfigurationLoader.Load(...)` → `AppEnvironment` (exit code 1 on invalid config).
+2. `AddDotNetForge(env, contentRoot)` (`Startup/DependencyRegistration.cs`) registers everything.
+3. `DatabaseInitializer.InitializeAsync` → `MigrateAsync` (both providers) + seed.
+4. Pipeline: exception handler/HSTS (non-Development) → `SecurityHeadersMiddleware` → static files → routing →
+   `InstallationMiddleware` → authentication → rate limiter → authorization → controllers, `/health`, fallback to
+   `HomeController.RenderPage`.
 
 ## Conventions
 
-- File-scoped namespaces, 4-space indent, nullable enabled, central package versions
-  (`Directory.Packages.props`), shared build props (`Directory.Build.props`).
-- New cross-cutting behavior → interface in `Abstractions`, implementation in `Infrastructure`,
-  registered in `DependencyRegistration`.
+- File-scoped namespaces, nullable, 4-space indent, LF; versions in `Directory.Packages.props`.
+- New cross-cutting contract → `Abstractions` (or `Shared` if it needs entities); implementation in
+  `Infrastructure`/`Data`; registration in `DependencyRegistration`.
+- Rules for changes: [codebase.md → Architectural rules](../../.docs/architecture/codebase.md#architectural-rules-for-changes).

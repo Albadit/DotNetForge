@@ -1,21 +1,27 @@
 using DotNetForge.Api.Authorization;
 using DotNetForge.Data;
+using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Constants;
+using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Api.Controllers;
 
-/// <summary>Headless content endpoints (api_tokens.md). All access is gated by token permissions.</summary>
+/// <summary>Headless content endpoints (.docs/features/headless-api.md). All access is gated by token permissions.</summary>
 [Route("api/content")]
 public sealed class ContentApiController : ApiControllerBase
 {
     private readonly DotNetForgeDbContext _db;
+    private readonly IPageService _pages;
+    private readonly IAuditService _audit;
 
-    public ContentApiController(DotNetForgeDbContext db)
+    public ContentApiController(DotNetForgeDbContext db, IPageService pages, IAuditService audit)
     {
         _db = db;
+        _pages = pages;
+        _audit = audit;
     }
 
     /// <summary>GET /api/content/pages - lists pages in the token's tenant.</summary>
@@ -37,7 +43,7 @@ public sealed class ContentApiController : ApiControllerBase
                 Type = p.PageType.ToString(),
                 p.UpdatedDate,
             })
-            .ToListAsync();
+            .ToListAsync(HttpContext.RequestAborted);
 
         return Ok(pages);
     }
@@ -56,26 +62,31 @@ public sealed class ContentApiController : ApiControllerBase
         return Ok(Array.Empty<object>());
     }
 
-    /// <summary>POST /api/content/pages - creates a page in the token's tenant.</summary>
+    /// <summary>
+    /// POST /api/content/pages - creates an unpublished root-level page in the token's tenant. The same rules as the
+    /// Content Manager apply (<see cref="IPageService"/>): slug normalization, uniqueness, length limits.
+    /// </summary>
     [HttpPost("pages")]
     [RequireApiPermission(PermissionKeys.ContentCreate)]
     public async Task<IActionResult> CreatePage([FromBody] CreatePageRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Slug))
+        var page = new Page { TenantId = TenantId };
+        var error = await _pages.ApplyAsync(page, new PageInput
         {
-            return BadRequest(new { error = "Title and slug are required." });
+            Title = request.Title,
+            Slug = request.Slug,
+            MetaDescription = request.MetaDescription,
+        }, TenantId, HttpContext.RequestAborted);
+
+        if (error is not null)
+        {
+            return BadRequest(new { error });
         }
 
-        var page = new Page
-        {
-            TenantId = TenantId,
-            Title = request.Title.Trim(),
-            Slug = request.Slug.Trim().ToLowerInvariant(),
-            MetaDescription = request.MetaDescription,
-        };
-
         _db.Pages.Add(page);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(HttpContext.RequestAborted);
+        await _audit.LogAsync(AuditActions.ContentCreated, "Page", page.Id.ToString(), page.Title,
+            cancellationToken: HttpContext.RequestAborted);
 
         return CreatedAtAction(nameof(GetPages), new { id = page.Id }, new { page.Id, page.Slug, page.Title });
     }

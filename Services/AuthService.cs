@@ -20,8 +20,9 @@ public enum SignInStatus
 public sealed record SignInResult(SignInStatus Status, ClaimsPrincipal? Principal, User? User);
 
 /// <summary>
-/// Validates email/password credentials with account lockout (security.md, authentication.md) and
-/// builds the cookie principal (roles + tenant claims) used by the admin area.
+/// Validates email/password credentials with account lockout (.docs/features/security.md,
+/// .docs/features/authentication.md) and builds the cookie principal (roles + tenant claims) used by the admin
+/// area.
 /// </summary>
 public sealed class AuthService
 {
@@ -90,11 +91,20 @@ public sealed class AuthService
         return new SignInResult(SignInStatus.Success, BuildPrincipal(user, roles), user);
     }
 
-    public async Task<IReadOnlyList<string>> GetRolesAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        await _db.UserRoles
-            .Where(ur => ur.UserId == userId)
-            .Join(_db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
-            .ToListAsync(cancellationToken);
+    /// <summary>
+    /// The tenant used for sign-in. There is no tenant resolution yet (.docs/features/multi-tenancy.md), so this is
+    /// the oldest tenant - the seeded default.
+    /// </summary>
+    public Task<Guid> GetDefaultTenantIdAsync(CancellationToken cancellationToken = default) =>
+        _db.Tenants.OrderBy(t => t.CreatedDate).Select(t => t.Id).FirstAsync(cancellationToken);
+
+    /// <summary>
+    /// Whether a signed-in user may keep their session: the account still exists and is enabled. Called for every
+    /// authenticated cookie (see <c>DependencyRegistration</c>), so disabling or deleting a user ends their session
+    /// instead of leaving it valid until the cookie expires.
+    /// </summary>
+    public Task<bool> IsActiveAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        _db.Users.AnyAsync(u => u.Id == userId && u.Status == UserStatus.Enabled, cancellationToken);
 
     private static ClaimsPrincipal BuildPrincipal(User user, IReadOnlyList<string> roles)
     {

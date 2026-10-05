@@ -4,7 +4,7 @@ using DotNetForge.Web.Services;
 namespace DotNetForge.Web.Middleware;
 
 /// <summary>
-/// Gates the entire application until first-run setup completes (installation_setup.md): while the
+/// Gates the entire application until first-run setup completes (.docs/features/installation.md): while the
 /// CMS is not installed, every non-setup request is redirected to the setup wizard; once installed,
 /// the wizard is permanently blocked and redirects to the admin area.
 /// </summary>

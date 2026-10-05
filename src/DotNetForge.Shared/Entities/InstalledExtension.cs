@@ -3,7 +3,7 @@ using DotNetForge.Shared.Enums;
 namespace DotNetForge.Shared.Entities;
 
 /// <summary>
-/// The CMS-side record of an installed extension - one row per Plugins-page entry (extensions.md).
+/// The CMS-side record of an installed extension - one row per Plugins-page entry (.docs/features/extensions.md).
 /// Derived from the extension's validated <c>dotnetforge.extension.json</c> manifest.
 /// </summary>
 public class InstalledExtension

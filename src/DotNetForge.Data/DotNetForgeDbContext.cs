@@ -1,15 +1,20 @@
 using DotNetForge.Shared.Entities;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Data;
 
 /// <summary>
-/// The single EF Core context for DotNetForge CMS. Provider selection (SQLite default / PostgreSQL)
-/// is configured by the host; all schema changes flow through migrations (architecture.md).
+/// The single EF Core context for DotNetForge CMS. Provider selection (SQLite default / PostgreSQL) is configured by
+/// the host; all schema changes flow through migrations (.docs/architecture/database.md). This type owns the SQLite
+/// migrations in <c>Migrations/</c>; <see cref="PostgreSqlDbContext"/> owns the PostgreSQL set.
 /// </summary>
-public sealed class DotNetForgeDbContext : DbContext
+public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
 {
     public DotNetForgeDbContext(DbContextOptions<DotNetForgeDbContext> options) : base(options) { }
+
+    /// <summary>For provider-specific subclasses that carry their own migration set (<see cref="PostgreSqlDbContext"/>).</summary>
+    protected DotNetForgeDbContext(DbContextOptions options) : base(options) { }
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
@@ -26,6 +31,9 @@ public sealed class DotNetForgeDbContext : DbContext
     public DbSet<SystemState> SystemState => Set<SystemState>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<AuthProvider> AuthProviders => Set<AuthProvider>();
+
+    /// <summary>ASP.NET Core Data Protection key ring (auth cookies, antiforgery), shared by all instances.</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -48,7 +56,7 @@ public sealed class DotNetForgeDbContext : DbContext
             e.Property(u => u.FirstName).HasMaxLength(100);
             e.Property(u => u.LastName).HasMaxLength(100);
             e.Property(u => u.PasswordHash).IsRequired();
-            // Email is unique within a tenant (user_roles_permissions.md).
+            // Email is unique within a tenant (.docs/features/authorization.md).
             e.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
             e.Ignore(u => u.DisplayName);
         });

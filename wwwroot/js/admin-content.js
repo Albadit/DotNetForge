@@ -97,8 +97,13 @@
             credentials: "same-origin",
             body: JSON.stringify({ items: items }),
         }).then(function (res) {
-            if (res.ok) window.location.reload();
-            else alert("Could not save the new order.");
+            if (res.ok) { window.location.reload(); return; }
+            // The server explains rejected moves (duplicate slug, cycle) in { error }; a permission refusal
+            // redirects to the access-denied page, so it gets the generic message.
+            return res.json().catch(function () { return {}; }).then(function (body) {
+                alert(body && body.error ? body.error : "Could not save the new order.");
+                window.location.reload();
+            });
         }).catch(function () { alert("Could not save the new order."); });
     }
 })();

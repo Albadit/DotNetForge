@@ -21,6 +21,25 @@ it touches (does it leak, block, log a secret, break documented behaviour, make 
 When the change affects documented behaviour, architecture, configuration, APIs, the database, setup or deployment,
 also use the **documentation** skill - documentation is part of the change.
 
+## This project (DotNetForge CMS)
+
+Before changing code, read the relevant part of `.docs/` - it is verified against the code and tells you where
+things belong:
+
+- `.docs/architecture/codebase.md` → *Architectural rules for changes* (DI only in `Startup/DependencyRegistration.cs`,
+  `Core` never references EF/`Data`, content-page rules only in `PageService`, admin controllers derive from
+  `AdminControllerBase`, API controllers from `ApiControllerBase`, every query filters by `TenantId`, every admin
+  POST has antiforgery + an `AuditService` entry, every API action has `[RequireApiPermission]`).
+- `.docs/architecture/dependencies.md` → *Dependencies that must not be bypassed*.
+- `.docs/implementation-status.md` → what is built vs. only planned, and which code has no runtime caller (e.g.
+  `IEmailSender` has no implementation, webhooks are not delivered).
+- `.docs/guides/deployment.md` → the deployment directory is read-only: never write runtime files under the content
+  root (use `IFileStorage` or the database); `ReadOnlyDeploymentTests` enforces it.
+- `.docs/features/security.md` → known gaps; don't widen them.
+
+Recurring workflows have their own skills: **admin-page**, **api-endpoint**, **database-change**,
+**admin-extension**, and **verify** (build, tests, format, run). Use them.
+
 ## Priorities
 
 **Correctness → Simplicity → Maintainability → Performance → Scalability**

@@ -9,7 +9,7 @@ using Xunit;
 namespace DotNetForge.Tests;
 
 /// <summary>
-/// Verifies setup-wizard validation and the create-first-admin orchestration (installation_setup.md),
+/// Verifies setup-wizard validation and the create-first-admin orchestration (.docs/features/installation.md),
 /// using an in-memory installation store and the real password hasher.
 /// </summary>
 public sealed class InstallationServiceTests

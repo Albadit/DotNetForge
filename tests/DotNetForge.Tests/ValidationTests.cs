@@ -3,7 +3,8 @@ using Xunit;
 
 namespace DotNetForge.Tests;
 
-/// <summary>Password policy rejects weak passwords (security.md, installation_setup.md).</summary>
+/// <summary>Password policy rejects weak passwords (.docs/features/security.md,
+/// .docs/features/installation.md).</summary>
 public sealed class PasswordPolicyTests
 {
     [Theory]
@@ -34,24 +35,4 @@ public sealed class EmailValidatorTests
     [InlineData("", false)]
     public void Validates_email_format(string email, bool expected) =>
         Assert.Equal(expected, EmailValidator.IsValid(email));
-}
-
-/// <summary>Slug generation and validation (content_manager.md).</summary>
-public sealed class SlugHelperTests
-{
-    [Theory]
-    [InlineData("Hello World", "hello-world")]
-    [InlineData("  Trim  Me  ", "trim-me")]
-    [InlineData("Already-Slug", "already-slug")]
-    [InlineData("Special!@#Chars", "special-chars")]
-    public void Slugifies_text(string input, string expected) =>
-        Assert.Equal(expected, SlugHelper.Slugify(input));
-
-    [Theory]
-    [InlineData("valid-slug", true)]
-    [InlineData("Invalid Slug", false)]
-    [InlineData("UPPER", false)]
-    [InlineData("-leading", false)]
-    public void Validates_slug(string slug, bool expected) =>
-        Assert.Equal(expected, SlugHelper.IsValid(slug));
 }

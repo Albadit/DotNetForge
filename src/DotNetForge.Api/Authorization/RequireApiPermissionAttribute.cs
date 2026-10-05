@@ -7,7 +7,7 @@ namespace DotNetForge.Api.Authorization;
 
 /// <summary>
 /// Enforces that the authenticated API token carries a specific granular permission. Returns 401
-/// when unauthenticated and 403 when the permission is missing - matching the api_tokens.md contract
+/// when unauthenticated and 403 when the permission is missing - matching the .docs/features/headless-api.md contract
 /// (every API action is gated by a permission check).
 /// </summary>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false)]

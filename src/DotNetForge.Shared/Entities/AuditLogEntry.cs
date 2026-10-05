@@ -1,7 +1,7 @@
 namespace DotNetForge.Shared.Entities;
 
 /// <summary>
-/// An append-only audit record (audit_logs.md). Logs are never edited or deleted. A monotonic
+/// An append-only audit record (.docs/features/audit-logging.md). Logs are never edited or deleted. A monotonic
 /// <see cref="Id"/> breaks timestamp ties, and display snapshots keep entries interpretable after
 /// the referenced user/entity is deleted or renamed. Sensitive data must be redacted from
 /// <see cref="Details"/> before persistence.

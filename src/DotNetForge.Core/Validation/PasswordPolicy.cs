@@ -1,7 +1,7 @@
 namespace DotNetForge.Core.Validation;
 
 /// <summary>
-/// Password strength policy (security.md). Weak passwords must be rejected; the minimum length and
+/// Password strength policy (.docs/features/security.md). Weak passwords must be rejected; the minimum length and
 /// complexity are enforced here and applied by the setup wizard.
 /// </summary>
 public static class PasswordPolicy

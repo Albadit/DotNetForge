@@ -8,11 +8,11 @@ namespace DotNetForge.Extensions;
 /// Validates an <see cref="ExtensionManifest"/> before installation. Enforces presence of the eight
 /// required fields, a known extension <c>type</c>, a semver-shaped <c>version</c>, and well-formed,
 /// non-empty <c>permissions</c>. Error <c>Field</c> values use the manifest's PascalCase property
-/// names (extensions.md, testing_quality.md).
+/// names (.docs/features/extensions.md, .docs/guides/testing.md).
 /// </summary>
 public sealed partial class ManifestValidator : IManifestValidator
 {
-    /// <summary>The valid lowercase manifest <c>type</c> values (extensions.md).</summary>
+    /// <summary>The valid lowercase manifest <c>type</c> values (.docs/features/extensions.md).</summary>
     public static readonly IReadOnlyList<string> ValidTypes = new[]
     {
         "theme", "authentication", "connector", "library",

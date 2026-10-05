@@ -11,8 +11,6 @@ public sealed class InstallationStatusCache
 {
     private volatile bool _installed;
 
-    public bool KnownInstalled => _installed;
-
     public void MarkInstalled() => _installed = true;
 
     public async Task<bool> IsInstalledAsync(IInstallationStore store, CancellationToken cancellationToken = default)

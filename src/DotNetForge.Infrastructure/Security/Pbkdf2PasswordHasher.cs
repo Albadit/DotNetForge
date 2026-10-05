@@ -5,7 +5,7 @@ namespace DotNetForge.Infrastructure.Security;
 
 /// <summary>
 /// Salted, adaptive password hashing using PBKDF2 (HMAC-SHA256). Built on the .NET BCL only, so the
-/// project stays dependency-light (security.md). The stored format is
+/// project stays dependency-light (.docs/features/security.md). The stored format is
 /// <c>pbkdf2-sha256$iterations$saltBase64$hashBase64</c>.
 /// </summary>
 public sealed class Pbkdf2PasswordHasher : IPasswordHasher

@@ -58,14 +58,14 @@ Assume someone else takes over tomorrow. Without the original developer they mus
 
 | Question | Where it should be answered |
 |---|---|
-| What does the application do, for whom? | README |
-| How do I run, build and test it? | README (short) + `docs/development.md` |
-| How is it configured? Which settings, defaults, secrets? | `docs/configuration.md` |
-| How is it built and why that way? | `docs/architecture.md` + ADRs |
-| Where does code for X live; where do I add Y? | architecture doc's folder section |
-| How does data flow through it? | architecture/data-flow docs with diagrams |
-| How do I debug a problem; where are the logs? | `docs/development.md` or `troubleshooting.md` |
-| How is it released and deployed, and rolled back? | `docs/deployment.md` |
-| What conventions must I follow (encoding, threading, SQL, secrets)? | a short conventions section |
+| What does the application do, for whom? | `README.md`, `.docs/README.md` |
+| How do I run, build and test it? | `README.md` (short) + `.docs/guides/development.md`, `.docs/guides/testing.md` |
+| How is it configured? Which settings, defaults, secrets? | `.docs/features/configuration.md` |
+| How is it built and why that way? | `.docs/architecture/codebase.md` |
+| Where does code for X live; where do I add Y? | `codebase.md` folder section + *Extension points* in each `.docs/pages/` and `.docs/features/` doc |
+| How does data flow through it? | `.docs/architecture/data-flow.md` |
+| How do I debug a problem; where are the logs? | `.docs/guides/development.md` (debugging, troubleshooting), `.docs/features/logging-and-error-handling.md` |
+| How is it released and deployed, and rolled back? | not documented yet - there is no release process (no tags, no changelog) |
+| What conventions must I follow (encoding, threading, SQL, secrets)? | `.docs/guides/development.md#conventions` |
 
 Fill the gaps that matter for this project with the **documentation** skill.

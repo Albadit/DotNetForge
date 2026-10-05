@@ -1,31 +1,25 @@
 # Extension System (for AI agents)
 
-Extensions are the central extensibility mechanism and are kept strictly separate from the core so
-the core can update without breaking them. They live under `extensions/<type>/<name>/`.
+Extensions live under `extensions/<type>/<name>/` with a `dotnetforge.extension.json` manifest, separate from the
+core. Full description: [extensions.md](../../.docs/features/extensions.md); how-to:
+[extension-development.md](../../.docs/guides/extension-development.md).
 
-## Manifest: `dotnetforge.extension.json`
+## Manifest
 
-Required fields (all validated by `ManifestValidator`): `id`, `name`, `description`, `version`
-(single field, semver), `type`, `author`, `entryPoint`, `permissions` (non-empty). Optional:
-`website`, `license`, `dependencies`, `routes`, `settings`.
-
-`type` is one of: `theme`, `authentication`, `connector`, `library`, `admin`, `widget`, `provider`,
+Required (validated by `ManifestValidator`): `id`, `name`, `description`, `version` (semver), `type`, `author`,
+`entryPoint`, `permissions` (non-empty, lower-case dotted keys). Optional: `website`, `license`, `dependencies`,
+`routes`, `settings`. `type` ∈ `theme`, `authentication`, `connector`, `library`, `admin`, `widget`, `provider`,
 `plugin`, `module`.
 
-Example: [extensions/themes/default-theme/dotnetforge.extension.json](../../extensions/themes/default-theme/dotnetforge.extension.json).
+## What the host does today
 
-## Validation & loading
-
-- `ManifestValidator.Validate(manifest)` returns a `ValidationResult` (`IsValid`, `Errors[].Field`).
-  Error `Field` values are PascalCase property names (`Version`, `Permissions`, …).
-- `ExtensionLoader.Discover(extensionsRoot)` scans subfolders for the manifest, parses, and validates
-  each. Invalid/unparseable manifests are reported but never loaded.
-- The admin **Plugins** page lists installed extensions plus on-disk discoveries, flagging invalid
-  manifests.
-
-## Extension points
-
-Interfaces in `DotNetForge.Abstractions.Extensions`: `IExtension` (base) plus `IThemeExtension`,
-`IAuthenticationProviderExtension`, `IWidgetExtension`, `IModuleExtension`, `IConnectorExtension`,
-`IProviderExtension`, `ILibraryExtension`, `IAdminExtension`, `IPluginExtension`. Extensions compile
-against these and are resolved through DI.
+- `ExtensionLoader.Discover(<contentRoot>/extensions)` finds every manifest recursively, parses and validates it
+  (uncached, on each use). Invalid manifests are listed as invalid and never rendered.
+- The **Plugins** screen (Super Admin) lists discovered manifests with validity.
+- `admin` extensions with `Views/Index.cshtml` get a sidebar tab at `/admin/ext/{id}`, rendered by runtime Razor
+  compilation inside an iframe; manifest `settings` arrive as `ViewData["Settings"]`.
+- No assembly loading, DI registration, enable/disable, install or marketplace. The `IExtension` interfaces in
+  `DotNetForge.Abstractions.Extensions` are not implemented or called anywhere.
+- Admin extension views run with full host privileges; manifest `permissions` are not enforced.
+- `extensions/` ships in the publish output and is read-only at runtime: extensions must not write files (use
+  `IFileStorage` via `@inject` if they need storage) and must not use inline script/style (CSP).

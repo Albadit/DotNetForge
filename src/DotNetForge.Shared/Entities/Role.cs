@@ -2,7 +2,7 @@ namespace DotNetForge.Shared.Entities;
 
 /// <summary>
 /// An RBAC role. Built-in roles cannot be deleted or renamed; Super Admin always has full access
-/// and Public is always read-only public content (user_roles_permissions.md).
+/// and Public is always read-only public content (.docs/features/authorization.md).
 /// </summary>
 public class Role
 {

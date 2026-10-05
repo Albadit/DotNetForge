@@ -4,7 +4,7 @@ namespace DotNetForge.Core.Extensions;
 
 /// <summary>
 /// Validates a parsed <see cref="ExtensionManifest"/> against the required-field and safety rules
-/// before installation (extensions.md, security.md).
+/// before installation (.docs/features/extensions.md, .docs/features/security.md).
 /// </summary>
 public interface IManifestValidator
 {
@@ -24,11 +24,15 @@ public sealed class DiscoveredExtension
 }
 
 /// <summary>
-/// Discovers extensions under the dedicated <c>extensions/</c> folder, reading and validating each
+/// Discovers extensions under the configured <c>extensions/</c> folder, reading and validating each
 /// <c>dotnetforge.extension.json</c> manifest. Invalid/unsafe extensions are surfaced but not loaded
-/// (architecture.md).
+/// (.docs/features/extensions.md). The folder is read-only at runtime.
 /// </summary>
 public interface IExtensionLoader
 {
-    IReadOnlyList<DiscoveredExtension> Discover(string extensionsRoot);
+    /// <summary>Every manifest found, valid or not.</summary>
+    IReadOnlyList<DiscoveredExtension> Discover();
+
+    /// <summary>The valid <c>admin</c>-type extension with this manifest id (case-insensitive), or <c>null</c>.</summary>
+    DiscoveredExtension? FindAdminExtension(string id);
 }

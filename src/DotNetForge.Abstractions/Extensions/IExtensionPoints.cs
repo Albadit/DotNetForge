@@ -1,8 +1,8 @@
 namespace DotNetForge.Abstractions.Extensions;
 
 /// <summary>
-/// Base contract every extension entry point implements. Extensions compile against this stable
-/// abstraction and are resolved through DI by the extension host (architecture.md, extensions.md).
+/// Base contract every extension entry point implements. Extensions compile against this stable abstraction and are
+/// resolved through DI by the extension host (.docs/architecture/codebase.md, .docs/features/extensions.md).
 /// </summary>
 public interface IExtension
 {
@@ -19,25 +19,25 @@ public interface IExtension
     void OnDisabled() { }
 }
 
-/// <summary>A public frontend theme (themes.md). Never affects the admin area.</summary>
+/// <summary>A public frontend theme (.docs/features/themes.md). Never affects the admin area.</summary>
 public interface IThemeExtension : IExtension
 {
     IReadOnlyList<string> Layouts { get; }
 }
 
-/// <summary>An authentication provider plugged in via DI (authentication.md).</summary>
+/// <summary>An authentication provider plugged in via DI (.docs/features/authentication.md).</summary>
 public interface IAuthenticationProviderExtension : IExtension
 {
     string ProviderKey { get; }
 }
 
-/// <summary>A dashboard or admin widget (dashboard.md).</summary>
+/// <summary>A dashboard or admin widget (.docs/pages/dashboard.md).</summary>
 public interface IWidgetExtension : IExtension
 {
     string Render();
 }
 
-/// <summary>A page-builder module placed on pages (content_manager.md).</summary>
+/// <summary>A page-builder module placed on pages (.docs/features/content-pages-and-routing.md).</summary>
 public interface IModuleExtension : IExtension
 {
     string Render(IReadOnlyDictionary<string, string?> config);

@@ -1,36 +1,35 @@
 # Permissions & RBAC (for AI agents)
 
-Every admin and API action resolves a permission check. A user's effective permissions are the
-**union** over all assigned roles.
+Full description: [authorization.md](../../.docs/features/authorization.md).
 
 ## Roles (most → least privileged)
 
-`Super Admin`, `Admin`, `Editor`, `Author`, `Authenticated`, `Public` (constants in
-`DotNetForge.Shared.Constants.Roles`). Built-in roles cannot be deleted or renamed; Super Admin always
-has full access; Public is read-only public content.
+`Super Admin`, `Admin`, `Editor`, `Author`, `Authenticated`, `Public` (`DotNetForge.Shared.Constants.Roles`). Only the
+setup wizard assigns a role (Super Admin); there is no role or user management UI.
 
-## Permission areas
+## What is enforced
 
-`Collection types`, `Single types`, `Plugins`, `Settings`, `Extensions`, `Media`, `Users`, `Roles`,
-`API`, `Webhooks` (+ `Audit logs`, `Updates`). See `PermissionAreas`.
+| Mechanism | Where | Enforced |
+| --- | --- | --- |
+| `AdminArea` policy (Super Admin, Admin, Editor, Author) | every admin controller via `AdminControllerBase`, `ExtensionViewController` | yes |
+| `[Authorize(Roles = "Super Admin,Admin")]` | Users, Roles, Audit Logs, API Tokens | yes |
+| `[Authorize(Roles = "Super Admin")]` | Plugins | yes |
+| `[RequireApiPermission("<key>")]` | every API action (`401` unauthenticated, `403` missing key) | yes |
+| `IPermissionService.HasAny(roles, area, action)` / `PermissionMatrix` via `AdminControllerBase.Can`/`CanModify` | Content Manager (`Collection types`) and Media (`Media`) actions | yes (static matrix; stored `RolePermission` rows are not read) |
+| `[Authorize(Roles = "Super Admin,Admin")]` | Settings | yes |
 
-## Checking permissions
+Consequences: Authors create pages and edit/delete only their own (no publishing, scheduling or reordering) and delete
+only their own uploads; Editors and Admins can do everything in content and media; Settings is Super Admin/Admin only.
 
-- Admin/runtime: `IPermissionService.Has(role, area, action)` /
-  `HasAny(roles, area, action)` - evaluates `PermissionMatrix` (Shared).
-- Seeded `RolePermission` rows mirror the matrix (`DataSeeder` uses `PermissionMatrix.GrantsFor`).
-- API tokens carry granular keys (`content.read`, `media.read`, …, see `PermissionKeys`); the
-  `[RequireApiPermission("content.read")]` filter enforces them (`401` unauthenticated, `403`
-  missing permission).
+## Permission matrix (reference data, `PermissionMatrix`)
 
-## Default matrix highlights
-
-| Capability | SA | Admin | Editor | Author | Auth | Public |
+| Capability | SA | Admin | Editor | Author | Authenticated | Public |
 | --- | --- | --- | --- | --- | --- | --- |
-| Publish content | Yes | Yes | Yes | No | No | No |
-| Manage users/roles/settings | Yes | Yes | No | No | No | No |
-| Manage extensions / install updates | Yes | No | No | No | No | No |
-| Read public content | Yes | Yes | Yes | Yes | Yes | Yes |
+| Read content/media | Yes | Yes | Yes | Yes | Yes | Yes |
+| Create content/media | Yes | Yes | Yes | Yes | No | No |
+| Update/delete any, publish | Yes | Yes | Yes | No (own only) | No | No |
+| Users, Roles, Settings, API, Webhooks, Plugins | Yes | Yes | No | No | No | No |
+| Audit logs, Extensions | Yes | read | No | No | No | No |
+| Updates | Yes | No | No | No | No | No |
 
-The admin area itself requires an admin-capable role (`Super Admin`, `Admin`, `Editor`, `Author`) via
-the `AdminArea` authorization policy.
+API permission keys: see [api-reference.md](api-reference.md#permission-keys).

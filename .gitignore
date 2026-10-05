@@ -13,20 +13,15 @@ obj/
 *.suo
 .vs/
 
-# ---- Runtime artifacts (storage/) ----
-# Uploaded media, backups, logs, and staged updates are never committed.
-# Ignore the *contents* (trailing /*) so the .gitkeep negations below still
-# apply — git can't re-include a file whose parent directory is excluded.
-storage/media/*
-storage/backups/*
-storage/logs/*
-storage/updates/*
+# ---- Development runtime data ----
+# storage/ only exists in Development (default SQLite database + local media). Production writes
+# nothing here: the deployment directory is read-only (.docs/guides/deployment.md).
+storage/
 
-# SQLite database files (default local provider).
+# SQLite database files.
 *.db
 *.db-shm
 *.db-wal
-storage/dotnetforge.db*
 
 # ---- Node / frontend tooling ----
 node_modules/
@@ -45,8 +40,6 @@ coverage/
 *.coverage
 *.trx
 
-# Keep empty runtime folders in Git with .gitkeep but ignore their contents.
-!storage/media/.gitkeep
-!storage/backups/.gitkeep
-!storage/logs/.gitkeep
-!storage/updates/.gitkeep
+# Logs and local tool caches.
+*.log
+.cache/

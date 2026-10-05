@@ -5,8 +5,8 @@ using Xunit;
 namespace DotNetForge.Tests;
 
 /// <summary>
-/// Validates the extension manifest validator against the required-field rules (extensions.md,
-/// testing_quality.md). Error <c>Field</c> values use PascalCase property names.
+/// Validates the extension manifest validator against the required-field rules (.docs/features/extensions.md,
+/// .docs/guides/testing.md). Error <c>Field</c> values use PascalCase property names.
 /// </summary>
 public sealed class ManifestValidationTests
 {

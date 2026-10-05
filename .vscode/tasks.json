@@ -98,15 +98,33 @@
       "problemMatcher": []
     },
     {
-      "label": "ef: add migration",
-      "detail": "dotnet ef migrations add <name> (prompts for a name)",
+      "label": "ef: add migration (SQLite)",
+      "detail": "dotnet ef migrations add <name> for DotNetForgeDbContext - run the PostgreSQL task with the same name too",
       "type": "process",
       "command": "dotnet",
       "args": [
         "ef", "migrations", "add", "${input:migrationName}",
         "--project", "src/DotNetForge.Data",
         "--startup-project", "src/DotNetForge.Data",
+        "--context", "DotNetForgeDbContext",
         "--output-dir", "Migrations"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "ef: add migration (PostgreSQL)",
+      "detail": "dotnet ef migrations add <name> for PostgreSqlDbContext (Migrations/PostgreSql)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef", "migrations", "add", "${input:migrationName}",
+        "--project", "src/DotNetForge.Data",
+        "--startup-project", "src/DotNetForge.Data",
+        "--context", "PostgreSqlDbContext",
+        "--output-dir", "Migrations/PostgreSql",
+        "--namespace", "DotNetForge.Data.Migrations.PostgreSql"
       ],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",

@@ -15,16 +15,24 @@
   -->
 
   <PropertyGroup>
-    <DefaultItemExcludes>$(DefaultItemExcludes);src/**;tests/**;extensions/**;storage/**;docs/**;.config/**;.github/**;.vscode/**;*.md;.env;.env.*;global.json</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);src/**;tests/**;extensions/**;storage/**;.docs/**;.claude/**;.config/**;.github/**;.vscode/**;*.md;.env;.env.*;global.json</DefaultItemExcludes>
     <UserSecretsId>dotnetforge-cms</UserSecretsId>
     <RootNamespace>DotNetForge.Web</RootNamespace>
     <AssemblyName>DotNetForge.Web</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <!-- Runtime Razor compilation so admin extensions can ship their own view.cshtml under extensions/. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
+  </ItemGroup>
+
+  <!--
+    Extensions ship with the app and are only read at runtime (admin extension views are compiled in memory).
+    They are excluded from compilation above; this copies them into the publish output as plain files - None
+    items, so the Razor SDK does not try to precompile extension views as part of the host.
+  -->
+  <ItemGroup>
+    <None Include="extensions/**" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,7 +5,7 @@ using DotNetForge.Abstractions.Security;
 namespace DotNetForge.Infrastructure.Security;
 
 /// <summary>
-/// Signs webhook payloads with HMAC-SHA256 over the raw request body (webhooks.md). The receiver
+/// Signs webhook payloads with HMAC-SHA256 over the raw request body (.docs/features/webhooks.md). The receiver
 /// recomputes the HMAC with the shared secret and compares. Output is lowercase hex.
 /// </summary>
 public sealed class HmacWebhookSigner : IWebhookSigner

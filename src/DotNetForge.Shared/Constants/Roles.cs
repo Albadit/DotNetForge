@@ -2,7 +2,7 @@ namespace DotNetForge.Shared.Constants;
 
 /// <summary>
 /// The six canonical built-in roles, most-privileged to least. These names are canonical
-/// and defined once here (owned by user_roles_permissions.md).
+/// and defined once here (owned by .docs/features/authorization.md).
 /// </summary>
 public static class Roles
 {
@@ -24,6 +24,4 @@ public static class Roles
     {
         SuperAdmin, Admin, Editor, Author,
     };
-
-    public static bool IsBuiltIn(string role) => BuiltIn.Contains(role);
 }

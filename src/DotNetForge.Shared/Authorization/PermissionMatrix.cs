@@ -4,7 +4,7 @@ namespace DotNetForge.Shared.Authorization;
 
 /// <summary>
 /// The default permission baseline for the six built-in roles, encoding the canonical Permission
-/// Matrix (user_roles_permissions.md). This is the single source of truth that both the Core
+/// Matrix (.docs/features/authorization.md). This is the single source of truth that both the Core
 /// <c>PermissionService</c> and the Data seeder consume, so runtime checks and seeded grants always
 /// agree. It lives in Shared as declarative reference data (keeping Data independent of Core).
 /// Custom roles are evaluated from their stored grants, not this matrix.

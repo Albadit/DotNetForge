@@ -5,6 +5,10 @@ structure, APIs, setup, deployment or important behaviour changes - in the same 
 
 ## Structure
 
+> **DotNetForge:** the actual layout is `.docs/` as described in the skill's *This project's documentation* section
+> (architecture/, features/, pages/, guides/; planned work in each doc's *Planned (not implemented)* section). Use the sections below for *what each kind of document
+> should contain*, not for file names.
+
 A typical layout - create only what the project needs, never empty or filler files. Documentation has two
 audiences: the people who **use** the application and the developers who **build** it; keep their documents apart.
 

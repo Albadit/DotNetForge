@@ -1,7 +1,7 @@
 namespace DotNetForge.Shared.Constants;
 
 /// <summary>
-/// The exactly-eight webhook event keys (owned by webhooks.md). A webhook subscribes to one
+/// The exactly-eight webhook event keys (owned by .docs/features/webhooks.md). A webhook subscribes to one
 /// or more of these and fires a signed POST when a matching event occurs.
 /// </summary>
 public static class WebhookEvents
@@ -23,6 +23,6 @@ public static class WebhookEvents
 
     public static bool IsValid(string eventKey) => All.Contains(eventKey);
 
-    /// <summary>The HMAC signature header attached to every delivery (webhooks.md).</summary>
+    /// <summary>The HMAC signature header attached to every delivery (.docs/features/webhooks.md).</summary>
     public const string SignatureHeader = "X-DotNetForge-Signature";
 }

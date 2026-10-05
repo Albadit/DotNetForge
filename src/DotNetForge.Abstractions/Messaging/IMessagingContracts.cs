@@ -12,19 +12,8 @@ public sealed class EmailMessage
     public bool IsHtml { get; init; } = true;
 }
 
-/// <summary>Sends transactional email via the configured SMTP provider (email.md).</summary>
+/// <summary>Sends transactional email via the configured SMTP provider (.docs/features/email.md).</summary>
 public interface IEmailSender
 {
     Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default);
-}
-
-/// <summary>Abstracts media storage; local disk is the default provider (file_manager.md).</summary>
-public interface IFileStorage
-{
-    /// <summary>Persists a file and returns the storage-relative path.</summary>
-    Task<string> SaveAsync(string folder, string fileName, Stream content, CancellationToken cancellationToken = default);
-
-    Stream? OpenRead(string relativePath);
-
-    bool Delete(string relativePath);
 }

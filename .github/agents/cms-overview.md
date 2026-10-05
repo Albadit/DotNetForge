@@ -1,28 +1,33 @@
 # CMS Overview (for AI agents)
 
-DotNetForge CMS is a modular, secure **hybrid CMS** on ASP.NET Core MVC (.NET 10), EF Core, and
-Razor. It runs three modes over the same content: **Traditional** (visual admin at `/admin`),
-**Headless** (token API under `/api`), and **Hybrid** (both).
+DotNetForge CMS is a server-rendered **ASP.NET Core MVC** CMS on .NET 10 (EF Core, Razor). It serves a role-gated
+admin at `/admin`, a public site resolved from a page tree, and a token-secured headless API under `/api` over the
+same data. Full documentation: [`.docs/README.md`](../../.docs/README.md).
 
 ## Orientation
 
-- Configuration: `.env` (copied from `.env.example`). `DATABASE_PROVIDER` is `sqlite` (default) or
-  `postgresql`. Secrets never leave `.env`.
-- First run: the app redirects to `/setup`; completing it creates the first **Super Admin** and marks
-  the CMS installed (`SystemState.Installed`). Afterwards `/setup` is blocked.
+- Configuration: `.env` (copy `.env.example`). `DATABASE_PROVIDER` is `sqlite` (default) or `postgresql`.
+  See [configuration](../../.docs/features/configuration.md).
+- First run: every request redirects to `/setup`; it creates the first **Super Admin** and sets
+  `SystemState.Installed`. Afterwards `/setup` redirects to `/admin`. See [installation](../../.docs/features/installation.md).
 - Run from the repository root: `dotnet run`, `dotnet watch`, `dotnet build`. Tests:
-  `dotnet test tests/DotNetForge.Tests` and `dotnet test tests/DotNetForge.IntegrationTests`.
+  `dotnet test tests/DotNetForge.Tests`, `dotnet test tests/DotNetForge.IntegrationTests`.
 
 ## Where things live
 
-- The web host (`DotNetForge.Web`) is at the repository **root**.
-- Core libraries are under `src/` (see [architecture-summary.md](architecture-summary.md)).
-- Extensions live under `extensions/` and are never overwritten by core updates.
-- Runtime data lives under `storage/` (git-ignored).
+See [codebase.md](../../.docs/architecture/codebase.md) for every folder. Screens and routes:
+[pages.md](../../.docs/architecture/pages.md#route-map).
 
-## Key invariants
+## Key invariants (as implemented)
 
-- Every admin and API action is gated by an RBAC permission check ([permissions.md](permissions.md)).
-- The admin area is never restyled by public themes.
-- Tenants are resolved first; scoped data is filtered by `TenantId`.
-- Extension manifests are validated before install ([extension-system.md](extension-system.md)).
+- Admin screens are gated by **roles** (`AdminArea` policy + `[Authorize(Roles = ...)]`); API actions by
+  **permission keys** (`[RequireApiPermission]`). The `(area, action)` matrix is seeded but not enforced.
+  See [authorization](../../.docs/features/authorization.md).
+- One tenant is seeded and used; queries filter by `TenantId` manually; there is no tenant resolution.
+  See [multi-tenancy](../../.docs/features/multi-tenancy.md).
+- Extensions are discovered and validated from `extensions/`; only `admin` extensions are rendered.
+- The deployment directory is read-only: runtime files go to object storage via `IFileStorage` (local in development,
+  S3-compatible in production), everything else to the database. See [deployment](../../.docs/guides/deployment.md).
+  See [extensions](../../.docs/features/extensions.md).
+- Planned-but-unbuilt behaviour lives only in each doc's **Planned (not implemented)** section - check
+  [implementation-status](../../.docs/implementation-status.md) before assuming a feature exists.

@@ -2,7 +2,7 @@ namespace DotNetForge.Shared.Entities;
 
 /// <summary>
 /// Single-row table that records whether the CMS has completed first-run installation
-/// (installation_setup.md). The installed flag is set atomically when setup succeeds and
+/// (.docs/features/installation.md). The installed flag is set atomically when setup succeeds and
 /// permanently blocks the setup wizard thereafter.
 /// </summary>
 public class SystemState
@@ -17,7 +17,7 @@ public class SystemState
     public string CmsVersion { get; set; } = "1.0.0";
 }
 
-/// <summary>A global or per-tenant key/value setting (settings.md).</summary>
+/// <summary>A global or per-tenant key/value setting (.docs/pages/settings.md).</summary>
 public class Setting
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -30,7 +30,7 @@ public class Setting
 }
 
 /// <summary>
-/// An authentication provider entry shown under Users &amp; Permissions Plugin (authentication.md).
+/// An authentication provider entry shown under Users &amp; Permissions Plugin (.docs/features/authentication.md).
 /// The built-in Email provider is enabled by default; OAuth/OIDC providers are disabled until
 /// configured.
 /// </summary>

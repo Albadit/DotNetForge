@@ -72,3 +72,74 @@ jobs:
             dotnet format "$proj" --verify-no-changes --severity error
             echo "::endgroup::"
           done
+
+  postgres-and-s3:
+    # The same integration tests against PostgreSQL (its own migration set) plus the live S3 contract tests
+    # against an S3-compatible server (.docs/guides/testing.md).
+    name: PostgreSQL + S3 storage
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DNF_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+      DNF_TEST_S3_SERVICE_URL: http://localhost:8333
+      DNF_TEST_S3_BUCKET: dnf-test
+      DNF_TEST_S3_ACCESS_KEY_ID: ci
+      DNF_TEST_S3_SECRET_ACCESS_KEY: ci
+      DNF_TEST_S3_FORCE_PATH_STYLE: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Start S3-compatible server
+        shell: bash
+        run: |
+          docker run -d --name s3 -p 8333:8333 chrislusf/seaweedfs server -s3 -dir=/data
+          until curl -sf -X PUT http://localhost:8333/dnf-test; do sleep 1; done
+
+      - name: Unit tests (incl. live S3 contract tests)
+        run: dotnet test tests/DotNetForge.Tests --configuration Release
+
+      - name: Integration tests on PostgreSQL
+        run: dotnet test tests/DotNetForge.IntegrationTests --configuration Release
+
+  read-only-container:
+    # Builds the production image and boots it with a read-only root filesystem: startup, migrations and the
+    # setup screen must work without writing into the deployment directory (.docs/guides/deployment.md).
+    name: Read-only container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t dotnetforge:ci .
+
+      - name: Run read-only and probe
+        shell: bash
+        run: |
+          docker run -d --name app --read-only --tmpfs /tmp -p 8080:8080 \
+            -e DATABASE_PROVIDER=sqlite -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" \
+            -e STORAGE_PROVIDER=local -e STORAGE_LOCAL_PATH=/tmp/media \
+            dotnetforge:ci
+          for i in $(seq 1 30); do curl -sf http://localhost:8080/health && break; sleep 1; done
+          curl -sf -o /dev/null http://localhost:8080/setup
+          test -z "$(docker diff app)"
+          docker logs app
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs app || true

@@ -6,28 +6,39 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace DotNetForge.Data;
 
 /// <summary>
-/// Lets <c>dotnet ef migrations add</c> create the context without booting the full web host.
-/// Defaults to SQLite; set <c>DATABASE_PROVIDER</c>/<c>DATABASE_CONNECTION_STRING</c> in the
-/// environment to generate migrations against PostgreSQL instead.
+/// Lets <c>dotnet ef migrations add</c> create the SQLite context (<see cref="DotNetForgeDbContext"/>) without booting
+/// the web host. Generating migrations never connects to the database.
 /// </summary>
 public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<DotNetForgeDbContext>
 {
     public DotNetForgeDbContext CreateDbContext(string[] args)
     {
-        var providerRaw = Environment.GetEnvironmentVariable("DATABASE_PROVIDER") ?? "sqlite";
-        var provider = providerRaw.Trim().ToLowerInvariant() is "postgresql" or "postgres"
-            ? DatabaseProvider.PostgreSql
-            : DatabaseProvider.Sqlite;
-
-        var env = new AppEnvironment
-        {
-            Provider = provider,
-            RawProvider = providerRaw,
-            ConnectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING"),
-        };
-
         var options = new DbContextOptionsBuilder<DotNetForgeDbContext>();
-        DbProviderConfigurator.Configure(options, env);
+        DbProviderConfigurator.Configure(options, new AppEnvironment
+        {
+            Provider = DatabaseProvider.Sqlite,
+            // Generating migrations never opens the connection; an in-memory default avoids creating folders.
+            ConnectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING") ?? "Data Source=:memory:",
+        });
         return new DotNetForgeDbContext(options.Options);
+    }
+}
+
+/// <summary>
+/// Design-time factory for the PostgreSQL migration set (<c>dotnet ef migrations add ... --context
+/// PostgreSqlDbContext</c>). The placeholder connection string is never opened while generating migrations.
+/// </summary>
+public sealed class PostgreSqlDesignTimeDbContextFactory : IDesignTimeDbContextFactory<PostgreSqlDbContext>
+{
+    public PostgreSqlDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<PostgreSqlDbContext>();
+        DbProviderConfigurator.Configure(options, new AppEnvironment
+        {
+            Provider = DatabaseProvider.PostgreSql,
+            ConnectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING")
+                ?? "Host=localhost;Database=dotnetforge_design",
+        });
+        return new PostgreSqlDbContext(options.Options);
     }
 }

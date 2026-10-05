@@ -15,6 +15,8 @@ public sealed class EnvConfigurationTests
     private static readonly string[] Keys =
     {
         "DATABASE_PROVIDER", "DATABASE_CONNECTION_STRING", "APP_NAME", "APP_URL",
+        "STORAGE_PROVIDER", "STORAGE_LOCAL_PATH", "STORAGE_S3_SERVICE_URL", "STORAGE_S3_BUCKET",
+        "STORAGE_S3_ACCESS_KEY_ID", "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_S3_REGION", "STORAGE_S3_FORCE_PATH_STYLE",
     };
 
     private static T WithCleanEnv<T>(Func<string, T> act, string envFileContent)
@@ -50,7 +52,7 @@ public sealed class EnvConfigurationTests
     [Fact]
     public void Sqlite_default_loads()
     {
-        var env = WithCleanEnv(EnvConfigurationLoader.Load,
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
             "DATABASE_PROVIDER=sqlite\nDATABASE_CONNECTION_STRING=\nAPP_URL=http://localhost:5000\n");
 
         Assert.Equal(DatabaseProvider.Sqlite, env.Provider);
@@ -59,7 +61,7 @@ public sealed class EnvConfigurationTests
     [Fact]
     public void Postgresql_with_connection_loads()
     {
-        var env = WithCleanEnv(EnvConfigurationLoader.Load,
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
             "DATABASE_PROVIDER=postgresql\nDATABASE_CONNECTION_STRING=Host=localhost;Database=dnf\n");
 
         Assert.Equal(DatabaseProvider.PostgreSql, env.Provider);
@@ -69,7 +71,7 @@ public sealed class EnvConfigurationTests
     public void Invalid_provider_throws()
     {
         var ex = Assert.Throws<ConfigurationException>(() =>
-            WithCleanEnv(EnvConfigurationLoader.Load, "DATABASE_PROVIDER=mysql\n"));
+            WithCleanEnv(d => EnvConfigurationLoader.Load(d), "DATABASE_PROVIDER=mysql\n"));
         Assert.Contains("sqlite", ex.Message);
     }
 
@@ -77,15 +79,65 @@ public sealed class EnvConfigurationTests
     public void Postgresql_without_connection_throws()
     {
         var ex = Assert.Throws<ConfigurationException>(() =>
-            WithCleanEnv(EnvConfigurationLoader.Load, "DATABASE_PROVIDER=postgresql\nDATABASE_CONNECTION_STRING=\n"));
+            WithCleanEnv(d => EnvConfigurationLoader.Load(d), "DATABASE_PROVIDER=postgresql\nDATABASE_CONNECTION_STRING=\n"));
         Assert.Contains("DATABASE_CONNECTION_STRING", ex.Message);
+    }
+
+    [Fact]
+    public void Development_defaults_stay_under_the_content_root()
+    {
+        var (env, dir) = WithCleanEnv(d => (EnvConfigurationLoader.Load(d), d), "DATABASE_PROVIDER=sqlite\n");
+
+        Assert.Equal($"Data Source={Path.Combine(dir, "storage", "dotnetforge.db")}", env.ConnectionString);
+        Assert.Equal(StorageProvider.Local, env.Storage.Provider);
+        Assert.Equal(Path.Combine(dir, "storage", "media"), env.Storage.LocalPath);
+    }
+
+    [Fact]
+    public void Production_requires_explicit_absolute_locations()
+    {
+        var ex = Assert.Throws<ConfigurationException>(() =>
+            WithCleanEnv(d => EnvConfigurationLoader.Load(d, isDevelopment: false), "DATABASE_PROVIDER=sqlite\n"));
+        Assert.Contains("read-only", ex.Message);
+
+        var absolute = Path.Combine(Path.GetTempPath(), "dnf", "cms.db");
+        var media = Path.Combine(Path.GetTempPath(), "dnf", "media");
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d, isDevelopment: false),
+            $"DATABASE_PROVIDER=sqlite\nDATABASE_CONNECTION_STRING=Data Source={absolute}\nSTORAGE_LOCAL_PATH={media}\n");
+        Assert.Equal(media, env.Storage.LocalPath);
+    }
+
+    [Fact]
+    public void S3_storage_settings_load_with_r2_style_defaults()
+    {
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
+            "DATABASE_PROVIDER=sqlite\nSTORAGE_PROVIDER=s3\nSTORAGE_S3_SERVICE_URL=https://acct.r2.cloudflarestorage.com\n" +
+            "STORAGE_S3_BUCKET=media\nSTORAGE_S3_ACCESS_KEY_ID=id\nSTORAGE_S3_SECRET_ACCESS_KEY=secret\n");
+
+        Assert.Equal(StorageProvider.S3, env.Storage.Provider);
+        Assert.Equal("auto", env.Storage.S3Region);
+        Assert.False(env.Storage.S3ForcePathStyle);
+        Assert.Equal("media", env.Storage.S3Bucket);
+    }
+
+    [Theory]
+    [InlineData("STORAGE_PROVIDER=ftp\n", "STORAGE_PROVIDER")]
+    [InlineData("STORAGE_PROVIDER=s3\nSTORAGE_S3_SERVICE_URL=https://x\nSTORAGE_S3_ACCESS_KEY_ID=a\nSTORAGE_S3_SECRET_ACCESS_KEY=b\n", "STORAGE_S3_BUCKET")]
+    [InlineData("STORAGE_PROVIDER=s3\nSTORAGE_S3_BUCKET=m\nSTORAGE_S3_ACCESS_KEY_ID=a\nSTORAGE_S3_SECRET_ACCESS_KEY=b\n", "STORAGE_S3_REGION")]
+    [InlineData("STORAGE_PROVIDER=s3\nSTORAGE_S3_SERVICE_URL=not a url\nSTORAGE_S3_BUCKET=m\nSTORAGE_S3_ACCESS_KEY_ID=a\nSTORAGE_S3_SECRET_ACCESS_KEY=b\n", "absolute URL")]
+    [InlineData("STORAGE_PROVIDER=s3\nSTORAGE_S3_SERVICE_URL=https://x\nSTORAGE_S3_BUCKET=m\nSTORAGE_S3_ACCESS_KEY_ID=a\nSTORAGE_S3_SECRET_ACCESS_KEY=b\nSTORAGE_S3_FORCE_PATH_STYLE=yes\n", "true' or 'false")]
+    public void Invalid_storage_configuration_throws(string storageLines, string expected)
+    {
+        var ex = Assert.Throws<ConfigurationException>(() =>
+            WithCleanEnv(d => EnvConfigurationLoader.Load(d), "DATABASE_PROVIDER=sqlite\n" + storageLines));
+        Assert.Contains(expected, ex.Message);
     }
 
     [Fact]
     public void Missing_env_file_throws_with_guidance()
     {
         var ex = Assert.Throws<ConfigurationException>(() =>
-            WithCleanEnv(EnvConfigurationLoader.Load, null!));
+            WithCleanEnv(d => EnvConfigurationLoader.Load(d), null!));
         Assert.Contains(".env.example", ex.Message);
     }
 }

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Controllers;
 
-/// <summary>The public frontend. Renders independently of the admin area (themes.md).</summary>
+/// <summary>The public frontend. Renders independently of the admin area (.docs/features/themes.md).</summary>
 public sealed class HomeController : Controller
 {
     private readonly AppEnvironment _env;
@@ -43,9 +43,9 @@ public sealed class HomeController : Controller
     }
 
     /// <summary>
-    /// Renders a published page by its slug. Wired as the catch-all fallback (Program.cs) so a public
-    /// URL like <c>/home</c> resolves to the matching <see cref="Page"/>. Foundation-level: it resolves
-    /// by the leaf slug and renders the page's metadata - the page builder / themes are future work.
+    /// Renders a live page by its URL. Wired as the catch-all fallback (Program.cs) so a public URL like
+    /// <c>/about/team</c> resolves down the page tree. Only the tree shape (id, parent, slug) of live pages is loaded
+    /// for the walk; the matched page is then loaded in full.
     /// </summary>
     public async Task<IActionResult> RenderPage()
     {
@@ -56,12 +56,14 @@ public sealed class HomeController : Controller
         }
 
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        var pages = await Live(_db.Pages.AsNoTracking(), DateTime.UtcNow).ToListAsync();
+        var pages = await Live(_db.Pages.AsNoTracking(), DateTime.UtcNow)
+            .Select(p => new { p.Id, p.ParentPageId, p.Slug })
+            .ToListAsync(HttpContext.RequestAborted);
 
         // Walk the URL segment by segment down the page tree. Each segment matches a child by exact slug,
-        // or by a dynamic "[param]" slug that captures any value (content_manager.md / dynamic_routes.md).
+        // or by a dynamic "[param]" slug that captures any value (.docs/features/content-pages-and-routing.md).
         Guid? parentId = null;
-        Page? matched = null;
+        Guid? matchedId = null;
         var routeValues = new Dictionary<string, string>();
 
         foreach (var segment in segments)
@@ -73,20 +75,21 @@ public sealed class HomeController : Controller
                     p.Slug.StartsWith('[') && p.Slug.EndsWith(']'))
                 : null;
 
-            matched = exact ?? dynamic;
-            if (matched is null)
+            var match = exact ?? dynamic;
+            if (match is null)
             {
                 return NotFound();
             }
 
-            if (exact is null && dynamic is not null)
+            if (exact is null)
             {
-                routeValues[dynamic.Slug.Trim('[', ']')] = segment;
+                routeValues[match.Slug.Trim('[', ']')] = segment;
             }
 
-            parentId = matched.Id;
+            parentId = matchedId = match.Id;
         }
 
+        var matched = await _db.Pages.AsNoTracking().FirstOrDefaultAsync(p => p.Id == matchedId, HttpContext.RequestAborted);
         if (matched is null)
         {
             return NotFound();
@@ -97,14 +100,18 @@ public sealed class HomeController : Controller
         return View("Page", matched);
     }
 
-    [HttpGet("/error")]
+    /// <summary>
+    /// The exception handler re-executes the failed request here with its original HTTP method, so this action
+    /// must accept every method (a GET-only error action turns failed form posts into empty 500 responses).
+    /// </summary>
+    [Route("/error")]
     public IActionResult Error() => View();
 
     /// <summary>
     /// A page is publicly live only when published, not disabled, and within its scheduled window: the
     /// scheduled publish date has been reached (or none set) and the scheduled unpublish date has not
     /// (or none set). Evaluated per request, so a future "Scheduled publish" hides the page until that
-    /// moment even though Published is checked (content_manager.md).
+    /// moment even though Published is checked (.docs/features/content-pages-and-routing.md).
     /// </summary>
     private static IQueryable<Page> Live(IQueryable<Page> pages, DateTime now) =>
         pages.Where(p => p.Published && !p.Disabled

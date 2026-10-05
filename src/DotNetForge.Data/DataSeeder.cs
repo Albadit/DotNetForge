@@ -24,7 +24,7 @@ public static class DataSeeder
         (Roles.Public, "The implicit role for unauthenticated visitors. Read-only public content."),
     };
 
-    // The default authentication providers (authentication.md). Email is built-in and enabled.
+    // The default authentication providers (.docs/features/authentication.md). Email is built-in and enabled.
     private static readonly string[] OAuthProviders =
     {
         "Auth0", "CAS", "Cognito", "Discord", "Facebook", "GitHub", "Google", "Instagram",
@@ -53,7 +53,8 @@ public static class DataSeeder
         await EnsureSystemStateAsync(db, cancellationToken);
     }
 
-    /// <summary>Seeds a small starter page tree so the Content Manager has something to show on a fresh install.</summary>
+    /// <summary>Seeds a small starter page tree so the Content Manager has something to show on a fresh
+    /// install.</summary>
     private static async Task SeedPagesAsync(DotNetForgeDbContext db, Guid tenantId, CancellationToken ct)
     {
         if (await db.Pages.AnyAsync(p => p.TenantId == tenantId, ct))

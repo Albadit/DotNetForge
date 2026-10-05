@@ -6,7 +6,7 @@ public interface IDateTimeProvider
     DateTime UtcNow { get; }
 }
 
-/// <summary>Secure, salted, adaptive password hashing (security.md).</summary>
+/// <summary>Secure, salted, adaptive password hashing (.docs/features/security.md).</summary>
 public interface IPasswordHasher
 {
     /// <summary>Hashes a plaintext password. The result embeds the salt and parameters.</summary>
@@ -22,7 +22,8 @@ public interface IPasswordHasher
 /// <param name="Prefix">A short, non-secret prefix stored in clear for list identification.</param>
 public readonly record struct GeneratedApiToken(string Plaintext, string Hash, string Prefix);
 
-/// <summary>Generates and verifies API token secrets (api_tokens.md, security.md).</summary>
+/// <summary>Generates and verifies API token secrets (.docs/features/headless-api.md,
+/// .docs/features/security.md).</summary>
 public interface IApiTokenFactory
 {
     /// <summary>Mints a new token: a one-time plaintext, its salted hash, and a non-secret prefix.</summary>
@@ -35,10 +36,11 @@ public interface IApiTokenFactory
     string ExtractPrefix(string plaintext);
 }
 
-/// <summary>Computes the HMAC signature sent with every webhook delivery (webhooks.md).</summary>
+/// <summary>Computes the HMAC signature sent with every webhook delivery (.docs/features/webhooks.md).</summary>
 public interface IWebhookSigner
 {
-    /// <summary>Returns the lowercase hex HMAC-SHA256 of <paramref name="payload"/> under <paramref name="secret"/>.</summary>
+    /// <summary>Returns the lowercase hex HMAC-SHA256 of <paramref name="payload"/> under <paramref
+    /// name="secret"/>.</summary>
     string Sign(string secret, string payload);
 
     /// <summary>Generates a new random signing secret.</summary>

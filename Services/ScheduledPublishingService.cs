@@ -4,10 +4,10 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Services;
 
 /// <summary>
-/// Applies page publish/unpublish schedules (content_manager.md): on a fixed interval it publishes pages
-/// whose <c>ScheduledPublishDate</c> has passed and unpublishes pages whose <c>ScheduledUnpublishDate</c>
-/// has passed. Runs against a scoped <see cref="DotNetForgeDbContext"/>; the schedule date is cleared once
-/// applied so it fires exactly once.
+/// Applies page publish/unpublish schedules (.docs/features/content-pages-and-routing.md): on a fixed interval it
+/// publishes pages whose <c>ScheduledPublishDate</c> has passed and unpublishes pages whose
+/// <c>ScheduledUnpublishDate</c> has passed. Runs against a scoped <see cref="DotNetForgeDbContext"/>; the schedule
+/// date is cleared once applied so it fires exactly once.
 /// </summary>
 public sealed class ScheduledPublishingService : BackgroundService
 {

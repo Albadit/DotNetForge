@@ -3,7 +3,7 @@ namespace DotNetForge.Infrastructure.Configuration;
 /// <summary>
 /// A tiny, dependency-free <c>.env</c> parser. Supports <c>KEY=VALUE</c> lines, <c>#</c> comments,
 /// blank lines, optional <c>export</c> prefixes, and single/double-quoted values. Kept in-house to
-/// honor the "avoid unnecessary dependencies" principle (architecture.md).
+/// honor the "avoid unnecessary dependencies" principle (.docs/architecture/codebase.md).
 /// </summary>
 public static class DotEnvParser
 {

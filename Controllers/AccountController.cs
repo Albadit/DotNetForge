@@ -1,29 +1,28 @@
-using DotNetForge.Data;
+using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DotNetForge.Web.Controllers;
 
-/// <summary>Email/password authentication for the admin area (authentication.md, security.md).</summary>
+/// <summary>Email/password authentication for the admin area (.docs/features/authentication.md,
+/// .docs/features/security.md).</summary>
 [Route("account")]
 public sealed class AccountController : Controller
 {
     private readonly AuthService _authService;
-    private readonly AuditService _audit;
+    private readonly IAuditService _audit;
     private readonly AppEnvironment _env;
-    private readonly DotNetForgeDbContext _db;
 
-    public AccountController(AuthService authService, AuditService audit, AppEnvironment env, DotNetForgeDbContext db)
+    public AccountController(AuthService authService, IAuditService audit, AppEnvironment env)
     {
         _authService = authService;
         _audit = audit;
         _env = env;
-        _db = db;
     }
 
     [HttpGet("login")]
@@ -36,21 +35,27 @@ public sealed class AccountController : Controller
 
     [HttpPost("login")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimitPolicies.Credentials)]
     public async Task<IActionResult> Login(string email, string password, string? returnUrl = null)
     {
         ViewData["AppName"] = _env.AppName;
         ViewData["ReturnUrl"] = returnUrl;
 
-        var tenant = await _db.Tenants.OrderBy(t => t.CreatedDate).FirstAsync(HttpContext.RequestAborted);
-        var result = await _authService.ValidateAsync(email, password, tenant.Id, HttpContext.RequestAborted);
+        var tenantId = await _authService.GetDefaultTenantIdAsync(HttpContext.RequestAborted);
+        var result = await _authService.ValidateAsync(email, password, tenantId, HttpContext.RequestAborted);
 
         switch (result.Status)
         {
             case SignInStatus.Success when result.Principal is not null:
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, result.Principal);
+
+                // SignInAsync only writes the cookie; make this request's audit entry carry the signed-in user.
+                HttpContext.User = result.Principal;
                 await _audit.LogAsync(AuditActions.UserLogin, "User", result.User?.Id.ToString(),
                     result.User?.Email);
-                return LocalRedirect(string.IsNullOrEmpty(returnUrl) ? "/admin" : returnUrl);
+
+                // Only redirect to local URLs; anything else (or nothing) goes to the dashboard.
+                return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/admin");
 
             case SignInStatus.LockedOut:
                 ModelState.AddModelError(string.Empty, "Account is temporarily locked. Try again later.");

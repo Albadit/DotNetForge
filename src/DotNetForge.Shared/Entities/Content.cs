@@ -3,7 +3,7 @@ using DotNetForge.Shared.Enums;
 namespace DotNetForge.Shared.Entities;
 
 /// <summary>
-/// A page in the tenant's content tree (content_manager.md). Foundation subset: tree, slug,
+/// A page in the tenant's content tree (.docs/features/content-pages-and-routing.md). Foundation subset: tree, slug,
 /// SEO metadata, publish/menu flags, and page type.
 /// </summary>
 public class Page
@@ -58,7 +58,7 @@ public class Page
     public DateTime UpdatedDate { get; set; } = DateTime.UtcNow;
 }
 
-/// <summary>An uploaded media asset (file_manager.md). Local storage is the default provider.</summary>
+/// <summary>An uploaded media asset (.docs/features/media-storage.md). Local storage is the default provider.</summary>
 public class MediaFile
 {
     public Guid Id { get; set; } = Guid.NewGuid();
