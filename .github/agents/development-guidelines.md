@@ -8,7 +8,7 @@ Full guide: [development.md](../../.docs/guides/development.md). Testing: [testi
   `dotnet build`, `dotnet test` (solution `DotNetForge.slnx`).
 - Tests: `dotnet test tests/DotNetForge.Tests`, `dotnet test tests/DotNetForge.IntegrationTests`.
 - Migrations: `dotnet tool restore`, then add the migration for **each SQL context** (`DotNetForgeDbContext`,
-  `PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext`, output `Migrations/` and `Migrations/<Provider>/`,
+  `PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext`, output `Database/Providers/<Database>/Migrations/`,
   with `--project/--startup-project src/DotNetForge.Data`); see the `database-change` skill.
 - Optional backends: `docker compose -f docker/compose.dev.yml up -d` (PostgreSQL + S3); `DNF_TEST_POSTGRES` and
   `DNF_TEST_S3_*` run the tests against them.

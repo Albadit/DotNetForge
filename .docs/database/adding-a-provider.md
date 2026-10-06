@@ -6,8 +6,8 @@ the same steps apply to MariaDB, CockroachDB, CosmosDB or anything else with a .
 
 ```mermaid
 flowchart LR
-    A["1. Package + context type<br/>(EF Core databases)"] --> B["2. Provider class<br/>IDatabaseProvider"]
-    B --> C["3. Migrations<br/>(SQL databases)"]
+    A["1. Package + context type<br/>(EF Core databases)"] --> B["2. Provider, dialect, SQL builder, executor<br/>IDatabaseProvider"]
+    B --> C["3. Migrations<br/>(SQL databases, in the same folder)"]
     C --> D["4. Register<br/>AddDatabaseProvider&lt;T&gt;(&quot;oracle&quot;)"]
     D --> E["5. Tests on the real database"]
     E --> F["6. Docs + CI"]
@@ -22,10 +22,13 @@ Add the EF Core provider to `Directory.Packages.props`, and a `PackageReference`
 <PackageVersion Include="Oracle.EntityFrameworkCore" Version="10.x" />
 ```
 
-SQL databases get their own context type, so they get their own migration set:
+Everything for the new database goes in its own folder, `src/DotNetForge.Data/Database/Providers/Oracle/` (namespace
+`DotNetForge.Data.Database.Providers.Oracle`), including its migrations. Nothing in that folder is shared with
+another database ([providers → Isolation](providers.md#isolation-and-updates)). SQL databases get their own context
+type, so they get their own migration set:
 
 ```csharp
-// src/DotNetForge.Data/OracleDbContext.cs
+// src/DotNetForge.Data/Database/Providers/Oracle/OracleDbContext.cs
 public sealed class OracleDbContext : DotNetForgeDbContext
 {
     public OracleDbContext(DbContextOptions<OracleDbContext> options) : base(options) { }
@@ -37,60 +40,59 @@ public sealed class OracleDbContext : DotNetForgeDbContext
 
 ## 2. The provider
 
-For SQL databases, derive from `RelationalDatabaseProvider<TContext>`. It already handles:
-- registering EF Core;
-- migrations at startup;
-- the parameterized SQL builder and the ADO.NET executor;
-- connection-string descriptions;
-- generic error mapping.
+A SQL database is four files next to the context. **Start by copying a SQL folder whose syntax is closest** (for
+Oracle, `SqlServer/`: `OFFSET … FETCH`), rename the `SqlServer` prefix to `Oracle`, then change what differs:
 
-You supply the driver, the dialect and the database's rules:
+| File | Copied from | Change |
+| --- | --- | --- |
+| `OracleDialect.cs` | `SqlServerDialect.cs` | identifier quoting, parameter prefix (`:p0`), paging, LIKE escaping, aggregate casts |
+| `OracleSqlBuilder.cs` | `SqlServerSqlBuilder.cs` | usually only the names; it calls `OracleDialect` for everything database-specific |
+| `OracleExecutor.cs` | `SqlServerExecutor.cs` | the driver's factory (`OracleClientFactory.Instance`) |
+| `OracleDatabaseProvider.cs` | `SqlServerDatabaseProvider.cs` | detection, settings validation, `Configure` (EF Core), error codes |
+
+The provider implements `IDatabaseProvider` directly; there is no base class:
 
 ```csharp
-// src/DotNetForge.Data/Database/Relational/OracleDatabaseProvider.cs
-public sealed class OracleDatabaseProvider : RelationalDatabaseProvider<OracleDbContext>
+// src/DotNetForge.Data/Database/Providers/Oracle/OracleDatabaseProvider.cs (excerpt)
+public sealed class OracleDatabaseProvider : IDatabaseProvider
 {
-    public override string DisplayName => "Oracle";
+    private static readonly string MigrationsAssembly = typeof(OracleDatabaseProvider).Assembly.FullName!;
 
-    protected override DbProviderFactory Factory => OracleClientFactory.Instance;
-
-    protected override SqlDialect Dialect { get; } = new OracleDialect();
+    public string DisplayName => "Oracle";
 
     // Return true only when the connection string can't belong to another database.
-    public override bool CanHandle(string? connectionString) => false;
+    public bool CanHandle(string? connectionString) => false;
 
-    protected override void ConfigureEfCore(DbContextOptionsBuilder options, string connectionString) =>
-        Configure(options, connectionString);
+    public void AddDbContext(IServiceCollection services, DatabaseSettings settings) =>
+        services.AddDbContext<DotNetForgeDbContext, OracleDbContext>(options => Configure(options, settings.ConnectionString!));
 
+    public Task InitializeSchemaAsync(DotNetForgeDbContext db, CancellationToken cancellationToken) =>
+        db.Database.MigrateAsync(cancellationToken);
+
+    public IDatabaseExecutor CreateExecutor(DatabaseSettings settings, IModel? model, ILoggerFactory loggerFactory) =>
+        new OracleExecutor(settings, model is null ? DatabaseSchema.Unmapped : Schema(model));
+
+    /// <summary>Also used by <c>DesignTimeDbContextFactory</c>.</summary>
     public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
         options.UseOracle(connectionString, sql => sql.MigrationsAssembly(MigrationsAssembly));
 
-    protected override DatabaseException? TranslateDriverException(Exception exception) => exception switch
+    public DatabaseException? TranslateException(Exception exception) => exception switch
     {
+        DatabaseException translated => translated,
         OracleException { Number: 1017 } => new DatabaseAuthenticationException("Oracle rejected the credentials.", exception),
         OracleException { Number: 1 } => new DatabaseConflictException("A record with the same unique value already exists.", exception),
         OracleException { Number: 942 } => new DatabaseNotFoundException("The table or column does not exist.", exception),
         OracleException { Number: 12170 or 12541 } => new DatabaseConnectionException("Oracle could not be reached.", exception),
-        _ => null,   // the base class maps the rest (DbException → DatabaseQueryException, timeouts)
+        TimeoutException => new DatabaseTimeoutException("The database command timed out.", exception),
+        DbException => new DatabaseQueryException("The database rejected the command.", exception),
+        _ => null,
     };
-}
 
-public sealed class OracleDialect : SqlDialect
-{
-    public override string QuoteIdentifier(string name) => Quote(name, '"', '"');
-
-    public override string ParameterName(int index) => $":p{index}";
-
-    public override void AppendPaging(StringBuilder sql, int? skip, int? take, bool hasOrderBy)
-    {
-        if (skip is null && take is null) return;
-        sql.Append(" OFFSET ").Append(skip ?? 0).Append(" ROWS");
-        if (take is not null) sql.Append(" FETCH NEXT ").Append(take.Value).Append(" ROWS ONLY");
-    }
+    // Normalize, Describe, Schema and the connection-string helpers: as in the copied provider.
 }
 ```
 
-A database that is **not SQL** implements `IDatabaseProvider` directly (see `MongoDbDatabaseProvider`):
+A database that is **not SQL** implements `IDatabaseProvider` the same way (see `MongoDbDatabaseProvider`):
 - **`Normalize`**: validate the settings.
 - **`AddDbContext`**: register `DotNetForgeDbContext` with its EF Core provider, or throw
   `DatabaseConfigurationException` if it can't host the CMS model.
@@ -108,15 +110,17 @@ operations raise `DatabaseProviderException`.
 ## 3. Migrations (SQL databases)
 
 Add a design-time factory next to the others in `src/DotNetForge.Data/DesignTimeDbContextFactory.cs`, then generate
-the initial migration:
+the initial migration into the database's folder:
 
 ```bash
 dotnet ef migrations add InitialCreate --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context OracleDbContext --output-dir Migrations/Oracle
+  --context OracleDbContext --output-dir Database/Providers/Oracle/Migrations
 ```
 
-From then on, every schema change adds a migration for this context too
-([database → Migrations](../architecture/database.md#migrations)). Check the generated SQL for:
+Later migrations land in the same folder automatically (EF Core follows the existing snapshot), but the commands in
+[database → Migrations](../architecture/database.md#migrations) pass `--output-dir` anyway. Add the context to that
+loop and to `.vscode/tasks.json`: from then on, every schema change adds a migration for this context too. Check the
+generated SQL for:
 - **index key length limits**: every indexed text column in the model has a `HasMaxLength`;
 - **identity columns** that receive explicit values;
 - **date and Guid types.**
@@ -139,7 +143,8 @@ statement, no enum, no edits to the router, the service or the loader.
    - validation messages;
    - a `Describe` case proving credentials are not shown;
    - detection, if `CanHandle` can ever return true.
-2. Add the dialect to `DatabaseTranslationTests.Dialects` with the exact SQL it must produce.
+2. Add the builder to `DatabaseTranslationTests` (a `SqlBuilder` entry, plus its exact SQL in `Selects`, `Pagings`
+   and `Aggregates`); the shared expectations then run against it too.
 3. Add an unreachable-server case to `DatabaseConnectionTests`.
 4. Add the server to `TestDatabaseServer` (`DNF_TEST_ORACLE`) and run **the whole integration suite** on it:
 

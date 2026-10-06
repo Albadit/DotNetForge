@@ -34,7 +34,7 @@ flowchart LR
   - `MongoDbDatabaseProvider` creates one `MongoClient` per connection string for the whole process. The client is
     the connection pool and is thread-safe.
   - EF Core and the native executor share it, so there are never two pools for one database.
-- **EF Core MongoDB provider for the CMS model** (`MongoDbContext`, `src/DotNetForge.Data/Database/MongoDb/`). Each
+- **EF Core MongoDB provider for the CMS model** (`MongoDbContext`, `src/DotNetForge.Data/Database/Providers/MongoDb/`). Each
   entity is a collection named like its table (`Users`, `Pages`, …), and properties are document fields.
 - **The native driver for `DatabaseCommand`s** (`MongoExecutor`):
   - `Find` with sort, skip, limit and projection;

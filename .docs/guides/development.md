@@ -83,10 +83,9 @@ To run the production image locally with a read-only filesystem, see [deployment
 
 The database follows from `DATABASE_CONNECTION_STRING`: empty or `Data Source=…` is SQLite, `Host=…` is PostgreSQL
 ([configuration → Database](../features/configuration.md#database)). Each provider has its own migration set,
-applied at startup:
-SQLite `src/DotNetForge.Data/Migrations/` (`DotNetForgeDbContext`), PostgreSQL
-`src/DotNetForge.Data/Migrations/PostgreSql/` (`PostgreSqlDbContext`), and likewise `Migrations/SqlServer/` and
-`Migrations/MySql/`; MongoDB needs none. Details: [database.md](../architecture/database.md),
+applied at startup, each in its database's folder `src/DotNetForge.Data/Database/Providers/<Database>/Migrations/`:
+SQLite (`DotNetForgeDbContext`), PostgreSQL (`PostgreSqlDbContext`), SQL Server (`SqlServerDbContext`) and MySQL
+(`MySqlDbContext`); MongoDB needs none. Details: [database.md](../architecture/database.md),
 [database layer](../database/architecture.md).
 
 After changing an entity or `DotNetForgeDbContext`, add a migration **for each SQL provider** (the loop in
@@ -95,12 +94,12 @@ After changing an entity or `DotNetForgeDbContext`, add a migration **for each S
 ```bash
 dotnet tool restore
 dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context DotNetForgeDbContext --output-dir Migrations
+  --context DotNetForgeDbContext --output-dir Database/Providers/Sqlite/Migrations
 dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context PostgreSqlDbContext --output-dir Migrations/PostgreSql
+  --context PostgreSqlDbContext --output-dir Database/Providers/PostgreSql/Migrations
 ```
 
-Repeat with `SqlServerDbContext` (`Migrations/SqlServer`) and `MySqlDbContext` (`Migrations/MySql`). Generating
+Repeat with `SqlServerDbContext` (`Database/Providers/SqlServer/Migrations`) and `MySqlDbContext` (`Database/Providers/MySql/Migrations`). Generating
 migrations never connects to a database. Afterwards strip the UTF-8 BOM EF adds to the generated files
 (`.editorconfig` requires `utf-8`) and check each `<Context>ModelSnapshot.cs` sits in its migration folder.
 

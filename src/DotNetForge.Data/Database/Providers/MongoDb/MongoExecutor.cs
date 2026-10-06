@@ -4,7 +4,7 @@ using DotNetForge.Abstractions.Database;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
-namespace DotNetForge.Data.Database.MongoDb;
+namespace DotNetForge.Data.Database.Providers.MongoDb;
 
 /// <summary>
 /// Runs <see cref="DatabaseCommand"/>s with MongoDB's native API: <c>Find</c>, <c>CountDocuments</c>,

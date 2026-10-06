@@ -8,18 +8,57 @@ Architecture: [architecture](architecture.md).
 
 | Name (`DATABASE_PROVIDER`) | Provider class | Driver / EF provider | Context type | Schema | Detected from |
 | --- | --- | --- | --- | --- | --- |
-| `sqlite` | `SqliteDatabaseProvider` | Microsoft.Data.Sqlite, EF Core SQLite | `DotNetForgeDbContext` | migrations `Migrations/` | empty string, `Data Source=` / `Filename=` without server keys |
-| `postgresql`, `postgres` | `PostgreSqlDatabaseProvider` | Npgsql, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 | `PostgreSqlDbContext` | migrations `Migrations/PostgreSql/` | `Host=` (without `Initial Catalog`) |
-| `sqlserver` | `SqlServerDatabaseProvider` | Microsoft.Data.SqlClient, EF Core SQL Server 10.0.12 | `SqlServerDbContext` | migrations `Migrations/SqlServer/` | `Initial Catalog`, `Trusted_Connection`, `Integrated Security` or `TrustServerCertificate` |
-| `mysql` | `MySqlDatabaseProvider` | MySql.Data, MySql.EntityFrameworkCore 10.0.9 (Oracle) | `MySqlDbContext` | migrations `Migrations/MySql/` | never: set `DATABASE_PROVIDER=mysql` |
+| `sqlite` | `SqliteDatabaseProvider` | Microsoft.Data.Sqlite, EF Core SQLite | `DotNetForgeDbContext` | migrations | empty string, `Data Source=` / `Filename=` without server keys |
+| `postgresql`, `postgres` | `PostgreSqlDatabaseProvider` | Npgsql, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 | `PostgreSqlDbContext` | migrations | `Host=` (without `Initial Catalog`) |
+| `sqlserver` | `SqlServerDatabaseProvider` | Microsoft.Data.SqlClient, EF Core SQL Server 10.0.12 | `SqlServerDbContext` | migrations | `Initial Catalog`, `Trusted_Connection`, `Integrated Security` or `TrustServerCertificate` |
+| `mysql` | `MySqlDatabaseProvider` | MySql.Data, MySql.EntityFrameworkCore 10.0.9 (Oracle) | `MySqlDbContext` | migrations | never: set `DATABASE_PROVIDER=mysql` |
 | `mongodb` | `MongoDbDatabaseProvider` | MongoDB.Driver, MongoDB.EntityFrameworkCore 10.0.4 | `MongoDbContext` | `EnsureCreated`: collections + indexes | `mongodb://` / `mongodb+srv://` |
 
-Source:
-- `src/DotNetForge.Data/Database/Relational/SqlProviders.cs` (the four SQL providers)
-- `src/DotNetForge.Data/Database/MongoDb/MongoDbDatabaseProvider.cs`
+Each database has its own folder, `src/DotNetForge.Data/Database/Providers/<Database>/`, with **everything** that
+database needs, including its migrations. No code is shared between the databases' folders:
+
+```text
+Database/Providers/
+├── Sqlite/
+│   ├── SqliteDatabaseProvider.cs   IDatabaseProvider: settings, EF Core, schema, error codes
+│   ├── SqliteExecutor.cs           runs DatabaseCommands through ADO.NET (+ SqliteTransaction)
+│   ├── SqliteSqlBuilder.cs         DatabaseCommand → parameterized SQL
+│   ├── SqliteDialect.cs            quoting, paging, LIKE escaping
+│   └── Migrations/                 context: DotNetForgeDbContext (the base model)
+├── PostgreSql/   PostgreSqlDatabaseProvider, PostgreSqlExecutor, PostgreSqlSqlBuilder, PostgreSqlDialect,
+│                 PostgreSqlDbContext, Migrations/
+├── SqlServer/    SqlServerDatabaseProvider, SqlServerExecutor, SqlServerSqlBuilder, SqlServerDialect,
+│                 SqlServerDbContext, Migrations/
+├── MySql/        MySqlDatabaseProvider, MySqlExecutor, MySqlSqlBuilder, MySqlDialect, MySqlDbContext, Migrations/
+└── MongoDb/      MongoDbDatabaseProvider, MongoDbContext, MongoExecutor (+ key generators); no migrations
+```
+
+The code shared by all databases is provider-neutral and sits one level up in `Database/`: the `IDatabaseProvider`
+contract, the router, the service, command validation, `DatabaseSchema` (model names → native names) and
+`ValueCoercion`. MongoDB has no migrations ([MongoDB](mongodb.md#schema-without-migrations)).
 
 Each SQL provider has its own context type, so EF Core keeps a separate migration set with that database's column
 types. The host registers the context as `DotNetForgeDbContext`, so application code never sees the subclass.
+
+## Isolation and updates
+
+A change for one database must not touch the others. That holds at every level where a database can change:
+
+| What changes | Where it is handled | Effect on the other databases |
+| --- | --- | --- |
+| A driver or EF Core provider update (e.g. a new `MySql.EntityFrameworkCore`) | the version in `Directory.Packages.props` changes only when someone updates it (MongoDB is pinned exactly); adapt that database's folder | none: each provider has its own package |
+| The database's behaviour, error codes or SQL syntax | that database's provider, dialect, SQL builder or executor in `Database/Providers/<Database>/` | none: the four SQL databases each have their own copy of this code |
+| The CMS model (a new table or column) | one migration per SQL database (`Database/Providers/<Database>/Migrations/`), generated from the same model; MongoDB picks it up at startup | each database gets its own migration with its own column types |
+| A database-specific model detail (e.g. SQL Server's identity rule) | that database's context type (`SqlServerDbContext`) | none: the base model is unchanged |
+
+The price of full separation is duplication: the SQL builder, executor and connection-string helpers exist once per
+SQL database. **A fix to behaviour all SQL databases share** (for example how a filter becomes SQL) **must be made in
+each of the four folders.** `DatabaseTranslationTests` runs the shared expectations against all four builders, so a copy
+that was missed fails there.
+
+The guard is the test suite: CI runs the full integration suite on each of the five databases
+([contract and testing](#contract-and-testing)), so an update that breaks one database fails that database's job
+before release.
 
 ## The contract
 
@@ -98,7 +137,7 @@ The same behavior is verified on every provider:
 | Test | Where | Database |
 | --- | --- | --- |
 | Provider resolution, aliases, detection, validation, descriptions without credentials, multiple databases, registering and replacing providers | `tests/DotNetForge.Tests/DatabaseProviderTests.cs` | none |
-| SQL per dialect, parameters, LIKE escaping, identifier validation, MongoDB filters with typed values and escaped regexes | `tests/DotNetForge.Tests/DatabaseTranslationTests.cs` | none |
+| SQL from each of the four SQL builders, parameters, LIKE escaping, identifier validation, MongoDB filters with typed values and escaped regexes | `tests/DotNetForge.Tests/DatabaseTranslationTests.cs` | none |
 | Routing, result shape, timeouts vs cancellation, error translation, `Try*`, validation, transactions, streaming, logs without secrets (mock provider) | `tests/DotNetForge.Tests/DatabaseServiceTests.cs` | none |
 | Unreachable servers → `DatabaseConnectionException`, per real driver | `tests/DotNetForge.Tests/DatabaseConnectionTests.cs` | none (closed port) |
 | CRUD, EF Core ↔ service interoperability, generated keys, literal text matching, aggregates, unique conflicts, transactions, streaming, composite keys, unknown names | `tests/DotNetForge.IntegrationTests/DatabaseServiceContractTests.cs` | the integration database |
@@ -113,5 +152,5 @@ CI runs it on all five databases:
 - PostgreSQL in `postgres-and-s3`;
 - SQL Server, MySQL and MongoDB in `database-providers`.
 
-Verified locally on 2026-10-05: 50/50 integration tests on each of SQLite, PostgreSQL 17, SQL Server 2022, MySQL 8.4
-and MongoDB 8.0 (single-node replica set).
+Verified locally on 2026-10-06 (after the per-database split): 50/50 integration tests on each of SQLite, PostgreSQL 17,
+SQL Server 2022, MySQL 8.4 and MongoDB 8.0 (single-node replica set).

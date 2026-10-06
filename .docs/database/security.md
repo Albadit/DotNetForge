@@ -5,13 +5,14 @@ What the database layer does so that commands are safe by default, and what call
 ## Injection
 
 **SQL injection: values never become SQL.**
-- `SqlCommandBuilder` writes statements from three things only:
+- Each SQL database's builder (`SqliteSqlBuilder`, `PostgreSqlSqlBuilder`, `SqlServerSqlBuilder`, `MySqlSqlBuilder`)
+  writes statements from three things only:
   - fixed keywords;
-  - identifiers quoted by the dialect (`"x"`, `[x]`, `` `x` ``);
+  - identifiers quoted by that database's dialect (`"x"`, `[x]`, `` `x` ``);
   - parameter names (`@p0`).
 - Every value is a parameter: filter values, inserted and updated values, and LIKE patterns.
-- A value such as `x'; DROP TABLE "Users"; --` is compared as text. `DatabaseTranslationTests` asserts that the SQL
-  text never contains values.
+- A value such as `x'; DROP TABLE "Users"; --` is compared as text. `DatabaseTranslationTests` asserts, for each of
+  the four builders, that the SQL text never contains values.
 
 **MongoDB operator injection: values never become operators.**
 - Filters are built with the driver's typed builders from typed BSON values. A value such as `{ "$ne": null }` is the

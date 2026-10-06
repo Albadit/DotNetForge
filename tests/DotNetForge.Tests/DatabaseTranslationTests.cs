@@ -1,8 +1,11 @@
 using DotNetForge.Abstractions.Database;
 using DotNetForge.Data;
 using DotNetForge.Data.Database;
-using DotNetForge.Data.Database.MongoDb;
-using DotNetForge.Data.Database.Relational;
+using DotNetForge.Data.Database.Providers.MongoDb;
+using DotNetForge.Data.Database.Providers.MySql;
+using DotNetForge.Data.Database.Providers.PostgreSql;
+using DotNetForge.Data.Database.Providers.Sqlite;
+using DotNetForge.Data.Database.Providers.SqlServer;
 using DotNetForge.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Bson;
@@ -13,82 +16,148 @@ using Xunit;
 namespace DotNetForge.Tests;
 
 /// <summary>
-/// How commands become native queries (.docs/database/security.md): parameterized SQL per dialect, MongoDB filters
+/// How commands become native queries (.docs/database/security.md): parameterized SQL from each SQL database's own builder, MongoDB filters
 /// with typed values, escaping, name validation. No database needed.
 /// </summary>
 public sealed class DatabaseTranslationTests
 {
     private const string Injection = "x'; DROP TABLE \"Users\"; --";
 
-    private static readonly DatabaseSchema Relational = RelationalSchema.For(
+    private static readonly DatabaseSchema Relational = SqliteDatabaseProvider.Schema(
         new DotNetForgeDbContext(new DbContextOptionsBuilder<DotNetForgeDbContext>().UseSqlite("Data Source=:memory:").Options).Model);
 
     private static readonly DatabaseSchema Mongo = MongoDbDatabaseProvider.Schema(
         new MongoDbContext(new DbContextOptionsBuilder<MongoDbContext>().UseMongoDB("mongodb://localhost:27017", "cms").Options).Model);
 
-    public static TheoryData<SqlDialect, string> Dialects() => new()
+    private static readonly SqlBuilder Sqlite = new(
+        "SQLite",
+        (map, fields, filter, sort, skip, take) => Of(new SqliteSqlBuilder(map).Select(fields, filter, sort, skip, take)),
+        (map, filter) => Of(new SqliteSqlBuilder(map).Count(filter)),
+        (map, aggregation, sort) => Of(new SqliteSqlBuilder(map).Aggregate(aggregation, null, sort, null, null)),
+        (map, set, filter) => Of(new SqliteSqlBuilder(map).Update(set, filter)),
+        SqliteDialect.EscapeLike);
+
+    private static readonly SqlBuilder PostgreSql = new(
+        "PostgreSQL",
+        (map, fields, filter, sort, skip, take) => Of(new PostgreSqlSqlBuilder(map).Select(fields, filter, sort, skip, take)),
+        (map, filter) => Of(new PostgreSqlSqlBuilder(map).Count(filter)),
+        (map, aggregation, sort) => Of(new PostgreSqlSqlBuilder(map).Aggregate(aggregation, null, sort, null, null)),
+        (map, set, filter) => Of(new PostgreSqlSqlBuilder(map).Update(set, filter)),
+        PostgreSqlDialect.EscapeLike);
+
+    private static readonly SqlBuilder MySql = new(
+        "MySQL",
+        (map, fields, filter, sort, skip, take) => Of(new MySqlSqlBuilder(map).Select(fields, filter, sort, skip, take)),
+        (map, filter) => Of(new MySqlSqlBuilder(map).Count(filter)),
+        (map, aggregation, sort) => Of(new MySqlSqlBuilder(map).Aggregate(aggregation, null, sort, null, null)),
+        (map, set, filter) => Of(new MySqlSqlBuilder(map).Update(set, filter)),
+        MySqlDialect.EscapeLike);
+
+    private static readonly SqlBuilder SqlServer = new(
+        "SQL Server",
+        (map, fields, filter, sort, skip, take) => Of(new SqlServerSqlBuilder(map).Select(fields, filter, sort, skip, take)),
+        (map, filter) => Of(new SqlServerSqlBuilder(map).Count(filter)),
+        (map, aggregation, sort) => Of(new SqlServerSqlBuilder(map).Aggregate(aggregation, null, sort, null, null)),
+        (map, set, filter) => Of(new SqlServerSqlBuilder(map).Update(set, filter)),
+        SqlServerDialect.EscapeLike);
+
+    public static TheoryData<SqlBuilder> Builders() => new() { Sqlite, PostgreSql, MySql, SqlServer };
+
+    public static TheoryData<SqlBuilder, string> Selects() => new()
     {
-        { new SqliteDialect(), """SELECT "Email", "Status" FROM "Users" WHERE ("Email" = @p0 AND "Status" IN (@p1, @p2)) ORDER BY "Email" DESC LIMIT 5 OFFSET 10""" },
-        { new PostgreSqlDialect(), """SELECT "Email", "Status" FROM "Users" WHERE ("Email" = @p0 AND "Status" IN (@p1, @p2)) ORDER BY "Email" DESC LIMIT 5 OFFSET 10""" },
-        { new MySqlDialect(), "SELECT `Email`, `Status` FROM `Users` WHERE (`Email` = @p0 AND `Status` IN (@p1, @p2)) ORDER BY `Email` DESC LIMIT 5 OFFSET 10" },
-        { new SqlServerDialect(), "SELECT [Email], [Status] FROM [Users] WHERE ([Email] = @p0 AND [Status] IN (@p1, @p2)) ORDER BY [Email] DESC OFFSET 10 ROWS FETCH NEXT 5 ROWS ONLY" },
+        { Sqlite, """SELECT "Email", "Status" FROM "Users" WHERE ("Email" = @p0 AND "Status" IN (@p1, @p2)) ORDER BY "Email" DESC LIMIT 5 OFFSET 10""" },
+        { PostgreSql, """SELECT "Email", "Status" FROM "Users" WHERE ("Email" = @p0 AND "Status" IN (@p1, @p2)) ORDER BY "Email" DESC LIMIT 5 OFFSET 10""" },
+        { MySql, "SELECT `Email`, `Status` FROM `Users` WHERE (`Email` = @p0 AND `Status` IN (@p1, @p2)) ORDER BY `Email` DESC LIMIT 5 OFFSET 10" },
+        { SqlServer, "SELECT [Email], [Status] FROM [Users] WHERE ([Email] = @p0 AND [Status] IN (@p1, @p2)) ORDER BY [Email] DESC OFFSET 10 ROWS FETCH NEXT 5 ROWS ONLY" },
+    };
+
+    public static TheoryData<SqlBuilder, string> Pagings() => new()
+    {
+        { Sqlite, """SELECT "Email" FROM "Users" LIMIT -1 OFFSET 3""" },
+        { PostgreSql, """SELECT "Email" FROM "Users" OFFSET 3""" },
+        { MySql, "SELECT `Email` FROM `Users` LIMIT 18446744073709551615 OFFSET 3" },
+        { SqlServer, "SELECT [Email] FROM [Users] ORDER BY (SELECT NULL) OFFSET 3 ROWS" },
+    };
+
+    public static TheoryData<SqlBuilder, string> Aggregates() => new()
+    {
+        { Sqlite, """SELECT "Status" AS "Status", COUNT(*) AS "Total" FROM "Users" GROUP BY "Status" ORDER BY "Total" DESC""" },
+        { PostgreSql, """SELECT "Status" AS "Status", COUNT(*) AS "Total" FROM "Users" GROUP BY "Status" ORDER BY "Total" DESC""" },
+        { MySql, "SELECT `Status` AS `Status`, COUNT(*) AS `Total` FROM `Users` GROUP BY `Status` ORDER BY `Total` DESC" },
+        { SqlServer, "SELECT [Status] AS [Status], COUNT(*) AS [Total] FROM [Users] GROUP BY [Status] ORDER BY [Total] DESC" },
     };
 
     [Theory]
-    [MemberData(nameof(Dialects))]
-    public void Each_dialect_writes_parameterized_sql(SqlDialect dialect, string expected)
+    [MemberData(nameof(Selects))]
+    public void Each_database_writes_parameterized_sql(SqlBuilder builder, string expected)
     {
         var map = Relational.Resolve("Users");
-        var statement = new SqlCommandBuilder(dialect, map).Select(
+        var statement = builder.Select(
+            map,
             new[] { map.Field("Email"), map.Field("Status") },
             DatabaseFilter.Eq("Email", "a@example.com") & DatabaseFilter.In("Status", new object?[] { 0, "Disabled" }),
-            new[] { new DatabaseSort("Email", Descending: true) }, skip: 10, take: 5);
+            new[] { new DatabaseSort("Email", Descending: true) },
+            10,
+            5);
 
         Assert.Equal(expected, statement.Text);
-        Assert.Equal(new object?[] { "a@example.com", UserStatus.Enabled, UserStatus.Disabled }, statement.Parameters.Select(p => p.Value));
-    }
-
-    [Fact]
-    public void Values_are_parameters_never_sql()
-    {
-        var statement = new SqlCommandBuilder(new PostgreSqlDialect(), Relational.Resolve("Users"))
-            .Update(new Dictionary<string, object?> { ["FirstName"] = Injection }, DatabaseFilter.Eq("Email", Injection));
-
-        Assert.Equal("""UPDATE "Users" SET "FirstName" = @p0 WHERE "Email" = @p1""", statement.Text);
-        Assert.All(statement.Parameters, p => Assert.Equal(Injection, p.Value));
+        Assert.Equal(new object?[] { "a@example.com", UserStatus.Enabled, UserStatus.Disabled }, statement.Values);
     }
 
     [Theory]
-    [InlineData(false, """ "Email" LIKE @p0 ESCAPE '!'""", "%50!%!_off!!%")]
-    [InlineData(true, """ LOWER("Email") LIKE LOWER(@p0) ESCAPE '!'""", "%50!%!_off!!%")]
-    public void Like_patterns_match_text_literally(bool ignoreCase, string expectedCondition, string expectedPattern)
+    [MemberData(nameof(Pagings))]
+    public void Each_database_pages_without_a_limit_or_sort(SqlBuilder builder, string expected)
     {
-        var statement = new SqlCommandBuilder(new SqliteDialect(), Relational.Resolve("Users"))
-            .Count(DatabaseFilter.Contains("Email", "50%_off!", ignoreCase));
+        var map = Relational.Resolve("Users");
 
-        Assert.EndsWith(expectedCondition.TrimStart(), statement.Text, StringComparison.Ordinal);
-        Assert.Equal(expectedPattern, Assert.Single(statement.Parameters).Value);
+        Assert.Equal(expected, builder.Select(map, new[] { map.Field("Email") }, null, Array.Empty<DatabaseSort>(), 3, null).Text);
+    }
+
+    [Theory]
+    [MemberData(nameof(Builders))]
+    public void Values_are_parameters_never_sql(SqlBuilder builder)
+    {
+        var statement = builder.Update(
+            Relational.Resolve("Users"), new Dictionary<string, object?> { ["FirstName"] = Injection }, DatabaseFilter.Eq("Email", Injection));
+
+        Assert.DoesNotContain("DROP", statement.Text, StringComparison.Ordinal);
+        Assert.Equal(new object?[] { Injection, Injection }, statement.Values);
+    }
+
+    [Theory]
+    [MemberData(nameof(Builders))]
+    public void Like_patterns_match_text_literally(SqlBuilder builder)
+    {
+        var map = Relational.Resolve("Users");
+        var column = builder.Select(map, new[] { map.Field("Email") }, null, Array.Empty<DatabaseSort>(), null, null).Text.Split(' ')[1];
+
+        var exact = builder.Count(map, DatabaseFilter.Contains("Email", "50%_off!", ignoreCase: false));
+        var ignoreCase = builder.Count(map, DatabaseFilter.Contains("Email", "50%_off!", ignoreCase: true));
+
+        Assert.EndsWith($"{column} LIKE @p0 ESCAPE '!'", exact.Text, StringComparison.Ordinal);
+        Assert.EndsWith($"LOWER({column}) LIKE LOWER(@p0) ESCAPE '!'", ignoreCase.Text, StringComparison.Ordinal);
+        Assert.Equal("%50!%!_off!!%", Assert.Single(exact.Values));
     }
 
     [Fact]
-    public void Sql_server_escapes_brackets_and_pages_without_a_sort()
+    public void Only_sql_server_escapes_brackets()
     {
-        var dialect = new SqlServerDialect();
-        Assert.Equal("![a]", dialect.EscapeLike("[a]"));
-
-        var statement = new SqlCommandBuilder(dialect, Relational.Resolve("Users")).Select(
-            new[] { Relational.Resolve("Users").Field("Email") }, filter: null, Array.Empty<DatabaseSort>(), skip: null, take: 1);
-        Assert.Equal("SELECT [Email] FROM [Users] ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY", statement.Text);
+        Assert.Equal("![a]", SqlServer.EscapeLike("[a]"));
+        Assert.Equal("[a]", Sqlite.EscapeLike("[a]"));
+        Assert.Equal("[a]", PostgreSql.EscapeLike("[a]"));
+        Assert.Equal("[a]", MySql.EscapeLike("[a]"));
     }
 
-    [Fact]
-    public void Aggregates_group_and_sort_by_output_columns()
+    [Theory]
+    [MemberData(nameof(Aggregates))]
+    public void Aggregates_group_and_sort_by_output_columns(SqlBuilder builder, string expected)
     {
-        var statement = new SqlCommandBuilder(new PostgreSqlDialect(), Relational.Resolve("Users")).Aggregate(
+        var statement = builder.Aggregate(
+            Relational.Resolve("Users"),
             new DatabaseAggregation(new[] { "Status" }, new[] { new DatabaseAccumulator("Total", AggregateFunction.Count) }),
-            filter: null, new[] { new DatabaseSort("Total", Descending: true) }, skip: null, take: null);
+            new[] { new DatabaseSort("Total", Descending: true) });
 
-        Assert.Equal("""SELECT "Status" AS "Status", COUNT(*) AS "Total" FROM "Users" GROUP BY "Status" ORDER BY "Total" DESC""", statement.Text);
+        Assert.Equal(expected, statement.Text);
     }
 
     [Fact]
@@ -99,11 +168,12 @@ public sealed class DatabaseTranslationTests
         Assert.Equal("AuditLogs", Relational.Resolve("AuditLogEntry").Native); // entity name works too
     }
 
-    [Fact]
-    public void Keys_can_not_be_updated()
+    [Theory]
+    [MemberData(nameof(Builders))]
+    public void Keys_can_not_be_updated(SqlBuilder builder)
     {
-        Assert.Throws<DatabaseQueryException>(() => new SqlCommandBuilder(new SqliteDialect(), Relational.Resolve("Users"))
-            .Update(new Dictionary<string, object?> { ["Id"] = Guid.NewGuid() }, DatabaseFilter.And()));
+        Assert.Throws<DatabaseQueryException>(() => builder.Update(
+            Relational.Resolve("Users"), new Dictionary<string, object?> { ["Id"] = Guid.NewGuid() }, DatabaseFilter.And()));
     }
 
     [Theory]
@@ -118,14 +188,15 @@ public sealed class DatabaseTranslationTests
         Assert.Throws<DatabaseQueryException>(() => DatabaseSchema.Unmapped.Resolve("events").Field(name));
     }
 
-    [Fact]
-    public void Values_are_converted_to_the_field_type()
+    [Theory]
+    [MemberData(nameof(Builders))]
+    public void Values_are_converted_to_the_field_type(SqlBuilder builder)
     {
         var map = Relational.Resolve("Users");
         var id = Guid.NewGuid();
 
-        Assert.Equal(id, new SqlCommandBuilder(new SqliteDialect(), map).Count(DatabaseFilter.Eq("Id", id.ToString())).Parameters[0].Value);
-        Assert.Throws<DatabaseQueryException>(() => new SqlCommandBuilder(new SqliteDialect(), map).Count(DatabaseFilter.Eq("Id", "not-a-guid")));
+        Assert.Equal(id, builder.Count(map, DatabaseFilter.Eq("Id", id.ToString())).Values[0]);
+        Assert.Throws<DatabaseQueryException>(() => builder.Count(map, DatabaseFilter.Eq("Id", "not-a-guid")));
     }
 
     private static BsonDocument Render(string collection, DatabaseFilter filter) =>
@@ -185,5 +256,31 @@ public sealed class DatabaseTranslationTests
     {
         Assert.Throws<DatabaseQueryException>(() => MongoExecutor.BuildFilter(DatabaseSchema.Unmapped.Resolve("events"), DatabaseFilter.Eq("$where", "1")));
         Assert.Throws<DatabaseQueryException>(() => MongoExecutor.BuildFilter(DatabaseSchema.Unmapped.Resolve("events"), DatabaseFilter.Eq("a.b", "1")));
+    }
+
+    private static Statement Of(SqliteSqlStatement s) => new(s.Text, s.Parameters.Select(p => p.Value).ToArray());
+
+    private static Statement Of(PostgreSqlSqlStatement s) => new(s.Text, s.Parameters.Select(p => p.Value).ToArray());
+
+    private static Statement Of(MySqlSqlStatement s) => new(s.Text, s.Parameters.Select(p => p.Value).ToArray());
+
+    private static Statement Of(SqlServerSqlStatement s) => new(s.Text, s.Parameters.Select(p => p.Value).ToArray());
+
+    /// <summary>A built statement, the same shape for every SQL database.</summary>
+    public sealed record Statement(string Text, object?[] Values);
+
+    /// <summary>
+    /// Each SQL database has its own copy of the SQL builder (.docs/database/providers.md#isolation-and-updates), so the
+    /// behaviour above is checked on all four copies: a fix made in one and missed in another fails here.
+    /// </summary>
+    public sealed record SqlBuilder(
+        string Database,
+        Func<CollectionMap, IReadOnlyList<FieldMap>, DatabaseFilter?, IReadOnlyList<DatabaseSort>, int?, int?, Statement> Select,
+        Func<CollectionMap, DatabaseFilter?, Statement> Count,
+        Func<CollectionMap, DatabaseAggregation, IReadOnlyList<DatabaseSort>, Statement> Aggregate,
+        Func<CollectionMap, IReadOnlyDictionary<string, object?>, DatabaseFilter?, Statement> Update,
+        Func<string, string> EscapeLike)
+    {
+        public override string ToString() => Database;
     }
 }

@@ -1,7 +1,10 @@
 using DotNetForge.Abstractions.Database;
 using DotNetForge.Data.Database;
-using DotNetForge.Data.Database.MongoDb;
-using DotNetForge.Data.Database.Relational;
+using DotNetForge.Data.Database.Providers.MongoDb;
+using DotNetForge.Data.Database.Providers.MySql;
+using DotNetForge.Data.Database.Providers.PostgreSql;
+using DotNetForge.Data.Database.Providers.Sqlite;
+using DotNetForge.Data.Database.Providers.SqlServer;
 using DotNetForge.Shared.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;

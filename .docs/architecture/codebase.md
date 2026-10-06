@@ -292,13 +292,12 @@ Pure domain logic with no EF Core.
 | File | Responsibility |
 | --- | --- |
 | `DotNetForgeDbContext.cs` | The EF Core model: 16 `DbSet`s (incl. `DataProtectionKeys`) and all fluent configuration. Implements `IDataProtectionKeyContext`. Owns the SQLite migrations. Not sealed. |
-| `PostgreSqlDbContext.cs`, `SqlServerDbContext.cs`, `MySqlDbContext.cs` | Same model as distinct types so each SQL provider has its own migration set (`Migrations/<Provider>/`); provider-specific model tweaks only here. Registered as `DotNetForgeDbContext`; application code never names them. |
-| `Database/` | The database layer ([architecture](../database/architecture.md)): `IDatabaseProvider`, registry, catalog, `QueryRouter`, `DatabaseService`, schema mapping, value coercion; `Relational/` (dialects, SQL builder, executor, SQLite/PostgreSQL/SQL Server/MySQL providers); `MongoDb/` (context, provider, executor, key generators). |
+| `Database/` | The database layer ([architecture](../database/architecture.md)): `IDatabaseProvider`, registry, catalog, `QueryRouter`, `DatabaseService`, schema mapping, value coercion. `Providers/<Database>/` holds everything specific to one database, with no code shared between databases: provider, context type and migrations; for SQL databases also the dialect, SQL builder and executor; for MongoDB the executor and key generators. |
 | `DatabaseInitializer.cs` | Startup: the main provider's `InitializeSchemaAsync` (migrations, or MongoDB collections and indexes), then `DataSeeder.SeedAsync`. |
 | `DataSeeder.cs` | Idempotent seed: default tenant, six built-in roles + grants, starter page tree, auth-provider catalog, `SystemState` row. |
 | `InstallationStore.cs` | Transactional create-first-admin + installed flag. |
 | `DesignTimeDbContextFactory.cs` | One design-time factory per SQL context (SQLite, PostgreSQL, SQL Server, MySQL) for `dotnet ef`; read `DATABASE_CONNECTION_STRING` from the process environment only. |
-| `Migrations/` | SQLite: `InitialCreate`, `AddPageSeoAndScheduling`, `AddDataProtectionKeys`. `Migrations/PostgreSql/`: `InitialCreate`. |
+| `Database/Providers/<Database>/Migrations/` | One migration set per SQL database. SQLite: `InitialCreate`, `AddPageSeoAndScheduling`, `AddDataProtectionKeys`; PostgreSQL, SQL Server, MySQL: `InitialCreate`. |
 
 Details: [database.md](database.md).
 
@@ -610,8 +609,8 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
   or dynamic route inside that tenant ([multi-tenancy](../features/multi-tenancy.md)).
 - **Extension points:** every extension type implements its `DotNetForge.Abstractions.Extensions` interface and is
   resolved through DI; marketplace installation through an external API ([extensions](../features/extensions.md)).
-- **Database:** every schema change is an EF Core migration for each SQL provider ✔ (`Migrations/`,
-  `Migrations/PostgreSql/`, `Migrations/SqlServer/`, `Migrations/MySql/`, [database](database.md)); data scoped per tenant where applicable; provider-aware
+- **Database:** every schema change is an EF Core migration for each SQL provider ✔
+  (`Database/Providers/<Database>/Migrations/`, [database](database.md)); data scoped per tenant where applicable; provider-aware
   import/export ([transfer and updates](../features/transfer-and-updates.md)).
 - **Authentication:** pluggable providers registered through DI and supplied by `authentication` extensions in
   `extensions/authentication/`; built-in Email provider ✔; external providers (Auth0, GitHub, Google, Microsoft, ...)
@@ -726,8 +725,8 @@ update this document in the same change).
 14. **Extension discovery goes through `IExtensionLoader`** (`Discover()`, `FindAdminExtension(id)`); never scan
     `extensions/` directly or build file paths from request input (see `ExtensionViewController.Resource` for the
     traversal guard).
-15. **Schema changes go through migrations for EVERY SQL provider** - `DotNetForgeDbContext` (`Migrations/`),
-    `PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext` (`Migrations/<Provider>/`); MongoDB needs none. Strip
+15. **Schema changes go through migrations for EVERY SQL provider** - `DotNetForgeDbContext` (SQLite),
+    `PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext`, each into `Database/Providers/<Database>/Migrations/`; MongoDB needs none. Strip
     the UTF-8 BOM EF writes into generated files (`.editorconfig` `charset = utf-8`) and check each snapshot landed in
     its folder ([database → migrations](database.md#migrations), the
     [database change skill](../../.claude/skills/database-change/SKILL.md)). Seed data goes in `DataSeeder` and must

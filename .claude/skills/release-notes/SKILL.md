@@ -36,7 +36,7 @@ whether to update and what changes for them.
    text), routes, `.env` keys and defaults, permission keys, API endpoints, migration names. Use `.docs/` as the map
    (it is verified against the code) but re-check anything you quote. Drop what you can't confirm.
 4. **Find upgrade impact** - these need an *Upgrading* bullet:
-   - new migrations in `src/DotNetForge.Data/Migrations/` and `Migrations/{PostgreSql,SqlServer,MySql}/` (each
+   - new migrations in `src/DotNetForge.Data/Database/Providers/{Sqlite,PostgreSql,SqlServer,MySql}/Migrations/` (each
      provider applies its set on start; mention long-running or data-changing migrations and back-up advice) and
      index changes for MongoDB (`EnsureCreated` never changes existing indexes);
    - new runtime requirements (environment variables, writable volumes, object storage) - the deployment directory is

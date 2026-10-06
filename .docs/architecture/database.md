@@ -14,10 +14,10 @@ the connection string). How providers work, how they are configured and how to a
 
 | Provider | Context type | Schema at startup (`DatabaseInitializer` → `IDatabaseProvider.InitializeSchemaAsync`) |
 | --- | --- | --- |
-| SQLite | `DotNetForgeDbContext` | `MigrateAsync` - `Migrations/` |
-| PostgreSQL | `PostgreSqlDbContext` | `MigrateAsync` - `Migrations/PostgreSql/` |
-| SQL Server | `SqlServerDbContext` | `MigrateAsync` - `Migrations/SqlServer/` |
-| MySQL | `MySqlDbContext` | `MigrateAsync` - `Migrations/MySql/` |
+| SQLite | `DotNetForgeDbContext` | `MigrateAsync` - `Database/Providers/Sqlite/Migrations/` |
+| PostgreSQL | `PostgreSqlDbContext` | `MigrateAsync` - `Database/Providers/PostgreSql/Migrations/` |
+| SQL Server | `SqlServerDbContext` | `MigrateAsync` - `Database/Providers/SqlServer/Migrations/` |
+| MySQL | `MySqlDbContext` | `MigrateAsync` - `Database/Providers/MySql/Migrations/` |
 | MongoDB | `MongoDbContext` | `EnsureCreatedAsync` - collections and indexes ([MongoDB](../database/mongodb.md#schema-without-migrations)) |
 
 PostgreSQL is the recommended production database ([deployment → database](../guides/deployment.md#database)).
@@ -25,7 +25,7 @@ PostgreSQL is the recommended production database ([deployment → database](../
 > **BREAKING for existing PostgreSQL databases.** A PostgreSQL database created by an earlier build (via
 > `EnsureCreated`) has no `__EFMigrationsHistory` table, so `MigrateAsync` tries to create every table again and
 > startup fails. Recreate the database, or baseline it: create the `DataProtectionKeys` table by hand (as in
-> `Migrations/PostgreSql/20261005180055_InitialCreate.cs`), then insert the row `('20261005180055_InitialCreate',
+> `Database/Providers/PostgreSql/Migrations/20261005180055_InitialCreate.cs`), then insert the row `('20261005180055_InitialCreate',
 > '<EF Core product version>')` into `__EFMigrationsHistory`. SQLite databases upgrade normally.
 
 ### One model, one context type per provider
@@ -34,11 +34,12 @@ EF Core binds a migration set to a context type, so each provider has its own ty
 
 - **`DotNetForgeDbContext`**
   - Holds the whole model (all `DbSet`s and fluent configuration).
-  - Owns the SQLite migrations in `Migrations/`.
+  - Owns the SQLite migrations in `Database/Providers/Sqlite/Migrations/`.
   - Not sealed, with a protected constructor for subclasses.
 - **`PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext` and `MongoDbContext`** derive from it.
-  - Each owns its provider's migration set (namespace `DotNetForge.Data.Migrations.<Provider>`), or for MongoDB the
-    key generators.
+  - Each lives in its database's folder and owns that database's migration set
+    (`Database/Providers/<Database>/Migrations/`, namespace `DotNetForge.Data.Database.Providers.<Database>.Migrations`),
+    or for MongoDB the key generators.
   - Provider-specific model adjustments live only there: `SqlServerDbContext` makes `SystemState.Id` non-identity,
     and `MongoDbContext` generates the integer keys.
 - **The main database's provider registers its type as `DotNetForgeDbContext`** (`IDatabaseProvider.AddDbContext`),
@@ -123,14 +124,15 @@ So `PageService` checks slug uniqueness in code, including the root level, in:
 
 | Migration | Context / folder | Adds |
 | --- | --- | --- |
-| `20260605120223_InitialCreate` | `DotNetForgeDbContext`, `Migrations/` | all 15 application tables and indexes |
-| `20260605211609_AddPageSeoAndScheduling` | `DotNetForgeDbContext`, `Migrations/` | `Pages.SeoKeywords`, `CanonicalUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate` |
-| `20261005180052_AddDataProtectionKeys` | `DotNetForgeDbContext`, `Migrations/` | `DataProtectionKeys` |
-| `20261005180055_InitialCreate` | `PostgreSqlDbContext`, `Migrations/PostgreSql/` | the current model in one step: all 16 tables and indexes |
-| `20261005212914_InitialCreate` | `SqlServerDbContext`, `Migrations/SqlServer/` | the current model in one step |
-| `20261005211842_InitialCreate` | `MySqlDbContext`, `Migrations/MySql/` | the current model in one step |
+| `20260605120223_InitialCreate` | `DotNetForgeDbContext`, `Database/Providers/Sqlite/Migrations/` | all 15 application tables and indexes |
+| `20260605211609_AddPageSeoAndScheduling` | `DotNetForgeDbContext`, `Database/Providers/Sqlite/Migrations/` | `Pages.SeoKeywords`, `CanonicalUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate` |
+| `20261005180052_AddDataProtectionKeys` | `DotNetForgeDbContext`, `Database/Providers/Sqlite/Migrations/` | `DataProtectionKeys` |
+| `20261005180055_InitialCreate` | `PostgreSqlDbContext`, `Database/Providers/PostgreSql/Migrations/` | the current model in one step: all 16 tables and indexes |
+| `20261005212914_InitialCreate` | `SqlServerDbContext`, `Database/Providers/SqlServer/Migrations/` | the current model in one step |
+| `20261005211842_InitialCreate` | `MySqlDbContext`, `Database/Providers/MySql/Migrations/` | the current model in one step |
 
-All sets are applied automatically at startup by the configured provider. **Every schema change needs a migration
+Paths are relative to `src/DotNetForge.Data/`. All sets are applied automatically at startup by the configured
+provider. **Every schema change needs a migration
 in each of the four SQL sets.** MongoDB needs none: `EnsureCreated` adds new collections and indexes, but never
 changes existing indexes ([MongoDB](../database/mongodb.md#schema-without-migrations)).
 
@@ -138,10 +140,10 @@ Use the [database-change skill](../../.claude/skills/database-change/SKILL.md) o
 
 ```bash
 dotnet tool restore
-for ctx in DotNetForgeDbContext:Migrations PostgreSqlDbContext:Migrations/PostgreSql \
-           SqlServerDbContext:Migrations/SqlServer MySqlDbContext:Migrations/MySql; do
+for ctx in DotNetForgeDbContext:Sqlite PostgreSqlDbContext:PostgreSql \
+           SqlServerDbContext:SqlServer MySqlDbContext:MySql; do
   dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-    --context "${ctx%%:*}" --output-dir "${ctx#*:}"
+    --context "${ctx%%:*}" --output-dir "Database/Providers/${ctx#*:}/Migrations"
 done
 ```
 

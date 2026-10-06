@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace DotNetForge.Data.Migrations
+namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
 {
     /// <inheritdoc />
     public partial class AddDataProtectionKeys : Migration

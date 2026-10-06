@@ -104,7 +104,7 @@ Terminate TLS at the proxy (nginx, Caddy, Traefik, a cloud load balancer) and fo
 
 ## Database
 
-- **PostgreSQL** (recommended for production): the app applies `Migrations/PostgreSql/` on start. Use a dedicated
+- **PostgreSQL** (recommended for production): the app applies `Database/Providers/PostgreSql/Migrations/` on start. Use a dedicated
   database and user. Add `GSS Encryption Mode=Disable` to the connection string; otherwise Npgsql probes for Kerberos
   (`libgssapi_krb5.so.2`), which the slim image doesn't include, and logs an error line on start.
 - **SQLite**: only on a persistent volume with an absolute path, and only for a single instance.

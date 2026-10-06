@@ -2,8 +2,9 @@
 name: database-change
 description: >-
   Changes the DotNetForge CMS database schema or seed data safely: entity in src/DotNetForge.Shared/Entities,
-  fluent configuration in DotNetForgeDbContext, an EF Core migration in src/DotNetForge.Data/Migrations via the pinned
-  dotnet-ef tool, idempotent DataSeeder changes, migrations for every SQL provider (SQLite DotNetForgeDbContext,
+  fluent configuration in DotNetForgeDbContext, EF Core migrations in
+  src/DotNetForge.Data/Database/Providers/<Database>/Migrations via the pinned dotnet-ef tool, idempotent DataSeeder
+  changes, migrations for every SQL provider (SQLite DotNetForgeDbContext,
   PostgreSqlDbContext, SqlServerDbContext, MySqlDbContext; MongoDB needs none), and .docs/architecture/database.md.
   Use when asked to add or change a table, column, index, relationship, enum stored in the DB, or seed data, or to
   create/fix a migration.
@@ -24,10 +25,10 @@ Read first: `.docs/architecture/database.md`.
 3. **Migrations - one per SQL provider** (from the repository root; generating never connects to a database):
    ```bash
    dotnet tool restore
-   for ctx in DotNetForgeDbContext:Migrations PostgreSqlDbContext:Migrations/PostgreSql \
-              SqlServerDbContext:Migrations/SqlServer MySqlDbContext:Migrations/MySql; do
+   for ctx in DotNetForgeDbContext:Sqlite PostgreSqlDbContext:PostgreSql \
+              SqlServerDbContext:SqlServer MySqlDbContext:MySql; do
      dotnet ef migrations add <PascalCaseName> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-       --context "${ctx%%:*}" --output-dir "${ctx#*:}"
+       --context "${ctx%%:*}" --output-dir "Database/Providers/${ctx#*:}/Migrations"
    done
    ```
    Then:

@@ -1,4 +1,7 @@
-using DotNetForge.Data.Database.Relational;
+using DotNetForge.Data.Database.Providers.MySql;
+using DotNetForge.Data.Database.Providers.PostgreSql;
+using DotNetForge.Data.Database.Providers.Sqlite;
+using DotNetForge.Data.Database.Providers.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -19,7 +22,7 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Dot
     }
 }
 
-/// <summary>Design-time factory for <c>--context PostgreSqlDbContext</c> (<c>Migrations/PostgreSql/</c>).</summary>
+/// <summary>Design-time factory for <c>--context PostgreSqlDbContext</c> (migrations in <c>Database/Providers/PostgreSql/Migrations/</c>).</summary>
 public sealed class PostgreSqlDesignTimeDbContextFactory : IDesignTimeDbContextFactory<PostgreSqlDbContext>
 {
     public PostgreSqlDbContext CreateDbContext(string[] args)
@@ -30,7 +33,7 @@ public sealed class PostgreSqlDesignTimeDbContextFactory : IDesignTimeDbContextF
     }
 }
 
-/// <summary>Design-time factory for <c>--context SqlServerDbContext</c> (<c>Migrations/SqlServer/</c>).</summary>
+/// <summary>Design-time factory for <c>--context SqlServerDbContext</c> (migrations in <c>Database/Providers/SqlServer/Migrations/</c>).</summary>
 public sealed class SqlServerDesignTimeDbContextFactory : IDesignTimeDbContextFactory<SqlServerDbContext>
 {
     public SqlServerDbContext CreateDbContext(string[] args)
@@ -41,7 +44,7 @@ public sealed class SqlServerDesignTimeDbContextFactory : IDesignTimeDbContextFa
     }
 }
 
-/// <summary>Design-time factory for <c>--context MySqlDbContext</c> (<c>Migrations/MySql/</c>).</summary>
+/// <summary>Design-time factory for <c>--context MySqlDbContext</c> (migrations in <c>Database/Providers/MySql/Migrations/</c>).</summary>
 public sealed class MySqlDesignTimeDbContextFactory : IDesignTimeDbContextFactory<MySqlDbContext>
 {
     public MySqlDbContext CreateDbContext(string[] args)

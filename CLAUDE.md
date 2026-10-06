@@ -35,7 +35,9 @@ python .claude/skills/verify/check_links.py       # docs link check
   `IPageService` (interfaces in `src/DotNetForge.Shared`), not the concrete classes.
 - Schema changes need a migration for **each SQL context**: `DotNetForgeDbContext` (SQLite), `PostgreSqlDbContext`,
   `SqlServerDbContext`, `MySqlDbContext` (MongoDB needs none). Keep LINQ single-table (no joins / cross-table
-  navigations) so MongoDB can run it. Database code lives in `src/DotNetForge.Data/Database/` (.docs/database/).
+  navigations) so MongoDB can run it. Database code lives in `src/DotNetForge.Data/Database/` (.docs/database/):
+  one self-contained folder per database in `Providers/<Database>/` (provider, SQL builder, executor, context,
+  `Migrations/`). SQL code is copied, not shared, so a fix to shared SQL behaviour goes into all four SQL folders.
 - `IEmailSender` has no implementation and webhooks are not delivered (see `.docs/implementation-status.md`).
 - Optional: `DNF_TEST_POSTGRES` runs the integration tests on PostgreSQL; `DNF_TEST_S3_*` runs live S3 tests
   (`docker/compose.dev.yml` provides both servers).

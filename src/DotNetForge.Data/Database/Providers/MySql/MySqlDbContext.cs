@@ -1,6 +1,7 @@
+using DotNetForge.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace DotNetForge.Data;
+namespace DotNetForge.Data.Database.Providers.MySql;
 
 /// <summary>
 /// The CMS model as a distinct type so MySQL gets its own migration set (<c>Migrations/MySql/</c>), like

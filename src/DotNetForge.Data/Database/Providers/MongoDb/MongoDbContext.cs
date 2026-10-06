@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.ValueGeneration;
 
-namespace DotNetForge.Data.Database.MongoDb;
+namespace DotNetForge.Data.Database.Providers.MongoDb;
 
 /// <summary>
 /// The CMS model on MongoDB (.docs/database/mongodb.md). MongoDB has no migrations - the schema (collections and the

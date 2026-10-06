@@ -64,8 +64,7 @@ flowchart TB
 | `DatabaseCommandValidator` | `src/DotNetForge.Data/Database/DatabaseCommandValidator.cs` | Shape checks before any provider is involved |
 | `DatabaseSchema`, `CollectionMap`, `FieldMap` | `src/DotNetForge.Data/Database/DatabaseSchema.cs` | Model names → table/column or collection/element names; name validation |
 | `ValueCoercion` | `src/DotNetForge.Data/Database/ValueCoercion.cs` | Values to the model's types and back (Guid, enum, UTC dates) |
-| SQL providers and executor | `src/DotNetForge.Data/Database/Relational/` | Dialects, parameterized SQL builder, ADO.NET executor, SQLite/PostgreSQL/SQL Server/MySQL |
-| MongoDB provider and executor | `src/DotNetForge.Data/Database/MongoDb/` | EF Core MongoDB context, native driver executor, key generators |
+| One folder per database | `src/DotNetForge.Data/Database/Providers/<Database>/` | Everything specific to that database, with no code shared between databases: provider, context type, migrations; SQL databases also their dialect, parameterized SQL builder and ADO.NET executor; MongoDB its executor and key generators. See [providers → Isolation](providers.md#isolation-and-updates) |
 | Registration | `src/DotNetForge.Data/Database/DatabaseServiceCollectionExtensions.cs` | `AddDatabaseProvider<T>(name)`, `AddDefaultDatabaseProviders()`, `AddDotNetForgeDatabases(...)` |
 
 ## Startup

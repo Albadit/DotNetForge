@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.EntityFrameworkCore.Extensions;
 
-namespace DotNetForge.Data.Database.MongoDb;
+namespace DotNetForge.Data.Database.Providers.MongoDb;
 
 /// <summary>
 /// MongoDB through the official EF Core provider (the CMS model) and the native C# driver (<see cref="DatabaseCommand"/>s).

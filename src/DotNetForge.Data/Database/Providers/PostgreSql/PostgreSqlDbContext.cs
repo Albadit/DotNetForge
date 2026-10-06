@@ -1,6 +1,7 @@
+using DotNetForge.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace DotNetForge.Data;
+namespace DotNetForge.Data.Database.Providers.PostgreSql;
 
 /// <summary>
 /// The same model as <see cref="DotNetForgeDbContext"/>, as a distinct type so PostgreSQL gets its own migration set

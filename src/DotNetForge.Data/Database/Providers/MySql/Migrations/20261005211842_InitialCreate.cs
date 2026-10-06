@@ -4,7 +4,7 @@ using MySql.EntityFrameworkCore.Metadata;
 
 #nullable disable
 
-namespace DotNetForge.Data.Migrations.MySql
+namespace DotNetForge.Data.Database.Providers.MySql.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration

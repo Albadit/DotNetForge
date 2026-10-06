@@ -1,7 +1,8 @@
+using DotNetForge.Data;
 using DotNetForge.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace DotNetForge.Data;
+namespace DotNetForge.Data.Database.Providers.SqlServer;
 
 /// <summary>
 /// The CMS model as a distinct type so SQL Server gets its own migration set (<c>Migrations/SqlServer/</c>), like

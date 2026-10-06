@@ -159,9 +159,9 @@ the provider; the `--context` option picks it (MongoDB has no migrations):
 | Factory | Context | Connection string |
 | --- | --- | --- |
 | `DesignTimeDbContextFactory` | `DotNetForgeDbContext` (SQLite migrations) | `DATABASE_CONNECTION_STRING` from the process environment, else `Data Source=:memory:` (generating migrations never opens it) |
-| `PostgreSqlDesignTimeDbContextFactory` | `PostgreSqlDbContext` (`Migrations/PostgreSql/`) | `DATABASE_CONNECTION_STRING`, else the placeholder `Host=localhost;Database=dotnetforge_design` (never opened while generating migrations) |
-| `SqlServerDesignTimeDbContextFactory` | `SqlServerDbContext` (`Migrations/SqlServer/`) | `DATABASE_CONNECTION_STRING`, else a `localhost` placeholder |
-| `MySqlDesignTimeDbContextFactory` | `MySqlDbContext` (`Migrations/MySql/`) | `DATABASE_CONNECTION_STRING`, else a `localhost` placeholder |
+| `PostgreSqlDesignTimeDbContextFactory` | `PostgreSqlDbContext` (`Database/Providers/PostgreSql/Migrations/`) | `DATABASE_CONNECTION_STRING`, else the placeholder `Host=localhost;Database=dotnetforge_design` (never opened while generating migrations) |
+| `SqlServerDesignTimeDbContextFactory` | `SqlServerDbContext` (`Database/Providers/SqlServer/Migrations/`) | `DATABASE_CONNECTION_STRING`, else a `localhost` placeholder |
+| `MySqlDesignTimeDbContextFactory` | `MySqlDbContext` (`Database/Providers/MySql/Migrations/`) | `DATABASE_CONNECTION_STRING`, else a `localhost` placeholder |
 
 Migration commands: [database](../architecture/database.md).
 

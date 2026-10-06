@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace DotNetForge.Data.Migrations
+namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
 {
     [DbContext(typeof(DotNetForgeDbContext))]
     [Migration("20260605211609_AddPageSeoAndScheduling")]
