@@ -1,6 +1,6 @@
 # DotNetForge CMS
 
-Server-rendered ASP.NET Core MVC CMS on .NET 10 (EF Core, SQLite/PostgreSQL). Solution `DotNetForge.slnx`; the web
+Server-rendered ASP.NET Core MVC CMS on .NET 10 (EF Core; SQLite, PostgreSQL, SQL Server, MySQL or MongoDB). Solution `DotNetForge.slnx`; the web
 app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker files are in `docker/`.
 
 - **Documentation:** start at `.docs/README.md`. It is verified against the code. Planned-but-unbuilt behaviour is
@@ -33,7 +33,9 @@ python .claude/skills/verify/check_links.py       # docs link check
   (media) or the database; `ReadOnlyDeploymentTests` fails otherwise. No inline script/style in views (CSP).
 - Content/media actions check permissions with `Can`/`CanModify` (`AdminControllerBase`); inject `IAuditService` and
   `IPageService` (interfaces in `src/DotNetForge.Shared`), not the concrete classes.
-- Schema changes need a migration for **both** `DotNetForgeDbContext` (SQLite) and `PostgreSqlDbContext`.
+- Schema changes need a migration for **each SQL context**: `DotNetForgeDbContext` (SQLite), `PostgreSqlDbContext`,
+  `SqlServerDbContext`, `MySqlDbContext` (MongoDB needs none). Keep LINQ single-table (no joins / cross-table
+  navigations) so MongoDB can run it. Database code lives in `src/DotNetForge.Data/Database/` (.docs/database/).
 - `IEmailSender` has no implementation and webhooks are not delivered (see `.docs/implementation-status.md`).
 - Optional: `DNF_TEST_POSTGRES` runs the integration tests on PostgreSQL; `DNF_TEST_S3_*` runs live S3 tests
   (`docker/compose.dev.yml` provides both servers).

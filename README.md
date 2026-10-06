@@ -39,7 +39,7 @@ to S3-compatible object storage (Cloudflare R2 recommended), and the Data Protec
 
 ```bash
 docker build -f docker/Dockerfile -t dotnetforge .
-docker run --read-only --tmpfs /tmp -p 8080:8080 -e "DATABASE_CONNECTION_STRING=Host=...;Database=..." \
+docker run --read-only --tmpfs /tmp -p 8080:8080 -e DATABASE_PROVIDER=postgresql -e "DATABASE_CONNECTION_STRING=Host=...;Database=..." \
   -e STORAGE_S3_SERVICE_URL=... -e STORAGE_S3_BUCKET=... \
   -e STORAGE_S3_ACCESS_KEY_ID=... -e STORAGE_S3_SECRET_ACCESS_KEY=... dotnetforge
 ```
@@ -67,7 +67,8 @@ Copy `.env.example` to `.env` and set the values. Secrets are **never** committe
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `DATABASE_CONNECTION_STRING` | Outside Development | Decides the database: empty = SQLite at `storage/dotnetforge.db` (Development only), `Data Source=…` = SQLite, `Host=…` = PostgreSQL. |
+| `DATABASE_PROVIDER` | Recommended | `sqlite`, `postgresql`, `sqlserver`, `mysql` or `mongodb`; empty = detect from the connection string ([database configuration](.docs/database/configuration.md)). |
+| `DATABASE_CONNECTION_STRING` | Outside Development | The database's connection string; empty = SQLite at `storage/dotnetforge.db` (Development only). |
 | `APP_NAME` | No | Display name. Defaults to `DotNetForge CMS`. |
 | `APP_URL` | No | Public base URL, e.g. `http://localhost:5000`. Must be absolute; currently only validated. |
 | `STORAGE_S3_*` | Outside Development | S3-compatible storage for uploads (bucket, keys, endpoint). Any provider works: the endpoint decides (R2, AWS S3, MinIO, Supabase). Empty in Development = `storage/media`. |
@@ -80,10 +81,12 @@ Full reference: [.docs/features/configuration.md](.docs/features/configuration.m
 ### Switching to PostgreSQL
 
 ```env
+DATABASE_PROVIDER=postgresql
 DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres
 ```
 
-The `Host=` key is what selects PostgreSQL; there is no separate provider setting.
+SQL Server, MySQL and MongoDB work the same way; examples are in
+[.docs/database/configuration.md](.docs/database/configuration.md).
 
 Both providers apply their committed EF Core migrations on startup; see
 [.docs/architecture/database.md](.docs/architecture/database.md).

@@ -28,9 +28,9 @@ namespace DotNetForge.IntegrationTests;
 /// (<c>DNF_TEST_S3_*</c>, .docs/guides/testing.md).
 /// </remarks>
 /// <remarks>
-/// SQLite by default. Set <c>DNF_TEST_POSTGRES</c> to a server connection string without a database (e.g.
-/// <c>Host=localhost;Port=5432;Username=postgres;Password=postgres</c>) to run the same tests against PostgreSQL;
-/// each factory then creates and drops its own database.
+/// SQLite by default. Set one of <c>DNF_TEST_POSTGRES</c>, <c>DNF_TEST_SQLSERVER</c>, <c>DNF_TEST_MYSQL</c> or
+/// <c>DNF_TEST_MONGODB</c> to a server connection string without a database to run the same tests on that database
+/// (<see cref="TestDatabaseServer"/>); each factory then creates and drops its own database.
 /// </remarks>
 public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Program>
 {
@@ -47,16 +47,11 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
         StoragePath = Path.Combine(_workDir, "media");
         Directory.CreateDirectory(_workDir);
 
-        var postgres = Environment.GetEnvironmentVariable("DNF_TEST_POSTGRES");
-        if (string.IsNullOrWhiteSpace(postgres))
-        {
-            Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING", $"Data Source={Path.Combine(_workDir, "cms.db")}");
-        }
-        else
-        {
-            Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING",
-                $"{postgres.TrimEnd(';')};Database=dnf_it_{Guid.NewGuid():N}");
-        }
+        var database = TestDatabaseServer.For(_workDir, $"dnf_it_{Guid.NewGuid():N}");
+        Provider = database.Provider;
+        Environment.SetEnvironmentVariable("DATABASE_PROVIDER", database.Provider);
+        Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING", database.ConnectionString);
+        Environment.SetEnvironmentVariable("DATABASE_NAME", database.DatabaseName);
 
         Environment.SetEnvironmentVariable("APP_URL", "http://localhost");
         Environment.SetEnvironmentVariable("STORAGE_S3_SERVICE_URL", "http://127.0.0.1:9");
@@ -64,6 +59,9 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
         Environment.SetEnvironmentVariable("STORAGE_S3_ACCESS_KEY_ID", "test");
         Environment.SetEnvironmentVariable("STORAGE_S3_SECRET_ACCESS_KEY", "test");
     }
+
+    /// <summary>The database provider the tests run on (<c>sqlite</c> unless a <c>DNF_TEST_*</c> server is set).</summary>
+    public string Provider { get; }
 
     /// <summary>Where this factory's uploaded media is stored.</summary>
     public string StoragePath { get; }
@@ -163,7 +161,7 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing && Environment.GetEnvironmentVariable("DNF_TEST_POSTGRES") is { Length: > 0 })
+        if (disposing && Provider != "sqlite")
         {
             try
             {

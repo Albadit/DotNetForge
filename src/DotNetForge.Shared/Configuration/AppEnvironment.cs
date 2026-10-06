@@ -11,10 +11,11 @@ public sealed class AppEnvironment
     public const string DefaultAppName = "DotNetForge CMS";
     public const string DefaultAppUrl = "http://localhost:5000";
 
-    /// <summary>Detected from <see cref="ConnectionString"/> by the loader (empty = SQLite).</summary>
-    public DatabaseProvider Provider { get; set; } = DatabaseProvider.Sqlite;
+    /// <summary>The database the CMS runs on (<c>DATABASE_*</c>).</summary>
+    public DatabaseSettings Database { get; set; } = new();
 
-    public string? ConnectionString { get; set; }
+    /// <summary>Further named databases for <c>IDatabaseService</c> (<c>DATABASES_&lt;NAME&gt;_*</c>).</summary>
+    public IReadOnlyList<DatabaseSettings> AdditionalDatabases { get; set; } = Array.Empty<DatabaseSettings>();
 
     public string AppName { get; set; } = DefaultAppName;
 
@@ -28,25 +29,6 @@ public sealed class AppEnvironment
 
     /// <summary>Where uploaded media is stored (.docs/features/media-storage.md).</summary>
     public StorageSettings Storage { get; set; } = new();
-
-    /// <summary>
-    /// The effective connection string. The loader and the design-time factories always set one; the relative SQLite
-    /// fallback only applies to an <see cref="AppEnvironment"/> built by hand without a connection string.
-    /// </summary>
-    public string ResolveConnectionString()
-    {
-        if (!string.IsNullOrWhiteSpace(ConnectionString))
-        {
-            return ConnectionString!;
-        }
-
-        return Provider switch
-        {
-            DatabaseProvider.Sqlite => "Data Source=storage/dotnetforge.db",
-            _ => throw new InvalidOperationException(
-                "A PostgreSQL connection string is required (DATABASE_CONNECTION_STRING=Host=...)."),
-        };
-    }
 }
 
 /// <summary>

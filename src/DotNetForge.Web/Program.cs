@@ -1,4 +1,6 @@
+using DotNetForge.Abstractions.Database;
 using DotNetForge.Data;
+using DotNetForge.Data.Database;
 using DotNetForge.Infrastructure.Configuration;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Web.Middleware;
@@ -9,18 +11,18 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. Load and validate the .env configuration contract. Missing/invalid config aborts startup with a clear,
 //    actionable message (.docs/features/configuration.md). Outside Development nothing may default to a path
 //    inside the (read-only) deployment directory.
+//    Database settings are validated by their providers while services are registered.
 AppEnvironment env;
 try
 {
     env = EnvConfigurationLoader.Load(builder.Environment.ContentRootPath, builder.Environment.IsDevelopment());
+    builder.Services.AddDotNetForge(env, builder.Environment);
 }
-catch (ConfigurationException ex)
+catch (Exception ex) when (ex is ConfigurationException or DatabaseConfigurationException)
 {
     Console.Error.WriteLine($"[DotNetForge] Configuration error: {ex.Message}");
     return 1;
 }
-
-builder.Services.AddDotNetForge(env, builder.Environment);
 
 var app = builder.Build();
 
@@ -28,7 +30,8 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<DotNetForgeDbContext>();
-    await DatabaseInitializer.InitializeAsync(db, app.Lifetime.ApplicationStopping);
+    var catalog = scope.ServiceProvider.GetRequiredService<DatabaseCatalog>();
+    await DatabaseInitializer.InitializeAsync(db, catalog.Main.Provider, app.Lifetime.ApplicationStopping);
 }
 
 // 3. Middleware pipeline. Behind a TLS-terminating proxy set ASPNETCORE_FORWARDEDHEADERS_ENABLED=true so the

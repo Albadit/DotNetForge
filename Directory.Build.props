@@ -10,7 +10,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- ICU culture data on: SQL Server's client (Microsoft.Data.SqlClient) refuses to run in invariant mode, and
+         localized formatting needs it anyway. The aspnet:10.0 runtime image ships ICU (.docs/database/providers.md). -->
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
 </Project>

@@ -5,25 +5,27 @@ using Xunit;
 namespace DotNetForge.Tests;
 
 /// <summary>
-/// Validates the .env configuration contract (.docs/features/configuration.md): the database provider detected from
-/// the connection string, the read-only deployment rules, storage settings, and fail-fast behavior on invalid config.
-/// Tests run serially within the class and save/restore the relevant environment variables so the
-/// file-based path is exercised deterministically.
+/// Validates the .env configuration contract (.docs/features/configuration.md): database settings are read as written
+/// (providers validate them - see DatabaseProviderTests), named databases, storage settings, and fail-fast behavior on
+/// invalid config. Tests save/restore the relevant environment variables so the file-based path is exercised
+/// deterministically.
 /// </summary>
 [Collection(EnvironmentVariables.Collection)]
 public sealed class EnvConfigurationTests
 {
     private static readonly string[] Keys =
     {
-        "DATABASE_CONNECTION_STRING", "APP_NAME", "APP_URL",
+        "DATABASE_PROVIDER", "DATABASE_CONNECTION_STRING", "DATABASE_NAME", "APP_NAME", "APP_URL",
         "STORAGE_S3_SERVICE_URL", "STORAGE_S3_BUCKET",
         "STORAGE_S3_ACCESS_KEY_ID", "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_S3_REGION", "STORAGE_S3_FORCE_PATH_STYLE",
     };
 
     private static T WithCleanEnv<T>(Func<string, T> act, string envFileContent)
     {
-        var saved = Keys.ToDictionary(k => k, Environment.GetEnvironmentVariable);
-        foreach (var k in Keys)
+        var keys = Keys.Concat(Environment.GetEnvironmentVariables().Keys.Cast<string>()
+            .Where(k => k.StartsWith("DATABASES_", StringComparison.OrdinalIgnoreCase))).ToList();
+        var saved = keys.ToDictionary(k => k, Environment.GetEnvironmentVariable);
+        foreach (var k in keys)
         {
             Environment.SetEnvironmentVariable(k, null);
         }
@@ -50,59 +52,82 @@ public sealed class EnvConfigurationTests
         }
     }
 
-    [Theory]
-    [InlineData("DATABASE_CONNECTION_STRING=\n", DatabaseProvider.Sqlite)]
-    [InlineData("APP_NAME=No database line\n", DatabaseProvider.Sqlite)]
-    [InlineData("DATABASE_CONNECTION_STRING=Data Source=/data/cms.db\n", DatabaseProvider.Sqlite)]
-    [InlineData("DATABASE_CONNECTION_STRING=Filename=:memory:\n", DatabaseProvider.Sqlite)]
-    [InlineData("DATABASE_CONNECTION_STRING=Host=localhost;Database=dnf\n", DatabaseProvider.PostgreSql)]
-    [InlineData("DATABASE_CONNECTION_STRING=server = db ; port=5432; database=dnf\n", DatabaseProvider.PostgreSql)]
-    public void Provider_is_detected_from_the_connection_string(string envFile, DatabaseProvider expected)
+    [Fact]
+    public void Main_database_settings_are_read_as_written()
     {
-        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d), envFile);
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
+            "DATABASE_PROVIDER=mongodb\nDATABASE_CONNECTION_STRING=mongodb://db:27017/?replicaSet=rs0\nDATABASE_NAME=cms\n");
 
-        Assert.Equal(expected, env.Provider);
+        Assert.Equal("main", env.Database.Name);
+        Assert.Equal("mongodb", env.Database.Provider);
+        Assert.Equal("mongodb://db:27017/?replicaSet=rs0", env.Database.ConnectionString);
+        Assert.Equal("cms", env.Database.DatabaseName);
+        Assert.Empty(env.AdditionalDatabases);
     }
 
     [Fact]
-    public void Postgresql_connection_string_is_passed_through_unchanged()
+    public void Empty_database_settings_are_left_to_the_provider_defaults()
     {
-        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d, isDevelopment: false),
-            "DATABASE_CONNECTION_STRING=Host=db;Database=dnf;Username=u;Password=p\n" +
-            "STORAGE_S3_SERVICE_URL=https://x\nSTORAGE_S3_BUCKET=m\nSTORAGE_S3_ACCESS_KEY_ID=a\nSTORAGE_S3_SECRET_ACCESS_KEY=b\n");
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d), "APP_NAME=Defaults\n");
 
-        Assert.Equal("Host=db;Database=dnf;Username=u;Password=p", env.ConnectionString);
+        Assert.Null(env.Database.Provider);
+        Assert.Null(env.Database.ConnectionString);
+    }
+
+    [Fact]
+    public void Named_databases_are_read_from_DATABASES_keys()
+    {
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
+            "DATABASES_REPORTS_PROVIDER=postgresql\nDATABASES_REPORTS_CONNECTION_STRING=Host=r;Database=reports\n" +
+            "DATABASES_EVENTS_CONNECTION_STRING=mongodb://e:27017/events\nDATABASES_EVENTS_NAME=events\n");
+
+        Assert.Collection(env.AdditionalDatabases.OrderBy(d => d.Name),
+            events =>
+            {
+                Assert.Equal("events", events.Name);
+                Assert.Null(events.Provider);
+                Assert.Equal("events", events.DatabaseName);
+            },
+            reports =>
+            {
+                Assert.Equal("reports", reports.Name);
+                Assert.Equal("postgresql", reports.Provider);
+                Assert.Equal("Host=r;Database=reports", reports.ConnectionString);
+            });
     }
 
     [Theory]
-    [InlineData("DATABASE_CONNECTION_STRING=Initial Catalog=dnf;Integrated Security=true\n", "Cannot tell which database")]
-    [InlineData("DATABASE_CONNECTION_STRING=postgres://u:p@db:5432/dnf\n", "key=value form")]
-    public void Unrecognized_connection_string_throws(string envFile, string expected)
+    [InlineData("DATABASES_MAIN_PROVIDER=sqlite\n", "reserved")]
+    [InlineData("DATABASES_REPORTS_PORT=5432\n", "not a valid database setting")]
+    [InlineData("DATABASES__PROVIDER=sqlite\n", "not a valid database setting")]
+    public void Invalid_named_database_keys_throw(string envFile, string expected)
     {
         var ex = Assert.Throws<ConfigurationException>(() => WithCleanEnv(d => EnvConfigurationLoader.Load(d), envFile));
         Assert.Contains(expected, ex.Message);
     }
 
     [Fact]
-    public void Development_defaults_stay_under_the_content_root()
+    public void ToString_never_contains_the_connection_string()
+    {
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d), "DATABASE_PROVIDER=postgresql\nDATABASE_CONNECTION_STRING=Host=db;Password=s3cret\n");
+
+        Assert.DoesNotContain("s3cret", env.Database.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Development_storage_defaults_stay_under_the_content_root()
     {
         var (env, dir) = WithCleanEnv(d => (EnvConfigurationLoader.Load(d), d), "APP_NAME=Defaults\n");
 
-        Assert.Equal($"Data Source={Path.Combine(dir, "storage", "dotnetforge.db")}", env.ConnectionString);
         Assert.Equal(StorageProvider.Local, env.Storage.Provider);
         Assert.Equal(Path.Combine(dir, "storage", "media"), env.Storage.LocalPath);
     }
 
     [Fact]
-    public void Production_requires_explicit_absolute_locations()
+    public void Production_accepts_s3_storage()
     {
-        var ex = Assert.Throws<ConfigurationException>(() =>
-            WithCleanEnv(d => EnvConfigurationLoader.Load(d, isDevelopment: false), "APP_NAME=Production\n"));
-        Assert.Contains("read-only", ex.Message);
-
-        var absolute = Path.Combine(Path.GetTempPath(), "dnf", "cms.db");
         var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d, isDevelopment: false),
-            $"DATABASE_CONNECTION_STRING=Data Source={absolute}\nSTORAGE_S3_SERVICE_URL=https://x\nSTORAGE_S3_BUCKET=m\nSTORAGE_S3_ACCESS_KEY_ID=a\nSTORAGE_S3_SECRET_ACCESS_KEY=b\n");
+            "STORAGE_S3_SERVICE_URL=https://x\nSTORAGE_S3_BUCKET=m\nSTORAGE_S3_ACCESS_KEY_ID=a\nSTORAGE_S3_SECRET_ACCESS_KEY=b\n");
         Assert.Equal(StorageProvider.S3, env.Storage.Provider);
     }
 
@@ -149,14 +174,13 @@ public sealed class EnvConfigurationTests
     }
 
     [Fact]
-    public void Missing_env_file_uses_sqlite_in_development_and_fails_clearly_elsewhere()
+    public void Missing_env_file_loads_development_defaults()
     {
+        // Which database an empty configuration means is the providers' decision (DatabaseProviderTests).
         var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d), null!);
-        Assert.Equal(DatabaseProvider.Sqlite, env.Provider);
 
-        var ex = Assert.Throws<ConfigurationException>(() =>
-            WithCleanEnv(d => EnvConfigurationLoader.Load(d, isDevelopment: false), null!));
-        Assert.Contains("DATABASE_CONNECTION_STRING is required outside Development", ex.Message);
+        Assert.Null(env.Database.ConnectionString);
+        Assert.Equal(StorageProvider.Local, env.Storage.Provider);
     }
 }
 

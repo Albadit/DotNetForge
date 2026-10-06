@@ -71,20 +71,17 @@ public sealed class RolesApiController : ApiControllerBase
     [RequireApiPermission(PermissionKeys.RolesRead)]
     public async Task<IActionResult> Get()
     {
+        // Two single-table queries (works on every provider, including MongoDB).
         var roles = await _db.Roles
             .AsNoTracking()
             .Where(r => r.TenantId == TenantId)
-            .Select(r => new
-            {
-                r.Id,
-                r.Name,
-                r.Description,
-                r.IsBuiltIn,
-                Users = r.UserRoles.Count,
-            })
+            .Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn })
             .ToListAsync();
+        var roleIds = roles.Select(r => r.Id).ToList();
+        var users = (await _db.UserRoles.AsNoTracking().Where(ur => roleIds.Contains(ur.RoleId)).Select(ur => ur.RoleId).ToListAsync())
+            .CountBy(id => id).ToDictionary();
 
-        return Ok(roles);
+        return Ok(roles.Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn, Users = users.GetValueOrDefault(r.Id) }));
     }
 }
 

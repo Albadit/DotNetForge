@@ -8,7 +8,7 @@ for missing translations), and how content is translated. Today the CMS is Engli
 | Piece | Location | Status |
 | --- | --- | --- |
 | `Tenant.DefaultLocale` (string, max 20, default `"en"`) | `src/DotNetForge.Shared/Entities/Tenant.cs`, `DotNetForgeDbContext` | seeded `"en"` by `DataSeeder`; **read nowhere** |
-| `InvariantGlobalization` = `true` | `Directory.Build.props` (every project) | the process runs with the invariant culture only; creating a specific culture such as `de-DE` is not supported in this mode |
+| `InvariantGlobalization` = `false` | `Directory.Build.props` (every project) | ICU culture data is available (SQL Server's client requires it); the process culture comes from the OS/container (`LANG`), which is the invariant culture in the default images |
 | Internationalization screen | `GET /admin/internationalization` → `ModulesController.Internationalization` | [placeholder](../pages/module-placeholders.md), sidebar **Settings · Global Settings** |
 
 Not present: locale entities or settings, request-culture middleware (`UseRequestLocalization`), `IStringLocalizer`
@@ -112,9 +112,9 @@ A global Super Admin manages locales of every tenant; a tenant-scoped Admin only
 
 ## Where to change things
 
-- **Globalization mode**: set `InvariantGlobalization` to `false` in `Directory.Build.props` before relying on
-  culture data (formatting, `CultureInfo` for BCP-47 validation); on Linux this needs ICU in the runtime image.
-  Update [dependencies](../architecture/dependencies.md) and the [development guide](../guides/development.md).
+- **Globalization mode** ✔: `InvariantGlobalization` is already `false` in `Directory.Build.props` (SQL Server's client
+  needs ICU), so culture data is available for formatting and `CultureInfo` validation; the `aspnet:10.0` runtime image
+  ships ICU.
 - **Locale entity**: a tenant-scoped `Locale` (code, display name, is-default, enabled) in
   `src/DotNetForge.Shared/Entities`, configured in `DotNetForgeDbContext` with a unique (`TenantId`, `Code`) index,
   plus a migration (`database-change` skill). Decide whether `Tenant.DefaultLocale` stays as the source of truth or is

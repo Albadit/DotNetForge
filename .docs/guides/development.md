@@ -85,21 +85,28 @@ The database follows from `DATABASE_CONNECTION_STRING`: empty or `Data Source=�
 ([configuration → Database](../features/configuration.md#database)). Each provider has its own migration set,
 applied at startup:
 SQLite `src/DotNetForge.Data/Migrations/` (`DotNetForgeDbContext`), PostgreSQL
-`src/DotNetForge.Data/Migrations/PostgreSql/` (`PostgreSqlDbContext`). Details: [database.md](../architecture/database.md).
+`src/DotNetForge.Data/Migrations/PostgreSql/` (`PostgreSqlDbContext`), and likewise `Migrations/SqlServer/` and
+`Migrations/MySql/`; MongoDB needs none. Details: [database.md](../architecture/database.md),
+[database layer](../database/architecture.md).
 
-After changing an entity or `DotNetForgeDbContext`, add a migration **for both providers**:
+After changing an entity or `DotNetForgeDbContext`, add a migration **for each SQL provider** (the loop in
+[database → Migrations](../architecture/database.md#migrations) does all four). For example:
 
 ```bash
 dotnet tool restore
 dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
   --context DotNetForgeDbContext --output-dir Migrations
 dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context PostgreSqlDbContext --output-dir Migrations/PostgreSql --namespace DotNetForge.Data.Migrations.PostgreSql
+  --context PostgreSqlDbContext --output-dir Migrations/PostgreSql
 ```
 
-Generating migrations never connects to a database. Afterwards strip the UTF-8 BOM EF adds to the generated files
-(`.editorconfig` requires `utf-8`), and if EF wrote the PostgreSQL model snapshot into a namespace-derived folder
-(`src/DotNetForge.Data/DotNetForge/Data/Migrations/PostgreSql/`), move it into `Migrations/PostgreSql/`.
+Repeat with `SqlServerDbContext` (`Migrations/SqlServer`) and `MySqlDbContext` (`Migrations/MySql`). Generating
+migrations never connects to a database. Afterwards strip the UTF-8 BOM EF adds to the generated files
+(`.editorconfig` requires `utf-8`) and check each `<Context>ModelSnapshot.cs` sits in its migration folder.
+
+To develop against another database, start it from `docker/compose.dev.yml` (profiles `mongodb`, `sqlserver`,
+`mysql`) and set `DATABASE_PROVIDER` and `DATABASE_CONNECTION_STRING` from the compose file's comments
+([database configuration](../database/configuration.md)).
 
 Step-by-step checklist: [database-change skill](../../.claude/skills/database-change/SKILL.md).
 
@@ -234,7 +241,7 @@ repository keeps the same six files in `.github/agents/`, as short quick referen
 - [x] Using SQLite is documented end to end, including the connection string and migrations (this guide,
   [configuration](../features/configuration.md), [database](../architecture/database.md)).
 - [x] Using PostgreSQL is documented end to end, including migrations ([Developing against PostgreSQL and S3](#developing-against-postgresql-and-s3), [Database and migrations](#database-and-migrations); `PostgreSqlDbContext` migrations).
-- [x] Switching providers requires only a connection-string change plus migrations (both providers migrate at startup - `DatabaseInitializer`; data is not copied).
+- [x] Switching providers requires only a `DATABASE_PROVIDER`/connection-string change (every provider prepares its schema at startup - `DatabaseInitializer`; data is not copied).
 - [ ] Creating API endpoints is documented with permission checks, input validation **and tenant-aware resolution**
   (first two ✔ in [headless API](../features/headless-api.md#conventions-for-new-endpoints); tenant resolution does
   not exist).

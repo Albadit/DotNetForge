@@ -63,7 +63,7 @@ public sealed class AppPathsTests : IDisposable
 
         Assert.Equal("From repo root", env.AppName);
         Assert.Equal(Path.Combine(_repo, "extensions"), env.ExtensionsPath);
-        Assert.Equal($"Data Source={Path.Combine(_repo, "storage", "dotnetforge.db")}", env.ConnectionString);
+        Assert.Equal(_repo, AppPaths.DevelopmentDataRoot(_contentRoot)); // where the SQLite provider puts storage/dotnetforge.db
         Assert.Equal(Path.Combine(_repo, "storage", "media"), env.Storage.LocalPath);
     }
 

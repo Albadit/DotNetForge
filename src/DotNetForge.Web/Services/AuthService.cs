@@ -83,9 +83,14 @@ public sealed class AuthService
         user.LastLoginDate = _clock.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
-        var roles = await _db.UserRoles
+        // Two single-table queries rather than a join, so sign-in works on every provider (including MongoDB).
+        var roleIds = await _db.UserRoles
             .Where(ur => ur.UserId == user.Id)
-            .Join(_db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+            .Select(ur => ur.RoleId)
+            .ToListAsync(cancellationToken);
+        var roles = await _db.Roles
+            .Where(r => roleIds.Contains(r.Id))
+            .Select(r => r.Name)
             .ToListAsync(cancellationToken);
 
         return new SignInResult(SignInStatus.Success, BuildPrincipal(user, roles), user);

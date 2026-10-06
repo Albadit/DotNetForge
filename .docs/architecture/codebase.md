@@ -37,7 +37,7 @@ behaviour under **Planned (not implemented)**; the gap is tracked in
 | Runtime | .NET 10 (`net10.0`), SDK pinned to `10.0.100` with `rollForward: latestFeature` | `Directory.Build.props`, `global.json` |
 | Web framework | ASP.NET Core MVC: controllers + Razor views, one MVC **Area** (`Admin`), view components, tag helpers | `src/DotNetForge.Web` |
 | Runtime view compilation | `Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation` (always on) - compiles extension views from `extensions/` **in memory** | `DependencyRegistration` |
-| ORM | EF Core 10 with SQLite (default) or Npgsql/PostgreSQL; one migration set per provider | `src/DotNetForge.Data` |
+| ORM | EF Core 10 on SQLite (default), PostgreSQL, SQL Server, MySQL or MongoDB; one migration set per SQL provider; provider registry + `IDatabaseService` ([database layer](../database/architecture.md)) | `src/DotNetForge.Data` |
 | Auth | ASP.NET Core cookie authentication + a custom `ApiToken` bearer scheme; Data Protection key ring persisted to the database | `DependencyRegistration`, `ApiTokenAuthenticationHandler` |
 | File storage | `IFileStorage`: local directory or any S3-compatible service (`AWSSDK.S3`) | `src/DotNetForge.Infrastructure/Storage` |
 | Request hardening | `SecurityHeadersMiddleware` (CSP and friends), built-in rate limiter (`AddRateLimiter`) | `src/DotNetForge.Web/Middleware/`, `DependencyRegistration` |
@@ -123,7 +123,7 @@ DotNetForge/                         repository root
 │   ├── DotNetForge.Abstractions/    contracts only (no implementation, no dependencies)
 │   ├── DotNetForge.Shared/          entities, enums, constants, DTOs, results, manifest model, store/service contracts
 │   ├── DotNetForge.Core/            pure domain logic: installation, permission evaluation, validators
-│   ├── DotNetForge.Data/            EF Core contexts (SQLite + PostgreSQL), two migration sets, seeding, stores
+│   ├── DotNetForge.Data/            EF Core contexts per provider, four migration sets, database layer (Database/), seeding, stores
 │   ├── DotNetForge.Infrastructure/  hashing, tokens, signing, .env loading, AppPaths, file storage (local, S3)
 │   ├── DotNetForge.Extensions/      manifest validation + cached on-disk discovery
 │   └── DotNetForge.Api/             headless API controllers, token auth handler, permission filter
@@ -265,7 +265,7 @@ The shared kernel referenced by everything above `Abstractions`.
 | `Constants/` | `Roles`, `PermissionAreas`, `PermissionActions`, `PermissionKeys`, `AuditActions`, `WebhookEvents`, `RateLimitPolicies` |
 | `Authorization/PermissionMatrix.cs` | Default `(role, area, action)` grants - consumed by `PermissionService` and `DataSeeder` |
 | `Configuration/AppEnvironment.cs` | Typed `.env` values, `StorageSettings`, `ResolveConnectionString()` |
-| `Configuration/SqliteConnectionStrings.cs` | `GetDataSource`, `IsInMemory` - shared by the loader and `DbProviderConfigurator` |
+| `Configuration/SqliteConnectionStrings.cs` | `GetDataSource`, `IsInMemory` - used by `SqliteDatabaseProvider` |
 | `Content/IPageService.cs` | `IPageService`, `PagePosition`, `PageInput` (+ `PageInput.From(page)`) |
 | `Auditing/IAuditService.cs` | `IAuditService.LogAsync` |
 | `Dtos/SetupRequest.cs` | Setup-wizard form model |
@@ -292,12 +292,12 @@ Pure domain logic with no EF Core.
 | File | Responsibility |
 | --- | --- |
 | `DotNetForgeDbContext.cs` | The EF Core model: 16 `DbSet`s (incl. `DataProtectionKeys`) and all fluent configuration. Implements `IDataProtectionKeyContext`. Owns the SQLite migrations. Not sealed. |
-| `PostgreSqlDbContext.cs` | Same model as a distinct type so PostgreSQL has its own migration set (`Migrations/PostgreSql/`). Registered as `DotNetForgeDbContext`; application code never names it. |
-| `DbProviderConfigurator.cs` | `UseSqlite`/`UseNpgsql` from `AppEnvironment`; creates the SQLite file's directory (skips in-memory databases). Used by the host and both design-time factories. |
-| `DatabaseInitializer.cs` | Startup: `Database.MigrateAsync()` for **both** providers, then `DataSeeder.SeedAsync`. |
+| `PostgreSqlDbContext.cs`, `SqlServerDbContext.cs`, `MySqlDbContext.cs` | Same model as distinct types so each SQL provider has its own migration set (`Migrations/<Provider>/`); provider-specific model tweaks only here. Registered as `DotNetForgeDbContext`; application code never names them. |
+| `Database/` | The database layer ([architecture](../database/architecture.md)): `IDatabaseProvider`, registry, catalog, `QueryRouter`, `DatabaseService`, schema mapping, value coercion; `Relational/` (dialects, SQL builder, executor, SQLite/PostgreSQL/SQL Server/MySQL providers); `MongoDb/` (context, provider, executor, key generators). |
+| `DatabaseInitializer.cs` | Startup: the main provider's `InitializeSchemaAsync` (migrations, or MongoDB collections and indexes), then `DataSeeder.SeedAsync`. |
 | `DataSeeder.cs` | Idempotent seed: default tenant, six built-in roles + grants, starter page tree, auth-provider catalog, `SystemState` row. |
 | `InstallationStore.cs` | Transactional create-first-admin + installed flag. |
-| `DesignTimeDbContextFactory.cs` | `DesignTimeDbContextFactory` (SQLite) and `PostgreSqlDesignTimeDbContextFactory`; read `DATABASE_CONNECTION_STRING` from the process environment only. |
+| `DesignTimeDbContextFactory.cs` | One design-time factory per SQL context (SQLite, PostgreSQL, SQL Server, MySQL) for `dotnet ef`; read `DATABASE_CONNECTION_STRING` from the process environment only. |
 | `Migrations/` | SQLite: `InitialCreate`, `AddPageSeoAndScheduling`, `AddDataProtectionKeys`. `Migrations/PostgreSql/`: `InitialCreate`. |
 
 Details: [database.md](database.md).
@@ -508,13 +508,15 @@ anonymous-object JSON. See [headless API](../features/headless-api.md).
 
 ### Persistence architecture
 
-One model, two context types (`DotNetForgeDbContext` for SQLite, `PostgreSqlDbContext` for PostgreSQL), one
-migration set per provider, migrate + seed on every start. See [database.md](database.md).
+One model; one context type per provider (SQLite, PostgreSQL, SQL Server, MySQL, MongoDB), registered as
+`DotNetForgeDbContext` by the configured provider; migrations (or MongoDB `EnsureCreated`) + seed on every start.
+Structured commands for any configured database go through `IDatabaseService`. See [database.md](database.md) and
+[database layer](../database/architecture.md).
 
 ### Build system
 
 MSBuild with `Directory.Build.props` (target framework, nullable, `ManagePackageVersionsCentrally`,
-`InvariantGlobalization`) and `Directory.Packages.props` (all versions, transitive pinning). Local tool `dotnet-ef`
+`InvariantGlobalization=false` - SQL Server's client needs ICU) and `Directory.Packages.props` (all versions, transitive pinning). Local tool `dotnet-ef`
 10.0.12 pinned in `.config/dotnet-tools.json`. `Microsoft.EntityFrameworkCore.Design` is referenced only by `Data`
 with `PrivateAssets="all"`, so it never reaches the published app. `DotNetForge.slnx` at the root lists every
 project, so `dotnet build` and `dotnet test` work without arguments - see
@@ -596,7 +598,7 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
 | Project | Target responsibility not yet present |
 | --- | --- |
 | `DotNetForge.Core` | content system, media, themes, settings, extension management, update/rollback orchestration (permission checks used at request time ✔ via `PermissionService`) |
-| `DotNetForge.Data` | repository/data interfaces for `Core` (migrations for both providers ✔ - one model, two provider-specific sets) |
+| `DotNetForge.Data` | repository/data interfaces for `Core` (migrations per SQL provider ✔ - one model, four provider-specific sets; MongoDB ✔) |
 | `DotNetForge.Infrastructure` | SMTP email, webhook delivery, background jobs, logging, external connectors (today: file storage providers ✔ used; `HmacWebhookSigner` unregistered) |
 | `DotNetForge.Extensions` | dependency resolution, lifecycle (install / enable / disable / update / remove), DI registration of each enabled extension's services |
 | `DotNetForge.Api` | full surface: content, media, users, roles, settings, extensions, dynamic routes, custom extension permissions; no direct `Data` reference |
@@ -608,8 +610,8 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
   or dynamic route inside that tenant ([multi-tenancy](../features/multi-tenancy.md)).
 - **Extension points:** every extension type implements its `DotNetForge.Abstractions.Extensions` interface and is
   resolved through DI; marketplace installation through an external API ([extensions](../features/extensions.md)).
-- **Database:** every schema change is an EF Core migration for both providers ✔ (`Migrations/` and
-  `Migrations/PostgreSql/`, [database](database.md)); data scoped per tenant where applicable; provider-aware
+- **Database:** every schema change is an EF Core migration for each SQL provider ✔ (`Migrations/`,
+  `Migrations/PostgreSql/`, `Migrations/SqlServer/`, `Migrations/MySql/`, [database](database.md)); data scoped per tenant where applicable; provider-aware
   import/export ([transfer and updates](../features/transfer-and-updates.md)).
 - **Authentication:** pluggable providers registered through DI and supplied by `authentication` extensions in
   `extensions/authentication/`; built-in Email provider ✔; external providers (Auth0, GitHub, Google, Microsoft, ...)
@@ -662,10 +664,9 @@ Update/rollback and import/export criteria are tracked in [transfer and updates]
 - [ ] The extension host validates manifests before install and rejects invalid, unsafe or incompatible extensions.
 - [x] The required manifest fields are exactly `id`, `name`, `description`, `version`, `type`, `author`,
   `entryPoint`, `permissions` (`ManifestValidator`).
-- [x] EF Core migrations drive all schema changes for both SQLite and PostgreSQL - `DatabaseInitializer.InitializeAsync`
-  calls `MigrateAsync` for both; `Migrations/` (`DotNetForgeDbContext`) and `Migrations/PostgreSql/`
-  (`PostgreSqlDbContext`).
-- [x] The database provider is selected from `.env` (`EnvConfigurationLoader`, `DbProviderConfigurator`).
+- [x] EF Core migrations drive all schema changes for SQLite and PostgreSQL (and SQL Server and MySQL) -
+  `DatabaseInitializer.InitializeAsync` → the provider's `MigrateAsync`; one migration set per context.
+- [x] The database provider is selected from `.env` (`DATABASE_PROVIDER`, resolved by `DatabaseProviderRegistry`).
 - [ ] Authentication providers are pluggable via DI and extensions, with Email built in (Email only).
 - [ ] RBAC enforces a permission check on every admin and API action with the six default roles (roles ✔ seeded;
   API ✔; Content Manager and Media ✔ via `Can`/`CanModify`; other admin screens use role checks).
@@ -681,7 +682,7 @@ Update/rollback and import/export criteria are tracked in [transfer and updates]
   validation, webhook signing and import/export; integration tests cover setup, authentication and API endpoints
   (see [testing → Planned](../guides/testing.md#planned-not-implemented)).
 - [x] The app builds and runs on Windows, macOS and Linux and applies migrations before serving traffic - CI
-  `build-and-test` matrix on all three; `Program.cs` runs `DatabaseInitializer.InitializeAsync` (both providers)
+  `build-and-test` matrix on all three; `Program.cs` runs `DatabaseInitializer.InitializeAsync` (every provider)
   before `app.Run()`.
 - [ ] The architecture overview ([overview.md](overview.md); the spec's root `ARCHITECTURE.md`) documents
   structure, core, extension, database, authentication, authorization, content, media, theme, API, update/rollback,
@@ -725,10 +726,10 @@ update this document in the same change).
 14. **Extension discovery goes through `IExtensionLoader`** (`Discover()`, `FindAdminExtension(id)`); never scan
     `extensions/` directly or build file paths from request input (see `ExtensionViewController.Resource` for the
     traversal guard).
-15. **Schema changes go through migrations for BOTH providers** - one in `src/DotNetForge.Data/Migrations`
-    (`--context DotNetForgeDbContext`) and one in `Migrations/PostgreSql` (`--context PostgreSqlDbContext`); strip the
-    UTF-8 BOM EF writes into generated files (`.editorconfig` `charset = utf-8`) and check the PostgreSQL snapshot
-    landed in `Migrations/PostgreSql/` ([database → migrations](database.md#migrations), the
+15. **Schema changes go through migrations for EVERY SQL provider** - `DotNetForgeDbContext` (`Migrations/`),
+    `PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext` (`Migrations/<Provider>/`); MongoDB needs none. Strip
+    the UTF-8 BOM EF writes into generated files (`.editorconfig` `charset = utf-8`) and check each snapshot landed in
+    its folder ([database → migrations](database.md#migrations), the
     [database change skill](../../.claude/skills/database-change/SKILL.md)). Seed data goes in `DataSeeder` and must
     be idempotent.
 16. **No new dependencies for things the platform does** (the hasher, token factory, signer and `.env` parser are

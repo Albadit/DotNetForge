@@ -13,8 +13,8 @@ only reserved folders, a version column and a few flags exist.
 | `SystemState.CmsVersion` (string, max 50, default `"1.0.0"`) | `src/DotNetForge.Shared/Entities/SystemState.cs` | shown on the [Dashboard](../pages/dashboard.md); never changed; not taken from the assembly version |
 | `PermissionAreas.Updates` | `src/DotNetForge.Shared/Constants/Permissions.cs` | in `PermissionMatrix` only Super Admin is granted it (Admin gets nothing - asserted in `PermissionTests`); seeded as `RolePermission` rows, **not enforced** ([authorization](authorization.md)) |
 | `InstalledExtension.UpdateAvailable` | `src/DotNetForge.Shared/Entities/InstalledExtension.cs` | returned by `GET /api/extensions`; `InstalledExtensions` is never written, so always empty |
-| Schema creation | `src/DotNetForge.Data/DatabaseInitializer.cs` | `MigrateAsync` for both providers, each with its own migration set (`Migrations/` for SQLite, `Migrations/PostgreSql/` for PostgreSQL), applied at startup ([database](../architecture/database.md)) |
-| Provider selection | detected from `DATABASE_CONNECTION_STRING` (`EnvConfigurationLoader`), applied by `DbProviderConfigurator` | ✔ one provider per process; no cross-provider tooling |
+| Schema creation | `src/DotNetForge.Data/DatabaseInitializer.cs` | the main provider's `InitializeSchemaAsync`: migrations per SQL provider (`Migrations/`, `Migrations/PostgreSql/`, `Migrations/SqlServer/`, `Migrations/MySql/`), `EnsureCreated` for MongoDB; for PostgreSQL), applied at startup ([database](../architecture/database.md)) |
+| Provider selection | `DATABASE_PROVIDER` (or detected from the connection string), resolved by `DatabaseProviderRegistry` ([database configuration](../database/configuration.md)) | ✔ one provider per process; no cross-provider tooling |
 | Core / extensions / runtime split | `src/` (web host in `src/DotNetForge.Web`); `extensions/` at the repository root (outside every project, discovered by `ExtensionLoader` under `AppEnvironment.ExtensionsPath`); `storage/` | ✔ folders separated |
 | `.gitignore` | repository root | ignores `.env`/`.env.*` (keeps `.env.example`), `bin/`, `obj/`, `storage/{media,backups,logs,updates}/*`, `*.db*`, `node_modules/`, test output; **not** `out/`, `publish/`, `*.log`, `.cache/` |
 
@@ -173,7 +173,7 @@ transfers and core updates stay with the global Super Admin. Every action is aud
 - **PostgreSQL migrations first**: provider-aware transfer and update-time migrations need a real PostgreSQL
   migration set instead of `EnsureCreatedAsync` in `DatabaseInitializer` (`database-change` skill,
   [database](../architecture/database.md)).
-- **Export/import**: a service in `src/DotNetForge.Data` (it needs `DotNetForgeDbContext` and both providers) that
+- **Export/import**: a service in `src/DotNetForge.Data` (it needs `DotNetForgeDbContext` and every provider) that
   writes a provider-neutral format (e.g. JSON per table + a manifest with versions and checksum) via EF Core, not
   raw SQL. Validation of the manifest is pure logic for `src/DotNetForge.Core`. Read paths from
   `IHostEnvironment.ContentRootPath`, never from request input.

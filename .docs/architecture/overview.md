@@ -75,7 +75,9 @@ flowchart BT
 - **Read-only deployment directory.** Runtime data goes to the database (incl. the Data Protection key ring) and to
   object storage behind `IFileStorage` (local directory in development, S3-compatible - Cloudflare R2 recommended - in
   production). Production configuration may not default into the app's folder ([deployment](../guides/deployment.md)).
-- **Both database providers use migrations** (`DotNetForgeDbContext` for SQLite, `PostgreSqlDbContext` for
-  PostgreSQL), applied at startup.
+- **Five databases through providers:** SQLite, PostgreSQL, SQL Server, MySQL and MongoDB, each an `IDatabaseProvider`
+  registered by name. SQL providers apply their own migration set at startup (one context type each); MongoDB creates
+  its collections and indexes. `IDatabaseService` runs structured commands on any configured database
+  ([database layer](../database/architecture.md)).
 - **Defence in depth on the web layer:** CSP and security headers, rate limiting, session re-validation, content and
   media permission checks from the role permission matrix.

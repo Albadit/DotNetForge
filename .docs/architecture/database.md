@@ -7,14 +7,19 @@ storage key ([media storage](../features/media-storage.md#storage-architecture))
 
 ## Providers
 
-The provider is detected from `DATABASE_CONNECTION_STRING` ([configuration → Database](../features/configuration.md#database)):
+The CMS runs on SQLite, PostgreSQL, SQL Server, MySQL or MongoDB, chosen by `DATABASE_PROVIDER` (or detected from
+the connection string). How providers work, how they are configured and how to add one:
+[database layer](../database/architecture.md), [providers](../database/providers.md),
+[configuration](../database/configuration.md).
 
-| Connection string | EF provider | Context type | Schema at startup | Default connection |
-| --- | --- | --- | --- | --- |
-| empty, or `Data Source=…` / `Filename=…` | `UseSqlite` | `DotNetForgeDbContext` | `Database.MigrateAsync()` - applies `Migrations/` | Development: `Data Source=<repository root>/storage/dotnetforge.db`. Elsewhere none: an **absolute** `Data Source` (or in-memory) is required. |
-| `Host=…` / `Server=…` | `UseNpgsql` | `PostgreSqlDbContext` | `Database.MigrateAsync()` - applies `Migrations/PostgreSql/` | none |
+| Provider | Context type | Schema at startup (`DatabaseInitializer` → `IDatabaseProvider.InitializeSchemaAsync`) |
+| --- | --- | --- |
+| SQLite | `DotNetForgeDbContext` | `MigrateAsync` - `Migrations/` |
+| PostgreSQL | `PostgreSqlDbContext` | `MigrateAsync` - `Migrations/PostgreSql/` |
+| SQL Server | `SqlServerDbContext` | `MigrateAsync` - `Migrations/SqlServer/` |
+| MySQL | `MySqlDbContext` | `MigrateAsync` - `Migrations/MySql/` |
+| MongoDB | `MongoDbContext` | `EnsureCreatedAsync` - collections and indexes ([MongoDB](../database/mongodb.md#schema-without-migrations)) |
 
-Both providers are on real migrations; `EnsureCreated` is no longer used (`DatabaseInitializer.InitializeAsync`).
 PostgreSQL is the recommended production database ([deployment → database](../guides/deployment.md#database)).
 
 > **BREAKING for existing PostgreSQL databases.** A PostgreSQL database created by an earlier build (via
@@ -23,21 +28,21 @@ PostgreSQL is the recommended production database ([deployment → database](../
 > `Migrations/PostgreSql/20261005180055_InitialCreate.cs`), then insert the row `('20261005180055_InitialCreate',
 > '<EF Core product version>')` into `__EFMigrationsHistory`. SQLite databases upgrade normally.
 
-### Two context types, one model
+### One model, one context type per provider
 
 EF Core binds a migration set to a context type, so each provider has its own type:
 
-- `DotNetForgeDbContext` holds the whole model (all `DbSet`s and fluent configuration) and owns the SQLite
-  migrations in `Migrations/` (namespace `DotNetForge.Data.Migrations`). It is not sealed and has a protected
-  constructor for subclasses.
-- `PostgreSqlDbContext : DotNetForgeDbContext` adds nothing to the model; it exists only to own
-  `Migrations/PostgreSql/` (namespace `DotNetForge.Data.Migrations.PostgreSql`) with PostgreSQL column types.
-- The host registers `AddDbContext<DotNetForgeDbContext, PostgreSqlDbContext>` when the provider is PostgreSQL and
-  `AddDbContext<DotNetForgeDbContext>` otherwise, so application code always injects `DotNetForgeDbContext`.
-
-Provider configuration happens in one place, `DbProviderConfigurator.Configure`, used by the host and both
-design-time factories. For SQLite it also creates the directory in the `Data Source` path (skipped for in-memory
-databases; parsing via `SqliteConnectionStrings`).
+- **`DotNetForgeDbContext`**
+  - Holds the whole model (all `DbSet`s and fluent configuration).
+  - Owns the SQLite migrations in `Migrations/`.
+  - Not sealed, with a protected constructor for subclasses.
+- **`PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext` and `MongoDbContext`** derive from it.
+  - Each owns its provider's migration set (namespace `DotNetForge.Data.Migrations.<Provider>`), or for MongoDB the
+    key generators.
+  - Provider-specific model adjustments live only there: `SqlServerDbContext` makes `SystemState.Id` non-identity,
+    and `MongoDbContext` generates the integer keys.
+- **The main database's provider registers its type as `DotNetForgeDbContext`** (`IDatabaseProvider.AddDbContext`),
+  so application code always injects `DotNetForgeDbContext` and never names a subclass.
 
 ## Entity relationship diagram
 
@@ -92,7 +97,7 @@ can read this table can forge cookies. Deleting the rows signs everyone out.
 
 ### Column lengths
 
-PostgreSQL enforces `HasMaxLength` (`character varying(n)`); SQLite does not. Input is therefore checked before
+PostgreSQL, SQL Server and MySQL enforce `HasMaxLength` (`varchar(n)`/`nvarchar(n)`); SQLite and MongoDB do not. Input is therefore checked before
 saving so an oversized value is a validation message, not a 500: `PageService` (Title 300, Slug 200, Meta title 300,
 Meta description 1000, Keywords 500, Canonical/Target URL/File reference 2000), `SettingsController` (key 200, value
 4000), `ApiTokensController` (name 200, description 1000), `InstallationService` (email 256, names 100), and
@@ -100,11 +105,19 @@ Meta description 1000, Keywords 500, Canonical/Target URL/File reference 2000), 
 
 ### Unique indexes and NULL
 
-SQLite and PostgreSQL treat `NULL`s as distinct in unique indexes. The (`TenantId`, `ParentPageId`, `Slug`) index
-therefore does **not** stop two root-level pages (`ParentPageId = NULL`) sharing a slug, and (`TenantId`, `Key`)
-does not stop duplicate global settings. `PageService` checks slug uniqueness in code, including the root level, in
-`ApplyAsync` (Content Manager edits and `POST /api/content/pages`), `ReorderAsync` and `DeleteAsync` (children moving
-up a level).
+The unique indexes (`TenantId`, `ParentPageId`, `Slug`) on `Pages` and (`TenantId`, `Key`) on `Settings` include
+nullable columns, and databases disagree about NULLs:
+
+| Database | Two root pages (`ParentPageId` NULL) with the same slug / two global settings with the same key |
+| --- | --- |
+| SQLite, PostgreSQL, MySQL | allowed by the index (NULLs are distinct) |
+| SQL Server | allowed: EF Core creates these indexes filtered (`WHERE [ParentPageId] IS NOT NULL`, `WHERE [TenantId] IS NOT NULL`) |
+| MongoDB | rejected by the index (null equals null) |
+
+So `PageService` checks slug uniqueness in code, including the root level, in:
+- `ApplyAsync` (Content Manager edits and `POST /api/content/pages`);
+- `ReorderAsync`;
+- `DeleteAsync` (children moving up a level).
 
 ## Migrations
 
@@ -114,34 +127,37 @@ up a level).
 | `20260605211609_AddPageSeoAndScheduling` | `DotNetForgeDbContext`, `Migrations/` | `Pages.SeoKeywords`, `CanonicalUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate` |
 | `20261005180052_AddDataProtectionKeys` | `DotNetForgeDbContext`, `Migrations/` | `DataProtectionKeys` |
 | `20261005180055_InitialCreate` | `PostgreSqlDbContext`, `Migrations/PostgreSql/` | the current model in one step: all 16 tables and indexes |
+| `20261005212914_InitialCreate` | `SqlServerDbContext`, `Migrations/SqlServer/` | the current model in one step |
+| `20261005211842_InitialCreate` | `MySqlDbContext`, `Migrations/MySql/` | the current model in one step |
 
-Both sets are applied automatically at startup. **Every schema change needs a migration in both sets.** Use the
-[database-change skill](../../.claude/skills/database-change/SKILL.md) or, from the repository root:
+All sets are applied automatically at startup by the configured provider. **Every schema change needs a migration
+in each of the four SQL sets.** MongoDB needs none: `EnsureCreated` adds new collections and indexes, but never
+changes existing indexes ([MongoDB](../database/mongodb.md#schema-without-migrations)).
+
+Use the [database-change skill](../../.claude/skills/database-change/SKILL.md) or, from the repository root:
 
 ```bash
 dotnet tool restore
-
-# SQLite
-dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context DotNetForgeDbContext --output-dir Migrations
-
-# PostgreSQL
-dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context PostgreSqlDbContext --output-dir Migrations/PostgreSql --namespace DotNetForge.Data.Migrations.PostgreSql
+for ctx in DotNetForgeDbContext:Migrations PostgreSqlDbContext:Migrations/PostgreSql \
+           SqlServerDbContext:Migrations/SqlServer MySqlDbContext:Migrations/MySql; do
+  dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
+    --context "${ctx%%:*}" --output-dir "${ctx#*:}"
+done
 ```
 
 After generating:
 
 - **Strip the UTF-8 BOM** EF writes into the new files; `.editorconfig` sets `charset = utf-8` (no BOM).
-- **Check the PostgreSQL snapshot location.** EF derives the snapshot's folder from its namespace; make sure
-  `PostgreSqlDbContextModelSnapshot.cs` ends up in `Migrations/PostgreSql/` (move it if EF wrote it elsewhere) and
-  that no second snapshot was created.
-- The design-time factories (`DesignTimeDbContextFactory`, `PostgreSqlDesignTimeDbContextFactory`) never connect.
-  They read `DATABASE_CONNECTION_STRING` from the process environment only; without it the SQLite factory falls back
-  to the relative `Data Source=storage/dotnetforge.db` and creates an empty, git-ignored `storage/` folder in the
-  working directory.
-- VS Code: the tasks **ef: add migration (SQLite)** and **ef: add migration (PostgreSQL)** run the two commands above
-  (run both with the same name).
+- **Check the snapshots.** There must be one `<Context>ModelSnapshot.cs` per folder.
+  - Don't pass `--namespace`: EF derives the snapshot's folder from it and writes it elsewhere.
+  - `dotnet ef migrations has-pending-model-changes --context <Context>` must report no changes afterwards.
+- **Read the generated SQL for each provider:**
+  - text columns that are indexed need a `HasMaxLength` (SQL Server and MySQL can't index unbounded text);
+  - integer keys that receive explicit values must not be identity columns (SQL Server).
+- **The design-time factories never connect** (`src/DotNetForge.Data/DesignTimeDbContextFactory.cs`, one per SQL
+  context). They read `DATABASE_CONNECTION_STRING` from the process environment, otherwise they use a placeholder.
+- **VS Code:** the **ef: add migration (…)** tasks run the command for one context each; run all four with the same
+  name.
 
 ## Seeding
 
@@ -171,9 +187,12 @@ Authors (who may only edit their own pages) cannot edit them. Nothing seeds `Set
 
 ## Rules
 
-- Query through `DotNetForgeDbContext`; no raw SQL. Never inject or name `PostgreSqlDbContext`.
+- Query through `DotNetForgeDbContext`; no raw SQL. Never inject or name a provider-specific context type.
+- **One table per query.** No joins, and no navigation properties across tables inside a query: combine small
+  single-table queries in memory. Every provider runs that, including MongoDB
+  ([MongoDB → Query rules](../database/mongodb.md#query-rules)).
 - Filter tenant-scoped tables by `TenantId` in every query (no global query filters exist).
 - Use `AsNoTracking()` + `Select` projection for reads that render a screen or API response.
-- Validate lengths before saving (PostgreSQL enforces them).
-- Schema changes: change the entity + `OnModelCreating`, add a migration **for both providers**, keep `DataSeeder`
-  idempotent.
+- Validate lengths before saving (PostgreSQL, SQL Server and MySQL enforce them).
+- Schema changes: change the entity + `OnModelCreating`, add a migration **for each of the four SQL contexts**, and
+  keep `DataSeeder` idempotent.

@@ -25,7 +25,7 @@ sequenceDiagram
     P->>P: builder.Build()
     P->>DBI: InitializeAsync(db, ApplicationStopping)
     DBI->>DBI: Database.MigrateAsync()
-    Note over DBI: SQLite: DotNetForgeDbContext, Migrations/<br/>PostgreSQL: PostgreSqlDbContext, Migrations/PostgreSql/
+    Note over DBI: the main database's provider: migrations (SQLite, PostgreSQL,<br/>SQL Server, MySQL) or EnsureCreated (MongoDB)
     DBI->>S: SeedAsync(db)
     P->>H: build pipeline, map routes, app.Run()
     H->>H: start ScheduledPublishingService (waits 5 s)
@@ -38,9 +38,10 @@ Notes:
   explicit `DATABASE_CONNECTION_STRING` with an absolute `Data Source` (in-memory allowed), and media needs S3
   settings. In Development the defaults are `storage/dotnetforge.db` and `storage/media` at the repository root. See
   [configuration](../features/configuration.md).
-- The scoped `DotNetForgeDbContext` resolves to `PostgreSqlDbContext` when the provider is PostgreSQL, so
-  `MigrateAsync` applies that provider's own migration set. `EnsureCreated` is no longer used
-  ([database → providers](database.md#providers)).
+- The scoped `DotNetForgeDbContext` resolves to the main provider's context type (`PostgreSqlDbContext`,
+  `SqlServerDbContext`, `MySqlDbContext`, `MongoDbContext`, or `DotNetForgeDbContext` for SQLite), so the schema step
+  applies that provider's own migration set, or for MongoDB its collections and indexes
+  ([database → providers](database.md#providers), [database layer](../database/architecture.md#startup)).
 - Migration and seeding run on **every** start, synchronously, before Kestrel accepts requests. Seeding is
   idempotent (each step checks for existing rows). Details: [database.md](database.md#seeding).
 - The Data Protection key ring is read from the `DataProtectionKeys` table on first use; the first key is created
@@ -415,7 +416,7 @@ flowchart LR
     Get --> Validate{"valid? (outside Development:<br/>database configured, S3 configured)"}
     Validate -- no --> Ex["ConfigurationException → exit 1"]
     Validate -- yes --> AE["AppEnvironment singleton"]
-    AE --> DbCfg["DbProviderConfigurator + context type"]
+    AE --> DbCfg["DatabaseProviderRegistry → provider<br/>(EF Core context + IDatabaseService)"]
     AE --> Storage["IFileStorage: S3FileStorage (dev fallback: LocalFileStorage)"]
     AE --> Views["AppName in ViewData / layouts"]
     AppSettings["src/DotNetForge.Web/appsettings.json / .Development.json"] --> Logging["Logging levels, AllowedHosts"]

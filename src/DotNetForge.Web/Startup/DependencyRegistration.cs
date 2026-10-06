@@ -9,7 +9,9 @@ using DotNetForge.Core.Authorization;
 using DotNetForge.Core.Extensions;
 using DotNetForge.Core.Installation;
 using DotNetForge.Data;
+using DotNetForge.Data.Database;
 using DotNetForge.Extensions;
+using DotNetForge.Infrastructure.Configuration;
 using DotNetForge.Infrastructure.Security;
 using DotNetForge.Infrastructure.Storage;
 using DotNetForge.Shared.Auditing;
@@ -45,17 +47,13 @@ public static class DependencyRegistration
         services.AddSingleton(env);
         services.AddMemoryCache();
 
-        // Persistence (provider chosen from .env). PostgreSQL uses its own context type so it can carry its own
-        // migration set; everything else asks for DotNetForgeDbContext.
-        if (env.Provider == DatabaseProvider.PostgreSql)
-        {
-            services.AddDbContext<DotNetForgeDbContext, PostgreSqlDbContext>(options =>
-                DbProviderConfigurator.Configure(options, env));
-        }
-        else
-        {
-            services.AddDbContext<DotNetForgeDbContext>(options => DbProviderConfigurator.Configure(options, env));
-        }
+        // Persistence (.docs/database/architecture.md). Providers are registered by name; the configured databases
+        // are resolved against them, the main database's provider registers DotNetForgeDbContext, and
+        // IDatabaseService routes structured commands to any configured database. A new database = one more
+        // AddDatabaseProvider line (.docs/database/adding-a-provider.md).
+        services.AddDefaultDatabaseProviders();
+        services.AddDotNetForgeDatabases(env.Database, env.AdditionalDatabases,
+            new DatabaseHostContext(hostEnv.IsDevelopment(), AppPaths.DevelopmentDataRoot(hostEnv.ContentRootPath)));
 
         // The Data Protection key ring (cookies, antiforgery) lives in the database: the deployment filesystem is
         // read-only, and every instance must share the same keys.

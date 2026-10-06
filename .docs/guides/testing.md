@@ -4,23 +4,27 @@
 
 | Project | References | Runs against | Count (Oct 2026) |
 | --- | --- | --- | --- |
-| `tests/DotNetForge.Tests` | `src/` libraries (not the host, not `Api`) | pure code, fakes, temp folders; optionally a live S3 bucket | 104 tests: 99 run, 5 live-S3 tests skipped unless `DNF_TEST_S3_*` is set |
-| `tests/DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj` | the real host via `WebApplicationFactory<Program>`, a temp SQLite file (or PostgreSQL) and a temp media folder | 40 tests |
+| `tests/DotNetForge.Tests` | `src/` libraries (not the host, not `Api`) | pure code, fakes, temp folders, closed ports; optionally a live S3 bucket | 198 tests: 193 run, 5 live-S3 tests skipped unless `DNF_TEST_S3_*` is set |
+| `tests/DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj` | the real host via `WebApplicationFactory<Program>`, a temp SQLite file (or a [database server](#databases)) and a temp media folder | 53 tests: 50 run on any database, 3 credential tests skipped unless their server is configured |
 
 ```bash
-dotnet test tests/DotNetForge.Tests            # Passed: 99, Skipped: 5
-dotnet test tests/DotNetForge.IntegrationTests # Passed: 40
+dotnet test tests/DotNetForge.Tests            # Passed: 193, Skipped: 5
+dotnet test tests/DotNetForge.IntegrationTests # Passed: 50, Skipped: 3
 ```
 
 Both are safe to run locally: no external services, no network, no `.env` required (the integration factory sets
 environment variables), nothing written inside the repository. The integration suite passes on SQLite (default)
-and on PostgreSQL 17 ([below](#postgresql-dnf_test_postgres)).
+and on PostgreSQL 17, SQL Server 2022, MySQL 8.4 and MongoDB 8.0 ([databases](#databases)).
 
 ## Unit tests (`DotNetForge.Tests`)
 
 | File | Classes (tests) | Covers |
 | --- | --- | --- |
-| `EnvConfigurationTests.cs` | `EnvConfigurationTests` (13), `DotEnvParserTests` (1) | `EnvConfigurationLoader`: provider parsing, PostgreSQL connection requirement, missing `.env` guidance, Development defaults under the content root (`storage/dotnetforge.db`, `storage/media`), Production requiring explicit absolute locations, S3 settings with R2-style defaults (`STORAGE_S3_REGION=auto`), S3 required outside Development, any S3 key selecting S3, invalid S3 configuration (missing bucket, missing region, malformed service URL, `STORAGE_S3_FORCE_PATH_STYLE`); `DotEnvParser` |
+| `DatabaseProviderTests.cs` | `DatabaseProviderTests` | provider names and aliases, detection from the connection string (and refusing ambiguous ones), per-provider validation (SQLite paths, PostgreSQL URLs, MongoDB database name), descriptions without credentials, several databases, registering and replacing providers |
+| `DatabaseTranslationTests.cs` | `DatabaseTranslationTests` | exact parameterized SQL per dialect, values never in SQL text, LIKE escaping, aggregates, model-checked names, identifier validation, value coercion; MongoDB filters with typed values (UUID, enum, date), values never operators, escaped regexes, composite keys under `_id` |
+| `DatabaseServiceTests.cs` | `DatabaseServiceTests` (mock provider) | routing to named databases, result shape, FindOne limit and default timeout, timeout vs caller cancellation, error translation with context and inner exception, bugs not translated, `Try*` results, invalid commands rejected before the provider, transactions bound to one database, streaming, connection tests, logs without values or secrets |
+| `DatabaseConnectionTests.cs` | `DatabaseConnectionTests` | real PostgreSQL, SQL Server, MySQL and MongoDB drivers against a closed port → `DatabaseConnectionException` without credentials |
+| `EnvConfigurationTests.cs` | `EnvConfigurationTests`, `DotEnvParserTests` (1) | `EnvConfigurationLoader`: database settings read as written (providers validate them), named `DATABASES_*` databases and invalid keys, Development storage defaults under the content root (`storage/media`), S3 settings with R2-style defaults (`STORAGE_S3_REGION=auto`), S3 required outside Development, any S3 key selecting S3, invalid S3 configuration (missing bucket, missing region, malformed service URL, `STORAGE_S3_FORCE_PATH_STYLE`); `DotEnvParser` |
 | `FileStorageTests.cs` | `LocalFileStorageTests` (8), `StorageKeyTests` (13), `S3FileStorageTests` (8, 5 of them live) | the shared `IFileStorage` contract (`FileStorageContract`: save/read, overwrite, missing → `null`, idempotent delete, invalid keys) for the local provider; local-only: files stay inside the root, no temp files left, a failed upload leaves no partial object, no download URLs; `StorageKey.IsValid`; S3 offline: presigned URLs signed, short-lived and carrying `response-content-disposition`, presigning follows a plain `http://` endpoint, invalid keys rejected before any request; S3 live (`[S3Fact]`): the contract plus a download through a presigned URL |
 | `ExtensionLoaderTests.cs` | `ExtensionLoaderTests` (3) | `ExtensionLoader`: finds valid admin extensions by id case-insensitively, cache invalidated when a manifest is added (file watcher), missing root → no extensions |
 | `InstallationServiceTests.cs` | `InstallationServiceTests` (5) | `InstallationService` with a `FakeInstallationStore`: success, mismatch, weak password, invalid email, already installed |
@@ -90,18 +94,27 @@ the production code paths (CSP enforced, `Secure` cookie, absolute-path configur
 | `PostFormAsync(client, formPage, action, fields)` | GETs `formPage` for the antiforgery token, then POSTs the form fields plus the token to `action` |
 | `GetAntiforgeryTokenAsync(client, formPage)` | extracts `__RequestVerificationToken` (e.g. for a JSON `fetch`-style request with `X-CSRF-TOKEN`) |
 
-### PostgreSQL (`DNF_TEST_POSTGRES`)
+### Databases
 
-Set `DNF_TEST_POSTGRES` to a server connection string **without** a database, and every factory creates its own
-database `dnf_it_<guid>` (through the PostgreSQL migrations) and drops it on dispose:
+The integration suite runs on SQLite unless one of these variables holds a server connection string **without** a
+database (`TestDatabaseServer`; the first one set wins). Every factory then creates its own database `dnf_it_<guid>`
+through that provider's migrations (MongoDB: `EnsureCreated`) and drops it on dispose:
+
+| Variable | Example (the `docker/compose.dev.yml` servers) |
+| --- | --- |
+| `DNF_TEST_POSTGRES` | `Host=localhost;Port=5432;Username=postgres;Password=postgres;GSS Encryption Mode=Disable` |
+| `DNF_TEST_SQLSERVER` | `Server=localhost,1433;User Id=sa;Password=DotNetForge!2026;TrustServerCertificate=true` |
+| `DNF_TEST_MYSQL` | `Server=localhost;Port=3306;Uid=root;Pwd=dotnetforge` |
+| `DNF_TEST_MONGODB` | `mongodb://localhost:27017/?replicaSet=rs0&directConnection=true` (a replica set) |
 
 ```bash
-docker compose -f docker/compose.dev.yml up -d postgres
-DNF_TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres;GSS Encryption Mode=Disable" \
-  dotnet test tests/DotNetForge.IntegrationTests
+docker compose -f docker/compose.dev.yml --profile mongodb up -d
+DNF_TEST_MONGODB="mongodb://localhost:27017/?replicaSet=rs0&directConnection=true" dotnet test tests/DotNetForge.IntegrationTests
 ```
 
-`PageServiceTests` always use in-memory SQLite (they don't use the factory).
+All 50 database-independent tests must pass on every database. `DatabaseCredentialTests` additionally run for
+PostgreSQL, SQL Server and MySQL when their variable is set (`[DatabaseServerFact]`). `PageServiceTests` always use
+in-memory SQLite (they don't use the factory).
 
 ### Tests
 
@@ -132,7 +145,10 @@ DNF_TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres;
 | | `Duplicate_api_token_name_is_a_validation_error_not_a_crash` | second token with the same name → 200 "already exists" |
 | | `Api_page_creation_applies_the_content_rules_and_is_audited` | API create slugifies (`our-pricing`), duplicate root slug → 400, `content.created` with `UserId = null` and `API token ...` |
 | `ReadOnlyDeploymentTests.cs` | `A_full_session_writes_nothing_into_the_content_root` | snapshot (path, length, last write) of the content root - minus `bin`, `obj`, `.git`, `.vs`, `TestResults`, `node_modules` - is identical before and after a Production session: setup POST, sign-in, admin screens, public pages, the sample admin extension, upload, download, delete |
-| | `Production_refuses_paths_inside_the_deployment_directory` (2 cases) | outside Development: relative SQLite `Data Source`, missing `DATABASE_CONNECTION_STRING` → `ConfigurationException` (missing S3 storage is covered by `EnvConfigurationTests`) |
+| | `Production_refuses_database_paths_inside_the_deployment_directory` (2 cases) | the host's database registration with a production host: relative SQLite `Data Source`, missing `DATABASE_CONNECTION_STRING` → `DatabaseConfigurationException` (missing S3 storage is covered by `EnvConfigurationTests`) |
+| `DatabaseServiceContractTests.cs` | `Crud_round_trip`, `Ef_core_and_the_service_read_each_others_data`, `Database_generated_keys_are_created_on_insert`, `Text_filters_match_literally`, `Aggregates_group_and_count`, `Unique_violations_are_conflicts`, `Transactions_commit_or_roll_back`, `Large_results_can_be_streamed`, `Seeded_cms_data_is_queryable_by_entity_name`, `Composite_keys_are_read_and_filtered_like_other_fields`, `Unknown_names_and_connection_status_are_reported` | `IDatabaseService` on the integration database: the provider contract ([providers](../database/providers.md#contract-and-testing)) |
+| | `AdditionalDatabaseTests.Commands_run_against_a_named_database_without_a_model` | a `DATABASES_REPORTS_*` SQLite database: unmapped names, `SELECT *`, aggregates, key-less `DeleteOne` refused, identifier validation |
+| `DatabaseCredentialTests.cs` | `PostgreSql_…`, `SqlServer_…`, `MySql_reports_wrong_credentials` | wrong password → `DatabaseAuthenticationException` (skipped unless the server variable is set) |
 | `PageServiceTests.cs` | `Slugifies_and_applies_valid_input`, `Rejects_duplicate_slug_under_the_same_parent_including_root`, `Rejects_a_parent_that_creates_a_cycle`, `Rejects_a_second_dynamic_segment_under_one_parent`, `Rejects_overlong_fields_before_saving`, `Reorder_rejects_moves_that_duplicate_a_slug`, `Reorder_rejects_pages_of_another_tenant`, `Delete_reparents_children_or_refuses_when_slugs_would_clash` | `PageService` rules against an in-memory SQLite `DotNetForgeDbContext` (`EnsureCreated`, no host) |
 
 Not covered: the Users, Roles, Audit Logs and API Tokens list screens (Dashboard, Content Manager, Media and Plugins
@@ -167,7 +183,8 @@ Never write into the repository from a test: use `factory.StoragePath`, the fact
 | New screen / endpoint / auth rule | integration test with `CreateNoRedirectClient` / `SignInAsync` asserting status and redirect |
 | New API endpoint | 401 without token, 403 without the key, 200 with it, tenant isolation |
 | Anything that touches files at runtime | keep `ReadOnlyDeploymentTests` green; extend its session if the new path isn't exercised |
-| Schema change | run the integration suite with `DNF_TEST_POSTGRES` too (separate PostgreSQL migration set) |
+| Schema change | run the integration suite on every database (`DNF_TEST_POSTGRES`, `_SQLSERVER`, `_MYSQL`, `_MONGODB`): each SQL provider has its own migration set, MongoDB builds indexes |
+| New database provider | [adding a provider → Tests](../database/adding-a-provider.md#5-tests) |
 | Bug fix | a regression test that fails without the fix |
 
 ## CI
@@ -181,6 +198,9 @@ Never write into the repository from a test: use `factory.StoragePath`, the fact
 - **postgres-and-s3** (`PostgreSQL + S3 storage`) on Ubuntu: a `postgres:17-alpine` service and a SeaweedFS container
   (`chrislusf/seaweedfs server -s3`, bucket `dnf-test`); runs the unit tests **including** the live S3 tests
   (`DNF_TEST_S3_*` set) and the integration tests on PostgreSQL (`DNF_TEST_POSTGRES` set).
+- **database-providers** (`Integration tests (<provider>)`) on Ubuntu: a matrix that starts SQL Server 2022, MySQL 8.4
+  or MongoDB 8.0 (single-node replica set) with `docker run` and runs the integration suite with `DNF_TEST_SQLSERVER`,
+  `DNF_TEST_MYSQL` or `DNF_TEST_MONGODB`.
 - **read-only-container** (`Read-only container`) on Ubuntu: `docker build -f docker/Dockerfile -t dotnetforge:ci .`, then
   `docker run --read-only --tmpfs /tmp` with SQLite at `/tmp/cms.db` and media at `/tmp/media`; probes `/health` and
   `/setup` and asserts `docker diff app` is empty ([deployment](deployment.md#docker)).

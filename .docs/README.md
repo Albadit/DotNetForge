@@ -1,7 +1,7 @@
 # DotNetForge CMS - technical documentation
 
 The main technical reference for DotNetForge CMS: a server-rendered ASP.NET Core MVC content-management system on
-.NET 10 with EF Core (SQLite or PostgreSQL), a role-gated admin area, a public site that resolves URLs from a page
+.NET 10 with EF Core (SQLite, PostgreSQL, SQL Server, MySQL or MongoDB), a role-gated admin area, a public site that resolves URLs from a page
 tree, a token-secured headless API, an on-disk extension system, and media in S3-compatible object storage. It is
 built to run from a **read-only deployment directory** ([deployment](guides/deployment.md)). Everything here is verified against the code;
 **the code is the source of truth**. Work that is planned but not built lives in a clearly marked
@@ -37,6 +37,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 │   ├── pages.md                 screen architecture + full route map
 │   ├── database.md              tables, ER diagram, migrations, seeding
 │   └── dependencies.md          project refs, NuGet, DI registrations, must-not-bypass list
+├── database/                    the database layer: providers, routing, configuration, MongoDB, security
 ├── features/                    cross-screen concepts (authoritative), incl. planned-only modules
 ├── pages/                       one file per screen
 └── guides/                      how-to: development, testing, deployment, extension development
@@ -52,6 +53,18 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | [pages.md](architecture/pages.md) | Which screens exist, at which routes, with which permissions? How is a screen built? |
 | [database.md](architecture/database.md) | Which tables exist, what writes them, how are migrations and seeding done? |
 | [dependencies.md](architecture/dependencies.md) | What references what? Which services are registered and who uses them? |
+
+## Database layer
+
+| Document | Answers |
+| --- | --- |
+| [architecture.md](database/architecture.md) | How do the CMS (EF Core) and `IDatabaseService` reach five databases? Errors, results, logging, performance |
+| [providers.md](database/providers.md) | Which databases are supported, what a provider implements, how providers are registered and tested |
+| [query-routing.md](database/query-routing.md) | How to use `IDatabaseService` and `DatabaseCommand`; how a command reaches the right database |
+| [configuration.md](database/configuration.md) | `DATABASE_PROVIDER`, connection strings per database, detection, named databases, startup errors |
+| [mongodb.md](database/mongodb.md) | MongoDB requirements (replica set), schema without migrations, keys, query rules |
+| [security.md](database/security.md) | Injection protection, safe use of the service, secrets, logging, timeouts |
+| [adding-a-provider.md](database/adding-a-provider.md) | Step by step: a new database without changing the rest of the system |
 
 ## Features
 

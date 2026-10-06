@@ -1,12 +1,5 @@
 namespace DotNetForge.Shared.Enums;
 
-/// <summary>Supported database providers, detected from <c>DATABASE_CONNECTION_STRING</c> (empty = SQLite).</summary>
-public enum DatabaseProvider
-{
-    Sqlite = 0,
-    PostgreSql = 1,
-}
-
 /// <summary>
 /// Where uploaded media is stored: <see cref="S3"/> whenever <c>STORAGE_S3_*</c> is configured; <see cref="Local"/>
 /// only as the Development fallback (<c>storage/media</c>) when it is not.

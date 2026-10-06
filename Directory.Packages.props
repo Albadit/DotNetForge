@@ -13,6 +13,11 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <!-- Oracle's provider: Pomelo has no EF Core 10 release (latest 9.0.0, checked October 2026). -->
+    <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.9" />
+    <!-- MongoDB: pinned exactly; the provider versions follow EF Core, not semver (.docs/database/mongodb.md). -->
+    <PackageVersion Include="MongoDB.EntityFrameworkCore" Version="[10.0.4]" />
 
     <!-- Data Protection key ring in the database (the deployment filesystem is read-only). -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.12" />

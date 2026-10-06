@@ -45,7 +45,8 @@ your platform's secret store, never in the image or the repository.
 | Variable | Production value | Secret | Notes |
 | --- | --- | :-: | --- |
 | `ASPNETCORE_ENVIRONMENT` | `Production` (image default) | | Enables the production rules, HSTS, enforced CSP, Secure cookies |
-| `DATABASE_CONNECTION_STRING` | `Host=…;Database=dotnetforge;Username=…;Password=…;GSS Encryption Mode=Disable` | ✔ | decides the database: `Host=…` is PostgreSQL; SQLite: `Data Source=/data/dotnetforge.db` on a volume |
+| `DATABASE_PROVIDER` | `postgresql` (or `sqlserver`, `mysql`, `mongodb`, `sqlite`) | | [database configuration](../database/configuration.md) |
+| `DATABASE_CONNECTION_STRING` | `Host=…;Database=dotnetforge;Username=…;Password=…;GSS Encryption Mode=Disable` | ✔ | SQLite: `Data Source=/data/dotnetforge.db` on a volume; other databases: [examples](../database/configuration.md#main-database) |
 | `APP_NAME` | display name | | |
 | `APP_URL` | public base URL | | validated, not used for links yet |
 | `STORAGE_S3_SERVICE_URL` | `https://<account-id>.r2.cloudflarestorage.com` | | empty = AWS S3 |
@@ -72,6 +73,7 @@ docker build -f docker/Dockerfile -t dotnetforge .
 docker run -d --name dotnetforge \
   --read-only --tmpfs /tmp \
   -p 8080:8080 \
+  -e DATABASE_PROVIDER=postgresql \
   -e "DATABASE_CONNECTION_STRING=Host=db;Database=dotnetforge;Username=dotnetforge;Password=<secret>;GSS Encryption Mode=Disable" \
   -e STORAGE_S3_SERVICE_URL=https://<account-id>.r2.cloudflarestorage.com \
   -e STORAGE_S3_BUCKET=dotnetforge-media \
@@ -106,6 +108,11 @@ Terminate TLS at the proxy (nginx, Caddy, Traefik, a cloud load balancer) and fo
   database and user. Add `GSS Encryption Mode=Disable` to the connection string; otherwise Npgsql probes for Kerberos
   (`libgssapi_krb5.so.2`), which the slim image doesn't include, and logs an error line on start.
 - **SQLite**: only on a persistent volume with an absolute path, and only for a single instance.
+- **SQL Server, MySQL 8**: `DATABASE_PROVIDER=sqlserver` / `mysql`; each applies its own migration set on start. MySQL is
+  never auto-detected, so set the provider. Enable TLS in the connection string when the server is not on a private
+  network ([database security](../database/security.md#connections-and-secrets)).
+- **MongoDB**: `DATABASE_PROVIDER=mongodb`, a replica set or Atlas (the CMS needs transactions), database name in the
+  URL or `DATABASE_NAME`; collections and indexes are created on start ([MongoDB](../database/mongodb.md)).
 - **Upgrading from a database created before PostgreSQL migrations existed** (created by `EnsureCreated`): it has no
   `__EFMigrationsHistory`, so migrating fails on existing tables. Recreate it, or create the `DataProtectionKeys`
   table by hand and insert the `20261005180055_InitialCreate` row into `__EFMigrationsHistory` before starting the new

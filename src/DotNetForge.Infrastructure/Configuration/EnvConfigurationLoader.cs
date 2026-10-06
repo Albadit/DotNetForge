@@ -17,7 +17,10 @@ public sealed class ConfigurationException : Exception
 /// </summary>
 public static class EnvConfigurationLoader
 {
+    public const string ProviderKey = "DATABASE_PROVIDER";
     public const string ConnectionKey = "DATABASE_CONNECTION_STRING";
+    public const string DatabaseNameKey = "DATABASE_NAME";
+    public const string AdditionalDatabasePrefix = "DATABASES_";
     public const string AppNameKey = "APP_NAME";
     public const string AppUrlKey = "APP_URL";
     public const string S3ServiceUrlKey = "STORAGE_S3_SERVICE_URL";
@@ -28,14 +31,21 @@ public static class EnvConfigurationLoader
     public const string S3ForcePathStyleKey = "STORAGE_S3_FORCE_PATH_STYLE";
     public const string ExtensionsPathKey = "EXTENSIONS_PATH";
 
+    /// <summary>Suffixes of <c>DATABASES_&lt;NAME&gt;_*</c> keys, longest first so <c>_NAME</c> doesn't shadow others.</summary>
+    private static readonly string[] AdditionalDatabaseSuffixes = { "_CONNECTION_STRING", "_PROVIDER", "_NAME" };
+
     /// <summary>
     /// Builds the typed <see cref="AppEnvironment"/> from the <c>.env</c> file (content root, or the repository root
     /// when running from a checkout - see <see cref="AppPaths"/>) merged with process environment variables.
     /// </summary>
+    /// <remarks>
+    /// Database settings are read here but resolved and validated by the database providers at registration time
+    /// (.docs/database/configuration.md): only they know what a valid connection string looks like.
+    /// </remarks>
     /// <param name="contentRoot">The application's content root (where <c>.env</c> lives).</param>
     /// <param name="isDevelopment">
     /// Outside Development the deployment directory is treated as read-only: nothing may default to a path inside
-    /// it, so the SQLite database and the local storage directory must be configured explicitly as absolute paths.
+    /// it, so media storage must be S3.
     /// </param>
     public static AppEnvironment Load(string contentRoot, bool isDevelopment = true)
     {
@@ -49,23 +59,26 @@ public static class EnvConfigurationLoader
                 ? envVal
                 : fileValues.TryGetValue(key, out var fileVal) && fileVal.Length > 0 ? fileVal : null;
 
-        var connectionString = Get(ConnectionKey);
-        var provider = DetectProvider(connectionString);
-        if (provider == DatabaseProvider.Sqlite)
-        {
-            connectionString = ResolveSqlite(connectionString, contentRoot, isDevelopment);
-        }
-
         var appUrl = Get(AppUrlKey) ?? AppEnvironment.DefaultAppUrl;
         if (!Uri.TryCreate(appUrl, UriKind.Absolute, out _))
         {
             throw new ConfigurationException($"{AppUrlKey} must be a valid absolute URL. Got '{appUrl}'.");
         }
 
+        var keys = fileValues.Keys
+            .Concat(Environment.GetEnvironmentVariables().Keys.Cast<string>())
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
         return new AppEnvironment
         {
-            Provider = provider,
-            ConnectionString = connectionString,
+            Database = new DatabaseSettings
+            {
+                Name = DatabaseSettings.MainName,
+                Provider = Get(ProviderKey)?.Trim(),
+                ConnectionString = Get(ConnectionKey)?.Trim(),
+                DatabaseName = Get(DatabaseNameKey)?.Trim(),
+            },
+            AdditionalDatabases = LoadAdditionalDatabases(keys, Get),
             AppName = Get(AppNameKey) ?? AppEnvironment.DefaultAppName,
             AppUrl = appUrl,
             Storage = LoadStorage(Get, contentRoot, isDevelopment),
@@ -74,43 +87,42 @@ public static class EnvConfigurationLoader
     }
 
     /// <summary>
-    /// The database follows from <c>DATABASE_CONNECTION_STRING</c> (.docs/features/configuration.md#database): empty
-    /// means the SQLite default, <c>Data Source=</c>/<c>Filename=</c> means SQLite, <c>Host=</c>/<c>Server=</c> means
-    /// PostgreSQL. Queries are provider-neutral LINQ, but EF Core still needs the matching driver and migration set.
+    /// Named databases for <c>IDatabaseService</c>: <c>DATABASES_&lt;NAME&gt;_PROVIDER</c>,
+    /// <c>DATABASES_&lt;NAME&gt;_CONNECTION_STRING</c> and <c>DATABASES_&lt;NAME&gt;_NAME</c> (.docs/database/configuration.md).
     /// </summary>
-    private static DatabaseProvider DetectProvider(string? connectionString)
+    private static IReadOnlyList<DatabaseSettings> LoadAdditionalDatabases(IEnumerable<string> keys, Func<string, string?> get)
     {
-        if (string.IsNullOrWhiteSpace(connectionString))
+        var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var key in keys.Where(k => k.StartsWith(AdditionalDatabasePrefix, StringComparison.OrdinalIgnoreCase)))
         {
-            return DatabaseProvider.Sqlite;
+            var rest = key[AdditionalDatabasePrefix.Length..];
+            var suffix = AdditionalDatabaseSuffixes.FirstOrDefault(sfx => rest.EndsWith(sfx, StringComparison.OrdinalIgnoreCase));
+            var name = suffix is null ? null : rest[..^suffix.Length];
+            if (string.IsNullOrEmpty(name) || !name.All(char.IsAsciiLetterOrDigit))
+            {
+                throw new ConfigurationException(
+                    $"'{key}' is not a valid database setting. Use {AdditionalDatabasePrefix}<NAME>_PROVIDER, " +
+                    $"{AdditionalDatabasePrefix}<NAME>_CONNECTION_STRING or {AdditionalDatabasePrefix}<NAME>_NAME, " +
+                    "where <NAME> has only letters and digits.");
+            }
+
+            if (name.Equals(DatabaseSettings.MainName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ConfigurationException(
+                    $"'{key}': the name '{DatabaseSettings.MainName}' is reserved for the database configured by " +
+                    $"{ProviderKey} and {ConnectionKey}.");
+            }
+
+            names.Add(name);
         }
 
-        var trimmed = connectionString.Trim();
-        if (trimmed.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        return names.Select(name => new DatabaseSettings
         {
-            throw new ConfigurationException(
-                $"{ConnectionKey} must use the key=value form, not a URL: " +
-                "'Host=<host>;Port=5432;Database=<db>;Username=<user>;Password=<password>'.");
-        }
-
-        var keys = trimmed.Split(';', StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => part.Split('=', 2)[0].Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (keys.Contains("Host") || keys.Contains("Server"))
-        {
-            return DatabaseProvider.PostgreSql;
-        }
-
-        if (keys.Contains("Data Source") || keys.Contains("DataSource") || keys.Contains("Filename"))
-        {
-            return DatabaseProvider.Sqlite;
-        }
-
-        throw new ConfigurationException(
-            $"Cannot tell which database {ConnectionKey} is for. Use 'Data Source=<file>' for SQLite or " +
-            "'Host=<host>;Database=<db>;Username=<user>;Password=<password>' for PostgreSQL, " +
-            "or leave it empty for the development SQLite database.");
+            Name = name.ToLowerInvariant(),
+            Provider = get($"{AdditionalDatabasePrefix}{name}_PROVIDER")?.Trim(),
+            ConnectionString = get($"{AdditionalDatabasePrefix}{name}_CONNECTION_STRING")?.Trim(),
+            DatabaseName = get($"{AdditionalDatabasePrefix}{name}_NAME")?.Trim(),
+        }).ToList();
     }
 
     /// <summary>
@@ -121,34 +133,6 @@ public static class EnvConfigurationLoader
         Path.GetFullPath(string.IsNullOrWhiteSpace(configured)
             ? AppPaths.Resolve(contentRoot, "extensions")
             : Path.Combine(contentRoot, configured));
-
-    private static string ResolveSqlite(string? connectionString, string contentRoot, bool isDevelopment)
-    {
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            if (!isDevelopment)
-            {
-                throw new ConfigurationException(
-                    $"{ConnectionKey} is required outside Development: the deployment directory is read-only, so " +
-                    "point it at PostgreSQL ('Host=...;Database=...;Username=...;Password=...') or at a SQLite file on " +
-                    "a writable volume ('Data Source=/data/dotnetforge.db').");
-            }
-
-            // Development default: storage/ at the repository root (or the content root outside a checkout), never
-            // relative to the process working directory.
-            return $"Data Source={Path.Combine(AppPaths.DevelopmentDataRoot(contentRoot), "storage", "dotnetforge.db")}";
-        }
-
-        var dataSource = SqliteConnectionStrings.GetDataSource(connectionString);
-        if (!isDevelopment && dataSource is not null && !SqliteConnectionStrings.IsInMemory(dataSource) &&
-            !Path.IsPathRooted(dataSource))
-        {
-            throw new ConfigurationException(
-                $"The SQLite data source must be an absolute path outside Development (got '{dataSource}').");
-        }
-
-        return connectionString;
-    }
 
     /// <summary>
     /// Uploaded media lives in S3-compatible object storage (.docs/features/media-storage.md). Without any

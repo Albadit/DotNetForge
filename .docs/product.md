@@ -36,7 +36,7 @@ without breaking customisations ([extensions](features/extensions.md)).
 | ASP.NET Core MVC, C#, Razor views | ✔ .NET 10 |
 | Entity Framework Core | ✔ |
 | SQLite (default) | ✔ |
-| PostgreSQL | ✔ with its own migration set (`PostgreSqlDbContext`) ([database](architecture/database.md)) |
+| PostgreSQL | ✔ with its own migration set (`PostgreSqlDbContext`) ([database](architecture/database.md)); SQL Server, MySQL and MongoDB too ([database layer](database/providers.md)) |
 | Environment-based configuration in `.env`; secrets only there, never committed | ✔ ([configuration](features/configuration.md)) |
 | Unit testing | ✔ xUnit ([testing](guides/testing.md)) |
 | Frontend linting (ESLint) | ✘ |
@@ -61,7 +61,7 @@ deliverables and the generated-solution deliverables of the specification.
 | API token foundation | ✔ | | [headless API](features/headless-api.md) |
 | Extension manifest system | ✔ | | [extensions](features/extensions.md) |
 | Extension loading foundation | ✔ | partial: discovery + admin extensions rendered; no assembly loading | [extensions](features/extensions.md) |
-| SQLite and PostgreSQL support | ✔ | | [configuration](features/configuration.md) |
+| SQLite and PostgreSQL support | ✔ | plus SQL Server, MySQL, MongoDB | [database providers](database/providers.md) |
 | Import/export foundation | ✘ | placeholder screen only | [transfer and updates](features/transfer-and-updates.md) |
 | Webhook foundation | ✘ | tables, event names and an unused signer; no CRUD or delivery | [webhooks](features/webhooks.md) |
 | Audit logging foundation | ✔ | | [audit logging](features/audit-logging.md) |
@@ -127,8 +127,8 @@ tenant switching and no private content pages ([authorization](features/authoriz
 
 ### Rules and validation
 
-- The database is SQLite or PostgreSQL, detected from `DATABASE_CONNECTION_STRING`; anything else is rejected at
-  startup (✔ `EnvConfigurationLoader`; the spec's `DATABASE_PROVIDER` key was removed).
+- `DATABASE_PROVIDER` selects a registered provider (`sqlite`, `postgresql`, `sqlserver`, `mysql`, `mongodb`), or it
+  is detected from the connection string; anything else is rejected at startup (✔ `DatabaseProviderRegistry`).
 - `.env.example`, `.gitignore`, `README.md` and `ARCHITECTURE.md` exist at the repository root (✔, except the
   architecture summary, kept as `.docs/architecture/overview.md`).
 - Secrets come only from `.env`, which is git-ignored (✔); generated files, logs, uploads, cache and build output are
@@ -165,7 +165,7 @@ tenant switching and no private content pages ([authorization](features/authoriz
   (`EnvConfigurationLoader`).
 - [x] First start redirects to setup; setup creates a Super Admin, marks the CMS installed and redirects to the
   dashboard (`InstallationMiddleware`, `InstallationService`, `SetupController`).
-- [x] SQLite (default) and PostgreSQL are both selectable and functional (`DbProviderConfigurator`; both migrate at startup,
+- [x] SQLite (default) and PostgreSQL are both selectable and functional (database providers; both migrate at startup,
   integration tests pass on both).
 - [ ] The admin area renders correctly regardless of the active public theme (nothing loads themes yet).
 - [x] A scoped API token can read content and media, and only its hash is persisted (`ApiTokenFactory`,

@@ -4,6 +4,7 @@ using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Xunit;
 
 namespace DotNetForge.IntegrationTests;
@@ -23,7 +24,12 @@ public sealed class PageServiceTests : IAsyncLifetime
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         await _connection.OpenAsync();
-        _db = new DotNetForgeDbContext(new DbContextOptionsBuilder<DotNetForgeDbContext>().UseSqlite(_connection).Options);
+        // EF Core counts its internal service providers per process; when the suite runs on MongoDB (one provider per
+        // test database) that count is already past EF's limit of 20, so log the warning instead of throwing.
+        _db = new DotNetForgeDbContext(new DbContextOptionsBuilder<DotNetForgeDbContext>()
+            .UseSqlite(_connection)
+            .ConfigureWarnings(w => w.Log(CoreEventId.ManyServiceProvidersCreatedWarning))
+            .Options);
         await _db.Database.EnsureCreatedAsync();
         _service = new PageService(_db);
     }

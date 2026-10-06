@@ -1,5 +1,8 @@
 using System.Net;
+using DotNetForge.Abstractions.Database;
+using DotNetForge.Data.Database;
 using DotNetForge.Infrastructure.Configuration;
+using DotNetForge.Shared.Configuration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -37,33 +40,18 @@ public sealed class ReadOnlyDeploymentTests
     }
 
     [Theory]
-    [InlineData("DATABASE_CONNECTION_STRING", "Data Source=relative.db", "absolute path")]
-    [InlineData("DATABASE_CONNECTION_STRING", "", "DATABASE_CONNECTION_STRING is required outside Development")]
-    public void Production_refuses_paths_inside_the_deployment_directory(string key, string value, string expected)
+    [InlineData("Data Source=relative.db", "absolute path")]
+    [InlineData(null, "DATABASE_CONNECTION_STRING is required outside Development")]
+    public void Production_refuses_database_paths_inside_the_deployment_directory(string? connectionString, string expected)
     {
-        using var factory = new DotNetForgeWebFactory("Production"); // sets valid values first
-        var saved = new[] { key, "DATABASE_CONNECTION_STRING" }.Distinct().ToDictionary(k => k, Environment.GetEnvironmentVariable);
-        if (key != "DATABASE_CONNECTION_STRING")
-        {
-            // The SQLite path rules are under test, also when DNF_TEST_POSTGRES points the factory at PostgreSQL.
-            Environment.SetEnvironmentVariable(
-                "DATABASE_CONNECTION_STRING", $"Data Source={Path.Combine(Path.GetTempPath(), "dnf.db")}");
-        }
+        // The same registration the host performs at startup (DependencyRegistration), with a production host.
+        var services = new ServiceCollection().AddDefaultDatabaseProviders();
 
-        Environment.SetEnvironmentVariable(key, value);
-        try
-        {
-            var ex = Assert.Throws<ConfigurationException>(() =>
-                EnvConfigurationLoader.Load(Path.GetTempPath(), isDevelopment: false));
-            Assert.Contains(expected, ex.Message);
-        }
-        finally
-        {
-            foreach (var (name, original) in saved)
-            {
-                Environment.SetEnvironmentVariable(name, original);
-            }
-        }
+        var ex = Assert.Throws<DatabaseConfigurationException>(() => services.AddDotNetForgeDatabases(
+            new DatabaseSettings { Provider = "sqlite", ConnectionString = connectionString },
+            Array.Empty<DatabaseSettings>(),
+            new DatabaseHostContext(IsDevelopment: false, DevelopmentDataRoot: Path.GetTempPath())));
+        Assert.Contains(expected, ex.Message);
     }
 
     private static async Task RunFullSessionAsync(DotNetForgeWebFactory factory)

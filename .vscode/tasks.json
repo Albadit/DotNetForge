@@ -99,7 +99,7 @@
     },
     {
       "label": "ef: add migration (SQLite)",
-      "detail": "dotnet ef migrations add <name> for DotNetForgeDbContext - run the PostgreSQL task with the same name too",
+      "detail": "dotnet ef migrations add <name> for DotNetForgeDbContext - run the PostgreSQL, SQL Server and MySQL tasks with the same name too",
       "type": "process",
       "command": "dotnet",
       "args": [
@@ -123,8 +123,39 @@
         "--project", "src/DotNetForge.Data",
         "--startup-project", "src/DotNetForge.Data",
         "--context", "PostgreSqlDbContext",
-        "--output-dir", "Migrations/PostgreSql",
-        "--namespace", "DotNetForge.Data.Migrations.PostgreSql"
+        "--output-dir", "Migrations/PostgreSql"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "ef: add migration (SQL Server)",
+      "detail": "dotnet ef migrations add <name> for SqlServerDbContext (Migrations/SqlServer)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef", "migrations", "add", "${input:migrationName}",
+        "--project", "src/DotNetForge.Data",
+        "--startup-project", "src/DotNetForge.Data",
+        "--context", "SqlServerDbContext",
+        "--output-dir", "Migrations/SqlServer"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "ef: add migration (MySQL)",
+      "detail": "dotnet ef migrations add <name> for MySqlDbContext (Migrations/MySql)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef", "migrations", "add", "${input:migrationName}",
+        "--project", "src/DotNetForge.Data",
+        "--startup-project", "src/DotNetForge.Data",
+        "--context", "MySqlDbContext",
+        "--output-dir", "Migrations/MySql"
       ],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",

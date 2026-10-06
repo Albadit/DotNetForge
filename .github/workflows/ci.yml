@@ -116,6 +116,60 @@ jobs:
       - name: Integration tests on PostgreSQL
         run: dotnet test tests/DotNetForge.IntegrationTests --configuration Release
 
+  database-providers:
+    # The full integration suite on the other supported databases (.docs/database/providers.md#testing): each
+    # provider must behave like SQLite and PostgreSQL for the CMS and for IDatabaseService.
+    name: Integration tests (${{ matrix.provider }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - provider: sqlserver
+            start: >-
+              docker run -d --name db -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=DotNetForge!2026 -p 1433:1433
+              mcr.microsoft.com/mssql/server:2022-latest
+            ready: "docker logs db 2>&1 | grep -q 'SQL Server is now ready'"
+            variable: DNF_TEST_SQLSERVER
+            connection: Server=localhost,1433;User Id=sa;Password=DotNetForge!2026;TrustServerCertificate=true
+          - provider: mysql
+            start: docker run -d --name db -e MYSQL_ROOT_PASSWORD=dotnetforge -p 3306:3306 mysql:8.4
+            ready: "docker exec db mysqladmin -uroot -pdotnetforge ping 2>/dev/null | grep -q alive"
+            variable: DNF_TEST_MYSQL
+            connection: Server=localhost;Port=3306;Uid=root;Pwd=dotnetforge
+          - provider: mongodb
+            # A single-node replica set: the CMS saves several documents at once, which needs transactions.
+            start: docker run -d --name db -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+            ready: >-
+              docker exec db mongosh --quiet --eval
+              'try { rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]}).ok }'
+              | grep -q 1
+            variable: DNF_TEST_MONGODB
+            connection: mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Start ${{ matrix.provider }}
+        shell: bash
+        run: |
+          ${{ matrix.start }}
+          for i in $(seq 1 90); do if ${{ matrix.ready }}; then exit 0; fi; sleep 2; done
+          docker logs db; exit 1
+
+      - name: Integration tests on ${{ matrix.provider }}
+        # Only this entry's variable is non-empty; an empty one means "not configured" (TestDatabaseServer).
+        env:
+          DNF_TEST_SQLSERVER: ${{ matrix.variable == 'DNF_TEST_SQLSERVER' && matrix.connection || '' }}
+          DNF_TEST_MYSQL: ${{ matrix.variable == 'DNF_TEST_MYSQL' && matrix.connection || '' }}
+          DNF_TEST_MONGODB: ${{ matrix.variable == 'DNF_TEST_MONGODB' && matrix.connection || '' }}
+        run: dotnet test tests/DotNetForge.IntegrationTests --configuration Release
+
   read-only-container:
     # Builds the production image and boots it with a read-only root filesystem: startup, migrations and the
     # setup screen must work without writing into the deployment directory (.docs/guides/deployment.md).

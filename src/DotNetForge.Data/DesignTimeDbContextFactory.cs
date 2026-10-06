@@ -1,44 +1,59 @@
-using DotNetForge.Shared.Configuration;
-using DotNetForge.Shared.Enums;
+using DotNetForge.Data.Database.Relational;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace DotNetForge.Data;
 
 /// <summary>
-/// Lets <c>dotnet ef migrations add</c> create the SQLite context (<see cref="DotNetForgeDbContext"/>) without booting
-/// the web host. Generating migrations never connects to the database.
+/// Lets <c>dotnet ef migrations add</c> create each SQL provider's context without booting the web host
+/// (.docs/database/adding-a-provider.md). Generating migrations never opens a connection, so the defaults are
+/// placeholders; <c>DATABASE_CONNECTION_STRING</c> overrides them for <c>dotnet ef database update</c>.
 /// </summary>
 public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<DotNetForgeDbContext>
 {
     public DotNetForgeDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<DotNetForgeDbContext>();
-        DbProviderConfigurator.Configure(options, new AppEnvironment
-        {
-            Provider = DatabaseProvider.Sqlite,
-            // Generating migrations never opens the connection; an in-memory default avoids creating folders.
-            ConnectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING") ?? "Data Source=:memory:",
-        });
+        SqliteDatabaseProvider.Configure(options, DesignTime.ConnectionString("Data Source=:memory:"));
         return new DotNetForgeDbContext(options.Options);
     }
 }
 
-/// <summary>
-/// Design-time factory for the PostgreSQL migration set (<c>dotnet ef migrations add ... --context
-/// PostgreSqlDbContext</c>). The placeholder connection string is never opened while generating migrations.
-/// </summary>
+/// <summary>Design-time factory for <c>--context PostgreSqlDbContext</c> (<c>Migrations/PostgreSql/</c>).</summary>
 public sealed class PostgreSqlDesignTimeDbContextFactory : IDesignTimeDbContextFactory<PostgreSqlDbContext>
 {
     public PostgreSqlDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<PostgreSqlDbContext>();
-        DbProviderConfigurator.Configure(options, new AppEnvironment
-        {
-            Provider = DatabaseProvider.PostgreSql,
-            ConnectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING")
-                ?? "Host=localhost;Database=dotnetforge_design",
-        });
+        PostgreSqlDatabaseProvider.Configure(options, DesignTime.ConnectionString("Host=localhost;Database=dotnetforge_design"));
         return new PostgreSqlDbContext(options.Options);
     }
+}
+
+/// <summary>Design-time factory for <c>--context SqlServerDbContext</c> (<c>Migrations/SqlServer/</c>).</summary>
+public sealed class SqlServerDesignTimeDbContextFactory : IDesignTimeDbContextFactory<SqlServerDbContext>
+{
+    public SqlServerDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<SqlServerDbContext>();
+        SqlServerDatabaseProvider.Configure(options, DesignTime.ConnectionString("Server=localhost;Initial Catalog=dotnetforge_design;TrustServerCertificate=true"));
+        return new SqlServerDbContext(options.Options);
+    }
+}
+
+/// <summary>Design-time factory for <c>--context MySqlDbContext</c> (<c>Migrations/MySql/</c>).</summary>
+public sealed class MySqlDesignTimeDbContextFactory : IDesignTimeDbContextFactory<MySqlDbContext>
+{
+    public MySqlDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<MySqlDbContext>();
+        MySqlDatabaseProvider.Configure(options, DesignTime.ConnectionString("Server=localhost;Database=dotnetforge_design;Uid=root"));
+        return new MySqlDbContext(options.Options);
+    }
+}
+
+internal static class DesignTime
+{
+    public static string ConnectionString(string placeholder) =>
+        Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING") is { Length: > 0 } value ? value : placeholder;
 }
