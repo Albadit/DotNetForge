@@ -112,7 +112,7 @@ Terminate TLS at the proxy (nginx, Caddy, Traefik, a cloud load balancer) and fo
   never auto-detected, so set the provider. Enable TLS in the connection string when the server is not on a private
   network ([database security](../database/security.md#connections-and-secrets)).
 - **MongoDB**: `DATABASE_PROVIDER=mongodb`, a replica set or Atlas (the CMS needs transactions), database name in the
-  URL or `DATABASE_NAME`; collections and indexes are created on start ([MongoDB](../database/mongodb.md)).
+  URL path; collections and indexes are created on start ([MongoDB](../database/mongodb.md)).
 - **Upgrading from a database created before PostgreSQL migrations existed** (created by `EnsureCreated`): it has no
   `__EFMigrationsHistory`, so migrating fails on existing tables. Recreate it, or create the `DataProtectionKeys`
   table by hand and insert the `20261005180055_InitialCreate` row into `__EFMigrationsHistory` before starting the new

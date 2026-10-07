@@ -36,8 +36,8 @@ public sealed class DatabaseProviderTests
         };
     }
 
-    private static ResolvedDatabase Resolve(string? provider, string? connectionString, DatabaseHostContext? host = null, string? databaseName = null) =>
-        DefaultRegistry().Resolve(new DatabaseSettings { Provider = provider, ConnectionString = connectionString, DatabaseName = databaseName }, host ?? Development);
+    private static ResolvedDatabase Resolve(string? provider, string? connectionString, DatabaseHostContext? host = null) =>
+        DefaultRegistry().Resolve(new DatabaseSettings { Provider = provider, ConnectionString = connectionString }, host ?? Development);
 
     [Theory]
     [InlineData("sqlite", "Data Source=/data/cms.db", "SQLite")]
@@ -130,11 +130,10 @@ public sealed class DatabaseProviderTests
     }
 
     [Fact]
-    public void MongoDb_takes_the_database_name_from_the_url_or_DATABASE_NAME()
+    public void MongoDb_takes_the_database_name_from_the_url_path()
     {
         Assert.Equal("cms", Resolve("mongodb", "mongodb://db:27017/cms").Settings.DatabaseName);
-        Assert.Equal("other", Resolve("mongodb", "mongodb://db:27017/cms", databaseName: "other").Settings.DatabaseName);
-        Assert.Equal("cms", Resolve("mongodb", "mongodb://db:27017", databaseName: "cms").Settings.DatabaseName);
+        Assert.Equal("cms", Resolve("mongodb", "mongodb://db:27017/cms?replicaSet=rs0&authSource=admin").Settings.DatabaseName);
     }
 
     [Theory]

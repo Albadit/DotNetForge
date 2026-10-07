@@ -19,7 +19,7 @@ public sealed record DatabaseSettings
     /// <summary>Secret: may contain credentials. Never log or render it.</summary>
     public string? ConnectionString { get; init; }
 
-    /// <summary>Database name for providers that take it separately (MongoDB, when it is not in the URL).</summary>
+    /// <summary>Not read from the environment: set by providers that need it separately (MongoDB, from the URL path).</summary>
     public string? DatabaseName { get; init; }
 
     public bool IsMain => string.Equals(Name, MainName, StringComparison.OrdinalIgnoreCase);

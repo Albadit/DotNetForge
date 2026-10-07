@@ -32,7 +32,7 @@ public sealed class MongoDbDatabaseProvider : IDatabaseProvider
         (connectionString.StartsWith("mongodb://", StringComparison.OrdinalIgnoreCase) ||
          connectionString.StartsWith("mongodb+srv://", StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Requires a MongoDB URL and a database name (from <c>DATABASE_NAME</c> or the URL path).</summary>
+    /// <summary>Requires a MongoDB URL with the database name in its path.</summary>
     public DatabaseSettings Normalize(DatabaseSettings settings, DatabaseHostContext host)
     {
         var prefix = settings.IsMain ? "DATABASE" : $"DATABASES_{settings.Name.ToUpperInvariant()}";
@@ -52,14 +52,13 @@ public sealed class MongoDbDatabaseProvider : IDatabaseProvider
             throw new DatabaseConfigurationException($"{prefix}_CONNECTION_STRING is not a valid MongoDB connection string.", ex);
         }
 
-        var database = string.IsNullOrWhiteSpace(settings.DatabaseName) ? url.DatabaseName : settings.DatabaseName;
-        if (string.IsNullOrWhiteSpace(database))
+        if (string.IsNullOrWhiteSpace(url.DatabaseName))
         {
             throw new DatabaseConfigurationException(
-                $"MongoDB needs a database name: put it in the URL path (mongodb://host:27017/<database>) or set {prefix}_NAME.");
+                $"MongoDB needs a database name in the URL path of {prefix}_CONNECTION_STRING (mongodb://host:27017/<database>).");
         }
 
-        return settings with { DatabaseName = database };
+        return settings with { DatabaseName = url.DatabaseName };
     }
 
     public string Describe(DatabaseSettings settings)

@@ -51,7 +51,6 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
         Provider = database.Provider;
         Environment.SetEnvironmentVariable("DATABASE_PROVIDER", database.Provider);
         Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING", database.ConnectionString);
-        Environment.SetEnvironmentVariable("DATABASE_NAME", database.DatabaseName);
 
         Environment.SetEnvironmentVariable("APP_URL", "http://localhost");
         Environment.SetEnvironmentVariable("STORAGE_S3_SERVICE_URL", "http://127.0.0.1:9");

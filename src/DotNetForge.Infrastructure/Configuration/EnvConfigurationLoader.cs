@@ -19,7 +19,6 @@ public static class EnvConfigurationLoader
 {
     public const string ProviderKey = "DATABASE_PROVIDER";
     public const string ConnectionKey = "DATABASE_CONNECTION_STRING";
-    public const string DatabaseNameKey = "DATABASE_NAME";
     public const string AdditionalDatabasePrefix = "DATABASES_";
     public const string AppNameKey = "APP_NAME";
     public const string AppUrlKey = "APP_URL";
@@ -31,8 +30,8 @@ public static class EnvConfigurationLoader
     public const string S3ForcePathStyleKey = "STORAGE_S3_FORCE_PATH_STYLE";
     public const string ExtensionsPathKey = "EXTENSIONS_PATH";
 
-    /// <summary>Suffixes of <c>DATABASES_&lt;NAME&gt;_*</c> keys, longest first so <c>_NAME</c> doesn't shadow others.</summary>
-    private static readonly string[] AdditionalDatabaseSuffixes = { "_CONNECTION_STRING", "_PROVIDER", "_NAME" };
+    /// <summary>Suffixes of <c>DATABASES_&lt;NAME&gt;_*</c> keys.</summary>
+    private static readonly string[] AdditionalDatabaseSuffixes = { "_CONNECTION_STRING", "_PROVIDER" };
 
     /// <summary>
     /// Builds the typed <see cref="AppEnvironment"/> from the <c>.env</c> file (content root, or the repository root
@@ -76,7 +75,6 @@ public static class EnvConfigurationLoader
                 Name = DatabaseSettings.MainName,
                 Provider = Get(ProviderKey)?.Trim(),
                 ConnectionString = Get(ConnectionKey)?.Trim(),
-                DatabaseName = Get(DatabaseNameKey)?.Trim(),
             },
             AdditionalDatabases = LoadAdditionalDatabases(keys, Get),
             AppName = Get(AppNameKey) ?? AppEnvironment.DefaultAppName,
@@ -87,8 +85,8 @@ public static class EnvConfigurationLoader
     }
 
     /// <summary>
-    /// Named databases for <c>IDatabaseService</c>: <c>DATABASES_&lt;NAME&gt;_PROVIDER</c>,
-    /// <c>DATABASES_&lt;NAME&gt;_CONNECTION_STRING</c> and <c>DATABASES_&lt;NAME&gt;_NAME</c> (.docs/database/configuration.md).
+    /// Named databases for <c>IDatabaseService</c>: <c>DATABASES_&lt;NAME&gt;_PROVIDER</c> and
+    /// <c>DATABASES_&lt;NAME&gt;_CONNECTION_STRING</c> (.docs/database/configuration.md).
     /// </summary>
     private static IReadOnlyList<DatabaseSettings> LoadAdditionalDatabases(IEnumerable<string> keys, Func<string, string?> get)
     {
@@ -101,9 +99,8 @@ public static class EnvConfigurationLoader
             if (string.IsNullOrEmpty(name) || !name.All(char.IsAsciiLetterOrDigit))
             {
                 throw new ConfigurationException(
-                    $"'{key}' is not a valid database setting. Use {AdditionalDatabasePrefix}<NAME>_PROVIDER, " +
-                    $"{AdditionalDatabasePrefix}<NAME>_CONNECTION_STRING or {AdditionalDatabasePrefix}<NAME>_NAME, " +
-                    "where <NAME> has only letters and digits.");
+                    $"'{key}' is not a valid database setting. Use {AdditionalDatabasePrefix}<NAME>_PROVIDER or " +
+                    $"{AdditionalDatabasePrefix}<NAME>_CONNECTION_STRING, where <NAME> has only letters and digits.");
             }
 
             if (name.Equals(DatabaseSettings.MainName, StringComparison.OrdinalIgnoreCase))
@@ -121,7 +118,6 @@ public static class EnvConfigurationLoader
             Name = name.ToLowerInvariant(),
             Provider = get($"{AdditionalDatabasePrefix}{name}_PROVIDER")?.Trim(),
             ConnectionString = get($"{AdditionalDatabasePrefix}{name}_CONNECTION_STRING")?.Trim(),
-            DatabaseName = get($"{AdditionalDatabasePrefix}{name}_NAME")?.Trim(),
         }).ToList();
     }
 

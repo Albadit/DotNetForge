@@ -10,7 +10,6 @@ The CMS runs on the **main** database:
 | --- | --- |
 | `DATABASE_PROVIDER` | `sqlite`, `postgresql` (alias `postgres`), `sqlserver`, `mysql`, `mongodb`, or the name of any registered provider. Empty = detect from the connection string |
 | `DATABASE_CONNECTION_STRING` | The connection string, in the database's own format. **Secret.** Empty in Development = SQLite at `storage/dotnetforge.db` |
-| `DATABASE_NAME` | MongoDB only: the database name when it isn't in the URL path |
 
 Examples:
 
@@ -31,7 +30,7 @@ DATABASE_CONNECTION_STRING=Server=db,1433;Initial Catalog=dotnetforge;User Id=cm
 DATABASE_PROVIDER=mysql
 DATABASE_CONNECTION_STRING=Server=db;Port=3306;Database=dotnetforge;Uid=cms;Pwd=<secret>
 
-# MongoDB (replica set or Atlas; database name in the URL path or in DATABASE_NAME)
+# MongoDB (replica set or Atlas; the database name is the URL path)
 DATABASE_PROVIDER=mongodb
 DATABASE_CONNECTION_STRING=mongodb+srv://cms:<secret>@cluster0.example.mongodb.net/dotnetforge?retryWrites=true
 ```
@@ -72,7 +71,7 @@ The chosen provider validates the settings. Invalid configuration stops the proc
 | PostgreSQL URL | `PostgreSQL connection strings must use the key=value form, not a URL: …` |
 | SQL provider without connection string | `<Provider> needs a connection string for database 'main' (DATABASE_CONNECTION_STRING).` |
 | MongoDB, not a MongoDB URL | `MongoDB needs a connection string like 'mongodb://<host>:27017/<database>?replicaSet=rs0' in DATABASE_CONNECTION_STRING.` |
-| MongoDB without database name | `MongoDB needs a database name: put it in the URL path (mongodb://host:27017/<database>) or set DATABASE_NAME.` |
+| MongoDB without database name | `MongoDB needs a database name in the URL path of DATABASE_CONNECTION_STRING (mongodb://host:27017/<database>).` |
 
 Configuration is validated, not probed. An unreachable server is not a configuration error: the database's first
 use at startup (migrations) fails with the driver's connection error.
@@ -85,16 +84,14 @@ use at startup (migrations) fails with the driver's connection error.
 DATABASES_REPORTS_PROVIDER=postgresql
 DATABASES_REPORTS_CONNECTION_STRING=Host=warehouse;Database=reports;Username=reader;Password=<secret>
 DATABASES_EVENTS_PROVIDER=mongodb
-DATABASES_EVENTS_CONNECTION_STRING=mongodb://events-db:27017/?replicaSet=rs0
-DATABASES_EVENTS_NAME=events
+DATABASES_EVENTS_CONNECTION_STRING=mongodb://events-db:27017/events?replicaSet=rs0
 ```
 
 ```csharp
 await db.QueryAsync(DatabaseCommand.Find("daily_sales").On("reports").OrderBy("day"));
 ```
 
-- Keys follow the pattern `DATABASES_<NAME>_PROVIDER`, `DATABASES_<NAME>_CONNECTION_STRING` and
-  `DATABASES_<NAME>_NAME`.
+- Keys follow the pattern `DATABASES_<NAME>_PROVIDER` and `DATABASES_<NAME>_CONNECTION_STRING`.
   - `<NAME>` is letters and digits only; it is matched case-insensitively and stored in lower case.
   - `main` is reserved.
 - The same detection and validation rules apply as for the main database. A named SQLite database defaults to

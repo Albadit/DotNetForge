@@ -11,8 +11,7 @@ configures logging and `AllowedHosts`. Production values and a deployment checkl
 | --- | --- | --- | --- | --- |
 | `DATABASE_PROVIDER` | no (recommended outside Development) | detected from the connection string | a registered provider: `sqlite`, `postgresql`/`postgres`, `sqlserver`, `mysql`, `mongodb` | `DatabaseProviderRegistry` → the provider configures EF Core and `IDatabaseService` ([database configuration](../database/configuration.md)) |
 | `DATABASE_CONNECTION_STRING` | outside Development | empty = SQLite at `<devRoot>/storage/dotnetforge.db` (Development only) | validated by the chosen provider ([validation](../database/configuration.md#validation-startup)); **secret** | the provider's EF Core configuration and executor |
-| `DATABASE_NAME` | MongoDB without a database in the URL | from the URL path | - | `MongoDbDatabaseProvider` |
-| `DATABASES_<NAME>_PROVIDER`, `_CONNECTION_STRING`, `_NAME` | no | - | as above, per named database | `IDatabaseService` ([more databases](../database/configuration.md#more-databases)) |
+| `DATABASES_<NAME>_PROVIDER`, `_CONNECTION_STRING` | no | - | as above, per named database | `IDatabaseService` ([more databases](../database/configuration.md#more-databases)) |
 | `APP_NAME` | no | `DotNetForge CMS` | - | layouts and screens via `ViewData["AppName"]`, Dashboard, Settings, `/health` |
 | `APP_URL` | no | `http://localhost:5000` | must be an absolute URI | validated only - **not used anywhere else** (Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS`) |
 | `STORAGE_S3_SERVICE_URL` | no | empty = AWS S3 | absolute URL | `S3FileStorage` (R2, MinIO, Supabase, SeaweedFS endpoint) |
@@ -31,7 +30,7 @@ required ones mandatory, in Development too. Details and provider choice:
 [media storage](media-storage.md#storage-architecture), [provider choice](media-storage.md#provider-choice).
 
 All keys are read by `EnvConfigurationLoader` (`src/DotNetForge.Infrastructure/Configuration/`); constants:
-`ProviderKey`, `ConnectionKey`, `DatabaseNameKey`, `AdditionalDatabasePrefix`, `AppNameKey`, `AppUrlKey`, `S3ServiceUrlKey`,
+`ProviderKey`, `ConnectionKey`, `AdditionalDatabasePrefix`, `AppNameKey`, `AppUrlKey`, `S3ServiceUrlKey`,
 `S3BucketKey`, `S3AccessKeyIdKey`, `S3SecretAccessKeyKey`, `S3RegionKey`, `S3ForcePathStyleKey`, `ExtensionsPathKey`.
 
 Changing any key requires a restart.
@@ -91,7 +90,7 @@ failure is reported.
 | Situation | Message |
 | --- | --- |
 | Any database setting | see [database configuration → Validation](../database/configuration.md#validation-startup) |
-| Invalid `DATABASES_*` key | `'<key>' is not a valid database setting. Use DATABASES_<NAME>_PROVIDER, DATABASES_<NAME>_CONNECTION_STRING or DATABASES_<NAME>_NAME, where <NAME> has only letters and digits.` |
+| Invalid `DATABASES_*` key | `'<key>' is not a valid database setting. Use DATABASES_<NAME>_PROVIDER or DATABASES_<NAME>_CONNECTION_STRING, where <NAME> has only letters and digits.` |
 | Bad `APP_URL` | `APP_URL must be a valid absolute URL. Got '<x>'.` |
 | No S3 storage, outside Development | `File storage is not configured: outside Development uploaded media is stored in S3-compatible object storage. Set STORAGE_S3_BUCKET, STORAGE_S3_ACCESS_KEY_ID and STORAGE_S3_SECRET_ACCESS_KEY, plus STORAGE_S3_SERVICE_URL (Cloudflare R2, MinIO, Supabase) or STORAGE_S3_REGION (AWS S3).` |
 | Invalid service URL | `STORAGE_S3_SERVICE_URL must be an absolute URL. Got '<x>'.` |
@@ -197,7 +196,7 @@ The setup-wizard part of the same specification is in [installation → Planned]
 ### Acceptance criteria
 
 - [x] `.env.example` contains `DATABASE_PROVIDER`, `DATABASE_CONNECTION_STRING`, `APP_NAME` and `APP_URL` (plus
-  `DATABASE_NAME`, the `STORAGE_S3_*` keys and an example for each database).
+  the `STORAGE_S3_*` keys and an example for each database).
 - [x] Copying `.env.example` to `.env` with default values starts the app on SQLite in Development
   (`SqliteDatabaseProvider.Normalize`; outside Development an absolute path is required by design).
 - [x] `DATABASE_PROVIDER=postgresql` with a valid `DATABASE_CONNECTION_STRING` starts against PostgreSQL

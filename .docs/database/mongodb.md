@@ -10,7 +10,8 @@ The integration suite passes on MongoDB 8.0 exactly as on the SQL databases.
     provider wraps those saves in a transaction.
   - A standalone server rejects transactions, so multi-document saves fail.
   - For development, a single-node replica set is enough: `docker compose -f docker/compose.dev.yml --profile mongodb up -d`.
-- **A database name**, in the URL path (`mongodb://host:27017/dotnetforge`) or in `DATABASE_NAME`.
+- **A database name in the URL path** (`mongodb://host:27017/dotnetforge`). MongoDB also authenticates against
+  that database, so add `authSource=admin` for a user created in `admin` (such as the root user of the Docker image).
 
 ```env
 DATABASE_PROVIDER=mongodb

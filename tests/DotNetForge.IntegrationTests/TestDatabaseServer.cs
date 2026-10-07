@@ -1,3 +1,5 @@
+using MongoDB.Driver;
+
 namespace DotNetForge.IntegrationTests;
 
 /// <summary>
@@ -14,29 +16,29 @@ namespace DotNetForge.IntegrationTests;
 /// </example>
 public static class TestDatabaseServer
 {
-    public static (string Provider, string ConnectionString, string? DatabaseName) For(string workDir, string database)
+    public static (string Provider, string ConnectionString) For(string workDir, string database)
     {
         if (Get("DNF_TEST_POSTGRES") is { } postgres)
         {
-            return ("postgresql", $"{postgres.TrimEnd(';')};Database={database}", null);
+            return ("postgresql", $"{postgres.TrimEnd(';')};Database={database}");
         }
 
         if (Get("DNF_TEST_SQLSERVER") is { } sqlServer)
         {
-            return ("sqlserver", $"{sqlServer.TrimEnd(';')};Initial Catalog={database}", null);
+            return ("sqlserver", $"{sqlServer.TrimEnd(';')};Initial Catalog={database}");
         }
 
         if (Get("DNF_TEST_MYSQL") is { } mySql)
         {
-            return ("mysql", $"{mySql.TrimEnd(';')};Database={database}", null);
+            return ("mysql", $"{mySql.TrimEnd(';')};Database={database}");
         }
 
         if (Get("DNF_TEST_MONGODB") is { } mongo)
         {
-            return ("mongodb", mongo, database);
+            return ("mongodb", new MongoUrlBuilder(mongo) { DatabaseName = database }.ToString());
         }
 
-        return ("sqlite", $"Data Source={Path.Combine(workDir, "cms.db")}", null);
+        return ("sqlite", $"Data Source={Path.Combine(workDir, "cms.db")}");
     }
 
     private static string? Get(string name) =>

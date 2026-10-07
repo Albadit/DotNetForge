@@ -56,12 +56,11 @@ public sealed class EnvConfigurationTests
     public void Main_database_settings_are_read_as_written()
     {
         var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
-            "DATABASE_PROVIDER=mongodb\nDATABASE_CONNECTION_STRING=mongodb://db:27017/?replicaSet=rs0\nDATABASE_NAME=cms\n");
+            "DATABASE_PROVIDER=mongodb\nDATABASE_CONNECTION_STRING=mongodb://db:27017/cms?replicaSet=rs0\n");
 
         Assert.Equal("main", env.Database.Name);
         Assert.Equal("mongodb", env.Database.Provider);
-        Assert.Equal("mongodb://db:27017/?replicaSet=rs0", env.Database.ConnectionString);
-        Assert.Equal("cms", env.Database.DatabaseName);
+        Assert.Equal("mongodb://db:27017/cms?replicaSet=rs0", env.Database.ConnectionString);
         Assert.Empty(env.AdditionalDatabases);
     }
 
@@ -79,14 +78,14 @@ public sealed class EnvConfigurationTests
     {
         var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
             "DATABASES_REPORTS_PROVIDER=postgresql\nDATABASES_REPORTS_CONNECTION_STRING=Host=r;Database=reports\n" +
-            "DATABASES_EVENTS_CONNECTION_STRING=mongodb://e:27017/events\nDATABASES_EVENTS_NAME=events\n");
+            "DATABASES_EVENTS_CONNECTION_STRING=mongodb://e:27017/events\n");
 
         Assert.Collection(env.AdditionalDatabases.OrderBy(d => d.Name),
             events =>
             {
                 Assert.Equal("events", events.Name);
                 Assert.Null(events.Provider);
-                Assert.Equal("events", events.DatabaseName);
+                Assert.Equal("mongodb://e:27017/events", events.ConnectionString);
             },
             reports =>
             {
@@ -99,6 +98,7 @@ public sealed class EnvConfigurationTests
     [Theory]
     [InlineData("DATABASES_MAIN_PROVIDER=sqlite\n", "reserved")]
     [InlineData("DATABASES_REPORTS_PORT=5432\n", "not a valid database setting")]
+    [InlineData("DATABASES_EVENTS_NAME=events\n", "not a valid database setting")]
     [InlineData("DATABASES__PROVIDER=sqlite\n", "not a valid database setting")]
     public void Invalid_named_database_keys_throw(string envFile, string expected)
     {
