@@ -171,7 +171,7 @@ branding reflect the active tenant only.
 
 | Field | Required | Shown on | Cleared → |
 | --- | --- | --- | --- |
-| Admin menu logo | no | admin sidebar/header (today the text "DotNetForge" in `_AdminLayout` `.admin-logo`) | built-in default |
+| Admin menu logo | no | admin sidebar/header (today `wwwroot/img/logo-dark.svg` in `_AdminLayout` `.admin-logo`) | built-in default |
 | Authentication/login logo | no | sign-in and setup screens (`_AuthLayout`, today the app name) | built-in default |
 
 Stored through the media subsystem (✔ uploads exist - `MediaService` + `IFileStorage`,

@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="src/DotNetForge.Web/wwwroot/img/logo-dark.svg" />
+    <img src="src/DotNetForge.Web/wwwroot/img/logo.svg" alt="DotNetForge" height="64" />
+  </picture>
+</p>
+
 # DotNetForge CMS
 
 A modular, secure, lightweight **hybrid CMS** built on **ASP.NET Core MVC** (C#, EF Core, Razor),

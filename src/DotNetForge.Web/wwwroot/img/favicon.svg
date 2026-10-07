@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DotNetForge">
+  <rect width="64" height="64" rx="8" fill="#14171c"/>
+  <path fill="#ffffff" d="M14 18 L18 14 H24 V50 H14 Z"/>
+  <path fill="#ffffff" d="M27 14 H51 L46.5 23 H27 Z"/>
+  <path fill="#f76707" d="M27 27 H43 L38.5 36 H27 Z"/>
+</svg>

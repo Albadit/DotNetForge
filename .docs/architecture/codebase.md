@@ -117,7 +117,7 @@ DotNetForge/                         repository root
 │   │   │   ├── Models/AdminViewModels.cs  every admin view model
 │   │   │   └── Views/               admin Razor views, _AdminLayout, _Sidebar
 │   │   ├── Views/                   public, auth and setup Razor views + _Layout/_AuthLayout
-│   │   ├── wwwroot/                 static CSS/JS served by UseStaticFiles
+│   │   ├── wwwroot/                 static CSS/JS/images served by UseStaticFiles
 │   │   ├── Properties/launchSettings.json  http / https profiles
 │   │   └── appsettings*.json        logging levels and AllowedHosts
 │   ├── DotNetForge.Abstractions/    contracts only (no implementation, no dependencies)
@@ -236,6 +236,7 @@ form binds `PageInput` from `Shared/Content`. See [pages.md](pages.md) for the s
 | `src/DotNetForge.Web/wwwroot/css/page.css` | `src/DotNetForge.Web/Views/Home/Page.cshtml` (public content page) |
 | `src/DotNetForge.Web/wwwroot/js/site.js` | `_AdminLayout` (`defer`) - handles `data-confirm` on forms |
 | `src/DotNetForge.Web/wwwroot/js/admin-content.js` | Content Manager only |
+| `src/DotNetForge.Web/wwwroot/img/` | `favicon.svg` (`_AdminLayout`, `_AuthLayout`), `logo-dark.svg` (admin sidebar); `logo.svg` (light backgrounds, README) and `logo-mark.svg` (icon only) |
 
 No view contains inline `<script>`, `<style>`, `style=` or `on*=` handlers: the CSP (`script-src 'self'; style-src
 'self'`) would block them.

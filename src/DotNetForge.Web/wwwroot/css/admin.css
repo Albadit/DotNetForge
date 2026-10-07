@@ -9,7 +9,8 @@
     top: 0;
     overflow-y: auto;
 }
-.admin-logo { font-weight: 700; color: #fff; font-size: 1.15rem; padding: 0.25rem 0.5rem 0.75rem; }
+.admin-logo { padding: 0.25rem 0.5rem 0.75rem; }
+.admin-logo img { display: block; height: 40px; width: auto; }
 .tenant-switcher {
     background: #1b2230; border: 1px solid #2a3346; border-radius: 8px; padding: 0.5rem 0.6rem;
     margin: 0 0.25rem 1rem; display: flex; flex-direction: column;
