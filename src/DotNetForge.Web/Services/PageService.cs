@@ -12,7 +12,7 @@ namespace DotNetForge.Web.Services;
 /// <c>Published</c> is the author's intent; whether a page is actually live is derived from its schedule at render
 /// time (see <c>HomeController</c>), so this never toggles it.
 /// </summary>
-public sealed class PageService : IPageService
+public sealed partial class PageService : IPageService
 {
     private readonly DotNetForgeDbContext _db;
 
@@ -87,6 +87,18 @@ public sealed class PageService : IPageService
             return "File reference is required for a File page.";
         }
 
+        var socialImage = Trimmed(input.SocialImageUrl);
+        if (socialImage is not null && !IsImageUrl(socialImage))
+        {
+            return "The social image must be an https:// address or a path on this site (like /media/…).";
+        }
+
+        var themeId = Trimmed(input.ThemeId);
+        if (themeId is not null && !ThemeIdPattern().IsMatch(themeId))
+        {
+            return "Unknown theme.";
+        }
+
         page.Title = input.Title.Trim();
         page.Slug = slug;
         page.MetaTitle = Trimmed(input.MetaTitle);
@@ -94,7 +106,7 @@ public sealed class PageService : IPageService
         page.SeoKeywords = Trimmed(input.SeoKeywords);
         page.CanonicalUrl = Trimmed(input.CanonicalUrl);
         page.Published = input.Published;
-        page.Disabled = input.Disabled;
+        page.Disabled = false; // Published is the only switch; clears the legacy flag.
         page.DisplayInMenu = input.DisplayInMenu;
         page.ParentPageId = input.ParentPageId;
         page.SortOrder = input.SortOrder;
@@ -103,8 +115,20 @@ public sealed class PageService : IPageService
         page.FileReference = Trimmed(input.FileReference);
         page.ScheduledPublishDate = ToUtc(input.ScheduledPublishDate);
         page.ScheduledUnpublishDate = ToUtc(input.ScheduledUnpublishDate);
+        page.NoIndex = input.NoIndex;
+        page.SocialImageUrl = socialImage;
+        page.ThemeId = themeId;
         return null;
     }
+
+    /// <summary>An absolute http(s) URL or a site path (not protocol-relative "//"), without spaces or quotes.</summary>
+    private static bool IsImageUrl(string value) =>
+        value.IndexOfAny(new[] { ' ', '"', '\'', '<', '>', '\\' }) < 0 &&
+        ((value.StartsWith('/') && !value.StartsWith("//", StringComparison.Ordinal)) ||
+         (Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)));
+
+    [System.Text.RegularExpressions.GeneratedRegex("^[a-z0-9][a-z0-9._-]{0,99}$")]
+    private static partial System.Text.RegularExpressions.Regex ThemeIdPattern();
 
     public async Task<string?> ReorderAsync(IReadOnlyList<PagePosition> positions, Guid tenantId, CancellationToken ct = default)
     {
@@ -294,7 +318,7 @@ public sealed class PageService : IPageService
             ("Title", input.Title, 300), ("Slug", input.Slug, 200), ("Meta title", input.MetaTitle, 300),
             ("Meta description", input.MetaDescription, 1000), ("Keywords", input.SeoKeywords, 500),
             ("Canonical URL", input.CanonicalUrl, 2000), ("Target URL", input.TargetUrl, 2000),
-            ("File reference", input.FileReference, 2000),
+            ("File reference", input.FileReference, 2000), ("Social image", input.SocialImageUrl, 2000), ("Theme", input.ThemeId, 100),
         };
 
         foreach (var (label, value, max) in fields)

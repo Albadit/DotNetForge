@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using DotNetForge.Api.Authentication;
 using DotNetForge.Data;
+using DotNetForge.Sdk;
 using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Entities;
 
@@ -9,17 +10,20 @@ namespace DotNetForge.Web.Services;
 /// <summary>
 /// Writes append-only audit entries (.docs/features/audit-logging.md), capturing the acting user or API token, the
 /// tenant, client IP and user agent from the current request. Display snapshots keep entries meaningful after a
-/// user/entity is later deleted or renamed.
+/// user/entity is later deleted or renamed. Saved entries are then queued for extension handlers
+/// (<see cref="AuditEventDispatcher"/>).
 /// </summary>
 public sealed class AuditService : IAuditService
 {
     private readonly DotNetForgeDbContext _db;
     private readonly IHttpContextAccessor _http;
+    private readonly AuditEventDispatcher _dispatcher;
 
-    public AuditService(DotNetForgeDbContext db, IHttpContextAccessor http)
+    public AuditService(DotNetForgeDbContext db, IHttpContextAccessor http, AuditEventDispatcher dispatcher)
     {
         _db = db;
         _http = http;
+        _dispatcher = dispatcher;
     }
 
     public async Task LogAsync(
@@ -62,6 +66,9 @@ public sealed class AuditService : IAuditService
 
         _db.AuditLogs.Add(entry);
         await _db.SaveChangesAsync(cancellationToken);
+
+        _dispatcher.Publish(new AuditEvent(entry.Action, entry.EntityType, entry.EntityId, entry.EntityDisplaySnapshot,
+            entry.Details, entry.Success, entry.TenantId, entry.UserDisplaySnapshot, entry.IpAddress, entry.Timestamp));
     }
 
     /// <summary>

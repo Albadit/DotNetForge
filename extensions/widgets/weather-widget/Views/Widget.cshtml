@@ -1,0 +1,18 @@
+@*
+    Weather widget: rendered by the host inside a panel on the admin dashboard (the panel title is the manifest name).
+    Uses the admin design system classes (stat-value, text-muted), so it needs no stylesheet. No inline script or style (CSP).
+*@
+@inject WeatherWidget.WeatherService Weather
+@{
+    var report = await Weather.GetCurrentAsync(Context.RequestAborted);
+}
+@if (report is null)
+{
+    <p class="text-muted text-sm">Weather for @Weather.Options.City is unavailable right now.</p>
+}
+else
+{
+    <div class="stat-value">@report.Temperature.ToString("0.#") @report.TemperatureUnit</div>
+    <p>@report.Summary in <strong>@report.City</strong> · wind @report.Wind.ToString("0") @report.WindUnit</p>
+    <p class="text-muted text-sm">Observed @report.ObservedLocal.ToString("HH:mm") local time · Open-Meteo</p>
+}

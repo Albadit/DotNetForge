@@ -1,30 +1,71 @@
 @{
     var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
+    var title = ViewData["Title"] as string;
+    var description = ViewData["MetaDescription"] as string;
+    var canonical = ViewData["CanonicalUrl"] as string;
+    var noIndex = ViewData["NoIndex"] as bool? == true;
+    var socialImage = ViewData["SocialImage"] as string;
+    var fullWidth = ViewData["FullWidth"] as bool? == true;
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@(ViewData["Title"] != null ? ViewData["Title"] + " · " : "")@appName</title>
-    <link rel="stylesheet" href="~/css/site.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>@(string.IsNullOrEmpty(title) ? appName : $"{title} · {appName}")</title>
+    @if (!string.IsNullOrWhiteSpace(description))
+    {
+        <meta name="description" content="@description" />
+    }
+    @if (!string.IsNullOrWhiteSpace(canonical))
+    {
+        <link rel="canonical" href="@canonical" />
+    }
+    @if (noIndex)
+    {
+        <meta name="robots" content="noindex" />
+    }
+    @if (!string.IsNullOrWhiteSpace(title))
+    {
+        <meta property="og:title" content="@title" />
+    }
+    @if (!string.IsNullOrWhiteSpace(description))
+    {
+        <meta property="og:description" content="@description" />
+    }
+    @if (!string.IsNullOrWhiteSpace(socialImage))
+    {
+        <meta property="og:image" content="@(socialImage.StartsWith('/') ? $"{Context.Request.Scheme}://{Context.Request.Host}{socialImage}" : socialImage)" />
+    }
+    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
+    <script src="~/js/forge/theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/css/forge/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/public.css" asp-append-version="true" />
 </head>
+@*
+    The built-in public layout (.docs/architecture/design-system.md#public-fallback): used for the site root, content
+    pages and the error page while no theme extension is enabled. An enabled theme replaces these views entirely.
+*@
 <body class="public">
-    <header class="public-header">
-        <div class="container">
-            <a class="brand" href="/">@appName</a>
-            <nav>
-                <a href="/admin">Admin</a>
-            </nav>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <div class="site-wrap">
+            <a class="site-brand" href="/">
+                <img src="~/img/logo-mark.svg" alt="" width="28" height="28" />
+                <span>@appName</span>
+            </a>
+            <a class="btn btn-sm" href="/admin">Admin <icon name="arrow-right" size="sm" /></a>
         </div>
     </header>
-    <main class="container">
+    @* A page builder layout spans the full width (its sections set their own content width). *@
+    <main id="main" class="@(fullWidth ? "site-main-full" : "site-wrap site-main")" tabindex="-1">
         @RenderBody()
     </main>
-    <footer class="public-footer">
-        <div class="container">
-            <span>Powered by DotNetForge CMS · built on ASP.NET Core MVC (.NET 10)</span>
-        </div>
+    <footer class="site-footer">
+        <div class="site-wrap">Powered by DotNetForge CMS</div>
     </footer>
 </body>
 </html>

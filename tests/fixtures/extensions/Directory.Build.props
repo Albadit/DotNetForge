@@ -1,0 +1,6 @@
+<Project>
+
+  <!-- Test fixture extensions build exactly like real ones (extensions/Directory.Build.props). -->
+  <Import Project="../../../extensions/Directory.Build.props" />
+
+</Project>

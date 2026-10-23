@@ -1,0 +1,166 @@
+{
+  "name": "random-45",
+  "input": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "container",
+        "parent": "n0",
+        "props": {
+          "tag": "article",
+          "href": "/a"
+        },
+        "children": [],
+        "layout": {
+          "base": {
+            "align": "start",
+            "rowMode": "fixed",
+            "colGap": 340,
+            "colSizes": [
+              "bad",
+              "1fr"
+            ],
+            "rows": 2,
+            "rowSizes": [
+              "0.333fr",
+              "1fr",
+              "1fr",
+              "0.333fr",
+              "1fr"
+            ]
+          },
+          "desktop": {
+            "mode": "free",
+            "gap": 322,
+            "align": "stretch",
+            "justify": "start",
+            "wrap": false,
+            "rowHeight": 246,
+            "rowMode": "fixed",
+            "rowGap": 290,
+            "compact": true,
+            "rowSizes": [
+              "120px",
+              "120px",
+              "0fr",
+              "0fr",
+              "0.333fr"
+            ],
+            "height": 197
+          }
+        },
+        "place": {
+          "desktop": {
+            "col": 14,
+            "colSpan": 7,
+            "rowSpan": 8,
+            "x": 516,
+            "y": 209,
+            "w": 129,
+            "h": 370
+          }
+        },
+        "style": {
+          "base": {
+            "maxWidth": 230,
+            "maxHeight": 248.856,
+            "aspectRatio": 1.809,
+            "borderColor": "blue",
+            "opacity": 0
+          }
+        },
+        "className": "ok-class",
+        "vars": {
+          "--a": "1px",
+          "--b": "x;y",
+          "bad": "1"
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 500,
+        "mobile": 600
+      }
+    }
+  },
+  "normalized": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "container",
+        "parent": "n0",
+        "props": {
+          "tag": "article",
+          "href": "/a"
+        },
+        "children": [],
+        "layout": {
+          "base": {
+            "align": "start",
+            "rowMode": "fixed",
+            "colGap": 340,
+            "colSizes": [
+              "1fr",
+              "1fr"
+            ],
+            "rows": 2,
+            "rowSizes": [
+              "0.33fr",
+              "1fr",
+              "1fr",
+              "0.33fr",
+              "1fr"
+            ]
+          }
+        },
+        "style": {
+          "base": {
+            "maxWidth": 230,
+            "maxHeight": 248.86,
+            "aspectRatio": 1.81,
+            "opacity": 0
+          }
+        },
+        "className": "ok-class",
+        "vars": {
+          "--a": "1px"
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 1024,
+        "mobile": 640
+      }
+    }
+  },
+  "error": false,
+  "context": {
+    "mode": "canvas"
+  },
+  "html": "<div class=\"pe-root pe-node pe-t-page pe-n-n0\" data-pe-id=\"n0\"><a class=\"pe-node pe-t-container pe-n-n1 ok-class\" href=\"/a\" data-pe-id=\"n1\"></a></div>",
+  "css": ".pe-root.pe-n-n0{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap}\n.pe-root a.pe-n-n1{display:flex;flex-direction:column;gap:16px;align-items:flex-start;justify-content:flex-start;flex-wrap:nowrap;max-width:230px;max-height:248.86px;aspect-ratio:1.81;opacity:0;--a:1px}\n@media (min-width:1024px){.pe-root .pe-hide-d{display:none!important}}\n@media (min-width:640px) and (max-width:1023.98px){.pe-root .pe-hide-t{display:none!important}}\n@media (max-width:639.98px){.pe-root .pe-hide-m{display:none!important}}"
+}

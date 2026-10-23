@@ -4,35 +4,43 @@
     Layout = "_AuthLayout";
 }
 
-<h2>Welcome - let's get set up</h2>
-<p class="muted">Create the first administrator. This account becomes the <strong>Super Admin</strong>.</p>
+<div class="auth-heading">
+    <h1>Welcome to DotNetForge</h1>
+    <p class="text-muted">Create the first administrator. This account becomes the <strong>Super Admin</strong>, with full access to every setting.</p>
+</div>
 
-<div asp-validation-summary="All" class="validation-summary"></div>
-
-<form method="post" asp-controller="Setup" asp-action="Index">
+<form method="post" asp-controller="Setup" asp-action="Index" class="form">
     @Html.AntiForgeryToken()
-    <div class="form-row two">
-        <div>
-            <label asp-for="FirstName">First name</label>
+    <form-errors />
+    <div class="form-grid">
+        <div class="field">
+            <label class="field-label" asp-for="FirstName">First name<span class="field-optional">optional</span></label>
             <input asp-for="FirstName" autocomplete="given-name" />
         </div>
-        <div>
-            <label asp-for="LastName">Last name</label>
+        <div class="field">
+            <label class="field-label" asp-for="LastName">Last name<span class="field-optional">optional</span></label>
             <input asp-for="LastName" autocomplete="family-name" />
         </div>
     </div>
-    <div class="form-row">
-        <label asp-for="Email">Email <span class="req">*</span></label>
+    <div class="field">
+        <label class="field-label" asp-for="Email">Email<span class="field-required" aria-hidden="true">*</span></label>
         <input asp-for="Email" type="email" required autocomplete="username" />
     </div>
-    <div class="form-row">
-        <label asp-for="Password">Password <span class="req">*</span></label>
-        <input asp-for="Password" type="password" required autocomplete="new-password" />
-        <small class="muted">At least 8 characters, including a letter and a number.</small>
+    <div class="field">
+        <label class="field-label" asp-for="Password">Password<span class="field-required" aria-hidden="true">*</span></label>
+        <div class="input-affix">
+            <input asp-for="Password" type="password" required autocomplete="new-password" aria-describedby="password-hint" />
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-reveal="#Password" aria-pressed="false"
+                    aria-label="Show password" data-js-only hidden>
+                <icon name="eye" data-reveal-icon="show" />
+                <icon name="eye-off" data-reveal-icon="hide" hidden />
+            </button>
+        </div>
+        <span class="field-hint" id="password-hint">At least 8 characters, including a letter and a number.</span>
     </div>
-    <div class="form-row">
-        <label asp-for="ConfirmPassword">Confirm password <span class="req">*</span></label>
+    <div class="field">
+        <label class="field-label" asp-for="ConfirmPassword">Confirm password<span class="field-required" aria-hidden="true">*</span></label>
         <input asp-for="ConfirmPassword" type="password" required autocomplete="new-password" />
     </div>
-    <button type="submit" class="btn primary">Create admin &amp; install</button>
+    <button type="submit" class="btn btn-primary btn-lg btn-block">Create admin and install</button>
 </form>

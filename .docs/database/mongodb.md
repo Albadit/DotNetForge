@@ -86,7 +86,7 @@ CMS code therefore follows one rule on every provider: **one collection per quer
 - the role list counts users with a second query on `UserRoles`;
 - sign-in reads role IDs, then role names.
 
-See `src/DotNetForge.Web/Areas/Admin/Controllers/AdminListControllers.cs` and
+See `src/DotNetForge.Web/Areas/Admin/Controllers/RolesController.cs`, `UsersController.cs` and
 `src/DotNetForge.Web/Services/AuthService.cs`. `GroupBy` over results already in memory is fine.
 
 ## Operations

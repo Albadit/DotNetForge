@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Provider extension: an SMS sender plus an audit event handler that uses it. -->
+
+</Project>

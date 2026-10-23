@@ -1,0 +1,175 @@
+@using DotNetForge.Shared.Authorization
+@using DotNetForge.Web.Services
+@model RolesController.RoleFormModel
+@{
+    var creating = Model.Id is null;
+    var input = Model.Input;
+    ViewData["PageWidth"] = creating ? "narrow" : "medium";
+    ViewData["Title"] = creating ? "Create role" : input.Name;
+    ViewData["Description"] = creating
+        ? "Name the role and choose what it may do. Then give it to users on the Users screen."
+        : Model.IsBuiltIn ? "Built-in role: its name is fixed and it can't be deleted." : "Custom role.";
+    var grantsLocked = Model.GrantsReadOnlyReason is not null;
+}
+
+@section Actions {
+    @if (!creating && Model.CanDuplicate)
+    {
+        <form method="post" action="/admin/roles/@Model.Id/duplicate">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-secondary"><icon name="copy" /> Duplicate</button>
+        </form>
+    }
+}
+
+<div class="editor">
+    <form method="post" action="@(creating ? "/admin/roles/create" : $"/admin/roles/{Model.Id}")" class="editor-main" novalidate>
+        @Html.AntiForgeryToken()
+        <form-errors />
+
+        <fieldset class="stack-lg" disabled="@(Model.CanSave ? null : "disabled")">
+            <section class="card" aria-labelledby="details-title">
+                <div class="card-header">
+                    <div class="editor-title">
+                        <h2 class="card-title" id="details-title">Details</h2>
+                        @if (Model.IsBuiltIn)
+                        {
+                            <badge tone="Accent"><icon name="lock" size="sm" /> Built-in</badge>
+                        }
+                    </div>
+                </div>
+                <div class="card-body form">
+                    <div class="field">
+                        <label class="field-label" for="Name">Name<span class="field-required" aria-hidden="true">*</span></label>
+                        @if (Model.NameEditable || creating)
+                        {
+                            <input id="Name" name="Name" value="@input.Name" required maxlength="@RoleManagementService.MaxNameLength"
+                                   placeholder="Content reviewer" autocomplete="off" />
+                        }
+                        else
+                        {
+                            <input id="Name" value="@input.Name" readonly aria-describedby="name-hint" />
+                            <span class="field-hint" id="name-hint">Built-in role names are fixed.</span>
+                        }
+                    </div>
+                    <div class="field">
+                        <label class="field-label" for="Description">Description<span class="field-optional">optional</span></label>
+                        <textarea id="Description" name="Description" rows="2" maxlength="@RoleManagementService.MaxDescriptionLength"
+                                  placeholder="Who gets this role and why?">@input.Description</textarea>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="permissions-title">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" id="permissions-title">Permissions</h2>
+                        <p class="card-description">
+                            @(Model.GrantsReadOnlyReason ?? "Users with this role may do what is ticked here. \"Own\" actions apply to records the user created. Changes apply immediately.")
+                        </p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (grantsLocked && Model.CanSave)
+                    {
+                        @* Disabled checkboxes aren't posted: send the current grants so saving the details leaves them unchanged. *@
+                        foreach (var key in Model.Grants)
+                        {
+                            <input type="hidden" name="Grants" value="@key" />
+                        }
+                    }
+                    <div class="permission-groups">
+                        @foreach (var area in PermissionCatalog.Areas)
+                        {
+                            var group = "role-" + area.Area.Replace(' ', '-').ToLowerInvariant();
+                            <fieldset class="fieldset permission-group" disabled="@(grantsLocked ? "disabled" : null)">
+                                <legend class="permission-group-head"><span>@area.Label</span></legend>
+                                <p class="permission-group-desc">@area.Description</p>
+                                @if (!grantsLocked)
+                                {
+                                    <label class="check text-sm text-muted" data-js-only hidden>
+                                        <input type="checkbox" data-check-group="@group" /> All
+                                    </label>
+                                }
+                                @foreach (var action in area.Actions)
+                                {
+                                    var key = PermissionCatalog.Key(area.Area, action);
+                                    <label class="check">
+                                        <input type="checkbox" name="Grants" value="@key" data-check-member="@group"
+                                               checked="@(Model.Grants.Contains(key) ? "checked" : null)" />
+                                        @PermissionCatalog.ActionLabel(action)
+                                    </label>
+                                }
+                            </fieldset>
+                        }
+                    </div>
+                </div>
+                @if (Model.CanSave)
+                {
+                    <div class="card-footer">
+                        <a class="btn btn-ghost" href="/admin/roles">Cancel</a>
+                        <button type="submit" class="btn btn-primary"><icon name="@(creating ? "plus" : "check")" /> @(creating ? "Create role" : "Save changes")</button>
+                    </div>
+                }
+            </section>
+        </fieldset>
+    </form>
+
+    @if (!creating)
+    {
+        <aside class="editor-aside">
+            <section class="card" aria-labelledby="members-title">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" id="members-title">Users with this role</h2>
+                        <p class="card-description">@Model.Members.Count @(Model.Members.Count == 1 ? "user" : "users")</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (Model.Members.Count == 0)
+                    {
+                        <p class="text-sm text-muted">Nobody has this role yet. Assign it when you create or edit a user.</p>
+                    }
+                    else
+                    {
+                        <ul class="member-list">
+                            @foreach (var member in Model.Members)
+                            {
+                                <li>
+                                    <a href="/admin/users/@member.Id">@(string.IsNullOrWhiteSpace(member.Name) ? member.Email : member.Name)</a>
+                                    @if (!string.IsNullOrWhiteSpace(member.Name))
+                                    {
+                                        <span class="cell-sub">@member.Email</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </section>
+
+            @if (Model.CanDelete)
+            {
+                <section class="card card-danger" aria-labelledby="danger-title">
+                    <div class="card-header"><h2 class="card-title" id="danger-title">Delete role</h2></div>
+                    <div class="card-body stack-sm">
+                        @if (Model.Members.Count > 0)
+                        {
+                            <p class="text-sm text-muted">Give the users above another role first; a role in use can't be deleted.</p>
+                        }
+                        else
+                        {
+                            <p class="text-sm text-muted">Removes the role and its permissions.</p>
+                            <form method="post" action="/admin/roles/@Model.Id/delete"
+                                  data-confirm="Delete the role '@input.Name'? This can't be undone."
+                                  data-confirm-title="Delete role" data-confirm-action="Delete role">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-danger-soft btn-sm"><icon name="trash" /> Delete role</button>
+                            </form>
+                        }
+                    </div>
+                </section>
+            }
+        </aside>
+    }
+</div>

@@ -3,105 +3,398 @@
     var selectedId = ViewData["SelectedId"] as Guid?;
     var parentOptions = ViewData["ParentOptions"] as IReadOnlyList<(Guid Id, string Label)>
         ?? Array.Empty<(Guid, string)>();
+    var extras = ViewData["Extras"] as PageEditorExtras ?? new PageEditorExtras();
+    var initialTab = ViewData["Tab"] as string ?? "page";
+    var (tone, status) = Model.Published ? (Tone.Success, "Published") : (Tone.Danger, "Disabled");
+    var tabs = new[] { ("page", "Page settings", "settings"), ("seo", "SEO", "search"), ("theme", "Theme", "palette"), ("permissions", "Permissions", "shield"), ("layout", "Layout", "layers") };
+    var builderUrl = $"/admin/content/{selectedId}/builder";
 }
 
+@*
+    The page editor (.docs/pages/content-manager.md#page-editor): one form in tabs - Page settings, SEO, Theme,
+    Permissions and Layout - with publishing (and the Save button) in a sticky side column. Without JavaScript every
+    tab's panel is shown one below the other; ui.js turns them into tabs (data-tabs) and remembers the tab in the URL.
+*@
 <form method="post" asp-area="Admin" asp-controller="Content" asp-action="Update" asp-route-id="@selectedId"
-      class="form-narrow page-form" id="pageForm">
+      class="editor" id="pageForm" novalidate>
     @Html.AntiForgeryToken()
-    <div asp-validation-summary="All" class="validation-summary"></div>
+    <input type="hidden" name="tab" value="@initialTab" data-tab-field />
+    <div class="editor-main">
+        <form-errors />
 
-    <div class="form-row">
-        <label asp-for="Title">Title <span class="req">*</span></label>
-        <input asp-for="Title" required />
-    </div>
-    <div class="form-row">
-        <label asp-for="Slug">Slug <span class="req">*</span></label>
-        <input asp-for="Slug" />
-        <span class="muted hint">Use <code>/</code> for the site root, or <code>[id]</code> for a dynamic segment.</span>
-    </div>
-
-    <div class="form-row">
-        <label asp-for="PageType">Page type</label>
-        <select asp-for="PageType" id="PageType">
-            <option value="Standard">Standard</option>
-            <option value="ExistingPage">Existing page</option>
-            <option value="UrlRedirect">URL redirect</option>
-            <option value="File">File</option>
-        </select>
-    </div>
-    <div class="form-row cond" data-when-type="UrlRedirect">
-        <label asp-for="TargetUrl">Target URL</label>
-        <input asp-for="TargetUrl" />
-    </div>
-    <div class="form-row cond" data-when-type="File">
-        <label asp-for="FileReference">File reference</label>
-        <input asp-for="FileReference" />
-    </div>
-
-    <div class="form-row two">
-        <div>
-            <label asp-for="ParentPageId">Parent</label>
-            <select asp-for="ParentPageId">
-                <option value="">(root)</option>
-                @foreach (var opt in parentOptions)
+        <section class="card page-editor" aria-labelledby="general-title" data-tabs data-initial-tab="@initialTab">
+            <div class="card-header">
+                <div class="editor-title">
+                    <h2 class="card-title" id="general-title">@(string.IsNullOrWhiteSpace(Model.Title) ? "Untitled page" : Model.Title)</h2>
+                    <badge tone="@tone" dot="true">@status</badge>
+                    @if (extras.HasLayout)
+                    {
+                        <badge tone="Accent"><icon name="layers" size="sm" /> Layout</badge>
+                    }
+                </div>
+            </div>
+            <div class="tabs page-editor-tabs" role="tablist" aria-label="Page sections" data-js-only hidden>
+                @foreach (var (key, label, iconName) in tabs)
                 {
-                    <option value="@opt.Id">@opt.Label</option>
+                    <button type="button" class="tab" role="tab" id="tab-@key" aria-controls="panel-@key" data-tab="@key"
+                            aria-selected="@(key == initialTab ? "true" : "false")">
+                        <icon name="@iconName" size="sm" /> @label
+                    </button>
                 }
-            </select>
-        </div>
-        <div>
-            <label asp-for="SortOrder">Sort order</label>
-            <input asp-for="SortOrder" type="number" />
-        </div>
-    </div>
-
-    <h3>SEO</h3>
-    <div class="form-row">
-        <label asp-for="MetaTitle">Meta title</label>
-        <input asp-for="MetaTitle" />
-    </div>
-    <div class="form-row">
-        <label asp-for="SeoKeywords">Keywords</label>
-        <input asp-for="SeoKeywords" />
-    </div>
-    <div class="form-row">
-        <label asp-for="MetaDescription">Meta description</label>
-        <textarea asp-for="MetaDescription" rows="2"></textarea>
-    </div>
-    <div class="form-row">
-        <label asp-for="CanonicalUrl">Canonical URL</label>
-        <input asp-for="CanonicalUrl" />
-    </div>
-
-    <h3>Publishing</h3>
-    <label class="check"><input asp-for="Published" id="Published" /> Published</label>
-    <label class="check"><input asp-for="Disabled" id="Disabled" /> Disabled</label>
-
-    <div id="publishOpts">
-        <label class="check"><input asp-for="DisplayInMenu" /> Display in menu</label>
-        <div class="form-row two">
-            <div>
-                <label asp-for="ScheduledPublishDate">Scheduled publish (UTC)</label>
-                <input asp-for="ScheduledPublishDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
             </div>
-            <div>
-                <label asp-for="ScheduledUnpublishDate">Scheduled unpublish (UTC)</label>
-                <input asp-for="ScheduledUnpublishDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
+
+            @* ---------------------------------------------------------------- Page settings *@
+            <div class="card-body tab-panel" role="tabpanel" id="panel-page" aria-labelledby="tab-page" data-tab-panel="page">
+                <h3 class="tab-panel-title">Page settings</h3>
+                <div class="form-grid">
+                    <div class="field span-2">
+                        <label class="field-label" asp-for="Title">Title<span class="field-required" aria-hidden="true">*</span></label>
+                        <input asp-for="Title" required maxlength="300" />
+                    </div>
+                    <div class="field span-2">
+                        <label class="field-label" asp-for="Slug">Slug<span class="field-required" aria-hidden="true">*</span></label>
+                        <input asp-for="Slug" aria-describedby="slug-hint" class="text-mono" />
+                        <span class="field-hint" id="slug-hint">The URL segment. Use <code>/</code> for the site root, or <code>[id]</code> for a dynamic segment.</span>
+                    </div>
+                    <div class="field">
+                        <label class="field-label" asp-for="PageType">Page type</label>
+                        <select asp-for="PageType" id="PageType">
+                            <option value="Standard">Standard</option>
+                            <option value="ExistingPage">Existing page</option>
+                            <option value="UrlRedirect">URL redirect</option>
+                            <option value="File">File</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="field-label" asp-for="ParentPageId">Parent page</label>
+                        <select asp-for="ParentPageId">
+                            <option value="">None (top level)</option>
+                            @foreach (var opt in parentOptions)
+                            {
+                                <option value="@opt.Id">@opt.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field span-2" data-when-type="UrlRedirect">
+                        <label class="field-label" asp-for="TargetUrl">Target URL</label>
+                        <input asp-for="TargetUrl" type="url" placeholder="https://" />
+                    </div>
+                    <div class="field span-2" data-when-type="File">
+                        <label class="field-label" asp-for="FileReference">File reference</label>
+                        <input asp-for="FileReference" />
+                    </div>
+                    <div class="field">
+                        <label class="field-label" asp-for="SortOrder">Sort order</label>
+                        <input asp-for="SortOrder" type="number" min="0" aria-describedby="sort-hint" />
+                        <span class="field-hint" id="sort-hint">Position among its siblings. Dragging in the tree sets it too.</span>
+                    </div>
+                </div>
             </div>
-        </div>
-        <p class="muted hint">
-            Published is the author's intent. A future scheduled publish keeps the page hidden until that time;
-            a scheduled unpublish takes it offline then.
-        </p>
+
+            @* ---------------------------------------------------------------- SEO *@
+            <div class="card-body tab-panel" role="tabpanel" id="panel-seo" aria-labelledby="tab-seo" data-tab-panel="seo">
+                <h3 class="tab-panel-title">SEO</h3>
+                <p class="card-description">How the page appears in search results and when it is shared.</p>
+                <div class="search-preview" aria-hidden="true">
+                    <span class="search-preview-title">@(string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Title : Model.MetaTitle)</span>
+                    <span class="search-preview-url">@Context.Request.Host/@Model.Slug.TrimStart('/')</span>
+                    <span class="search-preview-text">@(string.IsNullOrWhiteSpace(Model.MetaDescription) ? "Add a meta description to control the text shown here." : Model.MetaDescription)</span>
+                </div>
+                <div class="form-grid">
+                    <div class="field span-2">
+                        <label class="field-label" asp-for="MetaTitle">Meta title<span class="field-optional">optional</span></label>
+                        <input asp-for="MetaTitle" maxlength="300" aria-describedby="meta-title-hint" />
+                        <span class="field-hint" id="meta-title-hint">Defaults to the page title. Around 50-60 characters show in search results.</span>
+                    </div>
+                    <div class="field span-2">
+                        <label class="field-label" asp-for="MetaDescription">Meta description<span class="field-optional">optional</span></label>
+                        <textarea asp-for="MetaDescription" rows="3" maxlength="1000" aria-describedby="meta-desc-hint"></textarea>
+                        <span class="field-hint" id="meta-desc-hint">About 150-160 characters show in search results.</span>
+                    </div>
+                    <div class="field">
+                        <label class="field-label" asp-for="SeoKeywords">Keywords<span class="field-optional">optional</span></label>
+                        <input asp-for="SeoKeywords" maxlength="500" placeholder="cms, dotnet" />
+                    </div>
+                    <div class="field">
+                        <label class="field-label" asp-for="CanonicalUrl">Canonical URL<span class="field-optional">optional</span></label>
+                        <input asp-for="CanonicalUrl" type="url" maxlength="2000" placeholder="https://" />
+                    </div>
+                    <div class="field span-2">
+                        <label class="field-label" asp-for="SocialImageUrl">Social image<span class="field-optional">optional</span></label>
+                        <input asp-for="SocialImageUrl" maxlength="2000" placeholder="/media/… or https://…" aria-describedby="social-hint" />
+                        <span class="field-hint" id="social-hint">Shown when the page is shared (Open Graph). Copy a public image's link from the Media screen.</span>
+                    </div>
+                    <label class="switch-row span-2">
+                        <span class="check-text"><span class="weight-semibold">Hide from search engines</span><span class="check-hint">Adds <code>noindex</code> and leaves the page out of sitemaps.</span></span>
+                        <input asp-for="NoIndex" class="switch" role="switch" />
+                    </label>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------------------- Theme *@
+            <div class="card-body tab-panel" role="tabpanel" id="panel-theme" aria-labelledby="tab-theme" data-tab-panel="theme">
+                <h3 class="tab-panel-title">Theme</h3>
+                <p class="card-description">The look of this page on the site. Themes are extensions; enable them on the Plugins screen.</p>
+                <fieldset class="choice-list" aria-label="Theme">
+                    <label class="check choice-row">
+                        <input type="radio" name="ThemeId" value="" checked="@(string.IsNullOrEmpty(Model.ThemeId) ? "checked" : null)" />
+                        <span class="check-text"><span class="weight-semibold">Site theme</span><span class="check-hint">Use whatever theme the site uses (recommended).</span></span>
+                    </label>
+                    @foreach (var theme in extras.Themes)
+                    {
+                        <label class="check choice-row">
+                            <input type="radio" name="ThemeId" value="@theme.Id" checked="@(theme.Id == Model.ThemeId ? "checked" : null)" />
+                            <span class="check-text">
+                                <span class="weight-semibold">
+                                    @theme.Name
+                                    @if (!theme.Enabled)
+                                    {
+                                        <badge tone="Warning">Not enabled</badge>
+                                    }
+                                </span>
+                                <span class="check-hint">@(theme.Enabled ? theme.Description ?? theme.Id : "Enable it on the Plugins screen; until then the site theme is used.")</span>
+                            </span>
+                        </label>
+                    }
+                </fieldset>
+                @if (extras.Themes.Count == 0)
+                {
+                    <p class="text-sm text-muted">No theme extensions are installed, so the built-in look is used.</p>
+                }
+            </div>
+
+            @* ---------------------------------------------------------------- Permissions *@
+            <div class="card-body tab-panel" role="tabpanel" id="panel-permissions" aria-labelledby="tab-permissions" data-tab-panel="permissions">
+                <h3 class="tab-panel-title">Permissions</h3>
+                <p class="card-description">
+                    <strong>View</strong>: with no box ticked, everyone can see the page. Tick roles to show it only to them
+                    (<em>Public</em> = everyone, <em>Authenticated</em> = any signed-in user); others are asked to sign in.
+                    <strong>Edit</strong>: extra roles that may edit this page in the admin.
+                </p>
+                @if (extras.CanManagePermissions)
+                {
+                    <input type="hidden" name="permissionsShown" value="true" />
+                }
+                else
+                {
+                    <alert tone="Info" title="View only">Changing page permissions needs permission to update every page.</alert>
+                }
+                <div class="table-wrap">
+                    <table class="table permission-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Role</th>
+                                <th scope="col" class="col-check-center">View</th>
+                                <th scope="col" class="col-check-center">Edit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var role in extras.Roles)
+                            {
+                                <tr>
+                                    <th scope="row" class="cell-primary">@role.Name</th>
+                                    <td class="col-check-center">
+                                        <input type="checkbox" name="viewRoles" value="@role.Id" aria-label="@role.Name can view"
+                                               checked="@(extras.ViewRoles.Contains(role.Id) ? "checked" : null)" disabled="@(extras.CanManagePermissions ? null : "disabled")" />
+                                    </td>
+                                    <td class="col-check-center">
+                                        @if (role.SiteOnly)
+                                        {
+                                            <span class="text-subtle text-xs" title="Site visitors can't edit pages">-</span>
+                                        }
+                                        else
+                                        {
+                                            <input type="checkbox" name="editRoles" value="@role.Id" aria-label="@role.Name can edit"
+                                                   checked="@(extras.EditRoles.Contains(role.Id) ? "checked" : null)" disabled="@(extras.CanManagePermissions ? null : "disabled")" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="field-hint">Super Admins have full access to every page, so they aren't listed. Everyone allowed to edit pages also sees restricted pages. Restricted pages are left out of menus and sitemaps.</p>
+
+                @* Users: allow or block one person, whatever their roles say (.docs/features/content-pages-and-routing.md#page-permissions). *@
+                <h4 class="permission-subtitle">Users</h4>
+                <p class="card-description">
+                    Allow or <strong>block</strong> single users. A block wins over everything their roles allow (including editing
+                    every page); Super Admins can't be blocked and you can't block yourself. Set both to <em>Not set</em> to remove a user.
+                </p>
+                @{
+                    var listed = extras.UserGrants.Select(g => g.UserId).ToHashSet();
+                    var canEdit = extras.CanManagePermissions;
+                    string Label(PermissionUserOption u) => string.IsNullOrWhiteSpace(u.Name) ? u.Email : $"{u.Name} ({u.Email})";
+                }
+                <div class="table-wrap">
+                    <table class="table permission-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">User</th>
+                                <th scope="col" class="col-rule">View</th>
+                                <th scope="col" class="col-rule">Edit</th>
+                                <th scope="col" class="col-actions"><span class="sr-only">Remove</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < extras.UserGrants.Count; i++)
+                            {
+                                var grant = extras.UserGrants[i];
+                                var user = extras.Users.FirstOrDefault(u => u.Id == grant.UserId);
+                                if (user is null)
+                                {
+                                    continue;
+                                }
+
+                                <tr data-user-row>
+                                    <th scope="row" class="cell-primary">
+                                        @Label(user)
+                                        <input type="hidden" name="userPermissions[@i].UserId" value="@user.Id" />
+                                    </th>
+                                    @foreach (var (field, value) in new[] { ("View", grant.View), ("Edit", grant.Edit) })
+                                    {
+                                        <td class="col-rule">
+                                            <select name="userPermissions[@i].@field" class="input-sm" aria-label="@field for @user.Email" disabled="@(canEdit ? null : "disabled")">
+                                                <option value="" selected="@(value is null ? "selected" : null)">Not set</option>
+                                                <option value="allow" selected="@(value == true ? "selected" : null)">Allow</option>
+                                                <option value="block" selected="@(value == false ? "selected" : null)">Block</option>
+                                            </select>
+                                        </td>
+                                    }
+                                    <td class="col-actions">
+                                        @if (canEdit)
+                                        {
+                                            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-remove-user-row data-js-only hidden aria-label="Remove @user.Email"><icon name="trash" size="sm" /></button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (canEdit)
+                            {
+                                var n = extras.UserGrants.Count;
+                                <tr class="permission-add-row">
+                                    <td>
+                                        <label class="sr-only" for="add-user">Add a user</label>
+                                        <select id="add-user" name="userPermissions[@n].UserId" class="input-sm">
+                                            <option value="">Add a user…</option>
+                                            @foreach (var user in extras.Users.Where(u => !listed.Contains(u.Id)))
+                                            {
+                                                <option value="@user.Id">@Label(user)</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    @foreach (var field in new[] { "View", "Edit" })
+                                    {
+                                        <td class="col-rule">
+                                            <select name="userPermissions[@n].@field" class="input-sm" aria-label="@field for the added user">
+                                                <option value="">Not set</option>
+                                                <option value="allow">Allow</option>
+                                                <option value="block">Block</option>
+                                            </select>
+                                        </td>
+                                    }
+                                    <td class="col-actions"></td>
+                                </tr>
+                            }
+                            @if (extras.UserGrants.Count == 0 && !canEdit)
+                            {
+                                <tr class="table-empty"><td colspan="4">No user rules on this page.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (canEdit)
+                {
+                    <p class="field-hint">Choose a user in the last row, set View and/or Edit, then <strong>Save changes</strong>.</p>
+                }
+            </div>
+
+            @* ---------------------------------------------------------------- Layout *@
+            <div class="card-body tab-panel" role="tabpanel" id="panel-layout" aria-labelledby="tab-layout" data-tab-panel="layout">
+                <h3 class="tab-panel-title">Layout</h3>
+                <p class="card-description">Design how this page looks with the page builder: sections, grids, text, images, buttons and more.</p>
+                <div class="layout-status">
+                    <span class="stat-icon" aria-hidden="true"><icon name="layers" /></span>
+                    <div class="stack-sm">
+                        @if (extras.HasLayout)
+                        {
+                            <strong>Visitors see the published layout</strong>
+                            <span class="text-sm text-muted">Published <timestamp value="@extras.LayoutPublishedDate" />@(extras.HasDraftChanges ? " · there are unpublished changes" : "")</span>
+                        }
+                        else if (extras.DraftUpdatedDate is not null)
+                        {
+                            <strong>A draft layout, not published yet</strong>
+                            <span class="text-sm text-muted">Saved <timestamp value="@extras.DraftUpdatedDate" />. Visitors see the page's default view until you publish.</span>
+                        }
+                        else
+                        {
+                            <strong>No layout yet</strong>
+                            <span class="text-sm text-muted">The page shows its default view. Open the page builder to design it.</span>
+                        }
+                    </div>
+                </div>
+                <div class="cluster">
+                    @if (extras.CanEditLayout)
+                    {
+                        <a class="btn btn-primary" href="@builderUrl"><icon name="pencil" /> Open page builder</a>
+                    }
+                    @if (extras.HasLayout || extras.DraftUpdatedDate is not null)
+                    {
+                        <a class="btn btn-secondary" href="@builderUrl/preview" target="_blank" rel="noopener"><icon name="eye" /> Preview draft</a>
+                    }
+                </div>
+                <p class="field-hint">The builder saves a draft automatically; publish it from the builder's top bar. Unsaved settings on the other tabs are kept only when you press Save.</p>
+            </div>
+        </section>
     </div>
 
-    <div class="page-actions">
-        <button type="submit" class="btn primary">Save</button>
-    </div>
+    <aside class="editor-aside" aria-label="Publishing">
+        <section class="card" aria-labelledby="publish-title">
+            <div class="card-header"><h2 class="card-title" id="publish-title">Publishing</h2></div>
+            <div class="card-body stack">
+                <label class="switch-row">
+                    <span class="check-text"><span class="weight-semibold">Published</span><span class="check-hint">On: visible on the site (within its schedule). Off: disabled, hidden everywhere.</span></span>
+                    <input asp-for="Published" id="Published" class="switch" role="switch" />
+                </label>
+                <div class="stack" id="publishOpts">
+                    <label class="switch-row">
+                        <span class="check-text"><span class="weight-semibold">Show in menu</span><span class="check-hint">Listed in the site navigation.</span></span>
+                        <input asp-for="DisplayInMenu" class="switch" role="switch" />
+                    </label>
+                    <div class="field">
+                        <label class="field-label" asp-for="ScheduledPublishDate">Publish at (UTC)<span class="field-optional">optional</span></label>
+                        <input asp-for="ScheduledPublishDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
+                    </div>
+                    <div class="field">
+                        <label class="field-label" asp-for="ScheduledUnpublishDate">Unpublish at (UTC)<span class="field-optional">optional</span></label>
+                        <input asp-for="ScheduledUnpublishDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
+                    </div>
+                    <p class="field-hint">A future publish time keeps the page hidden until then; an unpublish time takes it offline.</p>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary btn-block"><icon name="check" /> Save changes</button>
+            </div>
+        </section>
+
+        <section class="card card-danger" aria-labelledby="danger-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="danger-title">Delete page</h2>
+                    <p class="card-description">Its child pages move up a level; they are not deleted.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <button type="submit" form="deletePageForm" class="btn btn-danger-soft btn-block"
+                        data-confirm="Delete this page? Its child pages move up a level." data-confirm-title="Delete page"
+                        data-confirm-action="Delete page">
+                    <icon name="trash" /> Delete page
+                </button>
+            </div>
+        </section>
+    </aside>
 </form>
 
-<form method="post" asp-area="Admin" asp-controller="Content" asp-action="Delete" asp-route-id="@selectedId"
-      data-confirm="Delete this page? Its children are re-parented, not deleted.">
+<form method="post" asp-area="Admin" asp-controller="Content" asp-action="Delete" asp-route-id="@selectedId" id="deletePageForm" hidden>
     @Html.AntiForgeryToken()
-    <button type="submit" class="btn danger">Delete page</button>
 </form>

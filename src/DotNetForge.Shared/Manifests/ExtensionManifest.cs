@@ -38,6 +38,15 @@ public sealed class ExtensionManifest
     public string[]? Permissions { get; set; }
 
     // Optional fields.
+
+    /// <summary>
+    /// The compiled code of the extension: a <c>.dll</c> path relative to the manifest's folder (normally
+    /// <c>bin/&lt;Name&gt;.dll</c>). When set, the host loads it and instantiates <see cref="EntryPoint"/> (a full type
+    /// name implementing <c>DotNetForge.Sdk.IExtension</c>); when absent the extension is views/resources only.
+    /// </summary>
+    [JsonPropertyName("assembly")]
+    public string? Assembly { get; set; }
+
     [JsonPropertyName("website")]
     public string? Website { get; set; }
 

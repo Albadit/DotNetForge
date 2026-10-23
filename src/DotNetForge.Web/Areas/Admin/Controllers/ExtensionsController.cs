@@ -1,36 +1,35 @@
-using DotNetForge.Core.Extensions;
+using DotNetForge.Extensions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Hosts an <c>admin</c>-type extension's page inside the admin shell (.docs/features/extensions.md). The extension
-/// ships its own complete HTML document, so it is embedded in an iframe pointing at the standalone render
+/// Hosts an enabled <c>admin</c>-type extension's page inside the admin shell (.docs/features/extensions.md). The
+/// extension ships its own complete HTML document, so it is embedded in an iframe pointing at the standalone render
 /// (<c>/admin/ext/{id}/raw</c>, served by <c>ExtensionViewController</c>); the surrounding chrome (sidebar, topbar)
-/// stays the admin's. Sidebar entries are contributed by the <c>AdminExtensionsNav</c> view component.
+/// stays the admin's. Sidebar entries come from <c>AdminNavigationService</c> (the Extensions section).
 /// </summary>
 [Route("admin/ext")]
 public sealed class ExtensionsController : AdminControllerBase
 {
-    private readonly IExtensionLoader _loader;
+    private readonly ExtensionCatalog _catalog;
 
-    public ExtensionsController(IExtensionLoader loader)
+    public ExtensionsController(ExtensionCatalog catalog)
     {
-        _loader = loader;
+        _catalog = catalog;
     }
 
     [HttpGet("{id}")]
-    public IActionResult Host(string id)
+    public async Task<IActionResult> Host(string id)
     {
-        var match = _loader.FindAdminExtension(id);
-
-        if (match?.Manifest is null)
+        var extension = await _catalog.FindActiveAsync(id, "admin", HttpContext.RequestAborted);
+        if (extension is null)
         {
             return NotFound();
         }
 
-        ViewData["Title"] = match.Manifest.Name;
-        ViewData["ExtensionId"] = match.Manifest.Id;
+        ViewData["Title"] = extension.Context.Name;
+        ViewData["ExtensionId"] = extension.Id;
         return View();
     }
 }

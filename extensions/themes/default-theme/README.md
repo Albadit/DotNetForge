@@ -1,9 +1,12 @@
 # Default Theme (sample extension)
 
-A minimal example **Theme** extension that demonstrates the `dotnetforge.extension.json` manifest
-format. The CMS discovers it under `extensions/` and validates the manifest; it appears on the admin **Plugins**
-screen. Theme loading is not implemented yet, so it has no effect on the public site.
+A views-only **theme** extension: no code, just Razor views and a stylesheet. While enabled it renders the public
+site - content pages (`Views/Page.cshtml`), the site root when no root page is published (`Views/Index.cshtml`) and
+the shared layout with the menu (`Views/Shared/_Layout.cshtml`). Its CSS is served from `Views/Resources/` at
+`/ext/dotnetforge.theme.default/resources/...`.
 
-This sample ships only a valid manifest; a real theme would also provide layouts, templates, and static assets.
-See the [extension development guide](../../../.docs/guides/extension-development.md) and the target
-[themes feature document](../../../.docs/features/themes.md).
+Settings (manifest): `supportsDarkMode` (follow the visitor's light/dark preference), `accent` (`indigo`, `teal`,
+`rose`), `tagline` (footer and home page).
+
+See [extensions/README.md](../../README.md) to try it and the [theme section](../../../.docs/guides/extension-development.md#theme-type-theme)
+of the extension development guide to build your own.

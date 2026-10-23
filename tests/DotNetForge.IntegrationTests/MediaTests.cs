@@ -67,6 +67,44 @@ public sealed class MediaTests
     }
 
     [Fact]
+    public async Task A_file_can_be_made_private_and_public_again_by_users_who_may_update_it()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        var admin = await factory.SignInAsync();
+        await UploadAsync(admin, "logo.png", PngBytes, isPublic: true);
+        var media = await SingleMediaAsync(factory);
+        using var anonymous = factory.CreateNoRedirectClient();
+
+        // An Author may only change their own uploads.
+        await factory.CreateUserAsync("author@example.com", "Auth0rPass1", Roles.Author);
+        var author = await factory.SignInAsync("author@example.com", "Auth0rPass1");
+        var refused = await SetVisibilityAsync(author, media.Id, isPublic: false);
+        Assert.Contains("/account/denied", refused.Headers.Location?.OriginalString);
+        Assert.True((await SingleMediaAsync(factory)).IsPublic);
+
+        var madePrivate = await SetVisibilityAsync(admin, media.Id, isPublic: false);
+        Assert.Equal(HttpStatusCode.Redirect, madePrivate.StatusCode);
+        Assert.False((await SingleMediaAsync(factory)).IsPublic);
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/media/{media.Id}/logo.png")).StatusCode);
+        Assert.Contains("is now private", WebUtility.HtmlDecode(await admin.GetStringAsync("/admin/media")));
+
+        await SetVisibilityAsync(admin, media.Id, isPublic: true);
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync($"/media/{media.Id}/logo.png")).StatusCode);
+        await factory.WithDbAsync(async db => Assert.Equal(2, await db.AuditLogs.CountAsync(a => a.Action == AuditActions.MediaUpdated)));
+    }
+
+    private static async Task<HttpResponseMessage> SetVisibilityAsync(HttpClient client, Guid id, bool isPublic)
+    {
+        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(client, "/admin/media");
+        return await client.PostAsync($"/admin/media/visibility/{id}", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["isPublic"] = isPublic ? "true" : "false",
+            ["__RequestVerificationToken"] = token,
+        }));
+    }
+
+    [Fact]
     public async Task Private_file_is_hidden_from_anonymous_users_but_served_to_admins()
     {
         using var factory = new DotNetForgeWebFactory();

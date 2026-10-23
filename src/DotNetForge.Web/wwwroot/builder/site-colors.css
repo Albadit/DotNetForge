@@ -1,0 +1,21 @@
+/* Page builder colour variables (.docs/features/page-builder.md#theme-colours). Layouts, base.css and the ready-made
+   blocks use --dnn-color-* (names kept from the reference editor, so its schema and test fixtures stay identical).
+   Here they follow the site's design tokens, so layouts take the brand colour and switch with dark mode. A theme can
+   override any of them in its own stylesheet. Without the Forge tokens (a theme that does not load them) the
+   fallbacks apply. */
+:root {
+    --dnn-color-primary: var(--color-accent, #f76707);
+    --dnn-color-primary-contrast: var(--color-on-accent, #14171c);
+    --dnn-color-secondary: var(--color-surface-muted, #f1f3f5);
+    --dnn-color-secondary-contrast: var(--color-text, #14171c);
+    --dnn-color-tertiary: var(--color-info, #1c64c8);
+    --dnn-color-surface: var(--color-surface, #ffffff);
+    --dnn-color-background: var(--color-bg, #ffffff);
+    --dnn-color-foreground: var(--color-text, #14171c);
+    --dnn-color-neutral: var(--color-border, #e5e7eb);
+    --dnn-color-neutral-light: var(--color-surface-muted, #f9fafb);
+    --dnn-color-success: var(--color-success, #1a7f4b);
+    --dnn-color-warning: var(--color-warning, #9a5200);
+    --dnn-color-danger: var(--color-danger, #c92a2a);
+    --dnn-color-info: var(--color-info, #1c64c8);
+}

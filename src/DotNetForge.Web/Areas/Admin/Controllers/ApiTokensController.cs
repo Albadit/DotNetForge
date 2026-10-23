@@ -5,7 +5,7 @@ using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Shared.Enums;
 using DotNetForge.Web.Areas.Admin.Models;
-using Microsoft.AspNetCore.Authorization;
+using DotNetForge.Web.Startup;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,10 +13,10 @@ namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
 /// API token management (admin). Tokens are shown in plaintext exactly once at creation; only a salted
-/// hash is stored. Restricted to Super Admin / Admin.
+/// hash is stored. Needs the <c>API</c> grants (read to list, create, delete to revoke).
 /// </summary>
 [Route("admin/api-tokens")]
-[Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]
+[RequirePermission(PermissionAreas.Api, PermissionActions.Read)]
 public sealed class ApiTokensController : AdminControllerBase
 {
     private readonly DotNetForgeDbContext _db;
@@ -49,6 +49,7 @@ public sealed class ApiTokensController : AdminControllerBase
     }
 
     [HttpGet("create")]
+    [RequirePermission(PermissionAreas.Api, PermissionActions.Create)]
     public IActionResult Create()
     {
         ViewBag.Permissions = PermissionKeys.All;
@@ -57,6 +58,7 @@ public sealed class ApiTokensController : AdminControllerBase
 
     [HttpPost("create")]
     [ValidateAntiForgeryToken]
+    [RequirePermission(PermissionAreas.Api, PermissionActions.Create)]
     public async Task<IActionResult> Create(string name, string? description, string duration, string[]? permissions)
     {
         ViewBag.Permissions = PermissionKeys.All;
@@ -125,6 +127,7 @@ public sealed class ApiTokensController : AdminControllerBase
 
     [HttpPost("revoke/{id:guid}")]
     [ValidateAntiForgeryToken]
+    [RequirePermission(PermissionAreas.Api, PermissionActions.Delete)]
     public async Task<IActionResult> Revoke(Guid id)
     {
         var token = await _db.ApiTokens.FirstOrDefaultAsync(t => t.Id == id && t.TenantId == TenantId);
@@ -133,6 +136,7 @@ public sealed class ApiTokensController : AdminControllerBase
             token.Revoked = true;
             await _db.SaveChangesAsync();
             await _audit.LogAsync(AuditActions.ApiTokenRevoked, "ApiToken", token.Id.ToString(), token.Name);
+            TempData["Success"] = $"Revoked '{token.Name}'.";
         }
 
         return RedirectToAction(nameof(Index));

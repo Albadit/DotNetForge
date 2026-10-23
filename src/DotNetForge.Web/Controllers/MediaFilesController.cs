@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using DotNetForge.Abstractions.Storage;
 using DotNetForge.Data;
 using DotNetForge.Shared.Constants;
@@ -72,7 +73,7 @@ public sealed class MediaFilesController : Controller
 
     private bool CanReadPrivate(Guid fileTenantId) =>
         User.Identity?.IsAuthenticated == true &&
-        Roles.AdminCapable.Any(User.IsInRole) &&
+        Roles.CanEnterAdmin(User.FindAll(ClaimTypes.Role).Select(c => c.Value)) &&
         Guid.TryParse(User.FindFirst(AuthService.TenantClaimType)?.Value, out var tenant) &&
         tenant == fileTenantId;
 }

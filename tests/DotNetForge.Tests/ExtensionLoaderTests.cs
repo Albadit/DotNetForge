@@ -23,15 +23,16 @@ public sealed class ExtensionLoaderTests : IDisposable
     }
 
     [Fact]
-    public void Finds_valid_admin_extensions_by_id_case_insensitively()
+    public void Discovers_every_manifest_below_the_root()
     {
         WriteManifest("admin/one", "acme.admin.one");
         WriteManifest("themes/t", "acme.theme.t", type: "theme");
         using var loader = new ExtensionLoader(new ManifestValidator(), _root);
 
-        Assert.Equal(2, loader.Discover().Count);
-        Assert.NotNull(loader.FindAdminExtension("ACME.ADMIN.ONE"));
-        Assert.Null(loader.FindAdminExtension("acme.theme.t")); // not an admin extension
+        var found = loader.Discover();
+        Assert.Equal(2, found.Count);
+        Assert.All(found, d => Assert.True(d.IsValid));
+        Assert.Contains(found, d => d.Manifest!.Id == "acme.theme.t");
     }
 
     [Fact]

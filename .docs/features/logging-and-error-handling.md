@@ -21,8 +21,13 @@ Application log statements (all via `ILogger<T>` message templates):
 | `MediaService` | Warning | `Could not delete stored object {StorageKey}; it is now orphaned.` | deleting an object failed - after a failed upload or database save, or after the row was deleted |
 | `MediaFilesController` | Warning | `Media file {MediaId} has no stored object at {StorageKey}.` | a `MediaFile` row exists but the provider has no object (only when the app streams the file; with presigned URLs the object store answers 404 itself) |
 | `ApiTokenAuthenticationHandler` | Warning | `Could not record last use of API token {TokenId}.` | saving `LastUsedDate` threw `DbUpdateException` or was cancelled ([headless API](headless-api.md#tokens)) |
+| `DotNetForge.Extensions` (`ExtensionPipeline.MapDotNetForgeExtensionsAsync`) | Information | `Extension {ExtensionId} {Version} loaded from {Assembly}.` | startup, once per extension whose code is running |
+| `DotNetForge.Extensions` | Warning | `Extension {ExtensionId} is enabled but not running: {Error}` (Information `... (disabled) can't run yet: ...` while disabled) | startup, once per extension whose code failed (missing DLL, entry type, `ConfigureServices`/`MapEndpoints` exception) - [extensions → Loading code](extensions.md#loading-code) |
+| `ExtensionViewRenderer` | Error | `Extension {ExtensionId} failed to render {View}.` | a widget or module view threw (with the exception); the visitor sees "<name> could not be displayed." |
+| `AuditEventDispatcher` | Warning | `Audit event queue is full; {Action} was not passed to extension handlers.` | more than 1000 queued audit events |
+| `AuditEventDispatcher` | Error | `Audit handler {Handler} of extension {ExtensionId} failed on {Action}.` | an extension's audit handler threw or timed out (with the exception) - [audit logging](audit-logging.md#extension-handlers) |
 
-Other controllers and services do not log. When adding logs: inject `ILogger<T>`, use message templates (`{Name}`
+Other controllers and services do not log (extensions may log through `ILogger<T>` themselves). When adding logs: inject `ILogger<T>`, use message templates (`{Name}`
 placeholders), never log secrets (tokens, connection strings, `STORAGE_S3_SECRET_ACCESS_KEY`), and keep hot paths
 (every request, the public fallback, the extension loader) quiet.
 
@@ -34,7 +39,7 @@ Seen on a healthy start; none needs action unless noted.
 | --- | --- | --- |
 | `fail: Microsoft.EntityFrameworkCore.Database.Command[20102]` "Failed executing DbCommand" against `__EFMigrationsHistory` | PostgreSQL, first start on a **fresh** database | `DatabaseInitializer` calls `MigrateAsync`; EF queries the migrations history table before it exists, then creates it and applies the migrations. Appears once per new database. Seen again on an existing database = a real problem |
 | Npgsql cannot load `libgssapi_krb5` (GSSAPI/Kerberos library) | PostgreSQL in slim Linux containers | Npgsql tries GSS encryption by default and the image has no Kerberos library. Avoided by adding `GSS Encryption Mode=Disable` to `DATABASE_CONNECTION_STRING` (as in `.env.example`) unless you use Kerberos |
-| `warn: Microsoft.AspNetCore.DataProtection...` "No XML encryptor configured. Key {...} may be persisted to storage in unencrypted form." | whenever Data Protection creates a key (first start on a new database, later at key rotation), any provider | the key ring is persisted to the database table `DataProtectionKeys` without an XML encryptor - whoever can read the database can read the keys ([security](security.md), [deployment](../guides/deployment.md#database)) |
+| `warn: Microsoft.AspNetCore.DataProtection...` "No XML encryptor configured. Key {...} may be persisted to storage in unencrypted form." | whenever Data Protection creates a key (first start on a new database, later at key rotation), any provider; not shown in Development, where `appsettings.Development.json` sets `Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager` to `Error` (local keys for a local database) | the key ring is persisted to the database table `DataProtectionKeys` without an XML encryptor - whoever can read the database can read the keys ([security](security.md), [deployment](../guides/deployment.md#database)) |
 | `warn: Microsoft.EntityFrameworkCore.Query[10103]` "The query uses the 'First'/'FirstOrDefault' operator without 'OrderBy' and filter operators." | install check and Dashboard (reads of `SystemState`) | single-row reads in `InstallationStore.IsInstalledAsync` and `DashboardController`; harmless |
 
 ## Error handling
@@ -47,10 +52,11 @@ Seen on a healthy start; none needs action unless noted.
 | Validation | services return a message (`IPageService`, `MediaService.UploadAsync` → `(MediaFile?, string? Error)`) or `Result` (`InstallationService`); controllers add it to `ModelState` and re-render |
 | Storage | see [below](#storage-failures) |
 | Not found | `NotFound()` - empty body; no status-code pages middleware |
-| Rate limits | `429` with an empty body from `UseRateLimiter` (`credentials` for sign-in/setup, `api` for the API - [security](security.md), [headless API](headless-api.md#rate-limiting)) |
+| Rate limits | `429` with an empty body from `UseRateLimiter` (`credentials` for sign-in/setup/external sign-in, `api` for the API, `forms` for extension forms - [security](security.md), [headless API](headless-api.md#rate-limiting)) |
+| Extensions | failing extension code at startup → "not running", never a crash; endpoints of inactive extensions → `404`; a throwing widget/module view → a notice in its place; audit handler failures → logged only ([extensions](extensions.md)) |
 | API | `[ApiController]` automatic 400 ProblemDetails; explicit `BadRequest(new { error })`; 401/403 from auth (403 body `{ error }`) |
 | Background | `ScheduledPublishingService` catches everything per tick and logs a warning |
-| Client | `admin-content.js` shows the server's `{ error }` message (or a generic one) in an alert when a reorder fails |
+| Client | `wwwroot/js/forge/content.js` shows the server's `{ error }` message (or "Could not save the new order.") in a danger toast when a reorder fails, then reloads; `ui.js` shows toasts for copy failures |
 
 ### Storage failures
 

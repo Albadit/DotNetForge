@@ -1,18 +1,22 @@
 {
   "id": "dotnetforge.widget.weather",
-  "name": "Weather Widget",
-  "description": "A dashboard widget showing the current local weather.",
-  "version": "1.0.0",
+  "name": "Weather",
+  "description": "A dashboard widget with the current weather for a configured place (Open-Meteo, no API key needed).",
+  "version": "2.0.0",
   "type": "widget",
   "author": "Tinkerbox",
-  "entryPoint": "WeatherWidget",
+  "assembly": "bin/WeatherWidget.dll",
+  "entryPoint": "WeatherWidget.WeatherWidgetExtension",
   "permissions": ["core.read"],
-  "website": "https://example.com/extensions/weather-widget",
+  "website": "https://open-meteo.com",
   "license": "MIT",
   "dependencies": [],
   "routes": [],
   "settings": {
-    "defaultCity": "Pristina",
+    "city": "Pristina",
+    "latitude": 42.6629,
+    "longitude": 21.1655,
+    // "metric" (°C, km/h) or "imperial" (°F, mph)
     "units": "metric"
   }
 }

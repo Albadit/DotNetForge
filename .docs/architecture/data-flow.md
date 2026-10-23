@@ -22,13 +22,14 @@ sequenceDiagram
     end
     L-->>P: AppEnvironment
     P->>DI: services.AddDotNetForge(env, builder.Environment)
+    Note over DI: AddExtensionHost: discover extensions/, ExtensionRuntime.Load<br/>(code of every valid manifest with an assembly),<br/>each extension's ConfigureServices
     P->>P: builder.Build()
     P->>DBI: InitializeAsync(db, ApplicationStopping)
     DBI->>DBI: Database.MigrateAsync()
     Note over DBI: the main database's provider: migrations (SQLite, PostgreSQL,<br/>SQL Server, MySQL) or EnsureCreated (MongoDB)
     DBI->>S: SeedAsync(db)
-    P->>H: build pipeline, map routes, app.Run()
-    H->>H: start ScheduledPublishingService (waits 5 s)
+    P->>H: build pipeline, map routes + MapDotNetForgeExtensionsAsync (each extension's MapEndpoints), app.Run()
+    H->>H: start ScheduledPublishingService (waits 5 s), AuditEventDispatcher
 ```
 
 Notes:
@@ -48,6 +49,10 @@ Notes:
   (and stored) on the first request that needs one.
 - A database failure here (bad PostgreSQL connection string, locked SQLite file, an old PostgreSQL database without
   migration history) throws an unhandled exception and the process exits.
+- Extension code is loaded **before** the container is built, enabled or not, because extensions register services.
+  A failing extension (missing DLL, bad entry type, throwing `ConfigureServices`/`MapEndpoints`) is marked "not
+  running" and logged (`Extension {id} is enabled but not running: ...` (warning; information while disabled)); it never stops startup
+  ([extensions → Loading code](../features/extensions.md#loading-code)).
 
 ## Request pipeline
 
@@ -63,7 +68,9 @@ flowchart TD
     R --> IM["InstallationMiddleware"]
     IM -- "not installed, path not /setup" --> S302([302 /setup])
     IM -- "installed, path starts /setup" --> A302([302 /admin])
-    IM --> AuthN["UseAuthentication (cookie scheme, OnValidatePrincipal session check)"]
+    IM --> GATE["ExtensionEndpointGateMiddleware"]
+    GATE -- "endpoint of an inactive extension" --> G404([404])
+    GATE --> AuthN["UseAuthentication (cookie scheme, OnValidatePrincipal session check)"]
     AuthN --> RL["UseRateLimiter (policies from [EnableRateLimiting])"]
     RL -- "limit exceeded" --> T429([429])
     RL --> AuthZ["UseAuthorization (policies, roles, ApiToken scheme for /api)"]
@@ -91,23 +98,29 @@ Key properties:
   via `[Authorize(AuthenticationSchemes = "ApiToken")]`, so a cookie never authenticates an API call and a bearer
   token never authenticates an admin screen. The token handler runs during authorization, i.e. **after** the rate
   limiter, so rejected requests never reach PBKDF2.
-- **Rate limiting** applies only to endpoints with `[EnableRateLimiting]`: `credentials` (POST `/account/login`,
-  POST `/setup`; 10 per minute per IP) and `api` (every `ApiControllerBase` action; 300 per minute per IP). Fixed
-  windows, no queue, partitioned by `Connection.RemoteIpAddress`, per instance. Rejections get an empty `429`.
+- **`ExtensionEndpointGateMiddleware`** (`Startup/ExtensionHosting.cs`) runs after routing has picked the endpoint:
+  an endpoint carrying `ExtensionEndpointMetadata` (mapped by `MapDotNetForgeExtensionsAsync` or an MVC controller in an
+  extension assembly) answers `404` while its extension is not active (`ExtensionCatalog.IsActiveAsync`).
+- **Rate limiting** applies only to endpoints with `[EnableRateLimiting]` / `RequireRateLimiting`: `credentials`
+  (POST `/account/login`, POST `/setup`, the external sign-in endpoints; 10 per minute per IP), `api` (every
+  `ApiControllerBase` action; 300 per minute per IP) and `forms` (extension form posts that opt in; 5 per minute per
+  IP). Fixed windows, no queue, partitioned by `Connection.RemoteIpAddress`, per instance. Rejections get an empty
+  `429`.
 
 ## Routing
 
-Endpoints come from four sources, mapped in `Program.cs`:
+Endpoints come from five sources, mapped in `Program.cs`:
 
 | Source | Mapping | Matches |
 | --- | --- | --- |
-| Attribute routes | `[Route]`/`[HttpGet("...")]` on every controller | all admin, account, setup, extension and API routes, `/`, `/error` (any method), `/media/{id:guid}/{fileName?}` |
+| Attribute routes | `[Route]`/`[HttpGet("...")]` on every controller (including MVC controllers in extension assemblies) | all admin, account, setup, extension and API routes, `/`, `/error` (any method), `/media/{id:guid}/{fileName?}`, `/ext/{id}/resources/{**path}` |
 | Conventional route `default` | `{controller=Home}/{action=Index}/{id?}` | only actions **without** attribute routes - in practice `HomeController.RenderPage` at `/Home/RenderPage` (unused) |
 | Minimal API | `app.MapGet("/health", ...)` | `/health` |
+| Extension endpoints | `await app.MapDotNetForgeExtensionsAsync()`: each loaded extension's `IExtension.MapEndpoints` in a group tagged with its id | e.g. `/sitemap.xml`, `/robots.txt`, `POST /ext/contact-form/submit` (samples); gated per request |
 | Fallback | `app.MapFallbackToController("RenderPage", "Home")` | any path not matched above **and without a file extension** (`{*path:nonfile}`) |
 
 Because the fallback has the lowest priority, real routes such as `/admin/...`, `/setup`, `/account/...`,
-`/media/...` and `/api/...` always win over a content page with the same slug. A content page with slug `admin` is
+`/media/...`, `/api/...`, `/ext/...` and extension endpoints always win over a content page with the same slug. A content page with slug `admin` is
 therefore unreachable on the public site.
 
 Full screen route list: [pages.md → Route map](pages.md#route-map).
@@ -122,10 +135,10 @@ flowchart TD
     Walk -- "no match" --> NF([404 NotFound])
     Walk -- "matched every segment" --> Full["Load the matched page in full"]
     Full --> RV["Capture dynamic values into ViewData['RouteValues']"]
-    RV --> View["View('Page', matched)"]
+    RV --> View["ThemedViewAsync('Page', matched): active theme's Views/Page.cshtml, else built-in; modules via ExtensionModules"]
     Root["GET /"] --> Index["HomeController.Index"]
     Index -- "live page with slug '/' or 'home'" --> View
-    Index -- "none" --> List["Home/Index: list of live pages"]
+    Index -- "none" --> List["ThemedViewAsync('Index'): list of live pages"]
 ```
 
 Rules and limitations are documented once in
@@ -133,7 +146,8 @@ Rules and limitations are documented once in
 
 ## Navigation flow (admin)
 
-All admin navigation is plain links in `_Sidebar.cshtml` and full-page loads. Mutations are form POSTs followed by
+All admin navigation is plain links in the sidebar (built from `AdminNavigation.Tree` by `AdminNavigationService`)
+and full-page loads. Mutations are form POSTs followed by
 `RedirectToAction` (Post/Redirect/Get), except the Content Manager tree reorder, which is a `fetch` POST. See
 [pages.md → Navigation](pages.md#navigation).
 
@@ -183,7 +197,11 @@ sequenceDiagram
 The cookie principal carries `NameIdentifier` (user id), `Name` (display name), `Email`, `dnf:tenant` and one
 `Role` claim per role. Roles are read **only at sign-in**; changing a user's roles takes effect after they sign in
 again. A non-local or missing `returnUrl` goes to `/admin`. `POST /setup` follows the same pattern (rate-limited,
-signs the new Super Admin in, audits `cms.installed`). Full details: [authentication](../features/authentication.md).
+signs the new Super Admin in, audits `cms.installed`). Sign-in through an authentication extension
+(`POST /account/external/{scheme}` → provider → `GET /account/external/callback`) ends in the same
+`AuthService` principal and cookie, for existing users only:
+[external sign-in extensions](../features/authentication.md#external-sign-in-extensions). Full details:
+[authentication](../features/authentication.md).
 
 ### Session validation (every cookie request)
 
@@ -226,8 +244,8 @@ flowchart LR
 All `[Authorize]` attributes on a controller must pass (they are combined with AND). The `Can`/`CanModify` step exists
 only in `ContentController` (area `Collection types`) and `MediaController` (area `Media`); other screens stop at
 the role checks. `CanModify` grants the "any" action, or the `.own` action when `CreatedById`/`UploadedById` is the
-current user. The sidebar renders every link for every admin-capable user; restricted ones lead to the denied
-screen. See [authorization](../features/authorization.md).
+current user. The sidebar hides links whose controller's `[Authorize]` data the user fails (`AdminNavigationService`),
+but that is not the gate: a direct URL still meets these checks and leads to the denied screen. See [authorization](../features/authorization.md).
 
 ## API request flow
 
@@ -395,7 +413,7 @@ any) is read by `UseAuthentication`, and private access is decided by role and `
 
 `ScheduledPublishingService` (hosted) waits 5 s, then every 15 s opens a DI scope and finalizes due schedules across
 **all tenants**. It runs on every instance; the work is idempotent. It does not decide public visibility -
-`HomeController.Live` already hides/shows pages by comparing the schedule to `DateTime.UtcNow` on each request. See
+`PageVisibility.Live` already hides/shows pages by comparing the schedule to `DateTime.UtcNow` on each request. See
 [scheduled publishing](../features/scheduled-publishing.md).
 
 ```mermaid
@@ -430,10 +448,10 @@ See [configuration](../features/configuration.md) and
 | Situation | Where detected | What the user gets |
 | --- | --- | --- |
 | Invalid `.env`, or a relative/missing path outside Development | `EnvConfigurationLoader` at startup | Process exits with code 1; message on stderr |
-| Form validation failure (incl. length limits) | `PageService`, `MediaService`, `InstallationService`, controller checks (Settings, API Tokens) | Same screen re-rendered with a validation summary |
+| Form validation failure (incl. length limits) | `PageService`, `MediaService`, `InstallationService`, controller checks (Settings, API Tokens) | Same screen re-rendered with the errors in `<form-errors />` |
 | Permission denied by `Can`/`CanModify` | `ContentController`, `MediaController` → `Forbid()` | 302 to `/account/denied` (renders with status 403) |
 | Content delete would make children clash | `PageService.DeleteAsync` | Content Manager re-rendered with the error |
-| Reorder rejected (cycle, clash, foreign id) | `PageService.ReorderAsync` | `400 { error }`; `admin-content.js` shows `alert(error)` and reloads |
+| Reorder rejected (cycle, clash, foreign id) | `PageService.ReorderAsync` | `400 { error }`; `content.js` shows it as a danger toast and reloads |
 | Entity not found in the active tenant | controller `FirstOrDefaultAsync` → `NotFound()` | Empty-body 404 |
 | Public URL not resolving | `HomeController.RenderPage` | Empty-body 404 |
 | Private media requested without access, or missing object | `MediaFilesController` | Empty-body 404 (missing object also logged) |
@@ -441,7 +459,11 @@ See [configuration](../features/configuration.md) and
 | Anonymous on admin | cookie challenge | 302 to `/account/login?ReturnUrl=...` |
 | Wrong role | cookie forbid | 302 to `/account/denied` (renders with status 403) |
 | Disabled/deleted user with a valid cookie | `ValidateSessionAsync` | Signed out within 30 s; next admin request → login |
-| Too many requests | rate limiter (`credentials`, `api`) | Empty `429` |
+| Too many requests | rate limiter (`credentials`, `api`, `forms`) | Empty `429` |
+| Endpoint of a disabled or failed extension | `ExtensionEndpointGateMiddleware` | Empty-body 404 |
+| Extension widget/module view throws | `ExtensionViewRenderer` | "<name> could not be displayed." in place of the view; error logged |
+| Extension audit handler throws or times out (30 s) | `AuditEventDispatcher` | Nothing visible; error logged, next handler runs |
+| External sign-in fails (no account, disabled, locked, provider error) | `ExternalLoginController` | Redirect to `/account/login` with a message; `user.login.failed` audited |
 | API auth failure / missing permission | `ApiTokenAuthenticationHandler` / `RequireApiPermissionAttribute` | 401 / 403 JSON |
 | API rule violation | `ContentApiController` via `IPageService` | `400 { "error": "..." }` |
 | Unhandled exception (Development) | developer exception page | Stack trace page |
@@ -454,5 +476,6 @@ Details and gaps: [logging and errors](../features/logging-and-error-handling.md
 
 Out-of-process dependencies at runtime: the database (SQLite file or PostgreSQL server) and an S3-compatible object
 store (outside Development always) - the app uploads, reads and deletes objects through
-`S3FileStorage`, and browsers download directly from presigned URLs. Planned integrations and their current state
+`S3FileStorage` (or an enabled storage connector), and browsers download directly from presigned URLs. Enabled
+extensions may call their own services (the samples: Open-Meteo, Discord OAuth, Twilio, a second S3 bucket). Planned integrations and their current state
 are listed in [implementation-status.md](../implementation-status.md).

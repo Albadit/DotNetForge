@@ -1,44 +1,141 @@
+@using DotNetForge.Web.Areas.Admin.Navigation
+@using System.Security.Claims
+@inject AdminNavigationService Navigation
+@*
+    The admin shell (.docs/architecture/design-system.md#admin-shell): sidebar (navigation built by
+    AdminNavigationService), top bar (breadcrumbs, view site, theme), page header and content. Never restyled by public
+    themes. Screens set ViewData["Title"] (h1), optionally ViewData["Description"], and put header buttons in
+    @section Actions { }.
+*@
 @{
     var title = ViewData["Title"] as string ?? "Admin";
-    var userName = User.Identity?.Name ?? "Account";
+    var description = ViewData["Description"] as string;
+    // ViewData["PageWidth"] = "narrow" | "medium": a centred, narrower page for forms (.docs/architecture/design-system.md#admin-shell).
+    var pageWidth = ViewData["PageWidth"] is string width ? " content-" + width : null;
+    var nav = await Navigation.BuildAsync(Context, title);
+    var displayName = User.Identity?.Name is { Length: > 0 } name ? name : "Account";
+    var email = User.FindFirst(ClaimTypes.Email)?.Value;
+    var initials = string.Concat(displayName.Split(new[] { ' ', '@', '.' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0]));
+    var isDashboard = string.Equals(Context.Request.Path.Value?.TrimEnd('/'), "/admin", StringComparison.OrdinalIgnoreCase);
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>@title · DotNetForge Admin</title>
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
-    @* The admin area uses its own built-in layout and is never restyled by public themes. *@
-    <link rel="stylesheet" href="~/css/site.css" />
-    <link rel="stylesheet" href="~/css/admin.css" />
-    <script src="~/js/site.js" defer></script>
+    <script src="~/js/forge/theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/css/forge/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/admin.css" asp-append-version="true" />
+    <script src="~/js/forge/ui.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Head", required: false)
 </head>
 <body class="admin">
-    <div class="admin-shell">
-        <aside class="admin-sidebar">
-            <div class="admin-logo"><img src="~/img/logo-dark.svg" alt="DotNetForge" width="164" height="40" /></div>
-            <div class="tenant-switcher" title="Active tenant">
-                <span class="tenant-label">Tenant</span>
-                <strong>Default</strong>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="shell" data-shell>
+        <aside class="sidebar" id="sidebar" aria-label="Admin">
+            <div class="sidebar-header">
+                <a class="sidebar-brand" href="/admin" aria-label="DotNetForge - Dashboard">
+                    <img class="logo-on-light" src="~/img/logo.svg" alt="" width="148" height="36" />
+                    <img class="logo-on-dark" src="~/img/logo-dark.svg" alt="" width="148" height="36" />
+                </a>
+                <button type="button" class="btn btn-ghost btn-icon sidebar-close" data-drawer-close aria-label="Close navigation">
+                    <icon name="x" />
+                </button>
             </div>
-            <partial name="_Sidebar" />
+
+
+            <partial name="_Sidebar" model="nav" />
+
+            <div class="sidebar-footer">
+                <div class="menu sidebar-user">
+                    <button type="button" class="sidebar-user-button" popovertarget="account-menu" aria-haspopup="menu" aria-label="Account menu">
+                        <span class="avatar">@initials</span>
+                        <span class="sidebar-user-text">
+                            <span class="sidebar-user-name">@displayName</span>
+                            @if (email is not null && email != displayName)
+                            {
+                                <span class="sidebar-user-email">@email</span>
+                            }
+                        </span>
+                        <icon name="chevron-down" size="sm" />
+                    </button>
+                    <div class="menu-list" id="account-menu" popover role="menu" data-placement="top-start">
+                        <menu-link href="/admin/profile" icon="user">Profile</menu-link>
+                        <menu-link href="/" icon="external-link" new-tab="true">View site</menu-link>
+                        <menu-separator />
+                        <menu-post action="/account/logout" icon="log-out" danger="true">Sign out</menu-post>
+                    </div>
+                </div>
+            </div>
         </aside>
-        <div class="admin-main">
-            <header class="admin-topbar">
-                <h1>@title</h1>
-                <div class="admin-user">
-                    <span>@userName</span>
-                    <form method="post" asp-area="" asp-controller="Account" asp-action="Logout" class="inline">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn small">Sign out</button>
-                    </form>
+        <div class="sidebar-backdrop" data-drawer-close hidden></div>
+
+        <div class="main">
+            <header class="topbar">
+                <button type="button" class="btn btn-ghost btn-icon topbar-menu" data-drawer-open aria-controls="sidebar"
+                        aria-expanded="false" aria-label="Open navigation">
+                    <icon name="menu" />
+                </button>
+                @if (!isDashboard && nav.Trail.Count > 1)
+                {
+                    <nav class="breadcrumbs" aria-label="Breadcrumb">
+                        <ol>
+                            @for (var i = 0; i < nav.Trail.Count; i++)
+                            {
+                                var (label, href) = nav.Trail[i];
+                                var last = i == nav.Trail.Count - 1;
+                                <li>
+                                    @if (last)
+                                    {
+                                        <span aria-current="page">@label</span>
+                                    }
+                                    else if (href is not null)
+                                    {
+                                        <a href="@href">@label</a>
+                                    }
+                                    else
+                                    {
+                                        <span>@label</span>
+                                    }
+                                </li>
+                            }
+                        </ol>
+                    </nav>
+                }
+                <div class="topbar-actions">
+                    <a class="btn btn-ghost btn-sm topbar-site" href="/" target="_blank" rel="noopener">
+                        View site <icon name="external-link" size="sm" />
+                    </a>
+                    <partial name="_ThemeMenu" />
                 </div>
             </header>
-            <section class="admin-content">
+
+            <main id="main" class="content@(pageWidth)" tabindex="-1">
+                <div class="page-header">
+                    <div class="page-header-row">
+                        <div class="stack-sm">
+                            <h1 class="page-title">@title</h1>
+                            @if (description is not null)
+                            {
+                                <p class="page-description">@description</p>
+                            }
+                        </div>
+                        @if (IsSectionDefined("Actions"))
+                        {
+                            <div class="page-actions">@await RenderSectionAsync("Actions")</div>
+                        }
+                    </div>
+                </div>
                 @RenderBody()
-            </section>
+            </main>
         </div>
     </div>
+    <partial name="_Feedback" />
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

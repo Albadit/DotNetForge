@@ -22,7 +22,7 @@
     part of the host. In development the app reads them from the repository root (see AppPaths).
   -->
   <ItemGroup>
-    <None Include="../../extensions/**" LinkBase="extensions" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../extensions/**" Exclude="../../extensions/**/obj/**" LinkBase="extensions" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,7 +32,9 @@
     <ProjectReference Include="../DotNetForge.Data/DotNetForge.Data.csproj" />
     <ProjectReference Include="../DotNetForge.Infrastructure/DotNetForge.Infrastructure.csproj" />
     <ProjectReference Include="../DotNetForge.Extensions/DotNetForge.Extensions.csproj" />
+    <ProjectReference Include="../DotNetForge.Sdk/DotNetForge.Sdk.csproj" />
     <ProjectReference Include="../DotNetForge.Api/DotNetForge.Api.csproj" />
+    <ProjectReference Include="../DotNetForge.PageBuilder/DotNetForge.PageBuilder.csproj" />
   </ItemGroup>
 
 </Project>

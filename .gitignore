@@ -16,7 +16,7 @@ obj/
 # ---- Development runtime data ----
 # storage/ only exists in Development (default SQLite database + local media). Production writes
 # nothing here: the deployment directory is read-only (.docs/guides/deployment.md).
-storage/
+/storage/
 
 # SQLite database files.
 *.db

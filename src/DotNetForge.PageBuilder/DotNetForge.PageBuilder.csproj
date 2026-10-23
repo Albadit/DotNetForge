@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Page builder domain (.docs/features/page-builder.md): the layout document, its validation and the HTML/CSS
+    renderer. Pure logic - no database, no ASP.NET. Ported from the Dnn.Libraries.PageEditor domain; the schema files
+    are the ones the browser editor loads (src/DotNetForge.Web/wwwroot/builder/schema), embedded here so client and
+    server always agree.
+  -->
+  <PropertyGroup>
+    <!-- Ported code is written without nullable annotations. -->
+    <Nullable>disable</Nullable>
+    <RootNamespace>DotNetForge.PageBuilder</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" />
+    <InternalsVisibleTo Include="DotNetForge.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\DotNetForge.Web\wwwroot\builder\schema\style.json" LogicalName="DotNetForge.PageBuilder.Schema.style.json" Link="Schema\style.json" />
+    <EmbeddedResource Include="..\DotNetForge.Web\wwwroot\builder\schema\components.json" LogicalName="DotNetForge.PageBuilder.Schema.components.json" Link="Schema\components.json" />
+    <EmbeddedResource Include="..\DotNetForge.Web\wwwroot\builder\schema\icons.json" LogicalName="DotNetForge.PageBuilder.Schema.icons.json" Link="Schema\icons.json" />
+    <EmbeddedResource Include="..\DotNetForge.Web\wwwroot\builder\base.css" LogicalName="DotNetForge.PageBuilder.Schema.base.css" Link="Schema\base.css" />
+  </ItemGroup>
+
+</Project>

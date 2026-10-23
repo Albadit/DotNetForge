@@ -1,0 +1,278 @@
+/*
+  Forge design tokens (.docs/architecture/design-system.md). The single source of every colour, size and effect in
+  the CMS UI. Components use the semantic roles (--color-*, --space-*, ...) - never the raw palette or literal values.
+
+  Brand: the logo's charcoal (#14171c) and forge orange (#f76707). Orange is a FILL colour (buttons, indicators) with
+  charcoal on top (5.9:1); orange TEXT uses --color-accent-text (5.2:1 light, 8.4:1 dark). All text roles meet
+  WCAG 2.2 AA (>= 4.5:1) on --color-surface and --color-bg in both themes.
+*/
+
+:root {
+    /* ---- Palette ------------------------------------------------------------------------------------------- */
+    --forge-50: #fff4ec;
+    --forge-100: #ffe3cf;
+    --forge-200: #ffc49c;
+    --forge-300: #ff9a4d;
+    --forge-400: #ff8124;
+    --forge-500: #f76707;
+    --forge-600: #e8590c;
+    --forge-700: #c2410c;
+    --forge-800: #9a3412;
+
+    --gray-0: #ffffff;
+    --gray-50: #f7f8f9;
+    --gray-100: #eef0f2;
+    --gray-200: #e1e4e8;
+    --gray-300: #c9ced5;
+    --gray-400: #9aa1ab;
+    --gray-500: #6c727d;
+    --gray-600: #4d535c;
+    --gray-700: #363b42;
+    --gray-800: #23272d;
+    --gray-850: #1d2127;
+    --gray-900: #16191e;
+    --gray-950: #14171c;
+    --gray-1000: #0d0f12;
+
+    /* ---- Typography ---------------------------------------------------------------------------------------- */
+    --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Inter",
+        "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --text-xs: 0.75rem;     /* 12px */
+    --text-sm: 0.8125rem;   /* 13px */
+    --text-base: 0.875rem;  /* 14px - admin body */
+    --text-md: 0.9375rem;   /* 15px */
+    --text-lg: 1rem;        /* 16px */
+    --text-xl: 1.125rem;    /* 18px */
+    --text-2xl: 1.375rem;   /* 22px - page titles */
+    --text-3xl: 1.75rem;    /* 28px */
+    --text-4xl: 2.25rem;    /* 36px */
+    --leading-tight: 1.25;
+    --leading: 1.5;
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+    /* ---- Space (4px grid), size, radius --------------------------------------------------------------------- */
+    --space-0: 0;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+
+    --control-h-sm: 1.875rem;  /* 30px */
+    --control-h: 2.25rem;      /* 36px */
+    --control-h-lg: 2.75rem;   /* 44px - also the minimum touch target */
+
+    --radius-sm: 4px;
+    --radius: 6px;
+    --radius-lg: 10px;
+    --radius-xl: 14px;
+    --radius-full: 999px;
+
+    /* The logo's diagonal cut, for brand accents (clip-path). */
+    --forge-cut: polygon(0 0, 100% 0, calc(100% - 0.5rem) 100%, 0 100%);
+
+    /* ---- Layout ---------------------------------------------------------------------------------------------- */
+    --sidebar-w: 16rem;
+    --topbar-h: 3.5rem;
+    --content-max: 96rem;
+    --form-max: 44rem;
+
+    /* ---- Motion ---------------------------------------------------------------------------------------------- */
+    --duration-fast: 100ms;
+    --duration: 160ms;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+
+    /* ---- Layers ---------------------------------------------------------------------------------------------- */
+    --z-sticky: 10;
+    --z-drawer: 40;
+    --z-dialog: 50;
+    --z-toast: 60;
+    --z-tooltip: 70;
+
+    /* ---- Semantic roles: LIGHT ------------------------------------------------------------------------------- */
+    color-scheme: light;
+    --color-bg: var(--gray-50);
+    --color-surface: var(--gray-0);
+    --color-surface-raised: var(--gray-0);
+    --color-surface-muted: var(--gray-100);
+    --color-surface-hover: var(--gray-100);
+    --color-border: var(--gray-200);
+    --color-border-strong: var(--gray-300);
+    --color-text: var(--gray-950);
+    --color-text-muted: var(--gray-600);
+    --color-text-subtle: var(--gray-500);
+    --color-text-inverse: var(--gray-0);
+
+    --color-accent: var(--forge-500);
+    --color-accent-hover: var(--forge-600);
+    --color-accent-soft: var(--forge-50);
+    --color-accent-soft-border: var(--forge-200);
+    --color-accent-text: var(--forge-700);
+    --color-on-accent: var(--gray-950);
+    --color-focus: var(--forge-500);
+
+    --color-success: #1a7f4b;
+    --color-success-soft: #e7f6ee;
+    --color-warning: #9a5200;
+    --color-warning-soft: #fff4e0;
+    --color-danger: #c92a2a;
+    --color-danger-hover: #b02020;
+    --color-danger-soft: #fdecec;
+    --color-info: #1c64c8;
+    --color-info-soft: #e8f0fc;
+
+    /* Navigation (sidebar): follows the theme - white in light, charcoal in dark. */
+    --color-nav-bg: var(--gray-0);
+    --color-nav-surface: var(--gray-100);
+    --color-nav-hover: var(--gray-50);
+    --color-nav-border: var(--gray-200);
+    --color-nav-text: var(--gray-700);
+    --color-nav-text-muted: var(--gray-500);
+    --color-nav-text-strong: var(--gray-950);
+
+    /* Brand chrome (dashboard welcome band, sign-in panel): follows the theme - white in light, charcoal in dark. */
+    --color-brand-bg: var(--gray-0);
+    --color-brand-surface: var(--gray-100);
+    --color-brand-hover: var(--gray-200);
+    --color-brand-border: var(--gray-200);
+    --color-brand-text: var(--gray-600);
+    --color-brand-text-strong: var(--gray-950);
+
+    /* Code blocks and tooltips: contrast with the page in either theme. */
+    --color-code-bg: var(--gray-100);
+    --color-code-text: var(--gray-950);
+    --color-tooltip-bg: var(--gray-950);
+    --color-tooltip-text: var(--gray-0);
+
+    --shadow-xs: 0 1px 2px rgba(20, 23, 28, 0.06);
+    --shadow-sm: 0 1px 3px rgba(20, 23, 28, 0.08), 0 1px 2px rgba(20, 23, 28, 0.04);
+    --shadow-md: 0 6px 16px -4px rgba(20, 23, 28, 0.12), 0 2px 4px rgba(20, 23, 28, 0.05);
+    --shadow-lg: 0 20px 40px -12px rgba(20, 23, 28, 0.28);
+    --backdrop: rgba(13, 15, 18, 0.55);
+    --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-focus);
+}
+
+/* ---- Semantic roles: DARK - explicit choice, or the system preference when no choice was made ---------------- */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-bg: var(--gray-1000);
+    --color-surface: var(--gray-900);
+    --color-surface-raised: var(--gray-850);
+    --color-surface-muted: var(--gray-850);
+    --color-surface-hover: var(--gray-800);
+    --color-border: #2a2f37;
+    --color-border-strong: #3a4049;
+    --color-text: var(--gray-100);
+    --color-text-muted: #a6adb8;
+    --color-text-subtle: #8a919c;
+    --color-text-inverse: var(--gray-950);
+
+    --color-accent-soft: rgba(247, 103, 7, 0.14);
+    --color-accent-soft-border: rgba(247, 103, 7, 0.4);
+    --color-accent-text: var(--forge-300);
+
+    --color-success: #4cc38a;
+    --color-success-soft: rgba(76, 195, 138, 0.14);
+    --color-warning: #f5b041;
+    --color-warning-soft: rgba(245, 176, 65, 0.14);
+    --color-danger: #ff6b6b;
+    --color-danger-hover: #ff8585;
+    --color-danger-soft: rgba(255, 107, 107, 0.14);
+    --color-info: #74a7ff;
+    --color-info-soft: rgba(116, 167, 255, 0.14);
+
+    --color-nav-bg: #0a0c0f;
+    --color-nav-surface: #171a1f;
+    --color-nav-hover: #1d2127;
+    --color-nav-border: #22262c;
+    --color-nav-text: #c3c8d0;
+    --color-nav-text-muted: #8e959f;
+    --color-nav-text-strong: var(--gray-0);
+    --color-brand-bg: #0a0c0f;
+    --color-brand-surface: #171a1f;
+    --color-brand-hover: #1d2127;
+    --color-brand-border: #22262c;
+    --color-brand-text: #c3c8d0;
+    --color-brand-text-strong: var(--gray-0);
+    --color-code-bg: #0a0c0f;
+    --color-code-text: var(--forge-100);
+    --color-tooltip-bg: var(--gray-100);
+    --color-tooltip-text: var(--gray-950);
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --shadow-md: 0 8px 20px -6px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+    --backdrop: rgba(0, 0, 0, 0.65);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --color-bg: var(--gray-1000);
+        --color-surface: var(--gray-900);
+        --color-surface-raised: var(--gray-850);
+        --color-surface-muted: var(--gray-850);
+        --color-surface-hover: var(--gray-800);
+        --color-border: #2a2f37;
+        --color-border-strong: #3a4049;
+        --color-text: var(--gray-100);
+        --color-text-muted: #a6adb8;
+        --color-text-subtle: #8a919c;
+        --color-text-inverse: var(--gray-950);
+
+        --color-accent-soft: rgba(247, 103, 7, 0.14);
+        --color-accent-soft-border: rgba(247, 103, 7, 0.4);
+        --color-accent-text: var(--forge-300);
+
+        --color-success: #4cc38a;
+        --color-success-soft: rgba(76, 195, 138, 0.14);
+        --color-warning: #f5b041;
+        --color-warning-soft: rgba(245, 176, 65, 0.14);
+        --color-danger: #ff6b6b;
+        --color-danger-hover: #ff8585;
+        --color-danger-soft: rgba(255, 107, 107, 0.14);
+        --color-info: #74a7ff;
+        --color-info-soft: rgba(116, 167, 255, 0.14);
+
+        --color-nav-bg: #0a0c0f;
+        --color-nav-surface: #171a1f;
+        --color-nav-hover: #1d2127;
+        --color-nav-border: #22262c;
+        --color-nav-text: #c3c8d0;
+        --color-nav-text-muted: #8e959f;
+        --color-nav-text-strong: var(--gray-0);
+        --color-brand-bg: #0a0c0f;
+        --color-brand-surface: #171a1f;
+        --color-brand-hover: #1d2127;
+        --color-brand-border: #22262c;
+        --color-brand-text: #c3c8d0;
+        --color-brand-text-strong: var(--gray-0);
+        --color-code-bg: #0a0c0f;
+        --color-code-text: var(--forge-100);
+        --color-tooltip-bg: var(--gray-100);
+        --color-tooltip-text: var(--gray-950);
+
+        --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+        --shadow-md: 0 8px 20px -6px rgba(0, 0, 0, 0.6);
+        --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+        --backdrop: rgba(0, 0, 0, 0.65);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --duration-fast: 0ms;
+        --duration: 0ms;
+    }
+}

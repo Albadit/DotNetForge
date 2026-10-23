@@ -1,0 +1,41 @@
+@*
+    Contact Form module: rendered by the host inside every content page listed in the "pages" setting
+    (Model = the page). Posts to ContactFormExtension.SubmitPath. No inline script or style (CSP): the stylesheet
+    comes from Views/Resources/ through ResourceBase.
+*@
+@model DotNetForge.Shared.Entities.Page
+@inject IMarkdownRenderer Markdown
+@{
+    var extension = (ExtensionContext)ViewData["Extension"]!;
+    var resourceBase = ViewData["ResourceBase"] as string;
+    var sent = Context.Request.Query["contact-sent"] == "1";
+    var error = Context.Request.Query["contact-error"].ToString();
+    var maxLength = Math.Clamp(extension.GetInt64("maxMessageLength", 2000), 100, 10000);
+}
+<link rel="stylesheet" href="@resourceBase/css/contact-form.css" />
+<section class="contact-form" id="contact-form">
+    <h2>Contact us</h2>
+    @if (sent)
+    {
+        <div class="contact-form-sent">@Html.Raw(Markdown.ToHtml(extension.GetString("successMessage", "Thanks!")))</div>
+    }
+    else
+    {
+        <div class="contact-form-intro">@Html.Raw(Markdown.ToHtml(extension.GetString("intro")))</div>
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <p class="contact-form-error">@error</p>
+        }
+        <form method="post" action="/ext/contact-form/submit">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnPath" value="@Context.Request.Path" />
+            <label for="cf-name">Name</label>
+            <input id="cf-name" name="name" required maxlength="100" autocomplete="name" />
+            <label for="cf-email">Email</label>
+            <input id="cf-email" name="email" type="email" required maxlength="200" autocomplete="email" />
+            <label for="cf-message">Message</label>
+            <textarea id="cf-message" name="message" required rows="6" maxlength="@maxLength"></textarea>
+            <button type="submit">Send</button>
+        </form>
+    }
+</section>

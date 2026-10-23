@@ -14,6 +14,7 @@ using DotNetForge.Extensions;
 using DotNetForge.Infrastructure.Configuration;
 using DotNetForge.Infrastructure.Security;
 using DotNetForge.Infrastructure.Storage;
+using DotNetForge.Sdk;
 using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
@@ -31,12 +32,13 @@ namespace DotNetForge.Web.Startup;
 
 /// <summary>
 /// Composition root wiring. Registers persistence, security primitives, storage, domain services, the extension
-/// host, authentication (cookie for admin, token for the API), authorization policies and rate limits. Keeping all
-/// DI in one place makes the dependency graph auditable (.docs/architecture/dependencies.md).
+/// host (and every loaded extension's own services), authentication (cookie for admin, token for the API),
+/// authorization policies and rate limits. Keeping all DI in one place makes the dependency graph auditable
+/// (.docs/architecture/dependencies.md).
 /// </summary>
 public static class DependencyRegistration
 {
-    public const string AdminAreaPolicy = "AdminArea";
+    public const string AdminAreaPolicy = AuthorizationPolicies.AdminArea;
 
     /// <summary>How long a "this account is still enabled" check is remembered per user.</summary>
     private static readonly TimeSpan SessionValidationCacheLifetime = TimeSpan.FromSeconds(30);
@@ -61,15 +63,20 @@ public static class DependencyRegistration
             .SetApplicationName("DotNetForge")
             .PersistKeysToDbContext<DotNetForgeDbContext>();
 
-        // Runtime file storage (uploaded media) - never the deployment directory.
+        // Runtime file storage (uploaded media) - never the deployment directory. The host's own storage is keyed;
+        // IFileStorage routes to an enabled storage-connector extension, else to it (.docs/features/media-storage.md).
         if (env.Storage.Provider == StorageProvider.S3)
         {
-            services.AddSingleton<IFileStorage>(_ => new S3FileStorage(env.Storage));
+            services.AddKeyedSingleton<IFileStorage>(ExtensionMediaStorage.CoreStorageKey, (_, _) => new S3FileStorage(env.Storage));
         }
         else
         {
-            services.AddSingleton<IFileStorage>(_ => new LocalFileStorage(env.Storage.LocalPath));
+            services.AddKeyedSingleton<IFileStorage>(ExtensionMediaStorage.CoreStorageKey, (_, _) => new LocalFileStorage(env.Storage.LocalPath));
         }
+
+        services.AddSingleton<IFileStorage>(sp => new ExtensionMediaStorage(
+            sp.GetRequiredKeyedService<IFileStorage>(ExtensionMediaStorage.CoreStorageKey),
+            sp.GetServices<MediaStorageContribution>(), sp.GetRequiredService<ExtensionCatalog>(), sp));
 
         // Security primitives (BCL-only implementations).
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
@@ -77,10 +84,11 @@ public static class DependencyRegistration
         services.AddSingleton<IApiTokenFactory, ApiTokenFactory>();
 
         // Domain services.
-        services.AddSingleton<IPermissionService, PermissionService>();
-        services.AddSingleton<IManifestValidator, ManifestValidator>();
-        services.AddSingleton<IExtensionLoader>(sp =>
-            new ExtensionLoader(sp.GetRequiredService<IManifestValidator>(), env.ExtensionsPath));
+        // Authorization reads the roles' stored grants (cached per tenant), so custom roles and edits take effect.
+        services.AddSingleton<IRoleGrantStore, RoleGrantStore>();
+        services.AddSingleton<IPermissionService>(sp => new PermissionService(sp.GetRequiredService<IRoleGrantStore>()));
+        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddScoped<IInstallationStore, InstallationStore>();
         services.AddScoped<IInstallationService, InstallationService>();
 
@@ -90,7 +98,16 @@ public static class DependencyRegistration
         services.AddScoped<AuthService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IPageService, PageService>();
+        services.AddScoped<IPublishedPages, PublishedPageService>();
         services.AddScoped<MediaService>();
+        services.AddScoped<UserManagementService>();
+        services.AddScoped<RoleManagementService>();
+        services.AddScoped<ProfileService>();
+        services.AddScoped<PagePermissionService>();
+        services.AddScoped<PageBuilderService>();
+        services.AddScoped<DotNetForge.Web.Areas.Admin.Navigation.AdminNavigationService>();
+
+        var extensions = AddExtensionHost(services, env);
 
         // Authentication: cookie for the admin UI, bearer token for the headless API.
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -110,13 +127,26 @@ public static class DependencyRegistration
                 options.Cookie.Name = "dnf.auth";
                 options.Events.OnValidatePrincipal = ValidateSessionAsync;
             })
+            // Short-lived cookie that carries an authentication extension's result to ExternalLoginController.
+            .AddCookie(ExternalLogin.SignInScheme, options =>
+            {
+                options.Cookie.Name = "dnf.external";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = hostEnv.IsDevelopment()
+                    ? CookieSecurePolicy.SameAsRequest
+                    : CookieSecurePolicy.Always;
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+            })
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(
                 ApiTokenDefaults.Scheme, _ => { });
 
         services.AddAuthorization(options =>
         {
-            // Only admin-capable roles may enter the admin area (.docs/features/authorization.md).
-            options.AddPolicy(AdminAreaPolicy, policy => policy.RequireRole(Roles.AdminCapable));
+            // Every role except the site-only ones (Authenticated, Public) may enter the admin area - built-in and custom;
+            // each screen then checks its own permission (.docs/features/authorization.md#screen-access).
+            options.AddPolicy(AuthorizationPolicies.AdminArea, policy => policy.RequireAuthenticatedUser().RequireAssertion(
+                context => Roles.CanEnterAdmin(context.User.FindAll(ClaimTypes.Role).Select(c => c.Value))));
         });
 
         AddRateLimits(services);
@@ -129,15 +159,72 @@ public static class DependencyRegistration
         services.AddHostedService<ScheduledPublishingService>();
 
         // MVC + the API controllers (the API project is mounted as an application part). Runtime Razor
-        // compilation lets admin extensions ship views under extensions/ that are compiled in memory and rendered
-        // on demand; the extra file provider is rooted at the folder that contains extensions/ (the app folder when
+        // compilation lets extensions ship views under extensions/ that are compiled in memory and rendered on
+        // demand; the extra file provider is rooted at the folder that contains extensions/ (the app folder when
         // published, the repository root in a checkout), so views resolve as ~/extensions/... and nothing is written.
-        services.AddControllersWithViews()
+        // Extension assemblies are application parts too (their controllers) and compile references for their views.
+        var loaded = extensions.Extensions.Where(e => e.IsLoaded).ToList();
+        var mvc = services.AddControllersWithViews(options => options.Conventions.Add(new ExtensionControllerConvention(extensions)))
             .AddApplicationPart(typeof(ContentApiController).Assembly)
             .AddRazorRuntimeCompilation(options =>
-                options.FileProviders.Add(new PhysicalFileProvider(ExtensionViewRoot(env))));
+            {
+                options.FileProviders.Add(new PhysicalFileProvider(ExtensionViewRoot(env)));
+                foreach (var path in loaded.SelectMany(e => e.ReferencePaths).Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    options.AdditionalReferencePaths.Add(path);
+                }
+            });
+        mvc.ConfigureApplicationPartManager(parts =>
+        {
+            foreach (var extension in loaded)
+            {
+                parts.ApplicationParts.Add(new ExtensionAssemblyPart(extension.Assembly!));
+            }
+        });
 
         return services;
+    }
+
+    /// <summary>
+    /// The extension host (.docs/features/extensions.md): discovery, code loading - done here, before the container
+    /// is built, because each loaded extension registers its own services - enabled state, the catalog and the slot
+    /// services. An extension whose <c>ConfigureServices</c> throws is marked failed and contributes nothing.
+    /// </summary>
+    private static ExtensionRuntime AddExtensionHost(IServiceCollection services, AppEnvironment env)
+    {
+        var validator = new ManifestValidator();
+        var loader = new ExtensionLoader(validator, env.ExtensionsPath);
+        var runtime = ExtensionRuntime.Load(loader.Discover(), env.Lookup);
+
+        services.AddSingleton<IManifestValidator>(validator);
+        services.AddSingleton<IExtensionLoader>(_ => loader); // factory registration: the container disposes the watcher
+        services.AddSingleton(runtime);
+        services.AddSingleton<ExtensionState>();
+        services.AddSingleton<IExtensionState>(sp => sp.GetRequiredService<ExtensionState>());
+        // Resolving the loader through the container (not the captured instance) makes the container dispose it.
+        services.AddSingleton(sp => new ExtensionCatalog(sp.GetRequiredService<IExtensionLoader>(), runtime,
+            sp.GetRequiredService<IExtensionState>(), env.Lookup));
+        services.AddScoped<ExtensionLifecycleService>();
+        services.AddSingleton<ExtensionViewRenderer>();
+        services.AddScoped<ThemeResolver>();
+        services.AddSingleton<LoginProviders>();
+        services.AddSingleton<AuditEventDispatcher>();
+        services.AddHostedService(sp => sp.GetRequiredService<AuditEventDispatcher>());
+
+        foreach (var extension in runtime.Extensions.Where(e => e.IsLoaded))
+        {
+            try
+            {
+                extension.Instance!.ConfigureServices(services, extension.Context);
+            }
+            catch (Exception ex)
+            {
+                // Extension code: record the failure (Plugins screen, startup log) instead of failing startup.
+                extension.Fail($"ConfigureServices failed: {ex.Message}");
+            }
+        }
+
+        return runtime;
     }
 
     /// <summary>
@@ -188,6 +275,15 @@ public static class DependencyRegistration
                 ClientKey(http), _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 300,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+
+            // Public form posts from extensions (contact forms): a person sends a few, a spam bot many.
+            options.AddPolicy(RateLimitPolicies.Forms, http => RateLimitPartition.GetFixedWindowLimiter(
+                ClientKey(http), _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0,
                 }));

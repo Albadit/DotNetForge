@@ -1,0 +1,51 @@
+@*
+    The feedback layer of every built-in layout (.docs/architecture/design-system.md#feedback):
+    - toasts for TempData["Success"] (auto-hides), TempData["Error"] and TempData["Info"] (stay until dismissed);
+      screens set TempData and redirect (PRG) - they never render their own flash markup;
+    - the confirmation dialog used by every form with data-confirm="question" (ui.js; falls back to window.confirm).
+*@
+@{
+    var toasts = new List<(string Tone, string Icon, string Message)>();
+    if (TempData["Success"] is string success) { toasts.Add(("success", "circle-check", success)); }
+    if (TempData["Error"] is string error) { toasts.Add(("danger", "circle-x", error)); }
+    if (TempData["Info"] is string info) { toasts.Add(("info", "info", info)); }
+}
+<div class="toast-region" data-toasts aria-live="polite">
+    @foreach (var toast in toasts)
+    {
+        <div class="toast toast-@toast.Tone" role="@(toast.Tone == "danger" ? "alert" : "status")"
+             data-toast data-autohide="@(toast.Tone == "success" ? "true" : null)">
+            <icon name="@toast.Icon" />
+            <p class="toast-message">@toast.Message</p>
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-toast-close aria-label="Dismiss">
+                <icon name="x" size="sm" />
+            </button>
+        </div>
+    }
+</div>
+
+<template id="toast-template">
+    <div class="toast" role="status" data-toast>
+        <icon name="info" />
+        <p class="toast-message"></p>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-toast-close aria-label="Dismiss">
+            <icon name="x" size="sm" />
+        </button>
+    </div>
+</template>
+
+<dialog class="dialog" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+    <form method="dialog">
+        <div class="dialog-body">
+            <span class="dialog-icon danger" data-confirm-icon><icon name="triangle-alert" /></span>
+            <div>
+                <h2 class="dialog-title" id="confirm-title">Are you sure?</h2>
+                <p class="dialog-text" id="confirm-text"></p>
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <button type="submit" value="cancel" class="btn">Cancel</button>
+            <button type="submit" value="confirm" class="btn btn-danger" data-confirm-ok>Confirm</button>
+        </div>
+    </form>
+</dialog>

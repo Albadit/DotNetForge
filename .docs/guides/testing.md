@@ -4,12 +4,13 @@
 
 | Project | References | Runs against | Count (Oct 2026) |
 | --- | --- | --- | --- |
-| `tests/DotNetForge.Tests` | `src/` libraries (not the host, not `Api`) | pure code, fakes, temp folders, closed ports; optionally a live S3 bucket | 198 tests: 193 run, 5 live-S3 tests skipped unless `DNF_TEST_S3_*` is set |
-| `tests/DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj` | the real host via `WebApplicationFactory<Program>`, a temp SQLite file (or a [database server](#databases)) and a temp media folder | 53 tests: 50 run on any database, 3 credential tests skipped unless their server is configured |
+| `tests/DotNetForge.Tests` | `src/` libraries (not the host, not `Api`) | pure code, fakes, temp folders, closed ports; optionally a live S3 bucket | 699 tests: 694 run (465 of them page builder), 5 live-S3 tests skipped unless `DNF_TEST_S3_*` is set |
+| `tests/DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj`; build-only references to the fixture extension `tests/fixtures/extensions/test-kit` and the `markdown-kit`, `contact-form`, `seo-toolkit` samples ([extension fixtures](#extension-fixtures)) | the real host via `WebApplicationFactory<Program>`, a temp SQLite file (or a [database server](#databases)) and a temp media folder | 86 tests: 83 run on any database, 3 credential tests skipped unless their server is configured |
 
 ```bash
-dotnet test tests/DotNetForge.Tests            # Passed: 193, Skipped: 5
-dotnet test tests/DotNetForge.IntegrationTests # Passed: 50, Skipped: 3
+dotnet test tests/DotNetForge.Tests            # Passed: 694, Skipped: 5
+dotnet test tests/DotNetForge.IntegrationTests # Passed: 83, Skipped: 3
+node tests/js/page-builder-fixtures.mjs        # 77/77 page builder fixtures match
 ```
 
 Both are safe to run locally: no external services, no network, no `.env` required (the integration factory sets
@@ -26,10 +27,12 @@ and on PostgreSQL 17, SQL Server 2022, MySQL 8.4 and MongoDB 8.0 ([databases](#d
 | `DatabaseConnectionTests.cs` | `DatabaseConnectionTests` | real PostgreSQL, SQL Server, MySQL and MongoDB drivers against a closed port → `DatabaseConnectionException` without credentials |
 | `EnvConfigurationTests.cs` | `EnvConfigurationTests`, `DotEnvParserTests` (1) | `EnvConfigurationLoader`: database settings read as written (providers validate them), named `DATABASES_*` databases and invalid keys, Development storage defaults under the content root (`storage/media`), S3 settings with R2-style defaults (`STORAGE_S3_REGION=auto`), S3 required outside Development, any S3 key selecting S3, invalid S3 configuration (missing bucket, missing region, malformed service URL, `STORAGE_S3_FORCE_PATH_STYLE`); `DotEnvParser` |
 | `FileStorageTests.cs` | `LocalFileStorageTests` (8), `StorageKeyTests` (13), `S3FileStorageTests` (8, 5 of them live) | the shared `IFileStorage` contract (`FileStorageContract`: save/read, overwrite, missing → `null`, idempotent delete, invalid keys) for the local provider; local-only: files stay inside the root, no temp files left, a failed upload leaves no partial object, no download URLs; `StorageKey.IsValid`; S3 offline: presigned URLs signed, short-lived and carrying `response-content-disposition`, presigning follows a plain `http://` endpoint, invalid keys rejected before any request; S3 live (`[S3Fact]`): the contract plus a download through a presigned URL |
-| `ExtensionLoaderTests.cs` | `ExtensionLoaderTests` (3) | `ExtensionLoader`: finds valid admin extensions by id case-insensitively, cache invalidated when a manifest is added (file watcher), missing root → no extensions |
+| `ExtensionLoaderTests.cs` | `ExtensionLoaderTests` (3) | `ExtensionLoader`: discovers every manifest below the root, cache invalidated when a manifest is added (file watcher), missing root → no extensions |
+| `ExtensionRuntimeTests.cs` | `ExtensionRuntimeTests` (5) | `ExtensionRuntime` on temp folders: views-only extensions load no code, a missing assembly is reported with the build hint, a non-assembly file is reported, missing/failed/circular dependencies are reported, `ExtensionContext` typed settings and `GetEnvironmentValue` |
 | `InstallationServiceTests.cs` | `InstallationServiceTests` (5) | `InstallationService` with a `FakeInstallationStore`: success, mismatch, weak password, invalid email, already installed |
-| `ManifestValidationTests.cs` | `ManifestValidationTests` (20) | `ManifestValidator`: required fields, permissions, type, semver, all nine types |
-| `PermissionTests.cs` | `PermissionTests` (12) | `PermissionService` / `PermissionMatrix` defaults and union semantics |
+| `ManifestValidationTests.cs` | `ManifestValidationTests` (31) | `ManifestValidator`: required fields, permissions, type, semver, all nine types, `assembly` must be a `.dll` inside the extension folder (11 cases: `..`, rooted, backslash, hidden segment, non-`.dll`, empty rejected) |
+| `PageBuilder/*.cs` | `GoldenFixtureTests`, `DocumentValidatorTests`, `ValuesTests`, `ContentComponentTests`, `ComponentRegistryTests`, `SecurityRegressionTests`, `SegmentsTests` (465 with all fixture cases) | the page builder's C# side, ported with the reference project's tests: every golden fixture in `tests/fixtures/page-builder/render` (76) normalizes and renders byte for byte; validator, value, URL and component rules ([page builder → Testing](../features/page-builder.md#testing)) |
+| `PermissionTests.cs` | `PermissionTests` (13) | `PermissionService` / `PermissionMatrix` defaults and union semantics; tenant checks from stored grants (custom role, edited built-in role, Super Admin, matrix fallback) with a fixed `IRoleGrantStore` |
 | `SecurityPrimitiveTests.cs` | `PasswordHasherTests` (3), `ApiTokenFactoryTests` (2), `WebhookSignerTests` (3) | `Pbkdf2PasswordHasher`, `ApiTokenFactory`, `HmacWebhookSigner` |
 | `ValidationTests.cs` | `PasswordPolicyTests` (7), `EmailValidatorTests` (6) | `PasswordPolicy`, `EmailValidator` (the `SlugHelper` tests were removed with the class; slug rules are tested through `PageService`) |
 
@@ -76,13 +79,16 @@ variables** before the host builds:
 | Variable | Value |
 | --- | --- |
 | `DATABASE_CONNECTION_STRING` | `Data Source=<workdir>/cms.db` (SQLite), or a fresh PostgreSQL database when `DNF_TEST_POSTGRES` is set |
-| `STORAGE_S3_*` | placeholder values (startup requires S3 outside Development); `IFileStorage` is replaced through `ConfigureTestServices` with a `LocalFileStorage` in `<workdir>/media` (exposed as `factory.StoragePath`), so no S3 server is needed |
+| `STORAGE_S3_*` | placeholder values (startup requires S3 outside Development); the host's own storage - the **keyed** `IFileStorage` `"core"` behind the extension storage router - is replaced through `ConfigureTestServices` with a `LocalFileStorage` in `<workdir>/media` (exposed as `factory.StoragePath`), so no S3 server is needed and storage-connector extensions still route correctly |
 | `APP_URL` | `http://localhost` |
+| `EXTENSIONS_PATH` | the constructor's `extensionsPath` argument, or empty (= the repository's `extensions/`) |
 
 So each factory gets a fresh, migrated, seeded database and its own media folder; the work directory is deleted on
 dispose (best effort). Because of these process-wide variables, parallelization is disabled (`AssemblyInfo.cs`).
-The constructor takes the environment name (default `Development`); `new DotNetForgeWebFactory("Production")` runs
-the production code paths (CSP enforced, `Secure` cookie, absolute-path configuration rules).
+The constructor takes the environment name (default `Development`) and an optional `extensionsPath`;
+`new DotNetForgeWebFactory("Production")` runs the production code paths (CSP enforced, `Secure` cookie,
+absolute-path configuration rules), `new DotNetForgeWebFactory(extensionsPath: ...)` hosts another extensions folder
+(the fixtures). Extension code is loaded when the host builds, so each factory sees the extensions as they were then.
 
 | Helper | Does |
 | --- | --- |
@@ -93,6 +99,23 @@ the production code paths (CSP enforced, `Secure` cookie, absolute-path configur
 | `SignInAsync(email?, password?)` | a `CreateNoRedirectClient()` signed in through the real login form (throws unless the POST returns `302`) |
 | `PostFormAsync(client, formPage, action, fields)` | GETs `formPage` for the antiforgery token, then POSTs the form fields plus the token to `action` |
 | `GetAntiforgeryTokenAsync(client, formPage)` | extracts `__RequestVerificationToken` (e.g. for a JSON `fetch`-style request with `X-CSRF-TOKEN`) |
+
+### Extension fixtures
+
+`tests/fixtures/extensions/` is a small extensions folder for `ExtensionTests`; its `Directory.Build.props` imports
+`extensions/Directory.Build.props`, so fixtures build exactly like real extensions:
+
+| Folder | Role |
+| --- | --- |
+| `test-kit` (`tests.plugin.kit`) | the one fixture with code (`TestKit.csproj` → `bin/TestKit.dll`): minimal-API endpoints (`/test-kit/ping`, `/events`, `/storage`), an MVC controller, an in-memory storage connector, a recording audit handler, a fake remote sign-in scheme `testkit` ("Test Kit") |
+| `test-admin`, `test-widget`, `test-theme`, `test-module` | views-only admin tab, dashboard widget, theme (`Page.cshtml` + resources), page module |
+| `test-lib`, `test-dependent` | dependency rules (enable/disable order) |
+| `broken` (`tests.plugin.broken`) | a valid manifest whose `bin/Missing.dll` does not exist: "not running", Enable refused |
+
+`DotNetForge.IntegrationTests.csproj` references `TestKit.csproj` and the three samples `SampleExtensionTests` loads
+with `ReferenceOutputAssembly="false"`: they are built before the tests (so their `bin/` exists) but never linked -
+the host loads them like any extension. When you add a fixture or sample with code that a test loads, add the same
+kind of reference.
 
 ### Databases
 
@@ -112,7 +135,7 @@ docker compose -f docker/compose.dev.yml --profile mongodb up -d
 DNF_TEST_MONGODB="mongodb://localhost:27017/?replicaSet=rs0&directConnection=true" dotnet test tests/DotNetForge.IntegrationTests
 ```
 
-All 50 database-independent tests must pass on every database. `DatabaseCredentialTests` additionally run for
+All 72 database-independent tests must pass on every database. `DatabaseCredentialTests` additionally run for
 PostgreSQL, SQL Server and MySQL when their variable is set (`[DatabaseServerFact]`). `PageServiceTests` always use
 in-memory SQLite (they don't use the factory).
 
@@ -127,6 +150,7 @@ in-memory SQLite (they don't use the factory).
 | | `After_install_admin_requires_authentication` | `/admin` → 302 containing `/account/login` |
 | | `Api_requires_a_token` | `/api/content/pages` → 401 |
 | `MediaTests.cs` | `Public_upload_is_stored_outside_the_app_and_downloadable_anonymously` | upload lands under `StoragePath`, anonymous download works |
+| | `A_file_can_be_made_private_and_public_again_by_users_who_may_update_it` | an Author can't change the admin's file (denied); the admin makes it private (anonymous download 404, toast) and public again (200); two `media.updated` entries |
 | | `Private_file_is_hidden_from_anonymous_users_but_served_to_admins` | anonymous → 404, signed-in admin → file |
 | | `Unknown_media_id_is_not_found` | 404 |
 | | `Active_or_unknown_file_types_are_rejected` (4 cases: `.html`, `.svg`, `.js`, no extension) | form error "file type that is not allowed", no row, no stored object |
@@ -144,15 +168,43 @@ in-memory SQLite (they don't use the factory).
 | | `Reorder_rejects_a_cycle` | `POST /admin/content/reorder` making a page its child's child → 400 containing "cycle" |
 | | `Duplicate_api_token_name_is_a_validation_error_not_a_crash` | second token with the same name → 200 "already exists" |
 | | `Api_page_creation_applies_the_content_rules_and_is_audited` | API create slugifies (`our-pricing`), duplicate root slug → 400, `content.created` with `UserId = null` and `API token ...` |
-| `ReadOnlyDeploymentTests.cs` | `A_full_session_writes_nothing_into_the_content_root` | snapshot (path, length, last write) of the content root - minus `bin`, `obj`, `.git`, `.vs`, `TestResults`, `node_modules` - is identical before and after a Production session: setup POST, sign-in, admin screens, public pages, the sample admin extension, upload, download, delete |
+| `PageBuilderTests.cs` | `A_layout_is_drafted_published_and_rendered_on_the_site` | draft save (normalized), preview, stale save → 409 (force overwrites), invalid document → 400, publish → the public page renders the layout with `/page-css/{id}.css` (`text/css`, `immutable`), no `<style>`; unpublish keeps the draft; two `content.updated` layout entries |
+| | `Only_users_who_may_edit_the_page_open_the_builder_and_publishing_needs_publish` | an Author is denied a seeded page's builder; a page edit grant for Author opens it and allows saving; publish → 403 |
+| | `Page_permissions_seo_and_theme_are_saved_from_the_page_editor` | the page form saves a view grant (Authenticated), `NoIndex`, social image, redirects to `#permissions`; anonymous → sign-in redirect; signed-in page has `noindex` and `og:image`; `permission.changed`; an uninstalled theme is refused |
+| | `Single_users_can_be_allowed_or_blocked_on_a_page` | blocking yourself is refused; an Editor blocked from view and edit gets 404 on the page and is denied the builder and delete; an Author allowed to edit opens the builder; visitors still see the page; clearing a user's rules removes them |
+| | `Users_edit_their_own_profile_and_password` | Profile details saved and shown; wrong current password refused; new password signs in |
+| `UserAndRoleManagementTests.cs` | `An_admin_creates_a_user_who_can_then_sign_in` | `POST /admin/users/create` → redirect to the edit screen; the new Editor signs in and opens the Content Manager; hashed password, `user.created`; the list links to the form; a case-different duplicate email is refused |
+| | `A_custom_role_grants_exactly_its_permissions_and_edits_apply_at_once` | a "Reviewer" role with `Collection types` / `read`: Content Manager 200, Settings denied and absent from the sidebar; adding `Settings` / `read` opens Settings for the signed-in reviewer; `permission.changed` |
+| | `A_role_in_use_cannot_be_deleted_and_built_in_roles_never` | Duplicate copies every grant (`Editor (copy)`); delete refused while a user holds the copy, works after the user is deleted (grants removed too); a built-in role is never deleted |
+| | `Super_admins_and_your_own_account_are_protected` | the Super Admin can't disable or delete themselves; an Admin can't disable/delete the Super Admin, can't give the Super Admin role, can't change the grants of the Admin role but can save its description |
+| | `The_sidebar_lists_roles_once` | exactly one `href="/admin/roles"` in the admin shell |
+| `AdminUiTests.cs` ([design system](../architecture/design-system.md#accessibility-wcag-22-aa)) | `Every_screen_renders_without_inline_script_or_style` | every admin screen (incl. all placeholders, `/admin/api-tokens/create`, the Users and Roles create forms, every role's editor, a user's edit form, the Content Manager with a selected page), `/account/login`, `/` and `/about`: 200, exactly one `<h1>`, `<html lang="en">`, the skip link, no `style=`, `<style>`, inline `<script>` or `on…=` handler |
+| | `The_sidebar_shows_only_screens_the_role_may_open` | Editor: Content Manager and Media links present, Plugins/Users/Settings/API Tokens absent and still → `/account/denied` by URL; admin on `/admin/api-tokens/create`: **API Tokens** has `aria-current="page"`, breadcrumb ends with "Create API token" |
+| | `Bulk_delete_removes_the_selected_files_the_user_may_delete` | `POST /admin/media/delete-selected`: an Author deletes none of the admin's files; the admin deletes 2 of 3, toast "Deleted 2 files.", two `media.deleted` entries |
+| | `The_dashboard_shows_recent_activity_and_offers_only_permitted_actions` | admin's dashboard shows "Signed in" (recent activity) and **New API token**; an Editor's does not offer **New API token** |
+| | `Every_icon_the_ui_uses_exists_in_the_sprite` | every icon named in host and extension views, `AdminNavigation.Tree`, `AuditPresentation` and `MediaPresentation` is a `<symbol>` in `wwwroot/img/icons.svg` |
+| | `Timestamps_read_relative_to_now` (6 cases), `Old_timestamps_show_the_date` | `TimestampTagHelper.Relative`: "just now", "5 min ago", "3 h ago", "yesterday", "4 days ago", "in 5 min"; older than a week → "3 Oct 2026" |
+| `ReadOnlyDeploymentTests.cs` | `A_full_session_writes_nothing_into_the_content_root` | snapshot (path, length, last write) of the content root - minus `bin`, `obj`, `.git`, `.vs`, `TestResults`, `node_modules` - is identical before and after a Production session: setup POST, sign-in, enabling the sample admin extension, admin screens, public pages, the extension's tab, upload, download, delete |
+| `ExtensionTests.cs` (fixtures, `extensionsPath` = `tests/fixtures/extensions`) | `Plugins_lists_every_extension_disabled_and_explains_what_cannot_run` | fixtures listed, none enabled; the missing DLL explained; enabling it refused ("can't be enabled") |
+| | `Extension_endpoints_and_controllers_answer_only_while_enabled` | minimal-API endpoint (settings reach the code) and MVC controller: 404 while disabled, served while enabled, 404 again after disable; audit `plugin.enabled` then `plugin.disabled`; `InstalledExtensions` row `Disabled` |
+| | `Enabling_needs_enabled_dependencies_and_disabling_needs_no_enabled_dependents` | "needs ... - enable it first" and "depends on ... - disable it first" refusals |
+| | `Widgets_render_on_the_dashboard_and_admin_tabs_in_the_admin_area` | widget card on `/admin`, sidebar tab, `/admin/ext/{id}/raw` only while enabled; a widget's resources under `/admin/ext/...` but not `/ext/...` |
+| | `Themes_render_public_pages_and_modules_appear_on_their_pages` | theme view on `/about` and `/news`, module only on its `pages`, public resource served, traversal refused (404), built-in view hosts modules after disabling the theme |
+| | `A_storage_connector_takes_over_media_while_enabled` | uploads go to the connector while enabled, to the core storage after disabling |
+| | `Audit_events_reach_enabled_extension_handlers` | a failed sign-in reaches the enabled handler in the background (polled up to 10 s) |
+| | `Authentication_extensions_sign_in_existing_users_by_email` | "Sign in with Test Kit" only while enabled; unknown email → back to sign-in with "No account here uses the email", not signed in; the admin's email → `/admin`, audit `user.login` with details `via Test Kit` |
+| `ExtensionTests.cs` → `SampleExtensionTests` (repository `extensions/`) | `Contact_form_module_renders_with_its_library_and_stores_messages` | Markdown Kit + Contact Form: Markdown intro rendered on `/contact`, the post redirects back, the message is a JSON object under `ext/contact-form/` in media storage, `contactform.submitted` audited |
+| | `Seo_toolkit_serves_a_sitemap_of_live_pages_while_enabled` | `/sitemap.xml` 404 before enabling; then lists live pages (`/about/team`) but not unpublished ones; `/robots.txt` names the sitemap |
 | | `Production_refuses_database_paths_inside_the_deployment_directory` (2 cases) | the host's database registration with a production host: relative SQLite `Data Source`, missing `DATABASE_CONNECTION_STRING` → `DatabaseConfigurationException` (missing S3 storage is covered by `EnvConfigurationTests`) |
 | `DatabaseServiceContractTests.cs` | `Crud_round_trip`, `Ef_core_and_the_service_read_each_others_data`, `Database_generated_keys_are_created_on_insert`, `Text_filters_match_literally`, `Aggregates_group_and_count`, `Unique_violations_are_conflicts`, `Transactions_commit_or_roll_back`, `Large_results_can_be_streamed`, `Seeded_cms_data_is_queryable_by_entity_name`, `Composite_keys_are_read_and_filtered_like_other_fields`, `Unknown_names_and_connection_status_are_reported` | `IDatabaseService` on the integration database: the provider contract ([providers](../database/providers.md#contract-and-testing)) |
 | | `AdditionalDatabaseTests.Commands_run_against_a_named_database_without_a_model` | a `DATABASES_REPORTS_*` SQLite database: unmapped names, `SELECT *`, aggregates, key-less `DeleteOne` refused, identifier validation |
 | `DatabaseCredentialTests.cs` | `PostgreSql_…`, `SqlServer_…`, `MySql_reports_wrong_credentials` | wrong password → `DatabaseAuthenticationException` (skipped unless the server variable is set) |
 | `PageServiceTests.cs` | `Slugifies_and_applies_valid_input`, `Rejects_duplicate_slug_under_the_same_parent_including_root`, `Rejects_a_parent_that_creates_a_cycle`, `Rejects_a_second_dynamic_segment_under_one_parent`, `Rejects_overlong_fields_before_saving`, `Reorder_rejects_moves_that_duplicate_a_slug`, `Reorder_rejects_pages_of_another_tenant`, `Delete_reparents_children_or_refuses_when_slugs_would_clash` | `PageService` rules against an in-memory SQLite `DotNetForgeDbContext` (`EnsureCreated`, no host) |
 
-Not covered: the Users, Roles, Audit Logs and API Tokens list screens (Dashboard, Content Manager, Media and Plugins
-are only rendered in the read-only session), Settings saves, API endpoints other than page creation, public dynamic
+Not covered: the content of the Audit Logs and API Tokens lists (every admin screen is rendered by
+`AdminUiTests` for structure and CSP only; Plugins also by `ExtensionTests`), `/setup`, `/account/denied` and
+`/error` markup, client-side behaviour in `ui.js`/`content.js` (no browser tests), the weather, S3, Discord and SMS samples (they
+need network or credentials), Settings saves, API endpoints other than page creation, public dynamic
 routes, account lockout, the upload size limit.
 
 ### Writing a signed-in integration test
@@ -183,6 +235,8 @@ Never write into the repository from a test: use `factory.StoragePath`, the fact
 | New screen / endpoint / auth rule | integration test with `CreateNoRedirectClient` / `SignInAsync` asserting status and redirect |
 | New API endpoint | 401 without token, 403 without the key, 200 with it, tenant isolation |
 | Anything that touches files at runtime | keep `ReadOnlyDeploymentTests` green; extend its session if the new path isn't exercised |
+| Extension host, a slot, the SDK | `ExtensionTests` with a fixture under `tests/fixtures/extensions/` (code goes in `test-kit`); loading rules in `ExtensionRuntimeTests`; manifest rules in `ManifestValidationTests` |
+| A sample extension | a `SampleExtensionTests` case if it runs offline; add its `.csproj` as a build-only reference |
 | Schema change | run the integration suite on every database (`DNF_TEST_POSTGRES`, `_SQLSERVER`, `_MYSQL`, `_MONGODB`): each SQL provider has its own migration set, MongoDB builds indexes |
 | New database provider | [adding a provider → Tests](../database/adding-a-provider.md#5-tests) |
 | Bug fix | a regression test that fails without the fix |
@@ -229,12 +283,12 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 | Area | Must verify | Today |
 | --- | --- | --- |
-| Core services | business logic of each core service in isolation | `InstallationService`, `EnvConfigurationLoader`, `ExtensionLoader`, `LocalFileStorage` / `S3FileStorage` |
+| Core services | business logic of each core service in isolation | `InstallationService`, `EnvConfigurationLoader`, `ExtensionLoader`, `ExtensionRuntime`, `LocalFileStorage` / `S3FileStorage` |
 | Permissions | RBAC checks for every permission area; least privilege | a few role/area pairs in `PermissionTests` |
 | Content manager | page CRUD, tree resolution, page types, scheduling, draft/published state | `PageService` rules (slug, cycle, dynamic segment, lengths, reorder, delete) in `PageServiceTests` - integration project, in-memory SQLite; no scheduling or liveness tests |
 | Media validation | file-type allowlist, max upload size, blocking unsafe uploads | integration only: allowlist and active types rejected (`MediaTests`); size limit untested ([media storage](../features/media-storage.md#upload-flow)) |
 | API token generation | secure creation, hashing before storage, expiration, permission scoping | ✔ creation + hash verification (`ApiTokenFactoryTests`); expiration and scoping untested |
-| Manifest validation | required fields; rejection of invalid, unsafe or incompatible manifests | ✔ required fields, type, semver, permissions; "unsafe" and "incompatible" do not exist as checks |
+| Manifest validation | required fields; rejection of invalid, unsafe or incompatible manifests | ✔ required fields, type, semver, permissions, `assembly` path; "unsafe" and "incompatible" do not exist as checks |
 | Import/export | provider-aware export and import; import-file validation | none ([transfer and updates](../features/transfer-and-updates.md)) |
 
 **Integration test coverage** (`DotNetForge.IntegrationTests`):
@@ -242,7 +296,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 | Flow | Must verify | Today |
 | --- | --- | --- |
 | Setup | not-installed detection, setup screen, first user created with `Super Admin`, CMS marked installed | gate and screen ✔; `ReadOnlyDeploymentTests` POSTs `/setup` (302) and signs in, but the `Super Admin` role and installed flag are not asserted |
-| Authentication | login, failed login, lockout, provider-based sign-in | login ✔ (`SignInAsync`, audit, external `returnUrl`), rate limit ✔, disabled-user session end ✔; failed login only via the rate-limit test; lockout ✘ |
+| Authentication | login, failed login, lockout, provider-based sign-in | login ✔ (`SignInAsync`, audit, external `returnUrl`), rate limit ✔, disabled-user session end ✔, provider-based sign-in ✔ (extension fixture); failed login only via the rate-limit test and the external unknown-email case; lockout ✘ |
 | API endpoints | token-authenticated requests, permission enforcement, tenant scoping | `401` without a token; one token-authenticated `POST /api/content/pages` with `content.create`; no 403 or tenant-scoping tests |
 
 - Multi-tenant assertions: tenant context is resolved **first** (domain, subdomain or path prefix), and an API token
@@ -276,8 +330,8 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 Unit test coverage:
 
-- [ ] Unit tests exist for core services (only `InstallationService`, configuration loading, `ExtensionLoader` and the
-  storage providers).
+- [ ] Unit tests exist for core services (only `InstallationService`, configuration loading, `ExtensionLoader`,
+  `ExtensionRuntime` and the storage providers).
 - [ ] Unit tests exist for permissions across all permission areas.
 - [ ] Unit tests exist for the content manager (`PageService` rules ✔ in `PageServiceTests`, but in the integration
   project against in-memory SQLite; no CRUD or scheduling tests).

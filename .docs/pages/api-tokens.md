@@ -8,55 +8,79 @@ creation and only a hash is kept.
 
 ## Route / Navigation
 
-| Screen | Route | View |
-| --- | --- | --- |
-| Token list | `GET /admin/api-tokens` | `ApiTokens/Index.cshtml` |
-| Create form | `GET /admin/api-tokens/create` | `ApiTokens/Create.cshtml` |
-| Create submit | `POST /admin/api-tokens/create` | `Create.cshtml` (errors) or `Created.cshtml` (success, not a redirect) |
-| Revoke | `POST /admin/api-tokens/revoke/{id:guid}` | redirects to the list |
+| Screen | Route | View | Title (h1, last breadcrumb) |
+| --- | --- | --- | --- |
+| Token list | `GET /admin/api-tokens` | `ApiTokens/Index.cshtml` | "API Tokens" |
+| Create form | `GET /admin/api-tokens/create` | `ApiTokens/Create.cshtml` | "Create API token" |
+| Create submit | `POST /admin/api-tokens/create` | `Create.cshtml` (errors) or `Created.cshtml` (success, not a redirect) | "Create API token" / "Token created" |
+| Revoke | `POST /admin/api-tokens/revoke/{id:guid}` | redirects to the list | - |
 
-Navigation entry: Sidebar → **Settings · Global Settings** → **API Tokens**. Child flow: list → **Create token** →
-create form → created view → **Done** → list.
+| Item | Value |
+| --- | --- |
+| Sidebar entry | **Settings → Global Settings → API Tokens** (`AdminNavigation.Tree`); stays active on the child routes (longest matching href) |
+| Breadcrumbs | list: Settings › Global Settings › **API Tokens**; create: Settings › Global Settings › API Tokens › **Create API token**; after creating: … › API Tokens › **Token created** |
+| Child flow | list → **Create token** → create form → created view → **Done** → list |
+| Linked from | the sidebar; **New API token** quick action on the [Dashboard](dashboard.md) (→ `/admin/api-tokens/create`, shown only to users who may open this screen) |
 
 ## Relevant source files
 
 ```text
 src/DotNetForge.Web/Areas/Admin/Controllers/ApiTokensController.cs    Index, Create (GET/POST), Revoke, duration helpers
-src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Index.cshtml          list + revoke buttons
-src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Create.cshtml         form with permission checkboxes
-src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Created.cshtml        one-time secret + usage example
+src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Index.cshtml          list card: filter, table, revoke with confirm, empty state
+src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Create.cshtml         Details card (name, description, expiry radio cards) + Permissions card
+src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Created.cshtml        one-time secret + usage example, copy buttons
 src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs             CreatedTokenViewModel
-src/DotNetForge.Shared/Entities/ApiToken.cs       entity
-src/DotNetForge.Shared/Constants/Permissions.cs   PermissionKeys.All, IsKnown
-src/DotNetForge.Infrastructure/Security/ApiTokenFactory.cs   Generate (plaintext, hash, prefix)
+src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs         sidebar entry, active link, breadcrumbs
+src/DotNetForge.Web/Ui/UiTagHelpers.cs                                <timestamp>, <badge>, <alert>, <empty-state>, <form-errors>, <icon>
+src/DotNetForge.Web/wwwroot/js/forge/ui.js                            data-collection, data-confirm dialog, data-check-group, data-copy-target
+src/DotNetForge.Web/wwwroot/css/forge/admin.css                       .permission-groups / .permission-group
+src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                     confirm dialog, toasts
+src/DotNetForge.Shared/Entities/ApiToken.cs                           entity (Permissions parsed from PermissionsCsv)
+src/DotNetForge.Shared/Constants/Permissions.cs                       PermissionKeys.All, IsKnown
+src/DotNetForge.Infrastructure/Security/ApiTokenFactory.cs            Generate (plaintext, hash, prefix)
 ```
 
 ## Page layout
 
 ```text
-API Tokens (list)
-├── "Scoped tokens for the headless API. The secret is shown only once at creation."  [Create token]
-└── table.data: Name · Prefix · Permissions ("N scope(s)") · Created · Last used · Expires · Status · [Revoke]
+API Tokens (h1) - "Scoped tokens for the headless API. A token's secret is shown once, when it is created."   [+ Create token]
+└── section.card[data-collection][data-page-size=25]
+    ├── card-header: **Tokens** · "N total" · .segmented (JS only, when tokens exist): **All** | **Active** | **Expired** | **Revoked**
+    ├── <empty-state> when there are no tokens (see Empty states)
+    ├── table.table.table-stack: **Name** ⇅ · **Token** · **Scopes** ⇅ · **Last used** ⇅ · **Expires** ⇅ · **Status** · actions
+    │   └── row: name / "Created <timestamp>" · <code>prefix…</code> · key count · <timestamp> ("Never") ·
+    │            <timestamp> ("Never") · Active | Expired | Revoked badge · [Revoke] (only for active tokens)
+    └── .pagination (JS, only when more than 25 rows match)
 
-Create API token
-├── Validation summary
-└── Form: Name* · Description · Duration ▾ (7 days, 30 days [default], 90 days, Unlimited)
-          Permissions* (checkbox grid of all 25 keys) · [Generate token] [Cancel]
+Create API token (h1) - "Give the token a name you'll recognise, choose how long it lives and what it may do."
+└── form.form (POST) - centred narrow page (`ViewData["PageWidth"] = "narrow"`)
+    ├── <form-errors />
+    ├── card **Details**: Name* (placeholder "Marketing website") · Description (optional, "What uses this token?")
+    │   └── fieldset **Expires after**: .choice-cards  7 days · 30 days (default) · 90 days · No expiry
+    └── card **Permissions*** - "Grant only what the app needs. Requests outside these scopes are refused."
+        ├── .permission-groups: one fieldset per key prefix (core, content, media, users, roles, settings,
+        │   extensions, webhooks): "All <group>" (JS only) + one checkbox per key (<code>key</code>)
+        └── card-footer: [Cancel] [Generate token]
 
-Token created
-├── panel.highlight "Copy your token now" + <pre> plaintext
-├── panel "How to use it": API URL <origin>/api, curl example with the token against <origin>/api/content/pages
-└── [Done] → list
+Token created (h1) - "'<name>' is ready to use."
+├── <alert tone="Warning" title="Copy the token now"> only shown once, only a hash is stored
+├── card.card-accent **Your token**: pre.code-block with the plaintext + [Copy] (JS only)
+└── card **How to use it** - "Send it in an Authorization: Bearer header."
+    ├── .dl: API URL <origin>/api (link, new tab)
+    ├── **Example request**: curl -H "Authorization: Bearer <token>" <origin>/api/content/pages + [Copy] (JS only)
+    └── card-footer: [Done] → list
 ```
 
 ## Components
 
 | Component | Inputs | Behaviour |
 | --- | --- | --- |
-| Token table | `List<ApiToken>` for the tenant, newest first | Status badge: **revoked** (warn) or **active** (ok) - based only on `Revoked` |
-| Revoke button | token id | inline POST form with antiforgery; shown only for non-revoked tokens; no confirmation |
-| Create form | `ViewBag.Permissions` = `PermissionKeys.All` | posts `name`, `description`, `duration`, `permissions[]` |
-| Created panel | `CreatedTokenViewModel { Name, Plaintext, Prefix }`; request scheme/host | shows the secret once; builds the example URL from the current request origin |
+| Token table | `List<ApiToken>` of the tenant, newest first | Status badge: **Revoked** (`Danger`) when `Revoked`; else **Expired** (`Warning`) when `ExpirationDate` < now; else **Active** (`Success`). **Scopes** = `ApiToken.Permissions.Count`. **Token** = `TokenPrefix` + "…". **Created** is shown under the name, not as a column |
+| State filter | rows' `data-state` | **Active** = neither revoked nor expired; **Expired** = past `ExpirationDate`, not revoked; **Revoked** = revoked. Client-side, [design system → behaviours](../architecture/design-system.md#behaviours) |
+| Revoke form | token id | inline POST with antiforgery and `data-confirm`; shown for active tokens only (an expired token is already refused by the API) |
+| Create form | `ViewBag.Permissions` = `PermissionKeys.All`; after a failed POST the posted `name`, `description`, `duration`, `permissions` (read from `Request.Form`) | posts `name`, `description`, `duration` (`7` / `30` / `90` / `unlimited`), `permissions[]`; keys are grouped by the part before the first `.` |
+| Select-all per group | `data-check-group` / `data-check-member` | ticks or clears the group's keys; shows checked / indeterminate from its members |
+| Created view | `CreatedTokenViewModel { Name, Plaintext, Prefix }`; request scheme/host | shows the secret once; builds the API URL and example from the current request origin; **Copy** buttons copy `#token-text` / `#curl-text` (hidden spans) and confirm with a toast |
 
 ## Functionality
 
@@ -70,61 +94,105 @@ Token created
    dropped, duplicates removed.
 3. **Service:** `IApiTokenFactory.Generate()`.
 4. **Data:** `ApiToken { TenantId, Name (trimmed), Description (trimmed, blank → null), Duration, ExpirationDate,
-   PermissionsCsv, CreatedById, CreatedDate, TokenHash, TokenPrefix }`. Duration mapping: `"7"` → 7 days, `"30"` → 30, `"90"` → 90,
-   `"unlimited"` → no expiry, anything else → 30 days.
+   PermissionsCsv, CreatedById, CreatedDate, TokenHash, TokenPrefix }`. Duration mapping: `"7"` → 7 days, `"30"` → 30,
+   `"90"` → 90, `"unlimited"` → no expiry, anything else → 30 days.
 5. **Backend:** save, audit `apitoken.created`.
 6. **UI:** renders `Created` directly (no redirect) with the plaintext. Refreshing re-posts the form and creates
    another token (browser warns).
-7. **Errors:** validation → form re-rendered **empty** (inputs are not bound back). Covered by
+7. **Errors:** validation → the form is re-rendered with the error in `<form-errors />` and the posted name,
+   description, expiry and ticked permissions kept. Covered by
    `SecurityTests.Duplicate_api_token_name_is_a_validation_error_not_a_crash`.
 
 ### Revoke a token
 
-1. **Trigger:** **Revoke** (no confirmation).
+1. **Trigger:** **Revoke** → the shared confirm dialog ([design system → feedback](../architecture/design-system.md#feedback)):
+   title "Revoke token", text "Revoke '<name>'? Apps using it lose access immediately. This can't be undone.",
+   button **Revoke token**. Without the dialog API it falls back to `window.confirm`; without JS the form submits
+   directly.
 2. **Backend:** token found in tenant and not already revoked → `Revoked = true`, save, audit `apitoken.revoked`.
    Otherwise nothing happens (no error).
-3. **UI:** redirect to the list. Effect is immediate for the API: `ApiTokenAuthenticationHandler` caches only the
-   successful hash verification (10 min) and re-reads the token row, including `Revoked` and expiry, on every
-   request.
+3. **UI:** redirect to the list with the toast "Revoked '<name>'."; the row now shows **Revoked** without a Revoke button. Effect is immediate
+   for the API: `ApiTokenAuthenticationHandler` caches only the successful hash verification (10 min) and re-reads
+   the token row, including `Revoked` and expiry, on every request.
+
+```mermaid
+sequenceDiagram
+    actor A as Admin
+    participant UI as List (ui.js)
+    participant C as ApiTokensController
+    participant DB as DotNetForgeDbContext
+    A->>UI: Revoke
+    UI->>A: confirm dialog "Revoke token"
+    A->>UI: Revoke token
+    UI->>C: POST /admin/api-tokens/revoke/{id} (antiforgery)
+    C->>DB: token where Id and TenantId
+    C->>DB: Revoked = true, SaveChanges
+    C->>C: audit apitoken.revoked
+    C-->>A: 302 /admin/api-tokens
+```
+
+### Copy the secret
+
+**Copy** (JS only) writes the token or the curl command to the clipboard (`navigator.clipboard`) and shows the toast
+"Copied to clipboard." - or "Copying is not available in this browser." / "Could not copy. Select the text and copy
+it manually." on failure.
 
 ## Data used by the page
 
-`ApiTokens` of the active tenant; `PermissionKeys.All`; `IDateTimeProvider.UtcNow`; current user id
-(`CreatedById`, `Guid.Empty` if missing); request origin for the example.
+`ApiTokens` of the active tenant; `PermissionKeys.All`; `IDateTimeProvider.UtcNow` (creation and expiry);
+`DateTime.UtcNow` in the list view (Expired badge); current user id (`CreatedById`, `Guid.Empty` if missing); request
+origin for the example.
 
 ## State
 
-Plaintext exists only in the `Created` response. `ModelState` on failures. Persisted token rows.
+Plaintext exists only in the `Created` response (and its hidden copy spans). `ModelState` and the posted form values on
+failures. Persisted token rows. DOM only: the list's filter, sort and page.
 
 ## Permissions
 
-`AdminArea` + `[Authorize(Roles = "Super Admin,Admin")]`. Editors/Authors get [Access denied](access-denied.md).
-A creator can grant **any** permission key, regardless of their own role.
+`AdminArea` (on `AdminControllerBase`) + `[RequirePermission(API, read)]`; creating needs `API` / `create`, revoking
+`API` / `delete` ([authorization → screen access](../features/authorization.md#screen-access)). With the default grants
+Editors/Authors get [Access denied](access-denied.md); the sidebar link and the dashboard quick action are hidden from them
+(`AdminNavigationService`; hiding is not the gate). A creator can grant **any** permission key, regardless of their
+own role.
 
 ## Validation
 
 | Rule | Where |
 | --- | --- |
-| Name required | browser + server |
-| Name ≤ 200, description ≤ 1000 characters (after trimming) | server |
+| Name required | browser (`required`) + server |
+| Name length | browser `maxlength="200"`; server ≤ 200 after trimming |
+| Description ≤ 1000 characters (after trimming) | server only |
 | Unique name per tenant (revoked tokens included) | server message + DB unique index |
-| ≥ 1 known permission | server |
+| ≥ 1 known permission | server only (no browser rule on the checkboxes) |
 
 ## Error handling
 
-Validation messages in the summary; DB errors through global handling; revoke of an unknown id is a silent no-op.
+| Failure | Detection | User sees | Recovery |
+| --- | --- | --- | --- |
+| Validation error | `ApiTokensController.Create` | danger alert from `<form-errors />`, form with posted values | fix and resubmit |
+| Two simultaneous creates with the same name | DB unique index | global [error page](error.md) | retry with another name |
+| Revoke of an unknown / other-tenant / revoked id | lookup returns nothing to change | redirect to the list, no message | none needed |
+| Copy fails | `ui.js` | danger toast | select the text manually |
+| Other DB errors | global handling | [error page](error.md) | retry |
 
 ## Loading behaviour
 
-Server-rendered. Generation includes a PBKDF2 hash (60 000 iterations) - fast enough to be unnoticeable.
+Server-rendered; no indicators. Generation includes a PBKDF2 hash (60 000 iterations) - fast enough to be
+unnoticeable.
 
 ## Empty states
 
-List: "No tokens yet." row spanning the table.
+| Case | Text |
+| --- | --- |
+| No tokens in the tenant | `<empty-state icon="key">` "No API tokens yet" - "Create a token to let an app or website read your content through the API." + **Create token** (the filter is not shown) |
+| Filter matches nothing (JS) | "No token matches the filter." (`[data-collection-empty]`) |
 
 ## User interactions
 
-Buttons and form submit; no copy-to-clipboard button (select the `<pre>` text).
+**Create token** (header and empty state), **All / Active / Expired / Revoked** filter, sortable headers, pagination,
+**Revoke** with confirm dialog, expiry radio cards, "All <group>" checkboxes, **Generate token**, **Cancel**,
+**Copy** (token, curl example), **Done**.
 
 ## Dependencies
 
@@ -134,31 +202,35 @@ ApiTokensController
 ├── IApiTokenFactory → ApiTokenFactory
 ├── IDateTimeProvider → SystemClock
 └── IAuditService → AuditService
+Views → <timestamp>, <badge>, <alert>, <empty-state>, <form-errors>, <icon>; ui.js; _Feedback.cshtml (confirm dialog, toasts)
 ```
 
 ## Page flow
 
 ```mermaid
 flowchart TD
-    L["GET /admin/api-tokens"] --> C["Create token → GET create"]
-    C --> P[POST create]
-    P --> V{"name + ≥1 known permission?"}
-    V -- no --> C2[Create form + error] --> P
-    V -- yes --> G["Generate, save, audit"] --> K["Created view (plaintext once)"]
+    L["GET /admin/api-tokens"] --> C["Create token → GET /admin/api-tokens/create"]
+    C --> P["POST /admin/api-tokens/create"]
+    P --> V{"name valid, unique + ≥1 known permission?"}
+    V -- no --> C2["Create form + form-errors (values kept)"] --> P
+    V -- yes --> G["Generate, save, audit"] --> K["Created view (plaintext once, Copy)"]
     K -- Done --> L
-    L -- Revoke --> R["POST revoke → Revoked = true, audit"] --> L
+    L -- "Revoke → confirm" --> R["POST /admin/api-tokens/revoke/{id} → Revoked = true, audit"] --> L
 ```
 
 ## Related pages
 
-[Dashboard](dashboard.md) (active token count), [Audit Logs](audit-logs.md) (create/revoke entries); consumers use the
-[headless API](../features/headless-api.md).
+[Dashboard](dashboard.md) (**New API token** quick action; "Active API tokens" under "At a glance"),
+[Audit Logs](audit-logs.md) (create/revoke entries); consumers use the [headless API](../features/headless-api.md).
 
 ## Important implementation details
 
-- Expired tokens still show **active** in the list; only `Revoked` drives the badge.
+- The list derives **Expired** in the view (`ExpirationDate < DateTime.UtcNow`); the database row is unchanged and
+  the API rejects the token on expiry. The dashboard's "Active API tokens" counts tokens that are neither revoked nor
+  expired.
 - `TokenDuration.Custom` exists in the enum but is not offered.
-- Permissions column shows a count, not the keys.
+- The **Scopes** column shows a count, not the keys.
+- **Expires** sorts tokens without expiry last (sort value `9999`); **Last used** sorts "Never" as oldest.
 - **Last used** is written by `ApiTokenAuthenticationHandler` at most once every 5 minutes per token, so it can lag
   by up to 5 minutes; a failed write is logged and never fails the API request.
 - The name check and the insert are not atomic: two simultaneous creates with the same name can still hit the
@@ -166,9 +238,12 @@ flowchart TD
 
 ## Known limitations
 
-- No rotation, regeneration, editing, deletion or usage statistics.
-- No confirmation before revoke; created secret has no copy button.
+- No rotation, regeneration, editing, deletion, details view or usage statistics.
 - A revoked token's name stays taken (the unique index covers revoked rows).
+- Expired tokens are grouped under the **Revoked** filter and still offer **Revoke**.
+- The Name field stops at 100 characters in the browser although the server accepts 200.
+- No success toast after revoking.
+- **Copy** needs the Clipboard API, which browsers offer only on secure origins (HTTPS or `localhost`).
 
 ## Planned (not implemented)
 
@@ -181,11 +256,11 @@ Token fields, permission model, role table, tenant rules and the full acceptance
 - **Access:** any user holding the `API` permission area, not a fixed role list; Admins act within their tenant(s),
   Editors/Authors (when granted) only on their own tokens, Super Admins across all tenants.
 - **List:** Name ✔, prefix ✔, permissions summary ✔, Created ✔, Last used ✔, expiration ✔ and a status that
-  distinguishes **active**, **revoked** and **Expired** (today expired tokens show **active**).
+  distinguishes **Active**, **Revoked** and **Expired** ✔ (the list filter still groups Expired under Revoked).
 - **Review flags:** mark **orphaned** tokens (creator disabled or deleted) and tokens whose keys exceed their
   creator's current permissions.
 - **Details view** per token: Created by, Description, full permission set, tenant scope.
-- **Created view:** plaintext once ✔ with a **copy** action and the cannot-be-retrieved-again warning ✔.
+- **Created view:** plaintext once ✔ with a **copy** action ✔ and the cannot-be-retrieved-again warning ✔.
 
 ### User flows
 
@@ -193,7 +268,6 @@ Token fields, permission model, role table, tenant rules and the full acceptance
 | --- | --- |
 | Create (delta) | Form adds `Custom` to **Duration** with an **Expiration date** input (required for `Custom`); the permission picker offers only keys the creator holds, plus custom keys of installed extensions (a duplicate name is already a validation message ✔). |
 | Inspect usage | List → select token → details; use **Last used** and [Audit Logs](audit-logs.md) to judge whether it is stale, then revoke or rotate. |
-| Revoke (delta) | **Revoke** asks for confirmation (immediate and irreversible) before the POST. |
 | Rotate | Select token → **Rotate** → new secret for an equivalent token (same name, description, permissions, duration, tenant) shown **once** → old token revoked immediately → both events audited. |
 
 ### Rules and validation
@@ -213,14 +287,16 @@ Token fields, permission model, role table, tenant rules and the full acceptance
   (`ApiTokensController.Create`: `Name is required.`, `A token named '<name>' already exists. ...`).
 - [ ] `Custom` duration without a future Expiration date is rejected.
 - [ ] The permission picker lists built-in keys plus custom keys declared by installed extension manifests.
-- [x] Revoking is immediate and irreversible (`ApiTokensController.Revoke`).
+- [x] Revoking is immediate and irreversible (`ApiTokensController.Revoke`), after a confirmation (`data-confirm`).
 - [ ] Rotating issues a new secret (shown once) and immediately revokes the old one.
 - [ ] Creation, revocation and rotation are audited (create/revoke ✔).
 - [ ] Tokens whose creator account is disabled or deleted are flagged and can be revoked/rotated by a Super Admin.
 
 ## Extension points
 
-- New permission key: add it to `PermissionKeys` and `PermissionKeys.All`; it appears in the checkbox grid
-  automatically.
+- New permission key: add it to `PermissionKeys` and `PermissionKeys.All`; it appears in the Permissions card
+  automatically, in the group named by its prefix (a new prefix makes a new group).
 - Token format or hashing: `ApiTokenFactory` (keep `ExtractPrefix` compatible with stored prefixes).
 - Restrict grantable keys by role: filter `ViewBag.Permissions` and `selected` in `ApiTokensController.Create`.
+- A success toast after revoke: set `TempData["Success"]` in `ApiTokensController.Revoke` before the redirect
+  ([design system → feedback](../architecture/design-system.md#feedback)).

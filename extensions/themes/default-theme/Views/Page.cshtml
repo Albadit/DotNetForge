@@ -1,0 +1,35 @@
+@*
+    A content page (Model = the page). A page designed with the page builder renders its layout with
+    Component.InvokeAsync("PageLayout"); modules placed on this page (module extensions) render where
+    Component.InvokeAsync("ExtensionModules") is called.
+*@
+@model Page
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Title : Model.MetaTitle;
+    ViewData["MetaDescription"] = Model.MetaDescription;
+    ViewData["CanonicalUrl"] = Model.CanonicalUrl;
+    ViewData["NoIndex"] = Model.NoIndex;
+    ViewData["SocialImage"] = Model.SocialImageUrl;
+    ViewData["FullWidth"] = Model.LayoutJson is not null;
+    var routeValues = ViewData["RouteValues"] as IDictionary<string, string>;
+}
+@if (Model.LayoutJson is not null)
+{
+    @* A page designed with the page builder: its layout replaces the article below. *@
+    <h1 class="sr-only">@Model.Title</h1>
+    @await Component.InvokeAsync("PageLayout", new { page = Model })
+    @await Component.InvokeAsync("ExtensionModules", new { page = Model })
+    return;
+}
+<article class="page">
+    <h1>@Model.Title</h1>
+    @if (!string.IsNullOrWhiteSpace(Model.MetaDescription))
+    {
+        <p class="lead">@Model.MetaDescription</p>
+    }
+    @if (routeValues is { Count: > 0 })
+    {
+        <p class="muted">@string.Join(", ", routeValues.Select(kv => $"{kv.Key}: {kv.Value}"))</p>
+    }
+    @await Component.InvokeAsync("ExtensionModules", new { page = Model })
+</article>

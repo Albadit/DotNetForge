@@ -1,49 +1,77 @@
 @model SettingsIndexViewModel
 @{
     ViewData["Title"] = "Settings";
+    ViewData["Description"] = $"Key/value settings for {Model.AppName}. Saving creates or updates a value for this tenant; global values (no tenant) stay as they are.";
 }
 
-@if (TempData["Success"] is string ok)
-{
-    <p class="flash ok">@ok</p>
-}
-
-<p class="muted">Key/value settings for <strong>@Model.AppName</strong>. Global settings (no tenant) are read-only here; saving creates or updates a tenant-scoped value.</p>
-
-<div class="content-layout">
-    <section class="panel">
+<div class="settings-layout">
+    <section class="card" aria-labelledby="settings-title" data-collection data-page-size="25">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="settings-title">All settings</h2>
+                <p class="card-description" data-collection-count>@Model.Settings.Count total</p>
+            </div>
+        </div>
         @if (Model.Settings.Count == 0)
         {
-            <p class="muted">No settings yet.</p>
+            <empty-state icon="settings" title="No settings yet" text="Add the first key/value pair with the form." />
         }
         else
         {
-            <table class="data">
-                <thead><tr><th>Key</th><th>Value</th></tr></thead>
-                <tbody>
-                    @foreach (var s in Model.Settings)
-                    {
-                        <tr><td><code>@s.Key</code></td><td>@s.Value</td></tr>
-                    }
-                </tbody>
-            </table>
+            <div class="toolbar" data-js-only hidden>
+                <div class="toolbar-search input-icon">
+                    <icon name="search" size="sm" />
+                    <label class="sr-only" for="settings-search">Search settings</label>
+                    <input id="settings-search" type="search" class="input-sm" placeholder="Search keys and values" data-collection-search />
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="table table-stack">
+                    <thead>
+                        <tr><th scope="col" data-sort="text">Key</th><th scope="col">Value</th><th scope="col" class="col-actions"><span class="sr-only">Actions</span></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.Settings)
+                        {
+                            <tr data-item>
+                                <td class="cell-lead"><code>@s.Key</code></td>
+                                <td data-label="Value" class="text-muted">@(string.IsNullOrEmpty(s.Value) ? "(empty)" : s.Value)</td>
+                                <td class="col-actions">
+                                    <button type="button" class="btn btn-ghost btn-sm" data-fill="#settingForm" data-fill-key="@s.Key" data-fill-value="@s.Value"
+                                            data-js-only hidden aria-label="Edit @s.Key"><icon name="pencil" size="sm" /> Edit</button>
+                                </td>
+                            </tr>
+                        }
+                        <tr class="table-empty" data-collection-empty hidden><td colspan="3">No setting matches the search.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" data-collection-pagination hidden></div>
         }
     </section>
 
-    <aside class="panel">
-        <h2>Add / update</h2>
-        <div asp-validation-summary="All" class="validation-summary"></div>
-        <form method="post" asp-area="Admin" asp-controller="Settings" asp-action="Save" class="form-narrow">
+    <section class="card" aria-labelledby="setting-form-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="setting-form-title">Add or update</h2>
+                <p class="card-description">An existing key is overwritten for this tenant.</p>
+            </div>
+        </div>
+        <form method="post" asp-area="Admin" asp-controller="Settings" asp-action="Save" class="card-body form" id="settingForm">
             @Html.AntiForgeryToken()
-            <div class="form-row">
-                <label for="key">Key <span class="req">*</span></label>
-                <input id="key" name="key" required />
+            <form-errors />
+            <div class="field">
+                <label class="field-label" for="key">Key<span class="field-required" aria-hidden="true">*</span></label>
+                <input id="key" name="key" required class="text-mono" placeholder="site.tagline" autocomplete="off" />
             </div>
-            <div class="form-row">
-                <label for="value">Value</label>
-                <input id="value" name="value" />
+            <div class="field">
+                <label class="field-label" for="value">Value<span class="field-optional">optional</span></label>
+                <textarea id="value" name="value" rows="3"></textarea>
             </div>
-            <button type="submit" class="btn primary">Save setting</button>
+            <div class="form-actions end">
+                <button type="reset" class="btn btn-ghost">Clear</button>
+                <button type="submit" class="btn btn-primary"><icon name="check" /> Save setting</button>
+            </div>
         </form>
-    </aside>
+    </section>
 </div>

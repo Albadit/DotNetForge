@@ -1,0 +1,7 @@
+/* DotNetForge additions to the reference editor stylesheet (editor.css, kept as ported): the editor runs as a
+   full-screen page of its own (Areas/Admin/Views/PageBuilder/Index.cshtml) instead of over a DNN page. */
+html, body { margin: 0; height: 100%; }
+/* A number field without a label or icon in front (font size, letter spacing...): its text starts 8px in, like the
+   selects and text inputs next to it, instead of at the edge (the reference relies on the 24px label for that). */
+.pe-num > input:first-child { padding-left: 8px; }
+.pe-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

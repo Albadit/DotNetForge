@@ -5,7 +5,7 @@ using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Areas.Admin.Models;
 using DotNetForge.Web.Services;
-using Microsoft.AspNetCore.Authorization;
+using DotNetForge.Web.Startup;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,10 +13,10 @@ namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
 /// Global / tenant settings (.docs/pages/settings.md): lists key/value settings visible to the tenant (global rows
-/// have a null tenant) and lets an admin add or update a tenant-scoped setting.
+/// have a null tenant) and lets a user with the Settings update grant add or update a tenant-scoped setting.
 /// </summary>
 [Route("admin/settings")]
-[Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]
+[RequirePermission(PermissionAreas.Settings, PermissionActions.Read)]
 public sealed class SettingsController : AdminControllerBase
 {
     private readonly DotNetForgeDbContext _db;
@@ -41,6 +41,7 @@ public sealed class SettingsController : AdminControllerBase
 
     [HttpPost("save")]
     [ValidateAntiForgeryToken]
+    [RequirePermission(PermissionAreas.Settings, PermissionActions.Update)]
     public async Task<IActionResult> Save(string key, string? value)
     {
         if (string.IsNullOrWhiteSpace(key))

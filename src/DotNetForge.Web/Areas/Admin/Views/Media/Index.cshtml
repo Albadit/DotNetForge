@@ -2,77 +2,176 @@
 @model MediaIndexViewModel
 @{
     ViewData["Title"] = "Media";
+    ViewData["Description"] = "Images, documents and other files for your pages. Public files are reachable by anyone with the link.";
     var accept = string.Join(",", MediaService.AllowedTypes.Keys);
+    var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    var anyDeletable = Model.Files.Any(f => f.CanDelete);
 }
 
-@if (TempData["Success"] is string ok)
-{
-    <p class="flash ok">@ok</p>
-}
-
-<div asp-validation-summary="All" class="validation-summary"></div>
-
-@if (Model.CanUpload)
-{
-    <div class="panel">
-        <h2>Upload</h2>
-        <form method="post" asp-area="Admin" asp-controller="Media" asp-action="Upload" enctype="multipart/form-data"
-              class="form-narrow">
-            @Html.AntiForgeryToken()
-            <div class="form-row">
-                <label for="files">Files <span class="req">*</span></label>
-                <input id="files" name="files" type="file" multiple required accept="@accept" />
-                <span class="muted hint">
-                    Up to @MediaService.MaxFilesPerUpload files, @(MediaService.MaxUploadBytes / (1024 * 1024)) MB each.
-                    Allowed: @string.Join(", ", MediaService.AllowedTypes.Keys).
-                </span>
+<div class="stack-lg">
+    @if (Model.CanUpload)
+    {
+        <section class="card" id="upload" aria-labelledby="upload-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="upload-title">Upload</h2>
+                    <p class="card-description">
+                        Up to @MediaService.MaxFilesPerUpload files, @(MediaService.MaxUploadBytes / (1024 * 1024)) MB each.
+                    </p>
+                </div>
             </div>
-            <label class="check"><input type="checkbox" name="isPublic" value="true" checked /> Public (anyone with the link)</label>
-            <button type="submit" class="btn primary">Upload</button>
-        </form>
-    </div>
-}
+            <form method="post" asp-area="Admin" asp-controller="Media" asp-action="Upload" enctype="multipart/form-data" class="card-body stack">
+                @Html.AntiForgeryToken()
+                <form-errors />
+                <div class="dropzone">
+                    <icon name="upload" size="xl" />
+                    <span class="dropzone-title">Drop files here or click to choose</span>
+                    <span class="text-sm">@string.Join(" · ", MediaService.AllowedTypes.Keys)</span>
+                    <label class="sr-only" for="files">Files to upload</label>
+                    <input id="files" name="files" type="file" multiple required accept="@accept" />
+                    <span class="dropzone-files" data-dropzone-files></span>
+                </div>
+                <div class="spread">
+                    <label class="check">
+                        <input type="checkbox" name="isPublic" value="true" checked />
+                        <span class="check-text"><span>Public</span><span class="check-hint">Anyone with the link can open it. Private files need an admin sign-in.</span></span>
+                    </label>
+                    <button type="submit" class="btn btn-primary"><icon name="upload" /> Upload</button>
+                </div>
+            </form>
+        </section>
+    }
 
-@if (Model.Files.Count == 0)
-{
-    <div class="panel"><p class="muted">No media files yet.</p></div>
-}
-else
-{
-    <table class="data">
-        <thead>
-            <tr><th>File</th><th>Type</th><th>Size</th><th>Access</th><th>Uploaded</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var file in Model.Files)
+    <section class="card" aria-labelledby="library-title" data-collection data-page-size="48">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="library-title">Library</h2>
+                <p class="card-description" data-collection-count>@Model.Files.Count total</p>
+            </div>
+            @if (Model.Files.Count > 0)
             {
-                <tr>
-                    <td><a href="@file.Url" target="_blank" rel="noopener">@file.FileName</a></td>
-                    <td><code>@file.ContentType</code></td>
-                    <td>@($"{file.SizeBytes / 1024.0:0.#} KB")</td>
-                    <td>
-                        @if (file.IsPublic)
-                        {
-                            <span class="badge ok">Public</span>
-                        }
-                        else
-                        {
-                            <span class="badge warn">Private</span>
-                        }
-                    </td>
-                    <td>@file.UploadedDate.ToString("u")</td>
-                    <td>
+                <div class="segmented" role="group" aria-label="Layout" data-view-switch="media" data-view-target="#media-items" data-default="grid" data-js-only hidden>
+                    <button type="button" data-view-button="grid" aria-pressed="true" aria-label="Grid view"><icon name="grid" size="sm" /></button>
+                    <button type="button" data-view-button="list" aria-pressed="false" aria-label="List view"><icon name="list" size="sm" /></button>
+                </div>
+            }
+        </div>
+
+        @if (Model.Files.Count == 0)
+        {
+            <empty-state icon="image" title="No media yet" text="Uploaded files appear here, ready to use on your pages." />
+        }
+        else
+        {
+            <div class="collection-bar">
+            <div class="toolbar" data-js-only hidden>
+                @if (anyDeletable)
+                {
+                    <label class="check" aria-label="Select all files"><input type="checkbox" data-select-all /></label>
+                }
+                <div class="toolbar-search input-icon">
+                    <icon name="search" size="sm" />
+                    <label class="sr-only" for="media-search">Search files</label>
+                    <input id="media-search" type="search" class="input-sm" placeholder="Search files" data-collection-search />
+                </div>
+                <label class="sr-only" for="media-kind">File type</label>
+                <select id="media-kind" class="input-sm" data-collection-filter="kind">
+                    <option value="">All types</option>
+                    <option value="image">Images</option>
+                    <option value="video">Video</option>
+                    <option value="audio">Audio</option>
+                    <option value="document">Documents</option>
+                    <option value="archive">Archives</option>
+                </select>
+                <label class="sr-only" for="media-access">Access</label>
+                <select id="media-access" class="input-sm" data-collection-filter="access">
+                    <option value="">Public and private</option>
+                    <option value="public">Public</option>
+                    <option value="private">Private</option>
+                </select>
+            </div>
+
+            @if (anyDeletable)
+            {
+                <form method="post" asp-area="Admin" asp-controller="Media" asp-action="DeleteSelected" id="bulkDelete" class="bulk-bar" data-bulk-bar hidden
+                      data-confirm="Delete the selected files? Links to them stop working." data-confirm-title="Delete files" data-confirm-action="Delete files">
+                    @Html.AntiForgeryToken()
+                    <label class="check" aria-label="Select all files"><input type="checkbox" data-select-all /></label>
+                    <span data-bulk-count>0 selected</span>
+                    <span class="toolbar-spacer"></span>
+                    <button type="button" class="btn btn-ghost btn-sm" data-bulk-clear>Clear</button>
+                    <button type="submit" class="btn btn-danger btn-sm"><icon name="trash" size="sm" /> Delete selected</button>
+                </form>
+            }
+            </div>
+
+            <div class="media-items" id="media-items" data-view-mode="grid">
+                @foreach (var file in Model.Files)
+                {
+                    var (kind, icon) = MediaPresentation.Classify(file.ContentType);
+                    <article class="media-card" data-item data-kind="@kind" data-access="@(file.IsPublic ? "public" : "private")"
+                             data-search="@file.FileName @file.ContentType">
                         @if (file.CanDelete)
                         {
-                            <form method="post" asp-area="Admin" asp-controller="Media" asp-action="Delete" asp-route-id="@file.Id"
-                                  class="inline" data-confirm="Delete this file? Links to it will stop working.">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn small danger">Delete</button>
-                            </form>
+                            <label class="media-select" aria-label="Select @file.FileName">
+                                <input type="checkbox" name="ids" value="@file.Id" form="bulkDelete" data-select-item />
+                            </label>
                         }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+                        <a class="media-thumb" href="@file.Url" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">
+                            @if (kind == "image")
+                            {
+                                <img src="@file.Url" alt="" loading="lazy" decoding="async" />
+                            }
+                            else
+                            {
+                                <icon name="@icon" size="xl" />
+                            }
+                        </a>
+                        <div class="media-meta">
+                            <a class="media-name" href="@file.Url" target="_blank" rel="noopener" title="@file.FileName">@file.FileName</a>
+                            <span class="text-xs text-muted">@MediaPresentation.Size(file.SizeBytes) · <timestamp value="@file.UploadedDate" /></span>
+                            <span class="media-badges">
+                                @if (file.IsPublic)
+                                {
+                                    <badge tone="Success">Public</badge>
+                                }
+                                else
+                                {
+                                    <badge tone="Warning"><icon name="lock" size="sm" /> Private</badge>
+                                }
+                                <span class="media-type text-xs text-subtle">@file.ContentType</span>
+                            </span>
+                        </div>
+                        <action-menu class="media-actions" variant="secondary" label="Actions for @file.FileName">
+                            <menu-link href="@file.Url" icon="external-link" new-tab="true">Open</menu-link>
+                            <menu-button icon="link" data-copy-text="@origin@file.Url">Copy link</menu-button>
+                            @if (file.CanChangeVisibility)
+                            {
+                                @if (file.IsPublic)
+                                {
+                                    <menu-post action="/admin/media/visibility/@file.Id" icon="lock" field-isPublic="false"
+                                               confirm="Make '@file.FileName' private? Visitors can no longer open it - pages that show it display a broken image."
+                                               confirm-title="Make file private" confirm-action="Make private" confirm-tone="accent">Make private</menu-post>
+                                }
+                                else
+                                {
+                                    <menu-post action="/admin/media/visibility/@file.Id" icon="globe" field-isPublic="true"
+                                               confirm="Make '@file.FileName' public? Anyone with the link can open it."
+                                               confirm-title="Make file public" confirm-action="Make public">Make public</menu-post>
+                                }
+                            }
+                            @if (file.CanDelete)
+                            {
+                                <menu-separator />
+                                <menu-post action="/admin/media/delete/@file.Id" icon="trash" danger="true"
+                                           confirm="Delete '@file.FileName'? Links to it stop working." confirm-title="Delete file" confirm-action="Delete file">Delete</menu-post>
+                            }
+                        </action-menu>
+                    </article>
+                }
+            </div>
+            <empty-state icon="search" title="No matching files" text="Try another search or filter." compact="true" data-collection-empty hidden />
+            <div class="pagination" data-collection-pagination hidden></div>
+        }
+    </section>
+</div>

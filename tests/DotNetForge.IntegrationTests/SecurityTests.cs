@@ -202,7 +202,6 @@ public sealed class SecurityTests
                 ["Title"] = "Mine",
                 ["Slug"] = "mine",
                 ["PageType"] = "Standard",
-                ["Disabled"] = "true",
             });
         Assert.Equal(HttpStatusCode.Redirect, save.StatusCode);
     }

@@ -1,8 +1,8 @@
 {
   "id": "dotnetforge.theme.default",
   "name": "Default Theme",
-  "description": "The default frontend theme for DotNetForge CMS.",
-  "version": "1.0.0",
+  "description": "The default public-site theme: a layout with the menu, page and home templates, light and dark colours.",
+  "version": "2.0.0",
   "type": "theme",
   "author": "DotNetForge",
   "entryPoint": "DefaultTheme",
@@ -12,7 +12,10 @@
   "dependencies": [],
   "routes": [],
   "settings": {
-    "supportsLayouts": true,
-    "supportsDarkMode": false
+    // Follow the visitor's light/dark preference.
+    "supportsDarkMode": true,
+    // indigo, teal or rose (CSS classes in Views/Resources/css/theme.css - the CSP forbids inline styles).
+    "accent": "indigo",
+    "tagline": "Built with DotNetForge CMS"
   }
 }

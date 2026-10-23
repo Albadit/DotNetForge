@@ -23,7 +23,8 @@ namespace DotNetForge.IntegrationTests;
 /// </summary>
 /// <remarks>
 /// Media storage: the host requires S3 outside Development, so the factory supplies placeholder S3 settings and
-/// replaces <see cref="IFileStorage"/> with a <see cref="LocalFileStorage"/> in <see cref="StoragePath"/>. Tests
+/// replaces the host's own storage (the keyed core <see cref="IFileStorage"/> behind the extension storage router)
+/// with a <see cref="LocalFileStorage"/> in <see cref="StoragePath"/>. Tests
 /// therefore need no S3 server; the S3 implementation itself is covered by the live contract tests
 /// (<c>DNF_TEST_S3_*</c>, .docs/guides/testing.md).
 /// </remarks>
@@ -40,8 +41,13 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
     private readonly string _workDir;
     private readonly string _environment;
 
-    public DotNetForgeWebFactory(string environment = "Development")
+    /// <param name="environment">The ASP.NET Core environment name.</param>
+    /// <param name="extensionsPath">
+    /// The extensions folder (<c>EXTENSIONS_PATH</c>); <c>null</c> uses the repository's <c>extensions/</c>.
+    /// </param>
+    public DotNetForgeWebFactory(string environment = "Development", string? extensionsPath = null)
     {
+        Environment.SetEnvironmentVariable("EXTENSIONS_PATH", extensionsPath ?? string.Empty);
         _environment = environment;
         _workDir = Path.Combine(Path.GetTempPath(), $"dnf-it-{Guid.NewGuid():N}");
         StoragePath = Path.Combine(_workDir, "media");
@@ -68,7 +74,8 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(_environment);
-        builder.ConfigureTestServices(services => services.AddSingleton<IFileStorage>(new LocalFileStorage(StoragePath)));
+        builder.ConfigureTestServices(services => services.AddKeyedSingleton<IFileStorage>(
+            ExtensionMediaStorage.CoreStorageKey, new LocalFileStorage(StoragePath)));
     }
 
     /// <summary>Programmatically completes installation (creates the first Super Admin).</summary>

@@ -2,8 +2,8 @@
 name: admin-page
 description: >-
   Adds or changes a server-rendered admin screen in DotNetForge CMS (src/DotNetForge.Web/Areas/Admin): controller deriving
-  AdminControllerBase, attribute route under /admin, role restriction, view model, Razor view with the shared CSS
-  classes, POST + antiforgery + audit for mutations, sidebar link, and the matching .docs/pages document. Use when
+  AdminControllerBase, attribute route under /admin, role restriction, view model, Razor view built from the Forge
+  design system, POST + antiforgery + audit for mutations, sidebar link, and the matching .docs/pages document. Use when
   asked to build an admin page/screen, replace one of the module placeholders (Marketplace, Content History,
   Internationalization, Transfer, Webhooks, Email Configuration/Templates, Providers, Advanced Settings), or add an
   action/form to an existing admin screen.
@@ -11,16 +11,16 @@ description: >-
 
 # Admin screen
 
-Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions) and the screen's doc in `.docs/pages/` if it
-exists. Model screens: `ContentController` (forms + service + audit), `SettingsController` (simple upsert),
-`AdminListControllers.cs` (read-only lists).
+Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.docs/architecture/design-system.md`
+(components, tag helpers, behaviours) and the screen's doc in `.docs/pages/` if it exists. Model screens: `ContentController` (forms + service + audit), `SettingsController` (simple upsert),
+`UsersController` / `RolesController` (list + edit form + service with rules, `[RequirePermission]` per action).
 
 ## Steps
 
 1. **Route and controller** - `src/DotNetForge.Web/Areas/Admin/Controllers/<Name>Controller.cs`:
    ```csharp
    [Route("admin/<slug>")]
-   [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.Admin}")]   // omit for every admin-capable role
+   [RequirePermission(PermissionAreas.X, PermissionActions.Read)]   // omit for every admin user; add another per mutating action
    public sealed class <Name>Controller : AdminControllerBase
    ```
    - Never inherit from `Controller` directly - `AdminControllerBase` carries `[Area("Admin")]`, the `AdminArea`
@@ -39,16 +39,32 @@ exists. Model screens: `ContentController` (forms + service + audit), `SettingsC
    matrix use `Can(area, action)` / `CanModify(area, any, own, createdById)` from `AdminControllerBase` and return
    `Forbid()` when they fail. Validate string lengths before saving. On validation failure: `ModelState.AddModelError(string.Empty, msg)` and re-render the
    same view with a model built by a shared private `Build...Async` helper.
-5. **View** - `src/DotNetForge.Web/Areas/Admin/Views/<Name>/Index.cshtml`, set `ViewData["Title"]` (becomes the `<h1>` and tab title).
-   Use existing classes only: `.panel`, `table.data`, `.badge ok|warn`, `.form-narrow`, `.form-row` (`.two`), `.btn`
-   `.primary` `.small` `.danger`, `.muted`, `.flash ok`, `<div asp-validation-summary="All" class="validation-summary">`.
-   Every form: `method="post"` + `@Html.AntiForgeryToken()`. Destructive actions: `data-confirm="..."` on the form
-   (handled by `src/DotNetForge.Web/wwwroot/js/site.js`, loaded by `_AdminLayout`). **No inline `<script>`, `on*=` attributes or
-   `<style>`** - the Content-Security-Policy blocks them in production. Show `TempData["Success"]` if you set it.
-6. **Sidebar** - `src/DotNetForge.Web/Areas/Admin/Views/Shared/_Sidebar.cshtml`: add `<a class="nav-item @Active("/admin/<slug>")" href="/admin/<slug>">Label</a>`
-   in the right group (links are not role-filtered - the controller attribute is the gate).
+5. **View** - `src/DotNetForge.Web/Areas/Admin/Views/<Name>/Index.cshtml`, built from the design system
+   (`.docs/architecture/design-system.md#building-a-screen`; model: `Settings/Index.cshtml`, `Users/Index.cshtml`):
+   - `ViewData["Title"]` (the only `<h1>`, tab title, last breadcrumb), optional `ViewData["Description"]`; header
+     buttons in `@section Actions { }` (primary last).
+   - Content in `.card`s (`.card-header` / `.card-body`). Lists: `.card[data-collection]` > `.toolbar` +
+     `.table-wrap` > `table.table.table-stack` (`data-label` on each cell), `<empty-state>` for "nothing yet",
+     `[data-collection-empty]` for "no match". Status: `<badge tone="Success">`; dates: `<timestamp value="@utc" />`.
+   - Forms: `<form method="post" class="form">` + `@Html.AntiForgeryToken()`, `<form-errors />` at the top (never
+     `asp-validation-summary` - its empty state is an inline style), `.field` > `label.field-label` + control +
+     `span.field-hint`, buttons `.btn` + `.btn-primary` / `.btn-danger`, `.form-actions`.
+   - Feedback: set `TempData["Success"]` / `["Error"]` and redirect - the layout shows a toast; never render flash
+     markup. Destructive actions: `data-confirm="..."` (+ `data-confirm-title`, `data-confirm-action`) on the form -
+     `ui.js` opens the confirm dialog.
+   - Row/card actions: `<action-menu>` with `<menu-link>`, `<menu-post>` (antiforgery + `confirm` built in),
+     `<menu-separator />` (`.docs/architecture/design-system.md#menus`) - never a hand-written dropdown.
+   - **No inline `<script>`, `on*=` attributes, `style=` or `<style>`** - the Content-Security-Policy blocks them in
+     production. New styles go into `wwwroot/css/forge/components.css` (reusable) or `admin.css` (screen layout) using
+     tokens; behaviour as a data attribute in `ui.js` or a page script in `wwwroot/js/forge/` via `@section Scripts`.
+     New icons go into `wwwroot/img/icons.svg`.
+6. **Sidebar** - add a `NavLink("Label", "/admin/<slug>", "<icon>", typeof(<Name>Controller))` in the right
+   section/group of `AdminNavigation.Tree` (`src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs`); when
+   replacing a placeholder, change its controller type and drop `Planned: true`. Visibility per role (from the
+   controller's `[Authorize]`), active state and breadcrumbs follow - hiding is never the gate.
 7. **Tests** - integration test in `tests/DotNetForge.IntegrationTests`: anonymous → 302 `/account/login`; after
-   `factory.InstallAsync()` + sign-in → 200 (see `.docs/guides/testing.md` for the antiforgery pattern).
+   `factory.InstallAsync()` + sign-in → 200 (see `.docs/guides/testing.md` for the antiforgery pattern). Add the route
+   to `AdminUiTests.AdminScreens` (CSP, one `<h1>`, skip link).
 8. **Docs** - create/update `.docs/pages/<screen>.md` using
    `.claude/skills/documentation/reference/screen-template.md`; update the route map in `.docs/architecture/pages.md`,
    the Screens table in `.docs/README.md`, `.docs/implementation-status.md` (and `.docs/pages/module-placeholders.md`
@@ -59,5 +75,7 @@ exists. Model screens: `ContentController` (forms + service + audit), `SettingsC
 
 - Query without `TenantId`, take a tenant id from input, or return a view for a POST success (use PRG).
 - Put validation in the view or controller when a service owns the concept.
-- Add JS frameworks or a client-side fetch layer; progressive enhancement only, like `src/DotNetForge.Web/wwwroot/js/admin-content.js`.
+- Add CSS/JS frameworks, web fonts or a client-side fetch layer; progressive enhancement only, like
+  `src/DotNetForge.Web/wwwroot/js/forge/content.js`.
+- Hard-code sidebar links or role checks in a view; use `AdminNavigation.Tree` and `AdminNavModel.Allows(href)`.
 - Write files to disk: runtime files go through `IFileStorage` (the deployment directory is read-only).

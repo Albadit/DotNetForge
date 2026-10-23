@@ -304,9 +304,27 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<bool>("DisplayInMenu")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("DraftLayoutJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("DraftUpdatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DraftUpdatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DraftVersion")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("FileReference")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("LayoutJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LayoutPublishedDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("MetaDescription")
                         .HasMaxLength(1000)
@@ -315,6 +333,9 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<string>("MetaTitle")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("NoIndex")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("PageType")
                         .HasColumnType("integer");
@@ -340,6 +361,10 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("SocialImageUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
@@ -349,6 +374,10 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ThemeId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -364,6 +393,69 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .IsUnique();
 
                     b.ToTable("Pages");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.PagePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Permission")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("PageId", "RoleId", "Permission")
+                        .IsUnique();
+
+                    b.ToTable("PagePermissions");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.PageUserPermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Allow")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Permission")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("PageId", "UserId", "Permission")
+                        .IsUnique();
+
+                    b.ToTable("PageUserPermissions");
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.Role", b =>

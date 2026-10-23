@@ -1,42 +1,94 @@
 @model List<ApiToken>
 @{
     ViewData["Title"] = "API Tokens";
+    ViewData["Description"] = "Scoped tokens for the headless API. A token's secret is shown once, when it is created.";
 }
 
-<div class="page-actions">
-    <p class="muted">Scoped tokens for the headless API. The secret is shown only once at creation.</p>
-    <a class="btn primary" href="/admin/api-tokens/create">Create token</a>
-</div>
+@section Actions {
+    <a class="btn btn-primary" href="/admin/api-tokens/create"><icon name="plus" /> Create token</a>
+}
 
-<table class="data">
-    <thead>
-        <tr><th>Name</th><th>Prefix</th><th>Permissions</th><th>Created</th><th>Last used</th><th>Expires</th><th>Status</th><th></th></tr>
-    </thead>
-    <tbody>
-    @foreach (var token in Model)
-    {
-        <tr>
-            <td><strong>@token.Name</strong></td>
-            <td><code>@token.TokenPrefix</code></td>
-            <td class="muted">@token.Permissions.Count scope(s)</td>
-            <td class="muted">@token.CreatedDate.ToString("u")</td>
-            <td class="muted">@(token.LastUsedDate?.ToString("u") ?? "never")</td>
-            <td class="muted">@(token.ExpirationDate?.ToString("u") ?? "unlimited")</td>
-            <td><span class="badge @(token.Revoked ? "warn" : "ok")">@(token.Revoked ? "revoked" : "active")</span></td>
-            <td>
-                @if (!token.Revoked)
-                {
-                    <form method="post" asp-action="Revoke" asp-route-id="@token.Id" class="inline">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn small danger">Revoke</button>
-                    </form>
-                }
-            </td>
-        </tr>
-    }
+<section class="card" aria-labelledby="tokens-title" data-collection data-page-size="25">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" id="tokens-title">Tokens</h2>
+            <p class="card-description" data-collection-count>@Model.Count total</p>
+        </div>
+        @if (Model.Count > 0)
+        {
+            <div class="segmented" role="group" aria-label="Filter tokens" data-js-only hidden>
+                <button type="button" data-collection-filter="state" data-value="" aria-pressed="true">All</button>
+                <button type="button" data-collection-filter="state" data-value="active" aria-pressed="false">Active</button>
+                <button type="button" data-collection-filter="state" data-value="expired" aria-pressed="false">Expired</button>
+                <button type="button" data-collection-filter="state" data-value="revoked" aria-pressed="false">Revoked</button>
+            </div>
+        }
+    </div>
     @if (Model.Count == 0)
     {
-        <tr><td colspan="8" class="muted">No tokens yet.</td></tr>
+        <empty-state icon="key" title="No API tokens yet" text="Create a token to let an app or website read your content through the API.">
+            <a class="btn btn-primary" href="/admin/api-tokens/create"><icon name="plus" /> Create token</a>
+        </empty-state>
     }
-    </tbody>
-</table>
+    else
+    {
+        <div class="table-wrap">
+            <table class="table table-stack">
+                <thead>
+                    <tr>
+                        <th scope="col" data-sort="text">Name</th>
+                        <th scope="col">Token</th>
+                        <th scope="col" data-sort="number">Scopes</th>
+                        <th scope="col" data-sort="date">Last used</th>
+                        <th scope="col" data-sort="date">Expires</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var token in Model)
+                    {
+                        var expired = token.ExpirationDate is { } exp && exp < DateTime.UtcNow;
+                        <tr data-item data-state="@(token.Revoked ? "revoked" : expired ? "expired" : "active")">
+                            <td class="cell-lead">
+                                <span class="cell-primary">@token.Name</span>
+                                <span class="cell-sub">Created <timestamp value="@token.CreatedDate" /></span>
+                            </td>
+                            <td data-label="Token"><code>@token.TokenPrefix…</code></td>
+                            <td data-label="Scopes" data-sort-value="@token.Permissions.Count">@token.Permissions.Count</td>
+                            <td data-label="Last used" data-sort-value="@(token.LastUsedDate?.ToString("O") ?? "")"><timestamp value="@token.LastUsedDate" /></td>
+                            <td data-label="Expires" data-sort-value="@(token.ExpirationDate?.ToString("O") ?? "9999")"><timestamp value="@token.ExpirationDate" empty="Never" /></td>
+                            <td data-label="Status">
+                                @if (token.Revoked)
+                                {
+                                    <badge tone="Danger" dot="true">Revoked</badge>
+                                }
+                                else if (expired)
+                                {
+                                    <badge tone="Warning" dot="true">Expired</badge>
+                                }
+                                else
+                                {
+                                    <badge tone="Success" dot="true">Active</badge>
+                                }
+                            </td>
+                            <td class="col-actions">
+                                @if (!token.Revoked && !expired)
+                                {
+                                    <form method="post" asp-action="Revoke" asp-route-id="@token.Id" class="inline"
+                                          data-confirm="Revoke '@token.Name'? Apps using it lose access immediately. This can't be undone."
+                                          data-confirm-title="Revoke token" data-confirm-action="Revoke token">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-danger-soft btn-sm">Revoke</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    <tr class="table-empty" data-collection-empty hidden><td colspan="7">No token matches the filter.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" data-collection-pagination hidden></div>
+    }
+</section>

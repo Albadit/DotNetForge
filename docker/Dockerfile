@@ -8,6 +8,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY . .
+# Extensions with code are compiled into their own bin/ folders first; the publish below copies extensions/ as files
+# (.docs/features/extensions.md#deployment).
+RUN set -e; for project in $(find extensions -name '*.csproj'); do dotnet build "$project" --configuration Release; done
 RUN dotnet publish src/DotNetForge.Web/DotNetForge.Web.csproj --configuration Release --output /app /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0

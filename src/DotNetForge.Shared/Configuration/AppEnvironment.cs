@@ -29,6 +29,12 @@ public sealed class AppEnvironment
 
     /// <summary>Where uploaded media is stored (.docs/features/media-storage.md).</summary>
     public StorageSettings Storage { get; set; } = new();
+
+    /// <summary>
+    /// Any deployment value by name - process environment first, then <c>.env</c> - for settings that are not part of
+    /// the core contract, such as an extension's secrets (<c>ExtensionContext.GetEnvironmentValue</c>).
+    /// </summary>
+    public Func<string, string?> Lookup { get; set; } = Environment.GetEnvironmentVariable;
 }
 
 /// <summary>

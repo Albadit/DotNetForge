@@ -1,0 +1,16 @@
+@*
+    Light / dark / system switch (.docs/architecture/design-system.md#themes). Needs JS (ui.js stores the choice and
+    sets <html data-theme>), so it stays hidden until ui.js reveals it; without JS the system preference applies.
+*@
+<div class="menu theme-menu" data-js-only hidden>
+    <button type="button" class="btn btn-ghost btn-icon" popovertarget="theme-menu" aria-haspopup="menu" aria-label="Colour theme">
+        <icon name="sun" class="theme-icon-light" />
+        <icon name="moon" class="theme-icon-dark" />
+    </button>
+    <div class="menu-list" id="theme-menu" popover role="menu" aria-label="Colour theme" data-placement="bottom-end">
+        <p class="menu-label">Theme</p>
+        <menu-button icon="sun" role="menuitemradio" aria-checked="false" data-theme-set="light">Light</menu-button>
+        <menu-button icon="moon" role="menuitemradio" aria-checked="false" data-theme-set="dark">Dark</menu-button>
+        <menu-button icon="monitor" role="menuitemradio" aria-checked="false" data-theme-set="system">System</menu-button>
+    </div>
+</div>

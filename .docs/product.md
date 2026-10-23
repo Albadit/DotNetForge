@@ -17,7 +17,7 @@ without breaking customisations ([extensions](features/extensions.md)).
 
 | Mode | Target | Today |
 | --- | --- | --- |
-| **Traditional** | visual admin like DNN, WordPress or Umbraco: content pages, menus, media uploads, themes | admin area + public site over the page tree ✔; no menus (`DisplayInMenu` is stored, never rendered), uploads or themes ([content pages and routing](features/content-pages-and-routing.md)) |
+| **Traditional** | visual admin like DNN, WordPress or Umbraco: content pages, menus, media uploads, themes | admin area + public site over the page tree ✔, media uploads ✔, a site-wide theme with a menu from `DisplayInMenu` pages through a theme extension ✔ ([content pages and routing](features/content-pages-and-routing.md), [themes](features/themes.md)) |
 | **Headless** | content, media, users, content pages and extensions managed entirely through the API with scoped [API tokens](pages/api-tokens.md) | read endpoints + create content page only ([headless API](features/headless-api.md)) |
 | **Hybrid** | admin and API at the same time over the same content | ✔ both run over the same database and tenant |
 
@@ -52,20 +52,20 @@ deliverables and the generated-solution deliverables of the specification.
 | --- | :-: | --- | --- |
 | ASP.NET Core MVC solution | ✔ | `DotNetForge.slnx`; web host in `src/DotNetForge.Web` | [codebase](architecture/codebase.md) |
 | Setup / registration flow | ✔ | | [installation](features/installation.md) |
-| Admin dashboard | ✔ | count cards + system panel; no widgets | [dashboard](pages/dashboard.md) |
-| Admin sidebar / shell | ✔ | full sidebar tree; unbuilt items are placeholders | [pages architecture](architecture/pages.md), [module placeholders](pages/module-placeholders.md) |
-| Authentication | ✔ | email/password, lockout, cookie; no sign-up, reset or OAuth | [authentication](features/authentication.md) |
+| Admin dashboard | ✔ | quick actions, KPI cards, recent activity, system card + widget extensions; no built-in widgets | [dashboard](pages/dashboard.md) |
+| Admin sidebar / shell | ✔ | full sidebar tree, hidden per role, collapsible Settings groups, breadcrumbs, light/dark ([design system](architecture/design-system.md)); unbuilt items are placeholders | [pages architecture](architecture/pages.md), [module placeholders](pages/module-placeholders.md) |
+| Authentication | ✔ | email/password, lockout, cookie, OAuth through authentication extensions (existing users); no sign-up or reset | [authentication](features/authentication.md) |
 | RBAC permissions | ✔ | partial: roles + seeded matrix; admin checks role names, API checks permission keys | [authorization](features/authorization.md) |
 | Content manager foundation | ✔ | page tree CRUD, SEO fields, schedules | [Content Manager](pages/content-manager.md) |
-| File Manager foundation | ✘ | `MediaFile` table and read-only list; no upload | [media storage](features/media-storage.md) |
+| File Manager foundation | ✔ | upload, public/private files, library with search and filters, delete and bulk delete (**Media** screen); no folders or tags | [media storage](features/media-storage.md) |
 | API token foundation | ✔ | | [headless API](features/headless-api.md) |
 | Extension manifest system | ✔ | | [extensions](features/extensions.md) |
-| Extension loading foundation | ✔ | partial: discovery + admin extensions rendered; no assembly loading | [extensions](features/extensions.md) |
+| Extension loading foundation | ✔ | discovery, code loading per extension (`DotNetForge.Sdk`), enable/disable, slots for every extension type; no install/update/remove or marketplace | [extensions](features/extensions.md) |
 | SQLite and PostgreSQL support | ✔ | plus SQL Server, MySQL, MongoDB | [database providers](database/providers.md) |
 | Import/export foundation | ✘ | placeholder screen only | [transfer and updates](features/transfer-and-updates.md) |
 | Webhook foundation | ✘ | tables, event names and an unused signer; no CRUD or delivery | [webhooks](features/webhooks.md) |
 | Audit logging foundation | ✔ | | [audit logging](features/audit-logging.md) |
-| Theme foundation | ✘ | `IThemeExtension` and a sample manifest only | [themes](features/themes.md) |
+| Theme foundation | ✔ | one site-wide active theme (views, layout, assets, menu); no per-page or per-tenant themes | [themes](features/themes.md) |
 | Documentation (developer + extension development) | ✔ | `.docs/` | [README](README.md) |
 | Agents folder | ✔ | in `.github/agents/`, not a root `agents/` | [development → Planned](guides/development.md#planned-not-implemented) |
 | Unit test project | ✔ | | [testing](guides/testing.md) |
@@ -113,7 +113,7 @@ tenant switching and no private content pages ([authorization](features/authoriz
 | 3. Setup creates the first user as Super Admin, marks the CMS installed, redirects to the dashboard | ✔ |
 | 4. An Editor or Author creates a content page in the Content Manager (slug, title, SEO) and places modules with the page builder | fields ✔; no page builder |
 | 5. Save a draft and check it in preview mode | ✘ |
-| 6. An authorised user sets it **Published** (optionally scheduled); it goes live on the public site under the active theme | ✔ publish and schedule; no themes |
+| 6. An authorised user sets it **Published** (optionally scheduled); it goes live on the public site under the active theme | ✔ publish and schedule, rendered with the active theme |
 
 **Headless API consumer**
 
@@ -167,7 +167,8 @@ tenant switching and no private content pages ([authorization](features/authoriz
   dashboard (`InstallationMiddleware`, `InstallationService`, `SetupController`).
 - [x] SQLite (default) and PostgreSQL are both selectable and functional (database providers; both migrate at startup,
   integration tests pass on both).
-- [ ] The admin area renders correctly regardless of the active public theme (nothing loads themes yet).
+- [x] The admin area renders correctly regardless of the active public theme (only `HomeController` uses theme
+  views; the admin keeps `_AdminLayout`).
 - [x] A scoped API token can read content and media, and only its hash is persisted (`ApiTokenFactory`,
   `ContentApiController`, `MediaApiController`).
 - [ ] Every admin and API action is gated by a permission check (the admin area uses role checks).

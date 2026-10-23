@@ -1,21 +1,40 @@
+using System.Security.Claims;
+using DotNetForge.Abstractions.Authorization;
 using DotNetForge.Data;
 using DotNetForge.Shared.Configuration;
+using DotNetForge.Shared.Constants;
+using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
+using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Controllers;
 
-/// <summary>The public frontend. Renders independently of the admin area (.docs/features/themes.md).</summary>
+/// <summary>
+/// The public frontend. Renders independently of the admin area, with the active theme's views when a theme
+/// extension is enabled, else the built-in ones (.docs/features/themes.md).
+/// </summary>
 public sealed class HomeController : Controller
 {
     private readonly AppEnvironment _env;
     private readonly DotNetForgeDbContext _db;
+    private readonly ThemeResolver _themes;
+    private readonly IPublishedPages _published;
+    private readonly ExtensionViewRenderer _renderer;
+    private readonly PagePermissionService _pagePermissions;
+    private readonly IPermissionService _permissions;
 
-    public HomeController(AppEnvironment env, DotNetForgeDbContext db)
+    public HomeController(AppEnvironment env, DotNetForgeDbContext db, ThemeResolver themes, IPublishedPages published,
+        ExtensionViewRenderer renderer, PagePermissionService pagePermissions, IPermissionService permissions)
     {
         _env = env;
         _db = db;
+        _themes = themes;
+        _published = published;
+        _renderer = renderer;
+        _pagePermissions = pagePermissions;
+        _permissions = permissions;
     }
 
     [HttpGet("")]
@@ -25,21 +44,28 @@ public sealed class HomeController : Controller
         var now = DateTime.UtcNow;
 
         // The site root renders the root page (slug "/", or legacy "home") when live; else the list.
-        var home = await Live(_db.Pages.AsNoTracking().Where(p => p.Slug == "/" || p.Slug == "home"), now)
+        var home = await _db.Pages.AsNoTracking().Where(p => p.Slug == "/" || p.Slug == "home").Live(now)
             .OrderBy(p => p.Slug == "/" ? 0 : 1)
             .FirstOrDefaultAsync();
         if (home is not null)
         {
-            return View("Page", home);
+            return await ViewPageAsync(home);
         }
 
-        var publishedPages = await Live(_db.Pages.AsNoTracking(), now)
+        // A root page that exists but is switched off (or outside its schedule) is not found, like any page that is
+        // not live. The list below is only for a site without a root page (a fresh install).
+        if (await _db.Pages.AnyAsync(p => p.Slug == "/" || p.Slug == "home"))
+        {
+            return NotFound();
+        }
+
+        var publishedPages = await _db.Pages.AsNoTracking().Live(now)
             .OrderBy(p => p.SortOrder)
             .Select(p => new { p.Title, p.Slug })
             .ToListAsync();
 
         ViewData["PublishedCount"] = publishedPages.Count;
-        return View(publishedPages.Select(p => (p.Title, p.Slug)).ToList());
+        return await ThemedViewAsync("Index", publishedPages.Select(p => (p.Title, p.Slug)).ToList());
     }
 
     /// <summary>
@@ -56,7 +82,7 @@ public sealed class HomeController : Controller
         }
 
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        var pages = await Live(_db.Pages.AsNoTracking(), DateTime.UtcNow)
+        var pages = await _db.Pages.AsNoTracking().Live(DateTime.UtcNow)
             .Select(p => new { p.Id, p.ParentPageId, p.Slug })
             .ToListAsync(HttpContext.RequestAborted);
 
@@ -97,8 +123,31 @@ public sealed class HomeController : Controller
 
         ViewData["AppName"] = _env.AppName;
         ViewData["RouteValues"] = routeValues;
-        return View("Page", matched);
+        return await ViewPageAsync(matched);
     }
+
+    /// <summary>
+    /// A live page, if the visitor may see it (.docs/features/content-pages-and-routing.md#page-permissions): a page
+    /// with view grants asks anonymous visitors to sign in, and answers 404 to signed-in users without a granted role
+    /// (so its existence is not revealed).
+    /// </summary>
+    private async Task<IActionResult> ViewPageAsync(Page page)
+    {
+        var canView = await _pagePermissions.CanViewAsync(page.Id, page.TenantId, User, CanEditPages, HttpContext.RequestAborted);
+        if (!canView)
+        {
+            return User.Identity?.IsAuthenticated == true
+                ? NotFound()
+                : Redirect("/account/login?returnUrl=" + Uri.EscapeDataString(Request.Path + Request.QueryString));
+        }
+
+        return await ThemedViewAsync("Page", page, page.ThemeId);
+    }
+
+    /// <summary>Admins who may edit content pages always see restricted pages.</summary>
+    private bool CanEditPages() =>
+        Guid.TryParse(User.FindFirst(AuthService.TenantClaimType)?.Value, out var tenant)
+        && _permissions.HasAny(tenant, User.FindAll(ClaimTypes.Role).Select(c => c.Value), PermissionAreas.CollectionTypes, PermissionActions.Update);
 
     /// <summary>
     /// The exception handler re-executes the failed request here with its original HTTP method, so this action
@@ -108,13 +157,23 @@ public sealed class HomeController : Controller
     public IActionResult Error() => View();
 
     /// <summary>
-    /// A page is publicly live only when published, not disabled, and within its scheduled window: the
-    /// scheduled publish date has been reached (or none set) and the scheduled unpublish date has not
-    /// (or none set). Evaluated per request, so a future "Scheduled publish" hides the page until that
-    /// moment even though Published is checked (.docs/features/content-pages-and-routing.md).
+    /// The active theme's <c>Views/{name}.cshtml</c> when it has one, else the built-in view. Theme views also get the
+    /// extension view data (<c>Extension</c>, <c>Settings</c>, <c>ResourceBase</c>) and <c>Menu</c>: the live pages
+    /// marked "display in menu" at the top level, as <see cref="PublishedPage"/>s.
     /// </summary>
-    private static IQueryable<Page> Live(IQueryable<Page> pages, DateTime now) =>
-        pages.Where(p => p.Published && !p.Disabled
-            && (p.ScheduledPublishDate == null || p.ScheduledPublishDate <= now)
-            && (p.ScheduledUnpublishDate == null || p.ScheduledUnpublishDate > now));
+    private async Task<IActionResult> ThemedViewAsync(string name, object model, string? pageThemeId = null)
+    {
+        var theme = await _themes.GetActiveThemeAsync(HttpContext.RequestAborted, pageThemeId);
+        if (theme?.FindView(name + ".cshtml") is not { } themeView)
+        {
+            return View(name, model);
+        }
+
+        ExtensionViewRenderer.AddExtensionViewData(ViewData, theme, admin: false);
+        ViewData["AppName"] = _env.AppName;
+        ViewData["Menu"] = (await _published.ListAsync(HttpContext.RequestAborted))
+            .Where(p => p.DisplayInMenu && p.ParentPageId is null)
+            .ToList();
+        return View(_renderer.ToViewPath(themeView), model);
+    }
 }

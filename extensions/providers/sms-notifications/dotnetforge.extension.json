@@ -1,18 +1,23 @@
 {
   "id": "dotnetforge.provider.sms",
   "name": "SMS Notifications",
-  "description": "A notification provider that delivers alerts over SMS.",
-  "version": "1.4.2",
+  "description": "Sends a text message when selected audit events happen (failed sign-ins, contact form messages, ...).",
+  "version": "2.0.0",
   "type": "provider",
   "author": "Signalworks",
-  "entryPoint": "SmsNotificationProvider",
-  "permissions": ["settings.read", "core.read"],
+  "assembly": "bin/SmsNotifications.dll",
+  "entryPoint": "SmsNotifications.SmsNotificationsExtension",
+  "permissions": ["core.read"],
   "website": "https://example.com/extensions/sms-notifications",
   "license": "BSD-3-Clause",
   "dependencies": [],
   "routes": [],
   "settings": {
-    "gateway": "twilio",
-    "fromNumber": ""
+    // "log" writes each message to the application log (no account needed); "twilio" sends a real SMS and needs
+    // TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in .env.
+    "gateway": "log",
+    "to": "+38344000000",
+    "from": "",
+    "notifyOn": ["user.login.failed", "contactform.submitted", "plugin.enabled", "plugin.disabled"]
   }
 }

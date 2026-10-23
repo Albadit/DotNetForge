@@ -8,11 +8,11 @@ only reserved folders, a version column and a few flags exist.
 
 | Piece | Location | Status |
 | --- | --- | --- |
-| Transfer screen | `GET /admin/transfer` → `ModulesController.Transfer` | [placeholder](../pages/module-placeholders.md), sidebar **Settings · Global Settings**; open to every admin-capable role |
+| Transfer screen | `GET /admin/transfer` → `ModulesController.Transfer` | [placeholder](../pages/module-placeholders.md), sidebar **Settings → Global Settings**; open to every admin-capable role |
 | `storage/backups/`, `storage/updates/` | repository `storage/` | empty (`.gitkeep` only), contents git-ignored; nothing reads or writes them |
 | `SystemState.CmsVersion` (string, max 50, default `"1.0.0"`) | `src/DotNetForge.Shared/Entities/SystemState.cs` | shown on the [Dashboard](../pages/dashboard.md); never changed; not taken from the assembly version |
 | `PermissionAreas.Updates` | `src/DotNetForge.Shared/Constants/Permissions.cs` | in `PermissionMatrix` only Super Admin is granted it (Admin gets nothing - asserted in `PermissionTests`); seeded as `RolePermission` rows, **not enforced** ([authorization](authorization.md)) |
-| `InstalledExtension.UpdateAvailable` | `src/DotNetForge.Shared/Entities/InstalledExtension.cs` | returned by `GET /api/extensions`; `InstalledExtensions` is never written, so always empty |
+| `InstalledExtension.UpdateAvailable` | `src/DotNetForge.Shared/Entities/InstalledExtension.cs` | returned by `GET /api/extensions`; rows are written when an extension is enabled, but this column never is (always `false`) |
 | Schema creation | `src/DotNetForge.Data/DatabaseInitializer.cs` | the main provider's `InitializeSchemaAsync`: migrations per SQL provider (`Database/Providers/<Database>/Migrations/`), `EnsureCreated` for MongoDB; for PostgreSQL), applied at startup ([database](../architecture/database.md)) |
 | Provider selection | `DATABASE_PROVIDER` (or detected from the connection string), resolved by `DatabaseProviderRegistry` ([database configuration](../database/configuration.md)) | ✔ one provider per process; no cross-provider tooling |
 | Core / extensions / runtime split | `src/` (web host in `src/DotNetForge.Web`); `extensions/` at the repository root (outside every project, discovered by `ExtensionLoader` under `AppEnvironment.ExtensionsPath`); `storage/` | ✔ folders separated |

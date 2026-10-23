@@ -1,8 +1,8 @@
 @{
     ViewData["Title"] = "Error";
 }
-<section class="hero">
-    <h1>Something went wrong</h1>
-    <p class="lead">An unexpected error occurred while processing your request.</p>
-    <p><a href="/">Return home</a></p>
+<section class="card">
+    <empty-state icon="triangle-alert" title="Something went wrong" heading-level="1" text="An unexpected error occurred while processing your request. It has been logged; please try again in a moment.">
+        <a class="btn btn-primary" href="/"><icon name="home" /> Return home</a>
+    </empty-state>
 </section>

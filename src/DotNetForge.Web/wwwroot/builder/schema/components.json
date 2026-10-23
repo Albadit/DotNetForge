@@ -1,0 +1,157 @@
+{
+  "$comment": "Built-in component types. Shared by the TypeScript registry and the C# validator (embedded resource). 'props' lists every allowed prop with its type; unknown props are rejected by the server. 'content' marks props a content editor (DNN 'Add Content' permission) may change; everything else needs layout rights. Rendering is implemented per type in both renderers.",
+  "version": 1,
+  "types": {
+    "page": {
+      "label": "Page", "category": "structure", "container": true, "insertable": false,
+      "parents": [],
+      "layout": { "base": { "mode": "stack", "direction": "column", "gap": 0, "align": "stretch" } },
+      "props": {}
+    },
+    "section": {
+      "label": "Section", "category": "structure", "container": true,
+      "parents": ["page"],
+      "layout": { "base": { "mode": "free", "height": 400 } },
+      "style": { "base": { "padding": [48, 24, 48, 24] } },
+      "props": {
+        "tag":          { "type": "enum", "label": "Element", "options": ["section", "header", "footer", "main", "aside", "div"], "default": "section" },
+        "contentWidth": { "type": "int",  "label": "Content width", "min": 0, "max": 3840, "default": 0, "help": "0 = full width" },
+        "anchor":       { "type": "slug", "label": "Anchor", "max": 60, "default": "" }
+      }
+    },
+    "container": {
+      "label": "Container", "category": "structure", "container": true,
+      "parents": ["page", "section", "container"],
+      "layout": { "base": { "mode": "free", "height": 200 } },
+      "style": { "base": { "padding": [16, 16, 16, 16] } },
+      "place": { "colSpan": 4, "rowSpan": 3 },
+      "props": {
+        "tag":  { "type": "enum", "label": "Element", "options": ["div", "article", "aside", "nav"], "default": "div" },
+        "href": { "type": "url",  "label": "Link", "default": "" }
+      }
+    },
+    "heading": {
+      "label": "Heading", "category": "content",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 12, "rowSpan": 1 },
+      "props": {
+        "text":  { "type": "inline", "label": "Text", "max": 500, "default": [{ "text": "Heading" }], "content": true },
+        "level": { "type": "enum", "label": "Level", "options": ["1", "2", "3", "4", "5", "6"], "default": "2" }
+      }
+    },
+    "text": {
+      "label": "Text", "category": "content",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 6, "rowSpan": 2 },
+      "props": {
+        "content": { "type": "rich", "label": "Text", "max": 20000, "default": [{ "type": "p", "runs": [{ "text": "Write something here." }] }], "content": true }
+      }
+    },
+    "image": {
+      "label": "Image", "category": "media",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 4, "rowSpan": 4 },
+      "props": {
+        "src":     { "type": "image", "label": "Image", "default": "", "content": true },
+        "alt":     { "type": "text",  "label": "Alt text", "max": 300, "default": "", "content": true },
+        "fit":     { "type": "enum",  "label": "Fit", "options": ["cover", "contain", "fill", "none"], "default": "cover" },
+        "href":    { "type": "url",   "label": "Link", "default": "", "content": true },
+        "newTab":  { "type": "bool",  "label": "Open in new tab", "default": false, "content": true },
+        "caption": { "type": "text",  "label": "Caption", "max": 300, "default": "", "content": true }
+      }
+    },
+    "button": {
+      "label": "Button", "category": "content",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 3, "rowSpan": 1 },
+      "style": { "base": { "width": { "mode": "hug" } } },
+      "props": {
+        "label":   { "type": "text", "label": "Label", "max": 120, "default": "Button", "content": true },
+        "href":    { "type": "url",  "label": "Link", "default": "#", "content": true },
+        "newTab":  { "type": "bool", "label": "Open in new tab", "default": false, "content": true },
+        "variant": { "type": "enum", "label": "Variant", "options": ["primary", "secondary", "outline", "link", "soft", "plain"], "default": "primary" },
+        "icon":    { "type": "icon", "label": "Icon", "default": "" },
+        "iconPosition": { "type": "enum", "label": "Icon position", "options": ["start", "end"], "default": "start" }
+      }
+    },
+    "links": {
+      "label": "Link list", "category": "content",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 3, "rowSpan": 3 },
+      "props": {
+        "items":     { "type": "links", "label": "Links", "maxItems": 50, "default": [{ "label": "First link", "href": "#", "newTab": false }, { "label": "Second link", "href": "#", "newTab": false }], "content": true },
+        "direction": { "type": "enum",  "label": "Direction", "options": ["column", "row"], "default": "column" },
+        "variant":   { "type": "enum",  "label": "Look", "options": ["list", "tiles", "menu"], "default": "list" }
+      }
+    },
+    "icon": {
+      "label": "Icon", "category": "content",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 1, "rowSpan": 1 },
+      "props": {
+        "name":  { "type": "icon", "label": "Icon", "default": "star" },
+        "size":  { "type": "int",  "label": "Size", "min": 8, "max": 256, "default": 24 },
+        "label": { "type": "text", "label": "Description", "max": 120, "default": "", "content": true, "help": "Read by screen readers; leave empty for a decorative icon." }
+      }
+    },
+    "post": {
+      "label": "Post", "category": "content",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 6, "rowSpan": 10 },
+      "props": {
+        "author":        { "type": "text",     "label": "Author", "max": 120, "default": "Author", "content": true },
+        "avatar":        { "type": "image",    "label": "Author picture", "default": "", "content": true },
+        "meta":          { "type": "text",     "label": "Date or note", "max": 60, "default": "Just now", "content": true },
+        "image":         { "type": "image",    "label": "Image", "default": "", "content": true },
+        "alt":           { "type": "text",     "label": "Alt text", "max": 300, "default": "", "content": true },
+        "title":         { "type": "text",     "label": "Title", "max": 200, "default": "Post title", "content": true },
+        "text":          { "type": "rich",     "label": "Text", "max": 20000, "default": [{ "type": "p", "runs": [{ "text": "Write the post here." }] }], "content": true },
+        "comments":      { "type": "comments", "label": "Comments", "maxItems": 100, "default": [], "content": true },
+        "commentsLabel": { "type": "text",     "label": "Comments label", "max": 60, "default": "Comments", "content": true },
+        "emptyLabel":    { "type": "text",     "label": "Label without comments", "max": 120, "default": "Read more", "content": true },
+        "closeLabel":    { "type": "text",     "label": "Close label", "max": 60, "default": "Close", "content": true }
+      }
+    },
+    "video": {
+      "label": "Video", "category": "media",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 6, "rowSpan": 6 },
+      "props": {
+        "url":    { "type": "video", "label": "YouTube or Vimeo URL", "default": "", "content": true },
+        "title":  { "type": "text",  "label": "Title", "max": 200, "default": "Video", "content": true },
+        "aspect": { "type": "enum",  "label": "Aspect", "options": ["16:9", "4:3", "1:1", "9:16"], "default": "16:9" }
+      }
+    },
+    "spacer": {
+      "label": "Spacer", "category": "structure",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 12, "rowSpan": 1 },
+      "style": { "base": { "height": { "mode": "fixed", "value": 32 } } },
+      "props": {}
+    },
+    "divider": {
+      "label": "Divider", "category": "structure",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 12, "rowSpan": 1 },
+      "props": {
+        "thickness": { "type": "int",  "label": "Thickness", "min": 1, "max": 20, "default": 1 },
+        "lineStyle": { "type": "enum", "label": "Line", "options": ["solid", "dashed", "dotted"], "default": "solid" }
+      }
+    },
+    "module": {
+      "label": "DNN module", "category": "dnn",
+      "parents": ["page", "section", "container"],
+      "place": { "colSpan": 6, "rowSpan": 4 },
+      "props": {
+        "moduleId": { "type": "module", "label": "Module", "default": 0 }
+      }
+    }
+  },
+  "limits": {
+    "text": 2000,
+    "url": 2000,
+    "runs": 2000,
+    "blocks": 500,
+    "listItems": 200
+  }
+}

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Connector extension: a media storage backend. The AWS SDK is compiled against but not copied (ExcludeAssets):
+    the host already ships AWSSDK.S3 and always shares assemblies it has, so use the host's version here. A package
+    the host does not have is simply referenced normally and lands in bin/.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.1" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+</Project>

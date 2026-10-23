@@ -22,6 +22,8 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Page> Pages => Set<Page>();
+    public DbSet<PagePermission> PagePermissions => Set<PagePermission>();
+    public DbSet<PageUserPermission> PageUserPermissions => Set<PageUserPermission>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
     public DbSet<Webhook> Webhooks => Set<Webhook>();
@@ -99,7 +101,25 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(p => p.SeoKeywords).HasMaxLength(500);
             e.Property(p => p.CanonicalUrl).HasMaxLength(2000);
             e.Property(p => p.FileReference).HasMaxLength(2000);
+            e.Property(p => p.ThemeId).HasMaxLength(100);
+            e.Property(p => p.SocialImageUrl).HasMaxLength(2000);
             e.HasIndex(p => new { p.TenantId, p.ParentPageId, p.Slug }).IsUnique();
+        });
+
+        b.Entity<PagePermission>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Permission).IsRequired().HasMaxLength(20);
+            e.HasIndex(p => new { p.PageId, p.RoleId, p.Permission }).IsUnique();
+            e.HasIndex(p => p.TenantId);
+        });
+
+        b.Entity<PageUserPermission>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Permission).IsRequired().HasMaxLength(20);
+            e.HasIndex(p => new { p.PageId, p.UserId, p.Permission }).IsUnique();
+            e.HasIndex(p => p.TenantId);
         });
 
         b.Entity<MediaFile>(e =>

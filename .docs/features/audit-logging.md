@@ -13,8 +13,8 @@ Task LogAsync(string action, string? entityType = null, string? entityId = null,
               CancellationToken cancellationToken = default)
 ```
 
-`AuditService` builds an `AuditLogEntry` from the current `HttpContext` and saves it immediately (its own
-`SaveChangesAsync`):
+`AuditService` builds an `AuditLogEntry` from the current `HttpContext`, saves it immediately (its own
+`SaveChangesAsync`) and then queues it for [extension handlers](#extension-handlers):
 
 | Field | Source |
 | --- | --- |
@@ -36,25 +36,58 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 
 | Action constant | Key | Written by | Entity |
 | --- | --- | --- | --- |
-| `UserLogin` | `user.login` | `AccountController.Login` (success; `HttpContext.User` is set to the new principal first, so the entry carries the user and tenant) | `User`, id, email |
-| `UserLoginFailed` | `user.login.failed` | `AccountController.Login` (any failure; `success: false`) | `User`, no id, the typed email |
+| `UserLogin` | `user.login` | `AccountController.Login` (success; `HttpContext.User` is set to the new principal first, so the entry carries the user and tenant); `ExternalLoginController.Callback` (details `via <provider>`) | `User`, id, email |
+| `UserLoginFailed` | `user.login.failed` | `AccountController.Login` (any failure; `success: false`); `ExternalLoginController` (details `via <provider>` or `external sign-in`) | `User`, no id, the typed / provider email |
 | `UserLogout` | `user.logout` | `AccountController.Logout` | - |
+| `UserCreated` | `user.created` | `UserManagementService.CreateAsync` (from `UsersController.Create`) | `User`, id, email |
+| `UserUpdated` | `user.updated` | `UserManagementService.UpdateAsync` / `.SetStatusAsync` (details `Enabled` / `Disabled`); `ProfileService` (details `Own profile` / `Own password changed`) | `User`, id, email |
+| `UserDeleted` | `user.deleted` | `UserManagementService.DeleteAsync` | `User`, id, email |
+| `RoleChanged` | `role.changed` | `RoleManagementService` create / update of name or description / duplicate / delete (details `Created`, `Updated`, `Duplicated from <name>`, `Deleted`); `UserManagementService.UpdateAsync` when a user's roles change (entity `User`, details `Role assignment changed`) | `Role`, id, name |
+| `PermissionChanged` | `permission.changed` | `RoleManagementService.UpdateAsync` when the grant set changes; `PagePermissionService.SaveAsync` when a page's grants change (entity `Page`, details list the view and edit roles) | `Role` / `Page`, id, name |
 | `CmsInstalled` | `cms.installed` | `SetupController.Index` (POST, after a successful install; written after the automatic sign-in, so it carries the new user and tenant) | `User`, id, email |
-| `ContentCreated` | `content.created` | `ContentController.Create`; `ContentApiController.CreatePage` (`POST /api/content/pages`, actor = API token) | `Page`, id, title |
-| `ContentUpdated` | `content.updated` | `ContentController.Update` | `Page`, id, title |
+| `ContentCreated` | `content.created` | `ContentController.Create` and `Duplicate` (details "Duplicate of '<title>'"); `ContentApiController.CreatePage` (`POST /api/content/pages`, actor = API token) | `Page`, id, title |
+| `ContentUpdated` | `content.updated` | `ContentController.Update`; `PageBuilderService` publish / unpublish (details `Layout published` / `Layout unpublished`; draft saves are not audited) | `Page`, id, title |
 | `ContentDeleted` | `content.deleted` | `ContentController.Delete` | `Page`, id, title |
 | `ContentReordered` | `content.reordered` | `ContentController.Reorder` | `Page`, no id, `"{n} page(s)"` |
 | `MediaUploaded` | `media.uploaded` | `MediaService.UploadAsync` (per stored file, from `MediaController.Upload`) | `MediaFile`, id, file name |
 | `MediaDeleted` | `media.deleted` | `MediaService.DeleteAsync` (from `MediaController.Delete`) | `MediaFile`, id, file name |
+| `MediaUpdated` | `media.updated` | `MediaService.SetVisibilityAsync` (from `MediaController.Visibility`; details `Made public` / `Made private`) | `MediaFile`, id, file name |
 | `SettingsChanged` | `settings.changed` | `SettingsController.Save` | `Setting`, key, key (value not recorded) |
 | `ApiTokenCreated` | `apitoken.created` | `ApiTokensController.Create` | `ApiToken`, id, name |
 | `ApiTokenRevoked` | `apitoken.revoked` | `ApiTokensController.Revoke` | `ApiToken`, id, name |
+| `PluginEnabled` | `plugin.enabled` | `ExtensionLifecycleService.EnableAsync` (from `PluginsController.Enable`) | `Extension`, manifest id, name |
+| `PluginDisabled` | `plugin.disabled` | `ExtensionLifecycleService.DisableAsync` (from `PluginsController.Disable`) | `Extension`, manifest id, name |
 
-Defined but never written: `plugin.installed`, `plugin.disabled`, `role.changed`, `permission.changed`,
-`webhook.created`, `audit.exported`.
+Defined but never written: `plugin.installed`, `webhook.created`, `audit.exported`.
+
+**Extension-defined actions.** Extensions write through the same `IAuditService` with their own action strings
+(`LogAsync` accepts any string). The samples write `contactform.submitted` (Contact Form: entity `ContactMessage`, the
+storage key, `"<name> <email>"`, details = the first 200 characters of the message; anonymous, so no user and no
+tenant).
 
 Not logged: API reads, scheduler changes (`ScheduledPublishingService`), and failed or denied operations other than
-sign-in (403s, validation errors, rejected uploads). `Details` is never populated.
+sign-in (403s, validation errors, rejected uploads, refused enable/disable). `Details` is filled only by external
+sign-in and extensions.
+
+## Extension handlers
+
+Extensions subscribe to every saved entry with `services.AddAuditEventHandler<THandler>(context)` (`DotNetForge.Sdk`;
+`THandler : IAuditEventHandler`, registered scoped). `AuditEventDispatcher`
+(`src/DotNetForge.Web/Services/AuditEventDispatcher.cs`, a `BackgroundService`) delivers them:
+
+| Rule | Behaviour |
+| --- | --- |
+| Hand-off | `AuditService` calls `Publish(AuditEvent)` after `SaveChangesAsync`; it only writes to a bounded in-memory `Channel` and never blocks or throws into the request |
+| Queue | `QueueCapacity` = 1000 events; when full, new events are dropped with a warning log (`Audit event queue is full; ...`). Nothing is queued when no handler is registered |
+| Order | one event at a time, every handler in registration order |
+| Gate | a handler runs only while its extension is active (`ExtensionCatalog.IsActiveAsync`, checked per event) |
+| Isolation | each call gets its own DI scope and a `HandlerTimeout` of 30 s (via the cancellation token); an exception is logged (`Audit handler ... failed on ...`) and the next handler runs |
+| Durability | none: events queued in memory are lost on shutdown or crash; the `AuditLogs` row is the record. Per instance only |
+
+`AuditEvent` carries `Action`, `EntityType`, `EntityId`, `EntityDisplay`, `Details`, `Success`, `TenantId`,
+`UserDisplay`, `IpAddress`, `TimestampUtc` - not the user agent or user id. Sample: `extensions/providers/sms-notifications`
+sends an SMS for the actions in its `notifyOn` setting (default `user.login.failed`, `contactform.submitted`,
+`plugin.enabled`, `plugin.disabled`).
 
 ## Tenant scoping of reads
 
@@ -62,7 +95,7 @@ sign-in (403s, validation errors, rejected uploads). `Details` is never populate
 | --- | --- |
 | Audit Logs screen (`AuditLogsController`, latest 100) | `TenantId == active tenant || TenantId == null` |
 | Dashboard **Audit entries** count (`DashboardController`) | same |
-| Audit Dashboard extension (`extensions/admin/audit-dashboard`) | **none** - all tenants |
+| Audit Dashboard extension (`extensions/admin/audit-dashboard`) | same (tenant from the `dnf:tenant` claim) |
 
 Entries without a tenant (failed sign-ins, where no account was resolved) belong to the sign-in tenant and stay
 visible; with a second tenant they would be visible in every tenant ([multi-tenancy](multi-tenancy.md)).
@@ -74,6 +107,8 @@ visible; with a second tenant they would be visible in every tenant ([multi-tena
 - Never put secrets (passwords, token plaintext, hashes) in `Details` or the display snapshots.
 - No code may update or delete `AuditLogs` rows.
 - Any new reader of `AuditLogs` filters by the active tenant like `AuditLogsController`.
+- Extensions that react to audit events use `AddAuditEventHandler`, never polling `AuditLogs`; a handler must be
+  fast (30 s timeout) and must not write an audit entry for every event it handles (that would loop).
 
 ## Planned (not implemented)
 
@@ -95,7 +130,8 @@ Viewer (list, filters, search, export): [Audit Logs screen](../pages/audit-logs.
 - **Acting principal** for non-interactive actions (system, background job, API token): record system, the token
   identifier or a null user, keeping IP/user agent where available. ✔ API token: `UserId = null`,
   `UserDisplaySnapshot = "API token {id}"`, tenant from the token (`AuditService`); the scheduler writes nothing.
-- **Action vocabulary** is extensible: extensions may register additional action types.
+- **Action vocabulary** is extensible: extensions may register additional action types (✔ they may write any action
+  string, e.g. `contactform.submitted`; ✘ no registration).
 - **Retention:** configurable retention policy with rotation/archival (by age, or roll over to archive storage at a
   size threshold). It is a controlled system process, never an interactive per-entry delete; archival/purge events
   are themselves audited.
@@ -107,10 +143,10 @@ Tracked actions (minimum set):
 | User login | `User` | `UserLogin` | ✔ |
 | Failed login | `User` or none; safe identifier only, never the password | `UserLoginFailed` | ✔ |
 | Content created / updated / deleted | `Page` | `ContentCreated` / `ContentUpdated` / `ContentDeleted` | ✔ |
-| Media uploaded | `Media` | `MediaUploaded` | ✔ (`MediaService`; also `MediaDeleted`) |
-| Plugin installed / disabled | `Plugin` | `PluginInstalled` / `PluginDisabled` | ✘ |
-| Role changed (created, edited, duplicated, deleted, assigned/unassigned) | `Role` | `RoleChanged` | ✘ |
-| Permission changed (grants of a role) | `Permission` / `Role` | `PermissionChanged` | ✘ |
+| Media uploaded | `Media` | `MediaUploaded` | ✔ (`MediaService`; also `MediaDeleted`, `MediaUpdated`) |
+| Plugin installed / disabled | `Plugin` | `PluginInstalled` / `PluginDisabled` | installed ✘ (no install); disabled ✔ (`Extension`, also `PluginEnabled`) |
+| Role changed (created, edited, duplicated, deleted, assigned/unassigned) | `Role` | `RoleChanged` | ✔ |
+| Permission changed (grants of a role) | `Permission` / `Role` | `PermissionChanged` | ✔ (entity `Role`) |
 | Settings changed | `Setting` | `SettingsChanged` | ✔ |
 | API token created (metadata only) | `ApiToken` | `ApiTokenCreated` | ✔ |
 | Webhook created | `Webhook` | `WebhookCreated` | ✘ |
@@ -154,8 +190,9 @@ must not silently swallow the underlying error.
   limiting ([security](security.md)).
 - **Clock skew** across instances: use one consistent server time source.
 - **Tenant isolation:** entries never leak across tenants; tenant admins see only their tenant (today the Audit Logs
-  screen ✔ and Dashboard count ✔ are scoped, but the Audit Dashboard extension reads all tenants, and failed-login
-  entries carry no `TenantId`, so they show in every tenant).
+  screen ✔, the Dashboard count ✔ and the Audit Dashboard extension ✔ are scoped, but failed-login entries and
+  anonymous extension entries carry no `TenantId`, so they show in every tenant; extension handlers receive every
+  tenant's events).
 - **Audit store unavailable:** records are never dropped silently - surface the failure and/or buffer for a durable
   write. Today `LogAsync` runs after the change is saved, so an audit failure produces an error after the change.
 
@@ -164,14 +201,14 @@ must not silently swallow the underlying error.
 Viewer criteria (pagination, filters, search, export) are on the [Audit Logs screen](../pages/audit-logs.md#acceptance-criteria).
 
 - [x] Each entry records User, Action, Entity type, Entity ID, IP address, User agent, Timestamp (UTC) and Details (`AuditLogEntry`, `AuditService.LogAsync`; no caller fills Details yet).
-- [ ] Logged actions include user login, failed login, content created/updated/deleted, media uploaded, plugin installed, plugin disabled, role changed, permission changed, settings changed, API token created and webhook created (constants ✔; written ✔ except plugin installed/disabled, role changed, permission changed and webhook created).
+- [ ] Logged actions include user login, failed login, content created/updated/deleted, media uploaded, plugin installed, plugin disabled, role changed, permission changed, settings changed, API token created and webhook created (constants ✔; written ✔ except plugin installed and webhook created).
 - [ ] Failed actions, including failed logins with no resolved user, are recorded with a null user and without the attempted password (failed logins ✔ `AccountController`; other failures are not logged).
-- [ ] Each entry carries the tenant it occurred in and log access is filtered by the active tenant (filter ✔ `AuditLogsController`, `DashboardController`; failed-login entries have no tenant; the Audit Dashboard extension is unfiltered).
+- [ ] Each entry carries the tenant it occurred in and log access is filtered by the active tenant (filter ✔ `AuditLogsController`, `DashboardController`, Audit Dashboard extension; failed-login entries have no tenant).
 - [ ] Only Super Admin and Admin can view, filter, search and export audit logs (viewing ✔ `AuditLogsController` role check; the rest does not exist).
 - [ ] Super Admin can view logs across all tenants; tenant Admins see only their tenant's logs (everyone sees the active tenant plus tenant-less entries; no cross-tenant view).
 - [ ] Entries are append-only: no UI or API path edits or deletes an entry, and mutation attempts are rejected (no path ✔; no rejection guard).
 - [x] Passwords and token/secret plaintext are never persisted in any field, for any action (current writers: `AccountController` / `SetupController` log only the email, `ApiTokensController` only id and name, API-token actors only the token id; no generic redaction).
 - [ ] Timestamps are stored in UTC and displayed in the viewer's configured timezone (UTC storage ✔; shown as UTC).
 - [ ] A retention/rotation policy is configurable; archival/purge is a controlled process without interactive per-entry deletion.
-- [ ] No audit entry leaks across tenant boundaries (screen and Dashboard ✔; the Audit Dashboard extension reads all tenants).
+- [ ] No audit entry leaks across tenant boundaries (screen, Dashboard and Audit Dashboard extension ✔; tenant-less entries are shared; extension handlers see all tenants).
 - [ ] Every audit-log read, filter, search and export request passes an explicit permission check.

@@ -60,29 +60,37 @@ erDiagram
     Role ||--o{ UserRole : "cascade"
     Role ||--o{ RolePermission : "cascade"
     Page |o--o{ Page : "ParentPageId (no FK)"
+    Page ||--o{ PagePermission : "PageId (no FK)"
+    Role ||--o{ PagePermission : "RoleId (no FK)"
+    Page ||--o{ PageUserPermission : "PageId (no FK)"
+    User ||--o{ PageUserPermission : "UserId (no FK)"
     Webhook ||--o{ WebhookDelivery : "cascade"
 ```
 
 Only the four "cascade" relationships are real foreign keys. `TenantId` and `ParentPageId` are plain columns with
 no FK constraint - integrity is maintained by application code (e.g. `PageService.DeleteAsync` re-parents children).
-`AuditLogEntry`, `InstalledExtension`, `SystemState`, `AuthProvider` and `DataProtectionKey` are standalone tables.
+`PagePermission.PageId` / `RoleId` are plain columns too (`ContentController.Delete` removes a page's grants;
+`PagePermissionService` ignores grants of roles that no longer exist). `AuditLogEntry`, `InstalledExtension`,
+`SystemState`, `AuthProvider` and `DataProtectionKey` are standalone tables.
 
 ## Tables
 
 | Table (`DbSet`) | Key | Important columns | Unique indexes / constraints | Written by |
 | --- | --- | --- | --- | --- |
 | `Tenants` | `Guid Id` | `Name`(200), `Slug`(100), `PrimaryDomain`, `Subdomains`, `PathPrefix`, `DefaultLocale`, `DefaultTheme`, `Status`, dates | `Slug` unique | `DataSeeder` only |
-| `Users` | `Guid Id` | `Email`(256), `FirstName`(100), `LastName`(100), `PasswordHash`, `Status`, `EmailConfirmed`, `FailedLoginCount`, `LockoutEndUtc`, `LastLoginDate`, `TenantId` | (`TenantId`, `Email`) unique; `DisplayName` is computed, not stored | `InstallationStore`, `AuthService` (counters, last login) |
-| `Roles` | `Guid Id` | `Name`(100), `Description`(500), `IsBuiltIn`, `TenantId` | (`TenantId`, `Name`) unique | `DataSeeder` |
-| `RolePermissions` | `Guid Id` | `RoleId`, `Area`(100), `Action`(100) | (`RoleId`, `Area`, `Action`) unique | `DataSeeder` |
-| `UserRoles` | (`UserId`, `RoleId`) | - | composite PK | `InstallationStore` |
-| `Pages` | `Guid Id` | `Slug`(200), `Title`(300), `MetaTitle`, `MetaDescription`, `SeoKeywords`, `CanonicalUrl`, `Published`, `Disabled`, `DisplayInMenu`, `ParentPageId`, `SortOrder`, `PageType`, `TargetUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate`, `CreatedById`, dates | (`TenantId`, `ParentPageId`, `Slug`) unique | `ContentController` and `ContentApiController` through `IPageService`, `ScheduledPublishingService`, `DataSeeder` |
+| `Users` | `Guid Id` | `Email`(256), `FirstName`(100), `LastName`(100), `PasswordHash`, `Status`, `EmailConfirmed`, `FailedLoginCount`, `LockoutEndUtc`, `LastLoginDate`, `TenantId` | (`TenantId`, `Email`) unique; `DisplayName` is computed, not stored | `InstallationStore`, `AuthService` (counters, last login), `UserManagementService`, `ProfileService` |
+| `Roles` | `Guid Id` | `Name`(100), `Description`(500), `IsBuiltIn`, `TenantId` | (`TenantId`, `Name`) unique | `DataSeeder`, `RoleManagementService` |
+| `RolePermissions` | `Guid Id` | `RoleId`, `Area`(100), `Action`(100) | (`RoleId`, `Area`, `Action`) unique | `DataSeeder`, `RoleManagementService`; read by `RoleGrantStore` |
+| `UserRoles` | (`UserId`, `RoleId`) | - | composite PK | `InstallationStore`, `UserManagementService` |
+| `Pages` | `Guid Id` | `Slug`(200), `Title`(300), `MetaTitle`, `MetaDescription`, `SeoKeywords`, `CanonicalUrl`, `Published`, `Disabled`, `DisplayInMenu`, `ParentPageId`, `SortOrder`, `PageType`, `TargetUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate`, `NoIndex`, `SocialImageUrl`(2000), `ThemeId`(100), `LayoutJson` / `DraftLayoutJson` (unbounded text: `text` / `nvarchar(max)` / `longtext`), `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`, `CreatedById`, dates | (`TenantId`, `ParentPageId`, `Slug`) unique | `ContentController` and `ContentApiController` through `IPageService`, `PageBuilderService` (layout columns), `ScheduledPublishingService`, `DataSeeder` |
+| `PagePermissions` | `Guid Id` | `TenantId`, `PageId`, `RoleId`, `Permission`(20: `view` / `edit`) | (`PageId`, `RoleId`, `Permission`) unique; index on `TenantId` | `PagePermissionService` ([page permissions](../features/content-pages-and-routing.md#page-permissions)) |
+| `PageUserPermissions` | `Guid Id` | `TenantId`, `PageId`, `UserId`, `Permission`(20), `Allow` (false = blocked) | (`PageId`, `UserId`, `Permission`) unique; index on `TenantId` | `PagePermissionService`; removed by `UserManagementService.DeleteAsync` with the user |
 | `MediaFiles` | `Guid Id` | `FileName`(400, sanitized display name ≤ 200), `OriginalName`(400), `ContentType`(200, from the extension), `SizeBytes`, `RelativePath`(1000, the `IFileStorage` key `{tenantId:N}/{yyyy}/{MM}/{guid:N}{ext}`), `FolderPath` (always `/`), `IsPublic`, `UploadedById`, `UploadedDate`, `TenantId` | index on `TenantId` | `MediaService` (upload adds, delete removes) |
 | `ApiTokens` | `Guid Id` | `Name`(200), `Description`(1000), `Duration`, `ExpirationDate`, `PermissionsCsv`, `CreatedById`, `CreatedDate`, `LastUsedDate`, `Revoked`, `TokenHash`, `TokenPrefix`(64) | (`TenantId`, `Name`) unique; index on `TokenPrefix`; `Permissions` computed from CSV | `ApiTokensController`, `ApiTokenAuthenticationHandler` (`LastUsedDate`, at most every 5 min) |
 | `Webhooks` | `Guid Id` | `Name`, `Url`, `HeadersJson`, `EventsCsv`, `Enabled`, `Secret`, `LastDelivery` | - | **nothing** |
 | `WebhookDeliveries` | `Guid Id` | `WebhookId`, `TargetUrl`, `Event`, `ResponseStatusCode`, `ResponseTimeMs`, `AttemptNumber`, `Outcome`, `Detail` | index on `WebhookId` | **nothing** |
 | `AuditLogs` | `long Id` (auto-increment) | `UserId` (null for API-token actions), `UserDisplaySnapshot`(256), `Action`(100), `EntityType`, `EntityId`(100), `EntityDisplaySnapshot`(400), `IpAddress`, `UserAgent`(512), `Timestamp`, `Details`, `Success`, `TenantId` | indexes on `Timestamp` and (`TenantId`, `Action`) | `AuditService` (`IAuditService`) only (append-only; snapshots truncated to the column lengths) |
-| `InstalledExtensions` | `string Id` (manifest id, 200) | `Name`, `Description`, `Version`, `Type`, `Author`, `Status`, `InstalledDate`, `UpdateAvailable`, `PermissionsCsv`, `Website`, `License` | - | **nothing** |
+| `InstalledExtensions` | `string Id` (manifest id, 200) | `Name`, `Description`, `Version`, `Type`, `Author`, `Status`, `InstalledDate`, `UpdateAvailable`, `PermissionsCsv`, `Website`, `License` | - | `ExtensionLifecycleService` (upsert on enable from the manifest, `InstalledDate` on first enable; `Status` on disable; `UpdateAvailable` never); read by `ExtensionState` (enabled ids, cached 30 s), `PluginsController`, `DashboardController`, `GET /api/extensions` |
 | `SystemState` | `int Id` (always 1) | `Installed`, `InstalledAtUtc`, `CmsVersion` (default `"1.0.0"`) | single row | `DataSeeder`, `InstallationStore` |
 | `Settings` | `Guid Id` | `TenantId` (nullable), `Key`(200), `Value`(4000) | (`TenantId`, `Key`) unique | `SettingsController` |
 | `AuthProviders` | `Guid Id` | `Name`(100), `Enabled`, `IsBuiltIn`, `SettingsJson` | `Name` unique | `DataSeeder` |
@@ -130,6 +138,8 @@ So `PageService` checks slug uniqueness in code, including the root level, in:
 | `20261005180055_InitialCreate` | `PostgreSqlDbContext`, `Database/Providers/PostgreSql/Migrations/` | the current model in one step: all 16 tables and indexes |
 | `20261005212914_InitialCreate` | `SqlServerDbContext`, `Database/Providers/SqlServer/Migrations/` | the current model in one step |
 | `20261005211842_InitialCreate` | `MySqlDbContext`, `Database/Providers/MySql/Migrations/` | the current model in one step |
+| `20261023140154_AddPageBuilderAndPermissions` (SQLite), `20261023140202_…` (PostgreSQL), `20261023140210_…` (SQL Server), `20261023140217_…` (MySQL) | all four SQL contexts | `Pages.ThemeId`, `NoIndex`, `SocialImageUrl`, `LayoutJson`, `DraftLayoutJson`, `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`; table `PagePermissions` |
+| `20261023144952_AddPageUserPermissions` (SQLite), `20261023144957_…` (PostgreSQL), `20261023145002_…` (SQL Server), `20261023145008_…` (MySQL) | all four SQL contexts | table `PageUserPermissions` |
 
 Paths are relative to `src/DotNetForge.Data/`. All sets are applied automatically at startup by the configured
 provider. **Every schema change needs a migration
@@ -183,7 +193,8 @@ Authors (who may only edit their own pages) cannot edit them. Nothing seeds `Set
 | --- | --- |
 | Delete a content page (`PageService.DeleteAsync`) | children are re-parented to the deleted page's parent, then the page is removed; refused when that would create a duplicate slug or a second dynamic segment under the parent |
 | Delete a media file (`MediaService.DeleteAsync`) | the `MediaFiles` row is removed first, then the stored object; a failed object delete leaves an orphaned object (logged as a warning) |
-| Delete a role / user | not exposed in any UI; would cascade `UserRoles` (and `RolePermissions` for roles) |
+| Delete a role / user | `RoleManagementService` / `UserManagementService` remove `RolePermissions` / `UserRoles` first (MongoDB has no cascades); a role still held by users can't be deleted |
+| Delete a content page | `ContentController.Delete` removes its `PagePermissions` and `PageUserPermissions` before `PageService.DeleteAsync` |
 | Revoke an API token | soft: `Revoked = true`, row kept |
 | Audit entries | never updated or deleted by the application |
 

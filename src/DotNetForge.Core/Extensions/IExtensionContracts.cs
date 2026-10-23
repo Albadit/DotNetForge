@@ -26,13 +26,11 @@ public sealed class DiscoveredExtension
 /// <summary>
 /// Discovers extensions under the configured <c>extensions/</c> folder, reading and validating each
 /// <c>dotnetforge.extension.json</c> manifest. Invalid/unsafe extensions are surfaced but not loaded
-/// (.docs/features/extensions.md). The folder is read-only at runtime.
+/// (.docs/features/extensions.md). The folder is read-only at runtime. Which extensions may contribute (enabled, code
+/// loaded) is answered by the host's <c>ExtensionCatalog</c>, not by discovery.
 /// </summary>
 public interface IExtensionLoader
 {
     /// <summary>Every manifest found, valid or not.</summary>
     IReadOnlyList<DiscoveredExtension> Discover();
-
-    /// <summary>The valid <c>admin</c>-type extension with this manifest id (case-insensitive), or <c>null</c>.</summary>
-    DiscoveredExtension? FindAdminExtension(string id);
 }

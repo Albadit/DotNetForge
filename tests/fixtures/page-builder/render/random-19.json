@@ -1,0 +1,662 @@
+{
+  "name": "random-19",
+  "input": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "div",
+          "contentWidth": 1063,
+          "anchor": "1abc"
+        },
+        "children": [
+          "n2",
+          "n3",
+          "n4"
+        ],
+        "layout": {
+          "base": {
+            "direction": "row",
+            "gap": 38,
+            "columns": 5,
+            "rowHeight": 87,
+            "colGap": 65,
+            "compact": false,
+            "rows": 1,
+            "rowSizes": [
+              "bad",
+              "1fr",
+              "0.333fr",
+              3,
+              3
+            ],
+            "height": 235
+          },
+          "tablet": {
+            "direction": "column",
+            "columns": 3,
+            "compact": true,
+            "colSizes": [
+              "0.333fr"
+            ],
+            "rowSizes": [
+              "1fr",
+              "1fr",
+              "0.25fr"
+            ]
+          },
+          "mobile": {
+            "gap": 235,
+            "align": "start",
+            "justify": "evenly",
+            "columns": 23,
+            "rowHeight": 236,
+            "colGap": 36,
+            "rowGap": 352,
+            "colSizes": [
+              "0fr",
+              "0.25fr",
+              "bad"
+            ],
+            "rows": 4,
+            "rowSizes": [
+              "auto",
+              "5000px",
+              "0fr",
+              "bad"
+            ],
+            "height": 506
+          }
+        },
+        "place": {
+          "base": {
+            "col": 12,
+            "row": 7,
+            "colSpan": 4,
+            "rowSpan": 7,
+            "y": 572,
+            "w": 15
+          }
+        },
+        "style": {
+          "base": {
+            "maxHeight": 122,
+            "alignSelf": "auto",
+            "rotation": 173.913,
+            "borderWidth": 29,
+            "strokeAlign": "bogus",
+            "fontStyle": "italic"
+          },
+          "desktop": {
+            "minHeight": 41.901,
+            "rotation": -187,
+            "bgPosition": "center",
+            "strokeHidden": "visible",
+            "opacity": 0.224,
+            "color": "#12",
+            "fontFamily": "comic"
+          }
+        }
+      },
+      "n2": {
+        "id": "n2",
+        "type": "video",
+        "parent": "n1",
+        "props": {
+          "url": "",
+          "title": "A & B <c> \"d\" 'e'",
+          "aspect": "bogus"
+        },
+        "place": {
+          "base": {
+            "col": 7,
+            "colSpan": 1,
+            "rowSpan": 1,
+            "x": 26,
+            "y": 260,
+            "w": 487
+          },
+          "tablet": {
+            "row": 8,
+            "colSpan": 12,
+            "rowSpan": 6,
+            "w": -9,
+            "h": 422
+          },
+          "desktop": {
+            "col": 10,
+            "colSpan": 3,
+            "rowSpan": 5,
+            "x": 592,
+            "y": 158
+          }
+        },
+        "style": {
+          "base": {
+            "height": {
+              "mode": "bogus"
+            },
+            "maxWidth": 103.998,
+            "zIndex": 218,
+            "bgSize": "auto",
+            "borderStyle": "bogus",
+            "borderSides": [
+              1,
+              40,
+              23,
+              26
+            ],
+            "color": "rgba(0,0,0,.5)"
+          },
+          "tablet": {
+            "height": {
+              "mode": "auto"
+            },
+            "borderSides": [
+              30,
+              9,
+              35,
+              35
+            ],
+            "fontWeight": "700"
+          },
+          "desktop": {
+            "width": {
+              "mode": "fill"
+            },
+            "alignSelf": "start",
+            "rotation": -6
+          }
+        },
+        "name": "Line\nbreak",
+        "visibility": {
+          "devices": [
+            "mobile",
+            "tablet"
+          ],
+          "audience": "authenticated",
+          "roles": [
+            1,
+            2,
+            "x"
+          ]
+        }
+      },
+      "n3": {
+        "id": "n3",
+        "type": "module",
+        "parent": "n1",
+        "props": {
+          "moduleId": "x"
+        },
+        "place": {
+          "base": {
+            "col": 10,
+            "row": 8,
+            "colSpan": 2,
+            "rowSpan": 3,
+            "y": 542
+          }
+        },
+        "style": {
+          "base": {
+            "alignSelf": "start",
+            "background": "rgba(0,0,0,.5)",
+            "bgImage": "data:x",
+            "radius": [
+              4,
+              2,
+              55,
+              27
+            ],
+            "color": "#fff"
+          },
+          "desktop": {
+            "minWidth": 49,
+            "maxWidth": 157,
+            "minHeight": 406.481,
+            "bgSize": "bogus",
+            "borderColor": "rgba(0,0,0,.5)"
+          }
+        }
+      },
+      "n4": {
+        "id": "n4",
+        "type": "container",
+        "parent": "n1",
+        "props": {
+          "tag": "nav",
+          "href": "/a"
+        },
+        "children": [
+          "n5"
+        ],
+        "layout": {
+          "base": {
+            "mode": "grid",
+            "direction": "row",
+            "align": "center",
+            "wrap": true,
+            "rowHeight": 240,
+            "rowGap": 277,
+            "compact": false,
+            "rows": 3
+          }
+        },
+        "place": {
+          "base": {
+            "x": 92,
+            "y": 424
+          },
+          "tablet": {
+            "col": 4,
+            "colSpan": 13,
+            "rowSpan": 5,
+            "y": 71,
+            "w": 91,
+            "h": 24
+          }
+        },
+        "style": {
+          "base": {
+            "minHeight": 25.585,
+            "alignSelf": "start",
+            "background": "red;}",
+            "bgPosition": "top",
+            "shadow": {
+              "x": 4,
+              "y": 5,
+              "blur": 10,
+              "spread": -3,
+              "color": "rgb(10, 20, 30)",
+              "inset": false
+            }
+          }
+        },
+        "visibility": {
+          "devices": [],
+          "audience": "authenticated",
+          "roles": [
+            1,
+            2,
+            "x"
+          ]
+        }
+      },
+      "n5": {
+        "id": "n5",
+        "type": "image",
+        "parent": "n4",
+        "props": {
+          "src": "/b c.png",
+          "alt": "A & B <c> \"d\" 'e'",
+          "fit": "fill",
+          "href": "https://x.org/y?z=1&w=2",
+          "newTab": false,
+          "caption": "",
+          "unknownProp": "x"
+        },
+        "place": {
+          "base": {
+            "col": 14,
+            "row": 8,
+            "rowSpan": 4,
+            "x": 139
+          },
+          "desktop": {
+            "rowSpan": 8,
+            "y": 420,
+            "w": 158,
+            "h": 311
+          }
+        },
+        "style": {
+          "base": {
+            "width": {
+              "mode": "auto"
+            },
+            "maxWidth": "12",
+            "rotation": -112,
+            "aspectRatio": 9,
+            "bgSize": "cover",
+            "fontSize": 149,
+            "fontWeight": "600",
+            "fontStyle": "italic"
+          }
+        },
+        "name": "A & B <c> \"d\" 'e'",
+        "vars": {
+          "--a": "1px",
+          "--b": "x;y",
+          "bad": "1"
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 900,
+        "mobile": 480
+      }
+    }
+  },
+  "normalized": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "div",
+          "contentWidth": 1063,
+          "anchor": ""
+        },
+        "children": [
+          "n2",
+          "n3",
+          "n4"
+        ],
+        "layout": {
+          "base": {
+            "direction": "row",
+            "gap": 38,
+            "columns": 5,
+            "rowHeight": 87,
+            "colGap": 65,
+            "compact": false,
+            "rows": 1,
+            "rowSizes": [
+              "auto",
+              "1fr",
+              "0.33fr",
+              "auto",
+              "auto"
+            ],
+            "height": 235
+          },
+          "tablet": {
+            "direction": "column",
+            "columns": 3,
+            "compact": true,
+            "colSizes": [
+              "0.33fr"
+            ],
+            "rowSizes": [
+              "1fr",
+              "1fr",
+              "0.25fr"
+            ]
+          },
+          "mobile": {
+            "gap": 235,
+            "align": "start",
+            "justify": "evenly",
+            "columns": 23,
+            "rowHeight": 236,
+            "colGap": 36,
+            "rowGap": 352,
+            "colSizes": [
+              "1fr",
+              "0.25fr",
+              "1fr"
+            ],
+            "rows": 4,
+            "rowSizes": [
+              "auto",
+              "auto",
+              "auto",
+              "auto"
+            ],
+            "height": 506
+          }
+        },
+        "place": {
+          "base": {
+            "col": 12,
+            "row": 7,
+            "colSpan": 4,
+            "rowSpan": 7,
+            "y": 572,
+            "w": 15
+          }
+        },
+        "style": {
+          "base": {
+            "maxHeight": 122,
+            "alignSelf": "auto",
+            "rotation": 173.91,
+            "borderWidth": 29,
+            "fontStyle": "italic"
+          }
+        }
+      },
+      "n2": {
+        "id": "n2",
+        "type": "video",
+        "parent": "n1",
+        "props": {
+          "url": "",
+          "title": "A & B <c> \"d\" 'e'",
+          "aspect": "16:9"
+        },
+        "name": "Line\nbreak",
+        "place": {
+          "base": {
+            "col": 7,
+            "colSpan": 1,
+            "rowSpan": 1,
+            "x": 26,
+            "y": 260,
+            "w": 487
+          },
+          "tablet": {
+            "row": 8,
+            "colSpan": 12,
+            "rowSpan": 6,
+            "h": 422
+          }
+        },
+        "style": {
+          "base": {
+            "maxWidth": 104,
+            "zIndex": 218,
+            "bgSize": "auto",
+            "borderSides": [
+              1,
+              40,
+              23,
+              26
+            ],
+            "color": "rgba(0,0,0,.5)"
+          },
+          "tablet": {
+            "height": {
+              "mode": "auto"
+            },
+            "borderSides": [
+              30,
+              9,
+              35,
+              35
+            ],
+            "fontWeight": "700"
+          }
+        },
+        "visibility": {
+          "devices": [
+            "tablet",
+            "mobile"
+          ],
+          "audience": "authenticated",
+          "roles": [
+            1,
+            2
+          ]
+        }
+      },
+      "n3": {
+        "id": "n3",
+        "type": "module",
+        "parent": "n1",
+        "props": {
+          "moduleId": 0
+        },
+        "place": {
+          "base": {
+            "col": 10,
+            "row": 8,
+            "colSpan": 2,
+            "rowSpan": 3,
+            "y": 542
+          }
+        },
+        "style": {
+          "base": {
+            "alignSelf": "start",
+            "background": "rgba(0,0,0,.5)",
+            "radius": [
+              4,
+              2,
+              55,
+              27
+            ],
+            "color": "#fff"
+          }
+        }
+      },
+      "n4": {
+        "id": "n4",
+        "type": "container",
+        "parent": "n1",
+        "props": {
+          "tag": "nav",
+          "href": "/a"
+        },
+        "children": [
+          "n5"
+        ],
+        "layout": {
+          "base": {
+            "mode": "grid",
+            "direction": "row",
+            "align": "center",
+            "wrap": true,
+            "rowHeight": 240,
+            "rowGap": 277,
+            "compact": false,
+            "rows": 3
+          }
+        },
+        "place": {
+          "base": {
+            "x": 92,
+            "y": 424
+          },
+          "tablet": {
+            "col": 4,
+            "colSpan": 13,
+            "rowSpan": 5,
+            "y": 71,
+            "w": 91,
+            "h": 24
+          }
+        },
+        "style": {
+          "base": {
+            "minHeight": 25.59,
+            "alignSelf": "start",
+            "bgPosition": "top",
+            "shadow": {
+              "x": 4,
+              "y": 5,
+              "blur": 10,
+              "spread": -3,
+              "color": "rgb(10, 20, 30)"
+            }
+          }
+        },
+        "visibility": {
+          "devices": [],
+          "audience": "authenticated",
+          "roles": [
+            1,
+            2
+          ]
+        }
+      },
+      "n5": {
+        "id": "n5",
+        "type": "image",
+        "parent": "n4",
+        "props": {
+          "src": "/b%20c.png",
+          "alt": "A & B <c> \"d\" 'e'",
+          "fit": "fill",
+          "href": "https://x.org/y?z=1&w=2",
+          "newTab": false,
+          "caption": ""
+        },
+        "name": "A & B <c> \"d\" 'e'",
+        "place": {
+          "base": {
+            "col": 14,
+            "row": 8,
+            "rowSpan": 4,
+            "x": 139
+          }
+        },
+        "style": {
+          "base": {
+            "width": {
+              "mode": "auto"
+            },
+            "rotation": -112,
+            "aspectRatio": 9,
+            "bgSize": "cover",
+            "fontSize": 149,
+            "fontWeight": "600",
+            "fontStyle": "italic"
+          }
+        },
+        "vars": {
+          "--a": "1px"
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 900,
+        "mobile": 480
+      }
+    }
+  },
+  "error": false,
+  "context": {
+    "mode": "view"
+  },
+  "html": "<div class=\"pe-root pe-node pe-t-page pe-n-n0\"><div class=\"pe-node pe-t-section pe-n-n1\"><div class=\"pe-in\"><div class=\"pe-node pe-t-video pe-n-n2 pe-ar-16-9 pe-hide-d\"></div><div class=\"pe-node pe-t-module pe-n-n3\" data-pe-module=\"0\"><!--pe:module:0--></div></div></div></div>",
+  "css": ".pe-root.pe-n-n0{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap}\n.pe-root .pe-n-n1{max-height:122px;align-self:auto;rotate:173.91deg;border-width:29px;border-style:solid;font-style:italic}.pe-root .pe-n-n1>.pe-in{display:flex;flex-direction:row;gap:38px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap;max-width:1063px;margin-inline:auto}\n@media (max-width:899.98px){.pe-root .pe-n-n1>.pe-in{flex-direction:column}}\n@media (max-width:479.98px){.pe-root .pe-n-n1>.pe-in{gap:235px;align-items:flex-start;justify-content:space-evenly}}\n.pe-root .pe-n-n2{max-width:104px;z-index:218;background-size:auto;color:rgba(0,0,0,.5);border-width:1px 40px 23px 26px;border-style:solid}\n@media (max-width:899.98px){.pe-root .pe-n-n2{font-weight:700;border-width:30px 9px 35px 35px}}\n.pe-root .pe-n-n3{align-self:start;background-color:rgba(0,0,0,.5);border-radius:4px 2px 55px 27px;color:#fff}\n.pe-root a.pe-n-n4{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:minmax(240px,auto) minmax(240px,auto) minmax(240px,auto);grid-auto-rows:minmax(240px,auto);column-gap:16px;row-gap:277px;min-height:25.59px;align-self:start;background-position:top;box-shadow:4px 5px 10px -3px rgb(10, 20, 30)}\n.pe-root .pe-n-n5{grid-column:12 / span 1;grid-row:8 / span 4;rotate:-112deg;aspect-ratio:9;background-size:cover;font-size:149px;font-weight:600;font-style:italic;--a:1px}\n@media (min-width:900px){.pe-root .pe-hide-d{display:none!important}}\n@media (min-width:480px) and (max-width:899.98px){.pe-root .pe-hide-t{display:none!important}}\n@media (max-width:479.98px){.pe-root .pe-hide-m{display:none!important}}"
+}

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The extension SDK: the one assembly an extension compiles against (.docs/guides/extension-development.md).
+    Entry-point contract, extension context, contribution helpers and the host contracts extensions may use
+    (via Abstractions and Shared). The host always shares these assemblies with extensions, so types match.
+  -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
+    <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

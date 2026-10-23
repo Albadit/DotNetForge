@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Unit tests: manifest validation, permissions, password hashing, tokens, webhook signing. -->
+  <!-- Unit tests: manifest validation, permissions, password hashing, tokens, webhook signing, page builder. -->
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -20,6 +20,12 @@
     <ProjectReference Include="..\..\src\DotNetForge.Data\DotNetForge.Data.csproj" />
     <ProjectReference Include="..\..\src\DotNetForge.Infrastructure\DotNetForge.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\DotNetForge.Extensions\DotNetForge.Extensions.csproj" />
+    <ProjectReference Include="..\..\src\DotNetForge.PageBuilder\DotNetForge.PageBuilder.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Page builder golden fixtures (.docs/features/page-builder.md#testing): the same cases the JS editor runs. -->
+    <None Include="..\fixtures\page-builder\**\*.*" Link="fixtures\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

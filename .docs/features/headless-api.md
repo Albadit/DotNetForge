@@ -49,7 +49,7 @@ All responses are `application/json`. All require `Authorization: Bearer <token>
 | GET | `/api/users` | `users.read` | `[{ id, email, firstName, lastName, status, lastLoginDate }]` | `UsersApiController.Get` |
 | GET | `/api/roles` | `roles.read` | `[{ id, name, description, isBuiltIn, users }]` | `RolesApiController.Get` |
 | GET | `/api/settings` | `settings.read` | `[{ key, value }]` - tenant **and global** settings | `SettingsApiController.Get` |
-| GET | `/api/extensions` | `extensions.read` | `[{ id, name, version, type, status, author, installedDate, updateAvailable }]` from `InstalledExtensions` (always empty today) | `ExtensionsApiController.Get` |
+| GET | `/api/extensions` | `extensions.read` | `[{ id, name, version, type, status, author, installedDate, updateAvailable }]` from `InstalledExtensions` (one row per extension that was ever enabled on the Plugins screen; `status` = `Enabled`/`Disabled`) | `ExtensionsApiController.Get` |
 
 Not under `/api`, unauthenticated and not rate-limited: `GET /health` → `{ "status": "ok", "app": "<APP_NAME>" }`.
 

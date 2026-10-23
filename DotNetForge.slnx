@@ -1,4 +1,13 @@
 <Solution>
+  <Folder Name="/extensions/">
+    <Project Path="extensions/authentication/discord-login/DiscordLogin.csproj" />
+    <Project Path="extensions/connectors/s3-storage/S3Storage.csproj" />
+    <Project Path="extensions/libraries/markdown-kit/MarkdownKit.csproj" />
+    <Project Path="extensions/modules/contact-form/ContactForm.csproj" />
+    <Project Path="extensions/plugins/seo-toolkit/SeoToolkit.csproj" />
+    <Project Path="extensions/providers/sms-notifications/SmsNotifications.csproj" />
+    <Project Path="extensions/widgets/weather-widget/WeatherWidget.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/DotNetForge.Abstractions/DotNetForge.Abstractions.csproj" />
     <Project Path="src/DotNetForge.Api/DotNetForge.Api.csproj" />
@@ -6,6 +15,8 @@
     <Project Path="src/DotNetForge.Data/DotNetForge.Data.csproj" />
     <Project Path="src/DotNetForge.Extensions/DotNetForge.Extensions.csproj" />
     <Project Path="src/DotNetForge.Infrastructure/DotNetForge.Infrastructure.csproj" />
+    <Project Path="src/DotNetForge.PageBuilder/DotNetForge.PageBuilder.csproj" />
+    <Project Path="src/DotNetForge.Sdk/DotNetForge.Sdk.csproj" />
     <Project Path="src/DotNetForge.Shared/DotNetForge.Shared.csproj" />
     <Project Path="src/DotNetForge.Web/DotNetForge.Web.csproj" />
   </Folder>

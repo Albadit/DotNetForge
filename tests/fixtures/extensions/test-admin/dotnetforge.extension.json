@@ -1,0 +1,12 @@
+{
+  "id": "tests.admin.hello",
+  "name": "tests.admin.hello",
+  "description": "Integration-test fixture.",
+  "version": "1.0.0",
+  "type": "admin",
+  "author": "Tests",
+  "entryPoint": "None",
+  "permissions": [
+    "core.read"
+  ]
+}

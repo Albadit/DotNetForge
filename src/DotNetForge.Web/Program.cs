@@ -49,6 +49,9 @@ app.UseRouting();
 // Install detection gates everything except the setup wizard until setup completes.
 app.UseMiddleware<InstallationMiddleware>();
 
+// Endpoints contributed by an extension answer only while it is enabled (.docs/features/extensions.md).
+app.UseMiddleware<ExtensionEndpointGateMiddleware>();
+
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
@@ -58,6 +61,9 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", app = env.AppName }));
+
+// Each loaded extension's own endpoints (IExtension.MapEndpoints), e.g. /sitemap.xml from a plugin.
+await app.MapDotNetForgeExtensionsAsync();
 
 // Any unmatched (non-file) URL resolves to a published public page by slug (e.g. /home, /about). The
 // admin (/admin/*), setup (/setup), and API routes are all real controller routes, so they win over this.

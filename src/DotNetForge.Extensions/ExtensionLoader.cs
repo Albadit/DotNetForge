@@ -59,12 +59,6 @@ public sealed class ExtensionLoader : IExtensionLoader, IDisposable
         return result;
     }
 
-    public DiscoveredExtension? FindAdminExtension(string id) =>
-        Discover().FirstOrDefault(d =>
-            d.IsValid &&
-            string.Equals(d.Manifest!.Type, "admin", StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(d.Manifest.Id, id, StringComparison.OrdinalIgnoreCase));
-
     public void Dispose() => _watcher?.Dispose();
 
     private IReadOnlyList<DiscoveredExtension> Scan()

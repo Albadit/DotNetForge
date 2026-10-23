@@ -13,7 +13,7 @@ development sender exist; nothing in the application sends email.
 | Implementation / DI registration | - | **none**. The former `FileSystemEmailSender` (wrote messages to `storage/logs/email`, never used) was removed: the deployment directory is read-only ([deployment](../guides/deployment.md#read-only-deployment-requirements)) |
 | Email Configuration screen | `GET /admin/email/configuration` → `ModulesController.EmailConfiguration` | [placeholder](../pages/module-placeholders.md) |
 | Email Templates screen | `GET /admin/email/templates` → `ModulesController.EmailTemplates` | placeholder |
-| Sidebar | `_Sidebar.cshtml` group **Settings · Email** → Configuration, Templates | links only; any admin-capable role can open them |
+| Sidebar | `AdminNavigation.Tree` group **Settings → Email** → Configuration, Templates (each with a **Soon** badge) | links only; any admin-capable role sees and opens them |
 
 Not present: SMTP keys (neither `.env.example` nor `AppEnvironment` has any), an SMTP sender, template storage or
 rendering, and any flow that sends mail. Account lockout (`AuthService.MaxFailedAttempts` = 5,

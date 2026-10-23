@@ -1,24 +1,96 @@
 @model List<RolesController.RoleListItem>
 @{
     ViewData["Title"] = "Roles";
+    ViewData["Description"] = "Roles bundle permissions; every user gets theirs from the roles assigned to them. Built-in roles can't be renamed or deleted.";
+    var canCreate = ViewData["CanCreate"] as bool? == true;
+    var canDelete = ViewData["CanDelete"] as bool? == true;
 }
 
-<p class="muted">RBAC roles for the active tenant. Built-in roles cannot be deleted or renamed.</p>
-
-<table class="data">
-    <thead>
-        <tr><th>Name</th><th>Description</th><th>Type</th><th>Users</th><th>Permissions</th></tr>
-    </thead>
-    <tbody>
-    @foreach (var role in Model)
+@section Actions {
+    @if (canCreate)
     {
-        <tr>
-            <td><strong>@role.Name</strong></td>
-            <td class="muted">@role.Description</td>
-            <td>@(role.IsBuiltIn ? "Built-in" : "Custom")</td>
-            <td>@role.Users</td>
-            <td>@role.Permissions</td>
-        </tr>
+        <a class="btn btn-primary" href="/admin/roles/create"><icon name="plus" /> Create role</a>
     }
-    </tbody>
-</table>
+}
+
+<section class="card" aria-labelledby="roles-title" data-collection>
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" id="roles-title">All roles</h2>
+            <p class="card-description" data-collection-count>@Model.Count total</p>
+        </div>
+        <div class="segmented" role="group" aria-label="Filter roles" data-js-only hidden>
+            <button type="button" data-collection-filter="kind" data-value="" aria-pressed="true">All</button>
+            <button type="button" data-collection-filter="kind" data-value="built-in" aria-pressed="false">Built-in</button>
+            <button type="button" data-collection-filter="kind" data-value="custom" aria-pressed="false">Custom</button>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="table table-stack">
+            <thead>
+                <tr>
+                    <th scope="col" data-sort="text">Role</th>
+                    <th scope="col">Type</th>
+                    <th scope="col" data-sort="number">Users</th>
+                    <th scope="col" data-sort="number">Permissions</th>
+                    <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var role in Model)
+                {
+                    <tr data-item data-kind="@(role.IsBuiltIn ? "built-in" : "custom")">
+                        <td class="cell-lead">
+                            <div class="cluster">
+                                <span class="stat-icon" aria-hidden="true"><icon name="shield" size="sm" /></span>
+                                <span>
+                                    <a class="cell-primary" href="/admin/roles/@role.Id">@role.Name</a>
+                                    <span class="cell-sub">@(string.IsNullOrWhiteSpace(role.Description) ? "No description" : role.Description)</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td data-label="Type">
+                            @if (role.IsBuiltIn)
+                            {
+                                <badge tone="Accent"><icon name="lock" size="sm" /> Built-in</badge>
+                            }
+                            else
+                            {
+                                <badge>Custom</badge>
+                            }
+                        </td>
+                        <td data-label="Users">@role.Users</td>
+                        <td data-label="Permissions">@role.Permissions</td>
+                        <td class="col-actions">
+                            <action-menu label="Actions for @role.Name">
+                                <menu-link href="/admin/roles/@role.Id" icon="pencil">Edit</menu-link>
+                                @if (canCreate)
+                                {
+                                    <menu-post action="/admin/roles/@role.Id/duplicate" icon="copy">Duplicate</menu-post>
+                                }
+                                @if (canDelete && !role.IsBuiltIn)
+                                {
+                                    <menu-separator />
+                                    @if (role.Users > 0)
+                                    {
+                                        <menu-note>In use by @role.Users @(role.Users == 1 ? "user" : "users") - can't be deleted</menu-note>
+                                    }
+                                    else
+                                    {
+                                        <menu-post action="/admin/roles/@role.Id/delete" icon="trash" danger="true" field-returnTo="list"
+                                                   confirm="Delete the role '@role.Name'? This can't be undone." confirm-title="Delete role" confirm-action="Delete role">Delete</menu-post>
+                                    }
+                                }
+                            </action-menu>
+                        </td>
+                    </tr>
+                }
+                <tr class="table-empty" data-collection-empty hidden><td colspan="5">No role matches the filter.</td></tr>
+                @if (Model.Count == 0)
+                {
+                    <tr class="table-empty"><td colspan="5">No roles in this tenant.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

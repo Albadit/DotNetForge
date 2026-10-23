@@ -1,7 +1,6 @@
-using System.Text.Json;
-using DotNetForge.Core.Extensions;
-using DotNetForge.Shared.Configuration;
-using DotNetForge.Web.Startup;
+using DotNetForge.Extensions;
+using DotNetForge.Shared.Constants;
+using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,60 +11,87 @@ namespace DotNetForge.Web.Controllers;
 /// <c>Index.cshtml</c> (the page), <c>Shared/_Layout.cshtml</c> (the document shell), and
 /// <c>Resources/css|js/</c> (static assets). The view is compiled on demand via runtime Razor compilation
 /// and rendered server-side as a standalone document at <c>/admin/ext/{id}/raw</c>, which the admin shell
-/// embeds in an iframe (see the Admin-area <c>ExtensionsController</c>). The id is matched against
-/// discovered manifests (no path traversal).
+/// embeds in an iframe (see the Admin-area <c>ExtensionsController</c>). Only enabled extensions answer; the id is
+/// matched against discovered manifests (no path traversal).
 /// </summary>
-[Authorize(Policy = DependencyRegistration.AdminAreaPolicy)]
+[Authorize(Policy = AuthorizationPolicies.AdminArea)]
 [Route("admin/ext")]
 public sealed class ExtensionViewController : Controller
 {
-    private readonly IExtensionLoader _loader;
-    private readonly string _viewRoot;
+    private readonly ExtensionCatalog _catalog;
+    private readonly ExtensionViewRenderer _renderer;
 
-    public ExtensionViewController(IExtensionLoader loader, AppEnvironment env)
+    public ExtensionViewController(ExtensionCatalog catalog, ExtensionViewRenderer renderer)
     {
-        _loader = loader;
-        _viewRoot = DependencyRegistration.ExtensionViewRoot(env);
+        _catalog = catalog;
+        _renderer = renderer;
     }
 
     [HttpGet("{id}/raw")]
-    public IActionResult Render(string id)
+    public async Task<IActionResult> Render(string id)
     {
-        var match = _loader.FindAdminExtension(id);
-        var folder = match is null ? null : Path.GetDirectoryName(match.Path);
-        var indexView = folder is null ? null : Path.Combine(folder, "Views", "Index.cshtml");
-        if (match?.Manifest is null || folder is null || indexView is null || !System.IO.File.Exists(indexView))
+        var extension = await _catalog.FindActiveAsync(id, "admin", HttpContext.RequestAborted);
+        var indexView = extension?.FindView("Index.cshtml");
+        if (extension is null || indexView is null)
         {
             return NotFound();
         }
 
-        // Path the runtime Razor view engine resolves through the extension file provider (see DependencyRegistration).
-        var relative = "~/" + Path.GetRelativePath(_viewRoot, indexView).Replace('\\', '/');
-        ViewData["Settings"] = match.Manifest.Settings.ToDictionary(kv => kv.Key, kv => Normalize(kv.Value));
-        ViewData["ResourceBase"] = $"/admin/ext/{id}/resources";
-
-        return View(relative);
+        ExtensionViewRenderer.AddExtensionViewData(ViewData, extension, admin: true);
+        return View(_renderer.ToViewPath(indexView));
     }
 
-    /// <summary>Serves a static asset from the extension's <c>Views/Resources/</c> folder (css, js, ...).</summary>
+    /// <summary>
+    /// Serves a static asset from an enabled extension's <c>Views/Resources/</c> folder (css, js, ...) inside the admin
+    /// area - admin tabs and dashboard widgets link their files here.
+    /// </summary>
     [HttpGet("{id}/resources/{**path}")]
-    public IActionResult Resource(string id, string path)
+    public async Task<IActionResult> Resource(string id, string path)
     {
-        var match = _loader.FindAdminExtension(id);
-        var folder = match is null ? null : Path.GetDirectoryName(match.Path);
-        if (folder is null)
-        {
-            return NotFound();
-        }
+        var extension = await _catalog.FindActiveAsync(id, cancellationToken: HttpContext.RequestAborted);
+        return extension is null ? NotFound() : ExtensionResources.Serve(this, extension, path);
+    }
+}
 
-        var resourcesRoot = Path.GetFullPath(Path.Combine(folder, "Views", "Resources"));
-        var requested = Path.GetFullPath(Path.Combine(resourcesRoot, path));
+/// <summary>
+/// The public counterpart of <see cref="ExtensionViewController.Resource"/>: <c>/ext/{id}/resources/{**path}</c> for
+/// enabled <c>theme</c> and <c>module</c> extensions, whose views are part of the public site.
+/// </summary>
+[Route("ext")]
+public sealed class ExtensionResourcesController : Controller
+{
+    private static readonly string[] PublicTypes = { "theme", "module" };
+
+    private readonly ExtensionCatalog _catalog;
+
+    public ExtensionResourcesController(ExtensionCatalog catalog)
+    {
+        _catalog = catalog;
+    }
+
+    [HttpGet("{id}/resources/{**path}")]
+    public async Task<IActionResult> Resource(string id, string path)
+    {
+        var extension = await _catalog.FindActiveAsync(id, cancellationToken: HttpContext.RequestAborted);
+        return extension is null || !PublicTypes.Contains(extension.Context.Type)
+            ? NotFound()
+            : ExtensionResources.Serve(this, extension, path);
+    }
+}
+
+/// <summary>Serves files from an extension's <c>Views/Resources/</c> folder with a path-traversal guard.</summary>
+internal static class ExtensionResources
+{
+    public static IActionResult Serve(ControllerBase controller, ActiveExtension extension, string path)
+    {
+        var resourcesRoot = Path.GetFullPath(Path.Combine(extension.Folder, "Views", "Resources"));
+        var requested = Path.GetFullPath(Path.Combine(resourcesRoot, path ?? string.Empty));
 
         // Guard against path traversal: the resolved file must stay under the Resources folder.
         if (!requested.StartsWith(resourcesRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
             !System.IO.File.Exists(requested))
         {
-            return NotFound();
+            return controller.NotFound();
         }
 
         var contentType = Path.GetExtension(requested).ToLowerInvariant() switch
@@ -77,24 +103,11 @@ public sealed class ExtensionViewController : Controller
             ".png" => "image/png",
             ".jpg" or ".jpeg" => "image/jpeg",
             ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".ico" => "image/x-icon",
             ".woff2" => "font/woff2",
             _ => "application/octet-stream",
         };
-        return PhysicalFile(requested, contentType);
+        return controller.PhysicalFile(requested, contentType);
     }
-
-    /// <summary>JSON manifest values arrive as <see cref="JsonElement"/>; flatten to plain CLR types so
-    /// the view can use them directly (e.g. `is bool`).</summary>
-    private static object? Normalize(object? value) => value switch
-    {
-        JsonElement e => e.ValueKind switch
-        {
-            JsonValueKind.Number => e.TryGetInt64(out var l) ? l : e.GetDouble(),
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.String => e.GetString(),
-            _ => e.ToString(),
-        },
-        _ => value,
-    };
 }

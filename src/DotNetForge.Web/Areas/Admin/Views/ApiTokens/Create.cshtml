@@ -1,38 +1,82 @@
 @{
+    ViewData["PageWidth"] = "narrow";
     ViewData["Title"] = "Create API token";
+    ViewData["Description"] = "Give the token a name you'll recognise, choose how long it lives and what it may do.";
     var permissions = ViewBag.Permissions as IReadOnlyList<string> ?? Array.Empty<string>();
+
+    // After a validation error the view is shown again: keep what was entered.
+    var posted = Context.Request.HasFormContentType ? Context.Request.Form : null;
+    var name = posted?["name"].ToString();
+    var description = posted?["description"].ToString();
+    var duration = posted?["duration"].ToString() is { Length: > 0 } d ? d : "30";
+    var chosen = posted is null ? new HashSet<string>() : posted["permissions"].Where(p => p is not null).Select(p => p!).ToHashSet();
+    var groups = permissions.GroupBy(p => p.Split('.')[0]).ToList();
+    var durations = new[] { ("7", "7 days"), ("30", "30 days"), ("90", "90 days"), ("unlimited", "No expiry") };
 }
 
-<div asp-validation-summary="All" class="validation-summary"></div>
-
-<form method="post" asp-action="Create" class="form-narrow">
+<form method="post" asp-action="Create" class="form">
     @Html.AntiForgeryToken()
-    <div class="form-row">
-        <label for="name">Name <span class="req">*</span></label>
-        <input id="name" name="name" required />
-    </div>
-    <div class="form-row">
-        <label for="description">Description</label>
-        <input id="description" name="description" />
-    </div>
-    <div class="form-row">
-        <label for="duration">Duration</label>
-        <select id="duration" name="duration">
-            <option value="7">7 days</option>
-            <option value="30" selected>30 days</option>
-            <option value="90">90 days</option>
-            <option value="unlimited">Unlimited</option>
-        </select>
-    </div>
-    <div class="form-row">
-        <label>Permissions <span class="req">*</span></label>
-        <div class="checkbox-grid">
-            @foreach (var permission in permissions)
-            {
-                <label class="check"><input type="checkbox" name="permissions" value="@permission" /> <code>@permission</code></label>
-            }
+    <form-errors />
+
+    <section class="card" aria-labelledby="details-title">
+        <div class="card-header"><h2 class="card-title" id="details-title">Details</h2></div>
+        <div class="card-body form">
+            <div class="field">
+                <label class="field-label" for="name">Name<span class="field-required" aria-hidden="true">*</span></label>
+                <input id="name" name="name" required maxlength="200" value="@name" placeholder="Marketing website" autocomplete="off" />
+            </div>
+            <div class="field">
+                <label class="field-label" for="description">Description<span class="field-optional">optional</span></label>
+                <input id="description" name="description" value="@description" placeholder="What uses this token?" />
+            </div>
+            <fieldset class="fieldset">
+                <legend>Expires after</legend>
+                <div class="choice-cards">
+                    @foreach (var (value, label) in durations)
+                    {
+                        <label class="choice-card">
+                            <input type="radio" name="duration" value="@value" checked="@(value == duration ? "checked" : null)" />
+                            <span>@label</span>
+                        </label>
+                    }
+                </div>
+            </fieldset>
         </div>
-    </div>
-    <button type="submit" class="btn primary">Generate token</button>
-    <a class="btn" href="/admin/api-tokens">Cancel</a>
+    </section>
+
+    <section class="card" aria-labelledby="scopes-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="scopes-title">Permissions<span class="field-required" aria-hidden="true">*</span></h2>
+                <p class="card-description">Grant only what the app needs. Requests outside these scopes are refused.</p>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="permission-groups">
+                @foreach (var group in groups)
+                {
+                    <fieldset class="fieldset permission-group">
+                        <legend class="permission-group-head">
+                            <span>@group.Key</span>
+                        </legend>
+                        <label class="check text-sm text-muted" data-js-only hidden>
+                            <input type="checkbox" data-check-group="@group.Key" /> All @group.Key
+                        </label>
+                        @foreach (var permission in group)
+                        {
+                            <label class="check">
+                                <input type="checkbox" name="permissions" value="@permission" data-check-member="@group.Key"
+                                       checked="@(chosen.Contains(permission) ? "checked" : null)" />
+                                <code>@permission</code>
+                            </label>
+                        }
+                    </fieldset>
+                }
+            </div>
+        </div>
+        <div class="card-footer">
+            <a class="btn btn-ghost" href="/admin/api-tokens">Cancel</a>
+            <button type="submit" class="btn btn-primary"><icon name="key" /> Generate token</button>
+        </div>
+    </section>
 </form>

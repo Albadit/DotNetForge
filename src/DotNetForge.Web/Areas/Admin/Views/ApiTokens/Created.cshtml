@@ -1,28 +1,46 @@
 @model CreatedTokenViewModel
 @{
     ViewData["Title"] = "Token created";
-}
-
-<div class="panel highlight">
-    <h2>Copy your token now</h2>
-    <p class="muted">This is the only time the full token <strong>@Model.Name</strong> will be shown.
-        Store it securely - only its hash is kept.</p>
-    <pre class="token-value">@Model.Plaintext</pre>
-</div>
-
-@{
+    ViewData["Description"] = $"'{Model.Name}' is ready to use.";
     var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
     var apiBaseUrl = $"{origin}/api";
     var exampleUrl = $"{origin}/api/content/pages";
 }
-<div class="panel">
-    <h2>How to use it</h2>
-    <p class="muted">Send the token in an <code>Authorization: Bearer</code> header to the API:</p>
-    <p>API URL: <a href="@apiBaseUrl" target="_blank" rel="noopener"><code>@apiBaseUrl</code></a></p>
-    <p class="muted">Example request (copy-paste ready):</p>
-    <pre class="token-value">curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl</pre>
-</div>
 
-<p>
-    <a class="btn primary" href="/admin/api-tokens">Done</a>
-</p>
+<div class="stack-lg form-narrow">
+    <alert tone="Warning" title="Copy the token now">
+        This is the only time it is shown. Only a hash is stored, so it can't be displayed again - if you lose it, revoke it
+        and create a new one.
+    </alert>
+
+    <section class="card card-accent" aria-labelledby="token-title">
+        <div class="card-header"><h2 class="card-title" id="token-title">Your token</h2></div>
+        <div class="card-body">
+            <pre class="code-block" id="token-value">@Model.Plaintext<button type="button" class="btn btn-secondary btn-sm" data-copy-target="#token-text" data-js-only hidden><icon name="copy" size="sm" /> Copy</button></pre>
+            <span id="token-text" hidden>@Model.Plaintext</span>
+        </div>
+    </section>
+
+    <section class="card" aria-labelledby="usage-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="usage-title">How to use it</h2>
+                <p class="card-description">Send it in an <code>Authorization: Bearer</code> header.</p>
+            </div>
+        </div>
+        <div class="card-body stack">
+            <dl class="dl">
+                <dt>API URL</dt>
+                <dd><a href="@apiBaseUrl" target="_blank" rel="noopener"><code>@apiBaseUrl</code></a></dd>
+            </dl>
+            <div class="stack-sm">
+                <span class="field-label">Example request</span>
+                <pre class="code-block">curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl<button type="button" class="btn btn-secondary btn-sm" data-copy-target="#curl-text" data-js-only hidden><icon name="copy" size="sm" /> Copy</button></pre>
+                <span id="curl-text" hidden>curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl</span>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a class="btn btn-primary" href="/admin/api-tokens">Done</a>
+        </div>
+    </section>
+</div>

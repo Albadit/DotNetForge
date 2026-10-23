@@ -66,6 +66,11 @@ public sealed class ReadOnlyDeploymentTests
         Assert.Equal(HttpStatusCode.Redirect, setup.StatusCode);
 
         var admin = await factory.SignInAsync();
+
+        // Enabling an extension writes the database, never the (read-only) extensions folder.
+        Assert.Equal(HttpStatusCode.Redirect, (await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/plugins",
+            "/admin/plugins/dotnetforge.admin.audit-dashboard/enable", new Dictionary<string, string>())).StatusCode);
+
         foreach (var path in new[] { "/admin", "/admin/content", "/admin/media", "/admin/plugins", "/", "/about/team",
                      "/admin/ext/dotnetforge.admin.audit-dashboard/raw" })
         {

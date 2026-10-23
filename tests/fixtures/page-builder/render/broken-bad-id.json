@@ -1,0 +1,237 @@
+{
+  "name": "broken-bad-id",
+  "input": {
+    "schema": 1,
+    "root": "root",
+    "nodes": {
+      "root": {
+        "id": "root",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "dash"
+        ],
+        "layout": {
+          "base": {
+            "mode": "stack",
+            "direction": "column",
+            "gap": 0,
+            "align": "stretch"
+          }
+        }
+      },
+      "dash": {
+        "id": "dash",
+        "type": "section",
+        "parent": "root",
+        "props": {
+          "tag": "section",
+          "contentWidth": 0,
+          "anchor": ""
+        },
+        "children": [
+          "banner",
+          "activity",
+          "discover",
+          "groups"
+        ],
+        "layout": {
+          "base": {
+            "mode": "grid",
+            "columns": 12,
+            "rowHeight": 120,
+            "rowMode": "fixed",
+            "colGap": 16,
+            "rowGap": 16
+          },
+          "tablet": {
+            "columns": 6
+          },
+          "mobile": {
+            "columns": 1,
+            "rowMode": "auto"
+          }
+        },
+        "style": {
+          "base": {
+            "padding": [
+              24,
+              24,
+              24,
+              24
+            ],
+            "background": "#f6f7f9"
+          }
+        }
+      },
+      "banner": {
+        "id": "banner",
+        "type": "image",
+        "parent": "dash",
+        "props": {
+          "src": "/Portals/0/banner.jpg",
+          "alt": "Centrum De Binnenstad",
+          "fit": "cover",
+          "href": "",
+          "newTab": false,
+          "caption": ""
+        },
+        "place": {
+          "base": {
+            "col": 1,
+            "row": 1,
+            "colSpan": 8,
+            "rowSpan": 2
+          }
+        },
+        "style": {
+          "base": {
+            "radius": [
+              12,
+              12,
+              12,
+              12
+            ]
+          }
+        }
+      },
+      "activity": {
+        "id": "activity",
+        "type": "module",
+        "parent": "dash",
+        "props": {
+          "moduleId": 2472
+        },
+        "place": {
+          "base": {
+            "col": 9,
+            "row": 1,
+            "colSpan": 4,
+            "rowSpan": 4
+          }
+        }
+      },
+      "discover": {
+        "id": "discover",
+        "type": "container",
+        "parent": "dash",
+        "props": {
+          "tag": "div",
+          "href": ""
+        },
+        "children": [
+          "dtitle",
+          "dlinks"
+        ],
+        "layout": {
+          "base": {
+            "mode": "free",
+            "height": 200
+          }
+        },
+        "style": {
+          "base": {
+            "background": "#ffffff",
+            "radius": [
+              12,
+              12,
+              12,
+              12
+            ],
+            "shadow": "sm",
+            "padding": [
+              16,
+              16,
+              16,
+              16
+            ]
+          }
+        },
+        "place": {
+          "base": {
+            "col": 1,
+            "row": 3,
+            "colSpan": 8,
+            "rowSpan": 2
+          }
+        }
+      },
+      "dtitle": {
+        "id": "dtitle",
+        "type": "heading",
+        "parent": "discover",
+        "props": {
+          "text": [
+            {
+              "text": "Ontdek"
+            }
+          ],
+          "level": "3"
+        },
+        "place": {
+          "base": {
+            "colSpan": 12,
+            "rowSpan": 1
+          }
+        }
+      },
+      "dlinks": {
+        "id": "dlinks",
+        "type": "links",
+        "parent": "discover",
+        "props": {
+          "items": [
+            {
+              "label": "Community",
+              "href": "/community",
+              "newTab": false
+            }
+          ],
+          "direction": "column"
+        },
+        "place": {
+          "base": {
+            "colSpan": 3,
+            "rowSpan": 3
+          }
+        }
+      },
+      "groups": {
+        "id": "groups",
+        "type": "module",
+        "parent": "dash",
+        "props": {
+          "moduleId": 2473
+        },
+        "place": {
+          "base": {
+            "col": 1,
+            "row": 5,
+            "colSpan": 12,
+            "rowSpan": 2
+          }
+        }
+      },
+      "Bad Id": {
+        "id": "Bad Id",
+        "type": "text",
+        "parent": null,
+        "props": {}
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 1024,
+        "mobile": 640
+      }
+    }
+  },
+  "normalized": null,
+  "error": true,
+  "context": {
+    "mode": "view"
+  },
+  "html": "",
+  "css": ""
+}

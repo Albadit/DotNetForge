@@ -1,0 +1,12 @@
+{
+  "id": "tests.library.base",
+  "name": "tests.library.base",
+  "description": "Integration-test fixture.",
+  "version": "1.0.0",
+  "type": "library",
+  "author": "Tests",
+  "entryPoint": "None",
+  "permissions": [
+    "core.read"
+  ]
+}

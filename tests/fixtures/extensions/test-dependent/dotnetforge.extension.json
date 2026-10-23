@@ -1,0 +1,15 @@
+{
+  "id": "tests.plugin.dependent",
+  "name": "tests.plugin.dependent",
+  "description": "Integration-test fixture.",
+  "version": "1.0.0",
+  "type": "plugin",
+  "author": "Tests",
+  "entryPoint": "None",
+  "permissions": [
+    "core.read"
+  ],
+  "dependencies": [
+    "tests.library.base"
+  ]
+}

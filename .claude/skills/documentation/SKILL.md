@@ -22,7 +22,7 @@ Entry point: `.docs/README.md`. The layout is fixed - put new material where it 
 
 | Folder / file | Holds | One document per |
 | --- | --- | --- |
-| `.docs/architecture/` | `codebase.md`, `data-flow.md`, `pages.md` (route map), `database.md`, `dependencies.md` | architectural view |
+| `.docs/architecture/` | `codebase.md`, `data-flow.md`, `pages.md` (route map), `design-system.md` (UI), `database.md`, `dependencies.md` | architectural view |
 | `.docs/features/` | cross-screen concepts (installation, authentication, authorization, content pages and routing, headless API, extensions, audit logging, ...) - the **authoritative** place for rules | concept |
 | `.docs/pages/` | one file per screen (UI view), in the fixed section template of [screen-template.md](reference/screen-template.md) | screen |
 | `.docs/guides/` | how-tos: development, testing, extension development | task |
@@ -41,9 +41,12 @@ When code changes, update in the same change:
 | Code change | Documents to update |
 | --- | --- |
 | New/changed admin screen or route | `pages/<screen>.md`, route map in `architecture/pages.md`, `.docs/README.md` screen table, sidebar section of `architecture/pages.md` |
-| Rule in `PageService` / `HomeController.Live` / `RenderPage` | `features/content-pages-and-routing.md` (and the screen docs only if what the user sees changes) |
+| Rule in `PageService` / `PageVisibility.Live` / `RenderPage` | `features/content-pages-and-routing.md` (and the screen docs only if what the user sees changes) |
+| Extension host, a slot, the SDK (`src/DotNetForge.Sdk`), manifest rules, a sample extension | `features/extensions.md` (the slot's owning feature doc too: themes, media storage, authentication, audit logging), `guides/extension-development.md`, `extensions/README.md` for samples |
 | New API endpoint or permission key | `features/headless-api.md` endpoint table, `features/authorization.md` key list |
 | `[Authorize]` / policy change | `features/authorization.md` matrix, `architecture/pages.md` route map auth column |
+| UI component, token, layout, icon, tag helper, `ui.js` behaviour | `architecture/design-system.md` (screen docs only if what the user sees changes) |
+| Sidebar entry (`AdminNavigation.Tree`) or navigation behaviour | navigation section of `architecture/pages.md`, the screen's Route / Navigation table |
 | Entity, index, migration, seed | `architecture/database.md` |
 | DI registration, project reference, package | `architecture/dependencies.md` |
 | `.env` key | `features/configuration.md`, `.env.example`, `guides/deployment.md#environment-variables` |

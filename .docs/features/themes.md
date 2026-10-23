@@ -1,39 +1,85 @@
 # Themes
 
-A theme is an extension (manifest `type: "theme"`) that controls how the **public site** looks: Razor layouts, page
-templates, static assets and configurable settings, applied per tenant and overridable per content page. Themes
-never touch the admin area or the setup screen. Today only the contracts and data exist; nothing loads or applies a
-theme. Extension discovery and manifests: [extensions](extensions.md). Per-page theme fields:
-[content pages and routing](content-pages-and-routing.md#page-model-additions).
+A theme is an extension (manifest `type: "theme"`) that controls how the **public site** looks: Razor views, a
+layout, static assets and manifest settings. Themes never touch the admin area, setup, sign-in or the error screen.
+The site-wide theme slot and per-page themes are built; per-tenant themes, preview and settings editing are
+[planned](#planned-not-implemented). Extension mechanics (enabling, view data, resources): [extensions](extensions.md).
+Per-page theme fields: [content pages and routing](content-pages-and-routing.md#page-model-additions).
 
-## Current state
+## Which theme is active
 
-### What exists
+`ThemeResolver.GetActiveThemeAsync` (`src/DotNetForge.Web/Services/ThemeResolver.cs`, scoped) decides per request:
 
-| Item | Where | Behaviour |
+1. The active `theme` extensions (`ExtensionCatalog.GetActiveAsync("theme")`: valid manifest, enabled on the
+   [Plugins screen](../pages/plugins.md), code loaded if it has any). None → the built-in views.
+2. For a content page with a `ThemeId` (chosen on the Content Manager's **Theme** tab) that names one of them, that
+   theme. A page theme that is not enabled is ignored.
+3. The `DefaultTheme` of the default tenant (the oldest `Tenant`; there is no tenant resolution yet) when it names one
+   of them (case-insensitive). `Tenant.DefaultTheme` is seeded as `dotnetforge.theme.default` and no screen edits it.
+4. Otherwise the first active theme by name.
+
+Disabling the active theme therefore falls back to the next enabled theme, then to the built-in views, without a
+restart (other instances follow within 30 s, `ExtensionState.Lifetime`).
+
+## Theme views
+
+`HomeController.ThemedViewAsync(name, model)` renders the active theme's `Views/<name>.cshtml` when the file exists,
+else the built-in view:
+
+| View | Used for | Model | Built-in fallback |
+| --- | --- | --- | --- |
+| `Views/Page.cshtml` | every [public content page](../pages/public-page.md) and the root page | `Page` (+ `ViewData["RouteValues"]` for dynamic segments) | `src/DotNetForge.Web/Views/Home/Page.cshtml` (`_Layout`, `public.css`) |
+| `Views/Index.cshtml` | the [public home](../pages/public-home.md) fallback list (no live root page) | `List<(string Title, string Slug)>` | `src/DotNetForge.Web/Views/Home/Index.cshtml` (`_Layout`, `public.css`) |
+
+A theme may ship either file or both; its `_ViewStart.cshtml` / `Shared/_Layout.cshtml` are found by normal Razor
+lookup from the view's folder (the views are compiled in memory from `~/extensions/...`). Theme views get, besides the
+standard [extension view data](extensions.md#slots) (`Extension`, `Settings`, `ResourceBase` =
+`/ext/{id}/resources`):
+
+| `ViewData` key | Value |
+| --- | --- |
+| `AppName` | `APP_NAME` |
+| `Menu` | `IReadOnlyList<PublishedPage>`: top-level live pages with "display in menu", from `IPublishedPages` (tree order, then sort order) |
+
+To show [modules](extensions.md#slots) placed on a page, a theme's `Page.cshtml` calls
+`@await Component.InvokeAsync("ExtensionModules", new { page = Model })` (the built-in view does too).
+
+**Page builder layouts.** A page designed with the [page builder](page-builder.md#rendering) has a published
+`LayoutJson`. A theme's `Page.cshtml` renders it with `@await Component.InvokeAsync("PageLayout", new { page = Model })`
+(stylesheet links and HTML) and should then skip its own page markup. Page views also set these keys for the layout
+to read:
+
+| `ViewData` key | Set by the page view | Layout use |
 | --- | --- | --- |
-| `IThemeExtension : IExtension` with `IReadOnlyList<string> Layouts` | `src/DotNetForge.Abstractions/Extensions/IExtensionPoints.cs` | contract only; no implementation, nothing discovers or calls it |
-| `Tenant.DefaultTheme` (string, max 200, default `dotnetforge.theme.default`) | `src/DotNetForge.Shared/Entities/Tenant.cs`, seeded by `DataSeeder` | stored only; nothing reads it and no screen edits it |
-| Sample theme manifest `dotnetforge.theme.default` | `extensions/themes/default-theme/dotnetforge.extension.json` | manifest only (no layouts or assets); validated and listed on the [Plugins screen](../pages/plugins.md); `settings`: `supportsLayouts: true`, `supportsDarkMode: false` |
-| `ExtensionType.Theme`, `InstalledExtension` (`Status` = `Disabled`/`Enabled`) | `src/DotNetForge.Shared/` | the `InstalledExtensions` table is never written |
-| Manifest validation | `ManifestValidator` | `theme` is a valid `type`; no theme-specific checks (layouts, assets, compatibility) |
+| `FullWidth` | `true` when the page has a layout | drop the centred content column (sections set their own width) |
+| `NoIndex` | `Page.NoIndex` | `<meta name="robots" content="noindex">` |
+| `SocialImage` | `Page.SocialImageUrl` | `<meta property="og:image">` (absolute URL) |
 
-### Public rendering today
+Layouts use the `--dnn-color-*` colour variables ([page builder → theme colours](page-builder.md#theme-colours));
+a theme can redefine them on `body` to match its palette (the sample does). The page builder's canvas sets
+`data-theme="light"|"dark"` on `<html>`; a theme whose dark mode should follow the canvas choice checks it next to
+`prefers-color-scheme` (see the sample's `theme.css`).
 
-| Screen | View | Layout and styles |
-| --- | --- | --- |
-| [Public content page](../pages/public-page.md) and root page | `src/DotNetForge.Web/Views/Home/Page.cshtml` | `Layout = null`; own document with inline CSS |
-| [Public home](../pages/public-home.md) fallback list, error | `src/DotNetForge.Web/Views/Home/Index.cshtml`, `src/DotNetForge.Web/Views/Home/Error.cshtml` | `src/DotNetForge.Web/Views/Shared/_Layout.cshtml` + `src/DotNetForge.Web/wwwroot/css/site.css` |
+**Assets.** `Views/Resources/` of an active theme is served publicly at `/ext/{id}/resources/{**path}`
+(`ExtensionResourcesController`, path-traversal guarded). `UseStaticFiles` still serves only `wwwroot`. The CSP
+(`script-src 'self'; style-src 'self'`) applies: no inline script or style, so settings such as colours select CSS
+classes rather than writing styles.
 
-### Isolation today
+The built-in fallback is the public layout of the [design system](../architecture/design-system.md#public-fallback):
+`Views/Shared/_Layout.cshtml` with `wwwroot/css/forge/{tokens,base,components,public}.css` (light/dark by system
+preference or the saved `dnf-theme` choice).
 
-- Admin screens use `src/DotNetForge.Web/Areas/Admin/Views/Shared/_AdminLayout.cshtml` (`site.css` + `admin.css`).
-- Setup, sign-in and access denied use `src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml` (`site.css`).
-- `site.css` is shared by `_Layout`, `_AuthLayout` and `_AdminLayout`, so a theme must ship its own stylesheet and
-  never replace `site.css`.
-- `UseStaticFiles` serves only `wwwroot`; nothing serves files from `extensions/themes/`.
-- Runtime Razor compilation already resolves `~/extensions/...` views from the content root (used by admin
-  extensions, `DependencyRegistration`).
+**Isolation.** Only `HomeController.Index` and `RenderPage` use themes, plus the page builder's canvas and draft
+preview (`PageBuilderController`), which show the page as the site does. Admin screens keep `_AdminLayout`
+(`forge/admin.css`); setup, sign-in and access denied keep `_AuthLayout` (`forge/auth.css`); the error screen keeps
+`_Layout`. A theme ships its own stylesheet and never replaces the `forge/` files. The admin's light/dark switch
+([design system → themes](../architecture/design-system.md#themes)) is unrelated to public themes: a theme never
+affects it, and it never affects a theme.
+
+**Sample.** `extensions/themes/default-theme` (`dotnetforge.theme.default`, views only): `Shared/_Layout.cshtml`
+with the menu (and the `FullWidth` / `NoIndex` / `SocialImage` keys), `Page.cshtml` (renders a page builder layout
+when there is one), `Index.cshtml`, `Views/Resources/css/theme.css`; settings `supportsDarkMode`,
+`accent` (`indigo`/`teal`/`rose`), `tagline`. It matches the seeded `DefaultTheme`, so enabling it themes the site.
 
 ## Planned (not implemented)
 
@@ -43,15 +89,16 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 - **Package:** a theme is an extension with `type: "theme"` (✔ validated) installed under `extensions/themes/`
   (✔ folder convention). It bundles:
-  - one or more Razor **layouts** (master page with regions such as header, footer, sidebar) wrapping page content;
-  - reusable **page templates** authors can apply to pages;
-  - **static assets** (CSS, JavaScript, images, fonts) served for public pages;
-  - **settings** declared in the manifest `settings` (e.g. `supportsLayouts`, `supportsDarkMode`, colours,
-    typography), editable in the admin.
-- **Scope:** only public content pages. Never the admin area or the setup screen; the sign-in screen only when
-  explicitly configured.
-- **Default theme:** exactly one default theme per tenant (column ✔ `Tenant.DefaultTheme`), used when a page has no
-  override and as the fallback when a selected theme is unavailable.
+  - one or more Razor **layouts** (master page with regions such as header, footer, sidebar) wrapping page content
+    (✔ one layout via the theme's own `_ViewStart`; ✘ several selectable layouts);
+  - reusable **page templates** authors can apply to pages (✘; ✔ one `Page.cshtml` for every page);
+  - **static assets** (CSS, JavaScript, images, fonts) served for public pages (✔ `/ext/{id}/resources`);
+  - **settings** declared in the manifest `settings` (e.g. `supportsDarkMode`, colours, typography) ✔ read by the
+    views, editable in the admin ✘.
+- **Scope:** only public content pages ✔. Never the admin area or the setup screen ✔; the sign-in screen only when
+  explicitly configured (✘ never themed today).
+- **Default theme:** exactly one default theme per tenant (column ✔ `Tenant.DefaultTheme`, read for the default
+  tenant only ✔), used when a page has no override and as the fallback when a selected theme is unavailable.
 - **Per-page override:** a content page may store a theme, a layout of that theme and page-specific layout settings;
   unset means the tenant default ([content pages and routing](content-pages-and-routing.md#page-model-additions)).
   Dynamic routes carry the same optional theme/layout.
@@ -67,8 +114,8 @@ Installed theme record:
 | `name` | string | ✔ | display name |
 | `version` | semver | ✔ | installed version |
 | `entryPoint` | string | ✔ | class/component that registers layouts and assets |
-| `status` | enum | ✔ | `installed`, `enabled`, `disabled`, `incompatible` (`ExtensionStatus` has only `Disabled`/`Enabled`) |
-| `layouts` | string[] | ✔ | layout ids, at least one (`IThemeExtension.Layouts` ✔ contract) |
+| `status` | enum | ✔ | `installed`, `enabled`, `disabled`, `incompatible` (`ExtensionStatus` has only `Disabled`/`Enabled` ✔) |
+| `layouts` | string[] | ✔ | layout ids, at least one (no such field or contract exists) |
 | `templates` | string[] | | page template ids |
 | `assets` | string[] | ✔ | bundled static asset paths |
 | `settings` | object | | configured values keyed by the manifest `settings` schema |
@@ -104,13 +151,13 @@ schema → validate values against the schema → save → pages using the theme
 
 | Rule | Today |
 | --- | --- |
-| Valid manifest with all canonical fields and `type` = `theme`; invalid manifests are not installed | ✔ validation; ✘ no install step |
+| Valid manifest with all canonical fields and `type` = `theme`; invalid manifests are not installed | ✔ validation (invalid themes are never used); ✘ no install step |
 | Required assets and at least one layout present before install or apply; otherwise flagged and never set as default | ✘ |
 | Compatible with the current core version; otherwise status `incompatible`, not installed or applied | ✘ |
 | Exactly one valid default theme per tenant; removing or unsetting it without a replacement is rejected | ✘ (column always has a value, never validated) |
 | Per-page theme/layout must reference an installed, enabled, compatible theme and an existing layout; else rejected on save | ✘ |
 | Theme setting values validate against the manifest `settings` schema (type, allowed values) | ✘ |
-| Admin area, setup and (unless configured) sign-in are never rendered with a theme | ✔ separate layouts, no theme system |
+| Admin area, setup and (unless configured) sign-in are never rendered with a theme | ✔ only `HomeController` uses themes |
 
 Role defaults (permission areas `Extensions`, `Settings`; see [authorization](authorization.md)):
 
@@ -128,6 +175,8 @@ In multi-tenant deployments theme management is limited to the user's tenants, e
 ### Edge cases
 
 - **Uninstalling the default theme:** blocked, or the default is first reassigned to the built-in default theme.
+  (✔ today: disabling it falls back to the next enabled theme or the built-in views - [Which theme is
+  active](#which-theme-is-active).)
 - **Uninstalling a theme used by pages:** those pages fall back to the tenant default theme and still render.
 - **Default theme becomes invalid** (assets missing, incompatible after a core update): fall back to the built-in
   default theme and warn administrators.
@@ -143,13 +192,14 @@ In multi-tenant deployments theme management is limited to the user's tenants, e
 
 ### Acceptance criteria
 
-- [ ] Frontend themes affect only public content pages and never the admin area, setup or sign-in (unless
-  configured).
+- [x] Frontend themes affect only public content pages and never the admin area, setup or sign-in
+  (`HomeController.ThemedViewAsync` only; sign-in is never themed; no test asserts the admin side).
 - [ ] A theme installs through the Extensions/Marketplace flow only after its manifest validates and `type` is
   `theme`.
 - [ ] Installation is rejected when required assets are missing or the theme is incompatible with the core version.
 - [ ] An administrator can preview an installed theme without changing the live default or per-page assignments.
-- [ ] An administrator can set the default theme, and every non-overridden public page renders with it immediately.
+- [ ] An administrator can set the default theme, and every non-overridden public page renders with it immediately
+  (✔ enabling a theme applies at once; ✘ no screen sets `Tenant.DefaultTheme`).
 - [ ] There is always exactly one valid default theme; removing or unsetting it without a replacement is rejected.
 - [ ] A page can override theme/layout in the Content Manager, affecting only that page.
 - [ ] Clearing a page override returns the page to the default theme.
@@ -168,11 +218,12 @@ In multi-tenant deployments theme management is limited to the user's tenants, e
 
 | Change | Place |
 | --- | --- |
-| Discover theme manifests | `ExtensionLoader.Discover` (already finds them); filter `type == "theme"` in a new theme service, not in controllers |
+| Which theme is active | `ThemeResolver` (never ask `IExtensionLoader` or the state directly - go through `ExtensionCatalog`) |
+| Which view is rendered, theme view data | `HomeController.ThemedViewAsync`; data every extension view gets: `ExtensionViewRenderer.AddExtensionViewData` |
 | Theme-specific manifest checks (layouts, assets, compatibility) | `ManifestValidator` + `tests/DotNetForge.Tests/ManifestValidationTests.cs` |
-| Read/edit the default theme | `Tenant.DefaultTheme` (column exists); add the edit to a Settings screen ([admin screens](../architecture/pages.md)) |
-| Choose layout/view per request | `HomeController.Index` / `RenderPage` after a page matches; replace `Layout = null` in `src/DotNetForge.Web/Views/Home/Page.cshtml` with the theme layout |
-| Theme views | runtime Razor compilation already resolves `~/extensions/...` (`DependencyRegistration`) |
-| Serve theme assets | a guarded endpoint like `ExtensionViewController.Resource` (`Path.GetFullPath` + prefix check); never expose `extensions/` through `UseStaticFiles` |
+| Edit the default theme | `Tenant.DefaultTheme` (column exists, read by `ThemeResolver`); add the edit to a Settings screen ([admin screens](../architecture/pages.md)) |
+| Theme a new public screen | call `ThemedViewAsync("<Name>", model)` in its `HomeController` action and document the view name above |
+| Serve theme assets | `ExtensionResourcesController` / `ExtensionResources.Serve` (`Path.GetFullPath` + prefix check); never expose `extensions/` through `UseStaticFiles` |
+| Write a theme | [extension development guide](../guides/extension-development.md); tests: `ExtensionTests` (fixture `tests/fixtures/extensions/test-theme`) |
 | Per-page theme/layout fields | `Page` entity → migration → form, following [content pages and routing → Where to change things](content-pages-and-routing.md#where-to-change-things) |
-| Keep admin and auth screens unthemed | `_AdminLayout`, `_AuthLayout`, `admin.css`; move rules they need out of the shared `site.css` before a theme replaces public styles |
+| Keep admin and auth screens unthemed | `_AdminLayout`, `_AuthLayout` and `wwwroot/css/forge/` - themes ship their own CSS and never load or replace these |

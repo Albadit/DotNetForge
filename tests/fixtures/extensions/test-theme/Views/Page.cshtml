@@ -1,0 +1,4 @@
+@model DotNetForge.Shared.Entities.Page
+@{ Layout = null; }
+<!doctype html>
+<html><body><h1>THEME-OK @Model.Title</h1>@await Component.InvokeAsync("ExtensionModules", new { page = Model })</body></html>

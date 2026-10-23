@@ -14,32 +14,40 @@ namespace DotNetForge.Web.Controllers;
 [Route("account")]
 public sealed class AccountController : Controller
 {
+    /// <summary>How long "Remember me" keeps a user signed in (sliding, like the 8-hour session without it).</summary>
+    public static readonly TimeSpan RememberMeLifetime = TimeSpan.FromDays(30);
+
     private readonly AuthService _authService;
     private readonly IAuditService _audit;
     private readonly AppEnvironment _env;
+    private readonly LoginProviders _loginProviders;
 
-    public AccountController(AuthService authService, IAuditService audit, AppEnvironment env)
+    public AccountController(AuthService authService, IAuditService audit, AppEnvironment env, LoginProviders loginProviders)
     {
         _authService = authService;
         _audit = audit;
         _env = env;
+        _loginProviders = loginProviders;
     }
 
     [HttpGet("login")]
-    public IActionResult Login(string? returnUrl = null)
+    public async Task<IActionResult> Login(string? returnUrl = null)
     {
         ViewData["AppName"] = _env.AppName;
         ViewData["ReturnUrl"] = returnUrl;
+        await AddLoginProvidersAsync();
         return View();
     }
 
     [HttpPost("login")]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting(RateLimitPolicies.Credentials)]
-    public async Task<IActionResult> Login(string email, string password, string? returnUrl = null)
+    public async Task<IActionResult> Login(string email, string password, bool rememberMe = false, string? returnUrl = null)
     {
         ViewData["AppName"] = _env.AppName;
         ViewData["ReturnUrl"] = returnUrl;
+        ViewData["Email"] = email;
+        ViewData["RememberMe"] = rememberMe;
 
         var tenantId = await _authService.GetDefaultTenantIdAsync(HttpContext.RequestAborted);
         var result = await _authService.ValidateAsync(email, password, tenantId, HttpContext.RequestAborted);
@@ -47,7 +55,12 @@ public sealed class AccountController : Controller
         switch (result.Status)
         {
             case SignInStatus.Success when result.Principal is not null:
-                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, result.Principal);
+                // Remember me: a persistent cookie that outlives the browser session, valid for RememberMeLifetime
+                // (renewed while in use). Without it the cookie ends with the browser session or after 8 hours.
+                var properties = rememberMe
+                    ? new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.Add(RememberMeLifetime) }
+                    : new AuthenticationProperties();
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, result.Principal, properties);
 
                 // SignInAsync only writes the cookie; make this request's audit entry carry the signed-in user.
                 HttpContext.User = result.Principal;
@@ -57,18 +70,20 @@ public sealed class AccountController : Controller
                 // Only redirect to local URLs; anything else (or nothing) goes to the dashboard.
                 return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/admin");
 
+            // Shown as an error toast (_Feedback reads TempData in this same request).
             case SignInStatus.LockedOut:
-                ModelState.AddModelError(string.Empty, "Account is temporarily locked. Try again later.");
+                TempData["Error"] = "Account is temporarily locked. Try again later.";
                 break;
             case SignInStatus.Disabled:
-                ModelState.AddModelError(string.Empty, "This account is disabled.");
+                TempData["Error"] = "This account is disabled.";
                 break;
             default:
-                ModelState.AddModelError(string.Empty, "Invalid email or password.");
+                TempData["Error"] = "Invalid email or password.";
                 break;
         }
 
         await _audit.LogAsync(AuditActions.UserLoginFailed, "User", null, email, success: false);
+        await AddLoginProvidersAsync();
         return View();
     }
 
@@ -80,6 +95,10 @@ public sealed class AccountController : Controller
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Redirect("/account/login");
     }
+
+    /// <summary>The "Sign in with ..." buttons: providers of enabled authentication extensions.</summary>
+    private async Task AddLoginProvidersAsync() =>
+        ViewData["LoginProviders"] = await _loginProviders.GetActiveAsync(HttpContext.RequestAborted);
 
     [HttpGet("denied")]
     public IActionResult Denied()

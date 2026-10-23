@@ -80,20 +80,37 @@ public sealed class AuthService
 
         user.FailedLoginCount = 0;
         user.LockoutEndUtc = null;
-        user.LastLoginDate = _clock.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
+        return await CompleteSignInAsync(user, cancellationToken);
+    }
 
-        // Two single-table queries rather than a join, so sign-in works on every provider (including MongoDB).
-        var roleIds = await _db.UserRoles
-            .Where(ur => ur.UserId == user.Id)
-            .Select(ur => ur.RoleId)
-            .ToListAsync(cancellationToken);
-        var roles = await _db.Roles
-            .Where(r => roleIds.Contains(r.Id))
-            .Select(r => r.Name)
-            .ToListAsync(cancellationToken);
+    /// <summary>
+    /// Signs in the existing user whose email an external provider (an authentication extension) vouched for
+    /// (.docs/features/authentication.md#external-sign-in-extensions). No account is created; disabled and locked-out
+    /// accounts are refused exactly as for a password sign-in.
+    /// </summary>
+    public async Task<SignInResult> ValidateExternalAsync(string email, Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        var normalized = (email ?? string.Empty).Trim();
+        var user = normalized.Length == 0
+            ? null
+            : await _db.Users.FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Email == normalized, cancellationToken);
 
-        return new SignInResult(SignInStatus.Success, BuildPrincipal(user, roles), user);
+        if (user is null)
+        {
+            return new SignInResult(SignInStatus.InvalidCredentials, null, null);
+        }
+
+        if (user.Status == UserStatus.Disabled)
+        {
+            return new SignInResult(SignInStatus.Disabled, null, null);
+        }
+
+        if (user.LockoutEndUtc is { } until && until > _clock.UtcNow)
+        {
+            return new SignInResult(SignInStatus.LockedOut, null, null);
+        }
+
+        return await CompleteSignInAsync(user, cancellationToken);
     }
 
     /// <summary>
@@ -110,6 +127,41 @@ public sealed class AuthService
     /// </summary>
     public Task<bool> IsActiveAsync(Guid userId, CancellationToken cancellationToken = default) =>
         _db.Users.AnyAsync(u => u.Id == userId && u.Status == UserStatus.Enabled, cancellationToken);
+
+    /// <summary>
+    /// A fresh cookie principal for an already signed-in user (after they change their own name or email), so the
+    /// shell shows the new values without signing in again. Null when the account is gone or disabled.
+    /// </summary>
+    public async Task<ClaimsPrincipal?> RefreshPrincipalAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId && u.Status == UserStatus.Enabled, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        var roleIds = await _db.UserRoles.Where(ur => ur.UserId == user.Id).Select(ur => ur.RoleId).ToListAsync(cancellationToken);
+        var roles = await _db.Roles.Where(r => roleIds.Contains(r.Id)).Select(r => r.Name).ToListAsync(cancellationToken);
+        return BuildPrincipal(user, roles);
+    }
+
+    private async Task<SignInResult> CompleteSignInAsync(User user, CancellationToken cancellationToken)
+    {
+        user.LastLoginDate = _clock.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // Two single-table queries rather than a join, so sign-in works on every provider (including MongoDB).
+        var roleIds = await _db.UserRoles
+            .Where(ur => ur.UserId == user.Id)
+            .Select(ur => ur.RoleId)
+            .ToListAsync(cancellationToken);
+        var roles = await _db.Roles
+            .Where(r => roleIds.Contains(r.Id))
+            .Select(r => r.Name)
+            .ToListAsync(cancellationToken);
+
+        return new SignInResult(SignInStatus.Success, BuildPrincipal(user, roles), user);
+    }
 
     private static ClaimsPrincipal BuildPrincipal(User user, IReadOnlyList<string> roles)
     {

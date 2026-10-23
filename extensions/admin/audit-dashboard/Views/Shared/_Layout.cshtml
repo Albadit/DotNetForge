@@ -1,13 +1,19 @@
 @{
-    // Shared layout for the extension's views. The host passes the base URL for this extension's
-    // static assets (served from Views/Resources) via ViewData["ResourceBase"].
+    // Shared layout for the extension's views. It reuses the host's Forge design system (.docs/architecture/design-system.md):
+    // the same tokens, light/dark theme and components as the admin around the iframe. The host passes the base URL of
+    // this extension's own files (Views/Resources) in ViewData["ResourceBase"].
     var resourceBase = ViewData["ResourceBase"] as string ?? string.Empty;
 }<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>@ViewData["Title"]</title>
+    <script src="/js/forge/theme.js"></script>
+    <link rel="stylesheet" href="/css/forge/tokens.css" />
+    <link rel="stylesheet" href="/css/forge/base.css" />
+    <link rel="stylesheet" href="/css/forge/components.css" />
     <link rel="stylesheet" href="@resourceBase/css/index.css" />
 </head>
 <body>

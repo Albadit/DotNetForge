@@ -1,29 +1,33 @@
 @model List<(string Title, string Slug)>
 @{
-    ViewData["Title"] = "Home";
+    ViewData["Title"] = null;
     var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
     var publishedCount = (int)(ViewData["PublishedCount"] ?? 0);
 }
 
-<section class="hero">
+<section class="site-hero">
     <h1>@appName</h1>
-    <p class="lead">A modular, secure, hybrid CMS built on ASP.NET Core MVC (.NET 10).</p>
-    <p>The CMS is installed and running. This is the public frontend; manage content from the
-        <a href="/admin">admin area</a>.</p>
+    <p class="site-lead">A modular, secure, hybrid CMS built on ASP.NET Core MVC.</p>
+    <p class="text-muted">The CMS is installed and running. This is the built-in public site - enable a theme on the
+        <a href="/admin/plugins">Plugins</a> screen to give it your own look.</p>
 </section>
 
-<section>
-    <h2>Published pages</h2>
+<section class="stack" aria-labelledby="pages-title">
+    <h2 id="pages-title">Published pages</h2>
     @if (publishedCount == 0)
     {
-        <p class="muted">No pages have been published yet. Create one from the Content Manager.</p>
+        <div class="card">
+            <empty-state icon="pages" title="Nothing published yet" text="Create and publish a page in the Content Manager.">
+                <a class="btn btn-primary" href="/admin/content">Open the Content Manager</a>
+            </empty-state>
+        </div>
     }
     else
     {
-        <ul class="page-list">
+        <ul class="card site-page-list">
             @foreach (var item in Model)
             {
-                <li><a href="/@item.Slug">@item.Title</a> <span class="muted">/@item.Slug</span></li>
+                <li><a href="/@item.Slug">@item.Title <icon name="arrow-right" size="sm" /></a> <span class="text-subtle text-sm">/@item.Slug</span></li>
             }
         </ul>
     }

@@ -2,10 +2,17 @@
     ViewData["Title"] = "Access denied";
     Layout = "_AuthLayout";
 }
-<h2>Access denied</h2>
-<p class="muted">Your account does not have permission to view this page.</p>
-<p><a href="/admin">Back to admin</a></p>
-<form method="post" asp-controller="Account" asp-action="Logout">
-    @Html.AntiForgeryToken()
-    <button type="submit" class="btn">Sign out</button>
-</form>
+
+<div class="auth-heading auth-state">
+    <span class="dialog-icon danger" aria-hidden="true"><icon name="lock" /></span>
+    <h1>Access denied</h1>
+    <p class="text-muted">Your account doesn't have permission to open this page. Ask an administrator if you need access.</p>
+</div>
+
+<div class="stack-sm">
+    <a class="btn btn-primary btn-lg btn-block" href="/admin"><icon name="arrow-left" /> Back to the dashboard</a>
+    <form method="post" asp-controller="Account" asp-action="Logout">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-lg btn-block"><icon name="log-out" /> Sign in as someone else</button>
+    </form>
+</div>

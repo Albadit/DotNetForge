@@ -297,8 +297,26 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                     b.Property<bool>("DisplayInMenu")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("DraftLayoutJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DraftUpdatedById")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DraftUpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DraftVersion")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("FileReference")
                         .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LayoutJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LayoutPublishedDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MetaDescription")
@@ -308,6 +326,9 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                     b.Property<string>("MetaTitle")
                         .HasMaxLength(300)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("NoIndex")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("PageType")
                         .HasColumnType("INTEGER");
@@ -333,6 +354,10 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("SocialImageUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
@@ -341,6 +366,10 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThemeId")
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
@@ -357,6 +386,69 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("Pages");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.PagePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Permission")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("PageId", "RoleId", "Permission")
+                        .IsUnique();
+
+                    b.ToTable("PagePermissions");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.PageUserPermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Allow")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Permission")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("PageId", "UserId", "Permission")
+                        .IsUnique();
+
+                    b.ToTable("PageUserPermissions");
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.Role", b =>

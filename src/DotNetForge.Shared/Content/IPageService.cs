@@ -36,8 +36,8 @@ public sealed class PageInput
     public string? MetaDescription { get; set; }
     public string? SeoKeywords { get; set; }
     public string? CanonicalUrl { get; set; }
+    /// <summary>The page's one switch: on = published (visible within its schedule), off = disabled.</summary>
     public bool Published { get; set; }
-    public bool Disabled { get; set; }
     public bool DisplayInMenu { get; set; }
     public Guid? ParentPageId { get; set; }
     public int SortOrder { get; set; }
@@ -46,6 +46,15 @@ public sealed class PageInput
     public string? FileReference { get; set; }
     public DateTime? ScheduledPublishDate { get; set; }
     public DateTime? ScheduledUnpublishDate { get; set; }
+
+    /// <summary>Asks search engines not to index the page.</summary>
+    public bool NoIndex { get; set; }
+
+    /// <summary>Image shown when the page is shared (absolute https URL or a path on this site).</summary>
+    public string? SocialImageUrl { get; set; }
+
+    /// <summary>Theme extension id for this page; empty = the site's theme.</summary>
+    public string? ThemeId { get; set; }
 
     /// <summary>The editable fields of an existing page.</summary>
     public static PageInput From(Page page) => new()
@@ -56,8 +65,8 @@ public sealed class PageInput
         MetaDescription = page.MetaDescription,
         SeoKeywords = page.SeoKeywords,
         CanonicalUrl = page.CanonicalUrl,
-        Published = page.Published,
-        Disabled = page.Disabled,
+        // A page still carrying the legacy Disabled flag is off.
+        Published = page.Published && !page.Disabled,
         DisplayInMenu = page.DisplayInMenu,
         ParentPageId = page.ParentPageId,
         SortOrder = page.SortOrder,
@@ -66,5 +75,8 @@ public sealed class PageInput
         FileReference = page.FileReference,
         ScheduledPublishDate = page.ScheduledPublishDate,
         ScheduledUnpublishDate = page.ScheduledUnpublishDate,
+        NoIndex = page.NoIndex,
+        SocialImageUrl = page.SocialImageUrl,
+        ThemeId = page.ThemeId,
     };
 }

@@ -3,22 +3,55 @@
     var selectedId = ViewData["SelectedId"] as Guid?;
     var canReorder = ViewData["CanReorder"] as bool? == true;
 }
-<ul class="page-tree">
+<ul class="page-tree" role="list">
     @foreach (var node in Model)
     {
         var isSelected = selectedId == node.Id;
-        var dot = node.Disabled ? "off" : node.Published ? "on" : "draft";
-        <li class="tree-item" draggable="@(canReorder ? "true" : "false")" data-id="@node.Id">
-            <div class="tree-row @(isSelected ? "active" : "")">
-                <span class="drag-handle" title="Drag to reorder">⠿</span>
-                <a class="tree-link" href="/admin/content?selected=@node.Id">
-                    <span class="dot @dot" title="@dot"></span>
-                    @node.Title <span class="muted">/@node.Slug.TrimStart('/')</span>
+        var (dot, status) = node.Published ? ("dot-success", "Published") : ("dot-danger", "Disabled");
+        var hasChildren = node.Children.Count > 0;
+        <li class="tree-item" draggable="@(canReorder ? "true" : "false")" data-id="@node.Id" data-tree-item
+            data-search="@node.Title @node.Slug">
+            <div class="tree-row @(isSelected ? "active" : null)">
+                @* Open/close the child pages (content.js, remembered per browser); the slot keeps rows aligned. *@
+                <span class="tree-toggle-slot">
+                    @if (hasChildren)
+                    {
+                        <button type="button" class="tree-toggle" aria-expanded="true" aria-label="Hide the pages under @node.Title"
+                                data-tree-toggle data-js-only hidden>
+                            <icon name="chevron-down" size="sm" />
+                        </button>
+                    }
+                </span>
+                @* draggable=false: dragging the title moves the whole row (the item), not the link. *@
+                <a class="tree-link" href="/admin/content?selected=@node.Id" draggable="false" aria-current="@(isSelected ? "page" : null)">
+                    <span class="dot @dot" aria-hidden="true" title="@status"></span>
+                    <span class="sr-only">@status:</span>
+                    <span class="tree-title">@node.Title</span>
+                    <span class="tree-slug">/@node.Slug.TrimStart('/')</span>
                 </a>
-                <button type="submit" class="tree-add" form="treeActions"
-                        formaction="/admin/content/create?parent=@node.Id" title="Add child page">+</button>
+                @* Row actions in one ⋯ menu (opens in the top layer, so the tree's scroll area never clips it). *@
+                <action-menu class="tree-action" label="Actions for @node.Title">
+                    @if (node.ViewUrl is not null)
+                    {
+                        <menu-link href="@node.ViewUrl" icon="eye" new-tab="true">View on site</menu-link>
+                    }
+                    else
+                    {
+                        <menu-note>@node.NotOnSite</menu-note>
+                    }
+                    <menu-separator />
+                    <menu-post action="/admin/content/create?parent=@node.Id" icon="plus">Add child page</menu-post>
+                    <menu-post action="/admin/content/duplicate/@node.Id" icon="copy">Duplicate</menu-post>
+                    @if (node.CanDelete)
+                    {
+                        <menu-separator />
+                        <menu-post action="/admin/content/delete/@node.Id" icon="trash" danger="true"
+                                   confirm="Delete '@node.Title'?@(hasChildren ? " Its child pages move up a level." : "")"
+                                   confirm-title="Delete page" confirm-action="Delete page">Delete</menu-post>
+                    }
+                </action-menu>
             </div>
-            @if (node.Children.Count > 0)
+            @if (hasChildren)
             {
                 <partial name="_TreeNodes" model="node.Children" />
             }

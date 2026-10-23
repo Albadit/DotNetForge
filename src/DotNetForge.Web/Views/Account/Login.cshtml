@@ -1,22 +1,55 @@
+@using DotNetForge.Sdk
 @{
     ViewData["Title"] = "Sign in";
     Layout = "_AuthLayout";
     var returnUrl = ViewData["ReturnUrl"] as string;
+    var email = ViewData["Email"] as string;
+    var rememberMe = ViewData["RememberMe"] as bool? == true;
+    var providers = ViewData["LoginProviders"] as IReadOnlyList<LoginProviderContribution> ?? Array.Empty<LoginProviderContribution>();
 }
 
-<h2>Sign in</h2>
+<div class="auth-heading">
+    <h1>Sign in</h1>
+    <p class="text-muted">Welcome back. Sign in to manage your site.</p>
+</div>
 
-<div asp-validation-summary="All" class="validation-summary"></div>
-
-<form method="post" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl">
+<form method="post" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl" class="form">
     @Html.AntiForgeryToken()
-    <div class="form-row">
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" required autocomplete="username" autofocus />
+    <form-errors />
+    <div class="field">
+        <label class="field-label" for="email">Email</label>
+        <input id="email" name="email" type="email" value="@email" required autocomplete="username" autofocus="@string.IsNullOrEmpty(email)" />
     </div>
-    <div class="form-row">
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" required autocomplete="current-password" />
+    <div class="field">
+        <label class="field-label" for="password">Password</label>
+        <div class="input-affix">
+            <input id="password" name="password" type="password" required autocomplete="current-password" autofocus="@(!string.IsNullOrEmpty(email))" />
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-reveal="#password" aria-pressed="false"
+                    aria-label="Show password" data-js-only hidden>
+                <icon name="eye" data-reveal-icon="show" />
+                <icon name="eye-off" data-reveal-icon="hide" hidden />
+            </button>
+        </div>
     </div>
-    <button type="submit" class="btn primary">Sign in</button>
+    <label class="check">
+        <input type="checkbox" name="rememberMe" value="true" checked="@rememberMe" />
+        <span class="check-text">Remember me<span class="check-hint">Stay signed in on this device for 30 days.</span></span>
+    </label>
+    <button type="submit" class="btn btn-primary btn-lg btn-block">Sign in</button>
 </form>
+
+@if (providers.Count > 0)
+{
+    @* External providers come from enabled authentication extensions (.docs/features/authentication.md). *@
+    <div class="auth-divider"><span>or continue with</span></div>
+    <div class="stack-sm">
+        @foreach (var provider in providers)
+        {
+            <form method="post" action="/account/external/@Uri.EscapeDataString(provider.Scheme)">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit" class="btn btn-lg btn-block"><icon name="log-in" /> Sign in with @provider.DisplayName</button>
+            </form>
+        }
+    </div>
+}

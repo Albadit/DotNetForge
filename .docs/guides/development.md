@@ -6,14 +6,14 @@ Set up, run, debug and change DotNetForge CMS locally. Architecture: [codebase.m
 
 - .NET SDK 10.0 - `global.json` pins `10.0.100` with `rollForward: latestFeature` (any 10.0.1xx+ feature band works).
 - Optional: PostgreSQL, only if you switch provider.
-- No Node.js: the frontend is plain CSS/JS in `src/DotNetForge.Web/wwwroot/`.
+- No Node.js: the frontend is plain CSS/JS in `src/DotNetForge.Web/wwwroot/` ([design system](../architecture/design-system.md)).
 
 ## First run
 
 ```bash
 cp .env.example .env          # PowerShell: Copy-Item .env.example .env
 dotnet tool restore           # restores the pinned dotnet-ef tool (only needed for migrations)
-dotnet run --project src/DotNetForge.Web      # or: dotnet watch --project src/DotNetForge.Web
+run                           # run.cmd (Windows) / ./run.sh: dotnet build + run the web app
 ```
 
 Open <http://localhost:5000>. You are redirected to `/setup`; create the first administrator (email + a password with
@@ -29,10 +29,11 @@ Starting without `.env` fails fast with
 
 | Command | Purpose |
 | --- | --- |
-| `dotnet run --project src/DotNetForge.Web` | build and run the web app (profile `http`, `http://localhost:5000`) |
+| `run` (Windows, `run.cmd`) / `./run.sh` | `dotnet build` of the solution (CMS + extensions), then `dotnet run --project src/DotNetForge.Web --no-build` (profile `http`, `http://localhost:5000`); extra arguments go to the app. `dotnet run` alone can't work at the root: it needs a project file, and a second one next to `DotNetForge.slnx` would break `dotnet build`/`dotnet test` |
+| `dotnet run --project src/DotNetForge.Web` | build and run only the web app - extensions keep their last build |
 | `dotnet run --project src/DotNetForge.Web --launch-profile https` | also listen on `https://localhost:5001` |
 | `dotnet watch --project src/DotNetForge.Web` | run with hot reload |
-| `dotnet build` | build the whole solution |
+| `dotnet build` | build the whole solution, including the sample extensions with code (into each extension's own `bin/`) |
 | `dotnet test` | unit and integration tests (or one project: `dotnet test tests/DotNetForge.Tests`) |
 | `dotnet format src/DotNetForge.Web --verify-no-changes --severity error` | the CI style check (run per project; see [testing](testing.md#ci)) |
 
@@ -62,7 +63,14 @@ the app first and then at the repository root (the folder holding `DotNetForge.s
 
 In Development the default SQLite database (`storage/dotnetforge.db`) and local media (`storage/media/`) are in the
 repository root's `storage/`, whatever the working directory. `storage/` is git-ignored and only exists in
-Development; production never writes there ([deployment](deployment.md#read-only-deployment-requirements)).
+Development; production never writes there ([deployment](deployment.md#read-only-deployment-requirements)). The
+ignore rule is `/storage/` - the root folder only. It used to be `storage/`, which on case-insensitive file systems
+(Windows, macOS) also matched the source folders `src/DotNetForge.Abstractions/Storage/` and
+`src/DotNetForge.Infrastructure/Storage/`, so `IFileStorage.cs` and `S3FileStorage.cs` were silently left out of
+commits. If a new file under a `Storage/` folder does not show up in `git status`, check `git check-ignore -v <file>`.
+
+Extension state (which extensions are enabled) is in the database, so deleting `storage/` also disables every
+extension.
 
 ## Developing against PostgreSQL and S3
 
@@ -78,6 +86,43 @@ server runs without authentication: development only. Stop with `docker compose 
 (add `-v` to delete the data).
 
 To run the production image locally with a read-only filesystem, see [deployment → Docker](deployment.md#docker).
+
+## Working on extensions
+
+Everything a CMS user adds lives in `extensions/`; the core in `src/` is not touched
+([extensions](../features/extensions.md), [extension development guide](extension-development.md),
+[extensions/README.md](../../extensions/README.md) for trying each sample).
+
+| Change | What to do |
+| --- | --- |
+| Manifest (`dotnetforge.extension.json`) | picked up without a restart (file watcher); refresh **Plugins** |
+| Razor views or `Views/Resources/` files | picked up on the next request (runtime compilation) |
+| C# code | `dotnet build` (the samples are in `DotNetForge.slnx`; your own project: `dotnet build extensions/<type>/<name>`), then **restart** the app - code loads only at startup. Files are never locked, so you can build while the app runs |
+| A new extension with code | add a `.csproj` next to the manifest (settings come from `extensions/Directory.Build.props`, output goes to its `bin/`), set `"assembly": "bin/<Name>.dll"` and `entryPoint`; add the project to `DotNetForge.slnx` if `dotnet build` should build it |
+| Try it | sign in as the Super Admin → **Plugins** → **Enable** (every extension starts disabled) |
+
+An extension whose code is missing or failed shows **not running** with the reason on the Plugins screen, and the
+startup log has `Extension {id} is enabled but not running: ...` (warning; information while disabled). Secrets for extensions go in `.env` under the names the
+extension documents ([configuration → extension settings](../features/configuration.md#extension-settings)).
+
+## Working on the UI
+
+Every built-in screen is built from the Forge design system - read
+[design-system.md](../architecture/design-system.md) first (components, tag helpers, behaviours, accessibility).
+
+| Change | Where | Picked up |
+| --- | --- | --- |
+| Styles (tokens, components, screen layout) | `src/DotNetForge.Web/wwwroot/css/forge/` (`tokens.css`, `components.css`, `admin.css`, ...) | on reload (files are served from `wwwroot`, links carry `asp-append-version`) |
+| Behaviour | `wwwroot/js/forge/ui.js` (data attributes), `content.js` (Content Manager), a new page script via `@section Scripts` | on reload |
+| Icons | `wwwroot/img/icons.svg` (`<symbol id="…">`, Lucide paths) | on reload |
+| Views, layouts, partials | `Areas/Admin/Views/`, `Views/` | on the next request (Razor runtime compilation is on) |
+| Tag helpers, navigation tree | `src/DotNetForge.Web/Ui/UiTagHelpers.cs`, `Areas/Admin/Navigation/AdminNavigation.cs` | rebuild and restart |
+
+- Check both themes (theme menu in the top bar) and a phone width (below 64rem the sidebar is a drawer).
+- In Development the CSP is report-only: watch the browser console for violations, then run
+  `dotnet test tests/DotNetForge.IntegrationTests --filter AdminUiTests` (inline style/script, one `<h1>`, icons
+  present in the sprite).
+- No CSS/JS libraries, web fonts or CDNs; no build step.
 
 ## Database and migrations
 
@@ -121,7 +166,10 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 - **Uploaded media (local provider):** files are under `storage/media/<tenant>/<yyyy>/<MM>/`; the `MediaFiles.RelativePath`
   column holds each file's key.
 - **CSP in Development** is report-only: violations appear in the browser console instead of breaking the page.
-- **Admin extension views** are compiled at runtime from `extensions/`; edits apply on the next request.
+- **Extension views** are compiled at runtime from `extensions/`; edits apply on the next request. Extension
+  **code** is loaded at startup: rebuild and restart. The startup log lists every extension with code
+  (`Extension {id} {version} loaded from ...` or `... is enabled but not running: ...` - a disabled one is only logged as information).
+- **Extension endpoints answer 404:** the extension is not enabled (or not running) - check **Plugins**.
 - **Scheduled publishing** runs every 15 s; its log line appears only when something was due.
 
 ## Conventions
@@ -134,8 +182,10 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 - Commit messages in this repository use short prefixes: `feat:`, `fix:`, `add:`, `update:`.
 - Never write runtime files under the content root; use `IFileStorage` (or the OS temp directory for transient
   work). `ReadOnlyDeploymentTests` enforces this.
-- No inline `<script>`, event-handler attributes or `<style>` in views (the Content-Security-Policy blocks them in
-  production); put behaviour in `src/DotNetForge.Web/wwwroot/js` (e.g. `data-confirm` handled by `site.js`) and styles in `src/DotNetForge.Web/wwwroot/css`.
+- No inline `<script>`, event-handler attributes, `style=` or `<style>` in views (the Content-Security-Policy blocks
+  them in production); put behaviour in `src/DotNetForge.Web/wwwroot/js/forge/` (e.g. `data-confirm` handled by
+  `ui.js`), styles in `src/DotNetForge.Web/wwwroot/css/forge/`, and render validation errors with `<form-errors />`
+  ([design system](../architecture/design-system.md)).
 - Follow the [architectural rules](../architecture/codebase.md#architectural-rules-for-changes).
 
 ## Troubleshooting
@@ -156,7 +206,7 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 ### Redirected to "Access denied"
 - **Cause:** the screen requires `Super Admin`/`Admin` (Users, Roles, Audit Logs, API Tokens, Settings) or
   `Super Admin` (Plugins), or the action needs a permission the role lacks (e.g. an Author editing someone else's
-  page). See [authorization](../features/authorization.md).
+  page). The sidebar hides screens the role cannot open, so this usually comes from a bookmarked URL or a button. See [authorization](../features/authorization.md).
 
 ### "429 Too Many Requests" while testing sign-in
 - **Cause:** more than 10 sign-in or setup posts per minute from one IP (rate limit). **Fix:** wait a minute.
@@ -177,6 +227,17 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 
 ### `dotnet ef` not found
 - **Fix:** `dotnet tool restore`.
+
+### An extension shows "not running" on Plugins
+- **Cause:** its code could not be loaded or configured - the row and the startup log give the reason, e.g.
+  `'bin/X.dll' was not found. Build the extension (dotnet build "...") and restart the app.`, a missing entry type,
+  or an exception from `ConfigureServices` (the Discord sample throws until `DISCORD_CLIENT_ID`/`_SECRET` are set).
+  "Its code was added or changed after the app started" means the manifest's `assembly` changed: restart.
+- **Fix:** build the extension, set what it needs in `.env`, restart.
+
+### Enable is refused with "needs ... - enable it first"
+- **Cause:** a `dependencies` entry is not enabled (Contact Form needs Markdown Kit). **Fix:** enable the dependency
+  first; disabling works in the opposite order.
 
 
 ## Planned (not implemented)
@@ -199,7 +260,8 @@ testing and linting targets in [testing → Planned](testing.md#planned-not-impl
 **Adding API endpoints** (beyond the [conventions for new endpoints](../features/headless-api.md#conventions-for-new-endpoints),
 which are ✔):
 
-- extensions may register endpoints, declared in the manifest `routes`;
+- extensions may register endpoints, declared in the manifest `routes` (✔ registered by code -
+  `IExtension.MapEndpoints` or MVC controllers; `routes` is informational);
 - tenant context resolves from domain, path, header or token (today only the token's `dnf:tenant` claim);
 - no unauthenticated privileged endpoint; every endpoint has unit/integration tests.
 

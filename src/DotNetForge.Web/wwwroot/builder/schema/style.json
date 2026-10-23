@@ -1,0 +1,110 @@
+{
+  "$comment": "Style and layout properties of a node. Shared by the TypeScript editor/renderer and the C# validator/renderer (embedded resource). A key that is not listed here is rejected by the server. 'type' selects the value validator and the CSS formatter; both sides implement the same set of types.",
+  "version": 1,
+  "breakpoints": {
+    "order": ["base", "tablet", "mobile"],
+    "defaults": { "tablet": 1024, "mobile": 640 },
+    "limits": { "min": 240, "max": 3840 }
+  },
+  "style": {
+    "width":         { "type": "size",    "group": "position",   "label": "Width" },
+    "height":        { "type": "size",    "group": "position",   "label": "Height" },
+    "minWidth":      { "type": "length",  "group": "position",   "label": "Min W",   "css": "min-width",  "min": 0, "max": 4000 },
+    "maxWidth":      { "type": "length",  "group": "position",   "label": "Max W",   "css": "max-width",  "min": 0, "max": 4000 },
+    "minHeight":     { "type": "length",  "group": "position",   "label": "Min H",   "css": "min-height", "min": 0, "max": 4000 },
+    "maxHeight":     { "type": "length",  "group": "position",   "label": "Max H",   "css": "max-height", "min": 0, "max": 4000 },
+    "alignSelf":     { "type": "enum",    "group": "position",   "label": "Align self",   "css": "align-self",   "options": ["auto", "start", "center", "end", "stretch"] },
+    "justifySelf":   { "type": "enum",    "group": "position",   "label": "Justify self", "css": "justify-self", "options": ["auto", "start", "center", "end", "stretch"] },
+    "rotation":      { "type": "angle",   "group": "position",   "label": "Rotation", "css": "rotate", "min": -360, "max": 360 },
+    "flip":          { "type": "enum",    "group": "position",   "label": "Flip",     "css": "scale", "options": ["-1 1", "1 -1", "-1 -1"] },
+    "zIndex":        { "type": "int",     "group": "position",   "label": "Z-index",  "css": "z-index", "min": -100, "max": 1000 },
+    "aspectRatio":   { "type": "number",  "group": "position",   "label": "Ratio",    "css": "aspect-ratio", "min": 0.1, "max": 10, "step": 0.01 },
+
+    "padding":       { "type": "box",     "group": "spacing",    "label": "Padding", "css": "padding", "min": 0,    "max": 400 },
+    "margin":        { "type": "box",     "group": "spacing",    "label": "Margin",  "css": "margin",  "min": -400, "max": 400 },
+
+    "background":    { "type": "color",   "group": "appearance", "label": "Fill",     "css": "background-color" },
+    "bgImage":       { "type": "image",   "group": "appearance", "label": "Image",    "css": "background-image" },
+    "bgSize":        { "type": "enum",    "group": "appearance", "label": "Image size", "css": "background-size",     "options": ["cover", "contain", "auto"] },
+    "bgPosition":    { "type": "enum",    "group": "appearance", "label": "Position",   "css": "background-position", "options": ["center", "top", "bottom", "left", "right"] },
+    "bgRepeat":      { "type": "enum",    "group": "appearance", "label": "Repeat",     "css": "background-repeat",   "options": ["no-repeat", "repeat", "repeat-x", "repeat-y"] },
+    "borderWidth":   { "type": "length",  "group": "appearance", "label": "Border",   "css": "border-width", "min": 0, "max": 40 },
+    "borderStyle":   { "type": "enum",    "group": "appearance", "label": "Style",    "css": "border-style", "options": ["solid", "dashed", "dotted", "double", "none"] },
+    "borderColor":   { "type": "color",   "group": "appearance", "label": "Color",    "css": "border-color" },
+    "borderSides":   { "type": "box",     "group": "appearance", "label": "Stroke per side", "min": 0, "max": 40 },
+    "strokeAlign":   { "type": "enum",    "group": "appearance", "label": "Stroke position", "options": ["inside", "outside", "center"] },
+    "strokeHidden":  { "type": "enum",    "group": "appearance", "label": "Stroke hidden",   "options": ["hidden", "visible"] },
+    "fillHidden":    { "type": "enum",    "group": "appearance", "label": "Fill hidden",     "options": ["hidden", "visible"] },
+    "radius":        { "type": "corners", "group": "appearance", "label": "Radius",   "css": "border-radius", "min": 0, "max": 1000 },
+    "opacity":       { "type": "number",  "group": "appearance", "label": "Opacity",  "css": "opacity", "min": 0, "max": 1, "step": 0.01 },
+    "shadow":        { "type": "shadow",  "group": "appearance", "label": "Shadow",   "css": "box-shadow" },
+    "overflow":      { "type": "enum",    "group": "appearance", "label": "Overflow", "css": "overflow", "options": ["visible", "hidden", "auto", "clip"] },
+
+    "color":         { "type": "color",   "group": "typography", "label": "Text color",  "css": "color" },
+    "fontFamily":    { "type": "font",    "group": "typography", "label": "Font",        "css": "font-family" },
+    "fontSize":      { "type": "length",  "group": "typography", "label": "Size",        "css": "font-size", "min": 6, "max": 400 },
+    "fontWeight":    { "type": "enum",    "group": "typography", "label": "Weight",      "css": "font-weight", "options": ["100", "200", "300", "400", "500", "600", "700", "800", "900"] },
+    "lineHeight":    { "type": "number",  "group": "typography", "label": "Line height", "css": "line-height", "min": 0.5, "max": 4, "step": 0.05 },
+    "letterSpacing": { "type": "length",  "group": "typography", "label": "Letter",      "css": "letter-spacing", "min": -10, "max": 40, "step": 0.1 },
+    "textAlign":     { "type": "enum",    "group": "typography", "label": "Align",       "css": "text-align", "options": ["left", "center", "right", "justify"] },
+    "textTransform": { "type": "enum",    "group": "typography", "label": "Case",        "css": "text-transform", "options": ["none", "uppercase", "lowercase", "capitalize"] },
+    "fontStyle":     { "type": "enum",    "group": "typography", "label": "Style",       "css": "font-style", "options": ["normal", "italic"] }
+  },
+  "layout": {
+    "mode":          { "type": "enum",    "label": "Layout",      "options": ["stack", "grid", "free"] },
+    "direction":     { "type": "enum",    "label": "Direction",   "options": ["column", "row"],                    "modes": ["stack"] },
+    "gap":           { "type": "length",  "label": "Gap",         "min": 0, "max": 400,                           "modes": ["stack"] },
+    "align":         { "type": "enum",    "label": "Align",       "options": ["start", "center", "end", "stretch", "baseline"], "modes": ["stack"] },
+    "justify":       { "type": "enum",    "label": "Distribute",  "options": ["start", "center", "end", "between", "around", "evenly"], "modes": ["stack"] },
+    "wrap":          { "type": "bool",    "label": "Wrap",                                                         "modes": ["stack"] },
+    "columns":       { "type": "int",     "label": "Columns",     "min": 1, "max": 24,                            "modes": ["grid"] },
+    "rowHeight":     { "type": "length",  "label": "Row height",  "min": 4, "max": 600,                           "modes": ["grid"] },
+    "rowMode":       { "type": "enum",    "label": "Rows",        "options": ["auto", "fixed"],                   "modes": ["grid"] },
+    "colGap":        { "type": "length",  "label": "Column gap",  "min": 0, "max": 400,                           "modes": ["grid"] },
+    "rowGap":        { "type": "length",  "label": "Row gap",     "min": 0, "max": 400,                           "modes": ["grid"] },
+    "compact":       { "type": "bool",    "label": "Float up",                                                     "modes": ["grid"] },
+    "colSizes":      { "type": "tracks",  "label": "Column sizes", "max": 24, "fallback": "1fr",                "modes": ["grid"] },
+    "rows":          { "type": "int",     "label": "Rows",        "min": 1, "max": 100,                           "modes": ["grid"] },
+    "rowSizes":      { "type": "tracks",  "label": "Row sizes",   "max": 100, "fallback": "auto",              "modes": ["grid"] },
+    "height":        { "type": "length",  "label": "Height",      "min": 0, "max": 10000,                         "modes": ["free"] }
+  },
+  "layoutDefaults": {
+    "stack": { "direction": "column", "gap": 16, "align": "stretch", "justify": "start", "wrap": false },
+    "grid":  { "columns": 12, "rowHeight": 40, "rowMode": "auto", "colGap": 16, "rowGap": 16, "compact": true },
+    "free":  { "height": 400 }
+  },
+  "place": {
+    "col":     { "type": "int", "min": 1, "max": 24 },
+    "row":     { "type": "int", "min": 1, "max": 1000 },
+    "colSpan": { "type": "int", "min": 1, "max": 24 },
+    "rowSpan": { "type": "int", "min": 1, "max": 200 },
+    "x":       { "type": "int", "min": -2000, "max": 10000 },
+    "y":       { "type": "int", "min": -2000, "max": 20000 },
+    "w":       { "type": "int", "min": 1, "max": 10000 },
+    "h":       { "type": "int", "min": 1, "max": 20000 }
+  },
+  "sizeModes": ["auto", "fill", "hug", "fixed", "percent"],
+  "fonts": {
+    "inherit": "inherit",
+    "sans": "system-ui,-apple-system,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif",
+    "serif": "Georgia,Cambria,\"Times New Roman\",Times,serif",
+    "mono": "ui-monospace,SFMono-Regular,Menlo,Consolas,\"Liberation Mono\",monospace"
+  },
+  "shadows": {
+    "none": "none",
+    "sm": "0 1px 2px rgba(0,0,0,.08)",
+    "md": "0 4px 12px rgba(0,0,0,.10)",
+    "lg": "0 12px 32px rgba(0,0,0,.14)",
+    "xl": "0 24px 64px rgba(0,0,0,.18)",
+    "dim": "inset 0 0 0 100vmax rgba(0,0,0,.5)",
+    "fade": "inset 0 -140px 100px -40px rgba(0,0,0,.7)"
+  },
+  "limits": {
+    "nodes": 5000,
+    "depth": 32,
+    "documentBytes": 4000000,
+    "className": 200,
+    "vars": 20,
+    "name": 120
+  }
+}

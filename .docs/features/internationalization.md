@@ -9,7 +9,7 @@ for missing translations), and how content is translated. Today the CMS is Engli
 | --- | --- | --- |
 | `Tenant.DefaultLocale` (string, max 20, default `"en"`) | `src/DotNetForge.Shared/Entities/Tenant.cs`, `DotNetForgeDbContext` | seeded `"en"` by `DataSeeder`; **read nowhere** |
 | `InvariantGlobalization` = `false` | `Directory.Build.props` (every project) | ICU culture data is available (SQL Server's client requires it); the process culture comes from the OS/container (`LANG`), which is the invariant culture in the default images |
-| Internationalization screen | `GET /admin/internationalization` → `ModulesController.Internationalization` | [placeholder](../pages/module-placeholders.md), sidebar **Settings · Global Settings** |
+| Internationalization screen | `GET /admin/internationalization` → `ModulesController.Internationalization` | [placeholder](../pages/module-placeholders.md), sidebar **Settings → Global Settings** |
 
 Not present: locale entities or settings, request-culture middleware (`UseRequestLocalization`), `IStringLocalizer`
 or resource files, per-user admin language, localized fields on `Page`, and any locale parameter on the

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Plugin extension: adds public endpoints (extensions/Directory.Build.props sets the rest). -->
+
+</Project>

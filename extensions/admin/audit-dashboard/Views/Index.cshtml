@@ -1,9 +1,9 @@
 @*
     Audit Dashboard admin extension - main view. MVC-style layout within the extension:
-      Views/Index.cshtml           (this page - a <main> body)
-      Views/_ViewImports.cshtml    (@using + @inject shared by the extension's views)
+      Views/Index.cshtml           (this page)
+      Views/_ViewImports.cshtml    (@using + @inject + the host's design-system tag helpers)
       Views/_ViewStart.cshtml      (sets the shared layout)
-      Views/Shared/_Layout.cshtml  (the document shell + asset links)
+      Views/Shared/_Layout.cshtml  (the document shell: host design system + this extension's CSS/JS)
       Views/Resources/css|js/      (static assets, served via the extension resource endpoint)
     Rendered server-side via runtime Razor compilation; the manifest settings arrive in ViewData.
 *@
@@ -12,61 +12,64 @@
     var settings = ViewData["Settings"] as IDictionary<string, object?> ?? new Dictionary<string, object?>();
     var showFailedLogins = !(settings.TryGetValue("showFailedLogins", out var sfl) && sfl is bool sb && !sb);
 
-    var entries = await Db.AuditLogs.AsNoTracking().OrderByDescending(a => a.Id).Take(50).ToListAsync();
-    var failedLogins = await Db.AuditLogs.CountAsync(a => a.Action == AuditActions.UserLoginFailed);
-    var lastActivity = entries.Count > 0 ? entries[0].Timestamp.ToLocalTime().ToString("g") : "-";
+    // Tenant-scoped like the core Audit Log screen: this tenant's entries plus system-wide ones (no tenant).
+    Guid? tenantId = Guid.TryParse(User.FindFirst("dnf:tenant")?.Value, out var t) ? t : null;
+    var scoped = Db.AuditLogs.AsNoTracking().Where(a => a.TenantId == tenantId || a.TenantId == null);
+    var entries = await scoped.OrderByDescending(a => a.Id).Take(50).ToListAsync();
+    var failedLogins = await scoped.CountAsync(a => a.Action == AuditActions.UserLoginFailed);
 }
-<main class="wrap">
-    <header>
-        <div>
-            <h1>Audit Dashboard</h1>
-            <div class="sub">Recent administrative activity across the CMS.</div>
-        </div>
-    </header>
+<main class="ext-page stack-lg">
+    @* The admin shell around the iframe already shows the tab's title, so the page starts with its content. *@
+    <h1 class="sr-only">Audit Dashboard</h1>
+    <p class="text-muted">Recent administrative activity in this tenant.</p>
 
-    <div class="stats">
-        <div class="stat"><div class="icon">📜</div><div><div class="v">@entries.Count</div><div class="l">Recent events</div></div></div>
+    <div class="ext-stats">
+        <stat-card icon="activity" label="Recent events" value="@entries.Count.ToString()" />
         @if (showFailedLogins)
         {
-            <div class="stat"><div class="icon">🛡️</div><div><div class="v">@failedLogins</div><div class="l">Failed logins</div></div></div>
+            <stat-card icon="shield" label="Failed sign-ins" value="@failedLogins.ToString()" />
         }
-        <div class="stat"><div class="icon">⏱️</div><div><div class="v">@lastActivity</div><div class="l">Last activity</div></div></div>
+        <stat-card icon="clock" label="Last activity" value="@(entries.Count > 0 ? TimestampTagHelper.Relative(entries[0].Timestamp, DateTime.UtcNow) : "-")" />
     </div>
 
-    @if (entries.Count == 0)
-    {
-        <div class="empty">No audit activity yet.</div>
-    }
-    else
-    {
-        <table>
-            <thead>
-                <tr><th>When</th><th>User</th><th>Action</th><th>Entity</th><th>Result</th><th>IP</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var a in entries)
-                {
-                    <tr>
-                        <td class="muted">@a.Timestamp.ToLocalTime().ToString("g")</td>
-                        <td>@(string.IsNullOrEmpty(a.UserDisplaySnapshot) ? "-" : a.UserDisplaySnapshot)</td>
-                        <td><code>@a.Action</code></td>
-                        <td>@(string.IsNullOrEmpty(a.EntityType) ? "-" : $"{a.EntityType} {a.EntityId}".Trim())</td>
-                        <td>
-                            @if (a.Success)
-                            {
-                                <span class="pill ok">ok</span>
-                            }
-                            else
-                            {
-                                <span class="pill fail">fail</span>
-                            }
-                        </td>
-                        <td class="muted">@a.IpAddress</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
+    <section class="card">
+        @if (entries.Count == 0)
+        {
+            <empty-state icon="activity" title="No audit activity yet" />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr><th scope="col">When</th><th scope="col">User</th><th scope="col">Action</th><th scope="col">Entity</th><th scope="col">Result</th><th scope="col">IP</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in entries)
+                        {
+                            <tr>
+                                <td class="text-nowrap"><timestamp value="@a.Timestamp" /></td>
+                                <td>@(string.IsNullOrEmpty(a.UserDisplaySnapshot) ? "-" : a.UserDisplaySnapshot)</td>
+                                <td><code>@a.Action</code></td>
+                                <td>@(string.IsNullOrEmpty(a.EntityType) ? "-" : $"{a.EntityType} {a.EntityId}".Trim())</td>
+                                <td>
+                                    @if (a.Success)
+                                    {
+                                        <badge tone="Success" dot="true">ok</badge>
+                                    }
+                                    else
+                                    {
+                                        <badge tone="Danger" dot="true">fail</badge>
+                                    }
+                                </td>
+                                <td class="text-muted text-mono text-sm">@a.IpAddress</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
 
-    <footer class="foot" id="ext-loaded"></footer>
+    <footer class="text-xs text-subtle" id="ext-loaded"></footer>
 </main>

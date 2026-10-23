@@ -1,0 +1,49 @@
+<Project>
+
+  <!--
+    Build settings for every extension project under extensions/ (.docs/guides/extension-development.md), so an
+    extension's .csproj only lists what is special about it. The host's own build settings (repository root) do not
+    apply here.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+
+    <!-- A plugin build: the extension's own NuGet dependencies are copied next to it, with a .deps.json the host
+         resolves them from. -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+
+    <!-- Output always goes to the extension's own bin/ folder (what the manifest's "assembly" points at), whatever
+         the configuration, so Debug and Release builds land in the same place. -->
+    <OutputPath>$(MSBuildProjectDirectory)/bin/</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+
+    <!-- Extensions choose their own package versions: the host's central package list does not apply. -->
+    <ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+
+    <DotNetForgeSource>$(MSBuildThisFileDirectory)../src/</DotNetForgeSource>
+  </PropertyGroup>
+
+  <!--
+    The extension SDK. The host provides it (and ASP.NET Core) at runtime, so it is referenced but never copied into
+    bin/ - one copy of every contract type, the host's.
+  -->
+  <ItemGroup Condition="Exists('$(DotNetForgeSource)DotNetForge.Sdk/DotNetForge.Sdk.csproj')">
+    <!-- A source checkout: compile against the SDK projects (listed one by one so none is copied transitively). -->
+    <ProjectReference Include="$(DotNetForgeSource)DotNetForge.Sdk/DotNetForge.Sdk.csproj" Private="false" />
+    <ProjectReference Include="$(DotNetForgeSource)DotNetForge.Abstractions/DotNetForge.Abstractions.csproj" Private="false" />
+    <ProjectReference Include="$(DotNetForgeSource)DotNetForge.Shared/DotNetForge.Shared.csproj" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="!Exists('$(DotNetForgeSource)DotNetForge.Sdk/DotNetForge.Sdk.csproj')">
+    <!-- A published app (no src/): the SDK assemblies sit next to it, one level above extensions/. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Reference Include="$(MSBuildThisFileDirectory)../DotNetForge.Sdk.dll" Private="false" />
+    <Reference Include="$(MSBuildThisFileDirectory)../DotNetForge.Abstractions.dll" Private="false" />
+    <Reference Include="$(MSBuildThisFileDirectory)../DotNetForge.Shared.dll" Private="false" />
+  </ItemGroup>
+
+</Project>

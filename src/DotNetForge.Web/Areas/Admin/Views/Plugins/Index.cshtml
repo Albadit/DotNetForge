@@ -1,40 +1,134 @@
 @model List<PluginRowViewModel>
 @{
     ViewData["Title"] = "Plugins";
+    ViewData["Description"] = "Extensions found in the extensions/ folder. Nothing an extension offers is used until you enable it; enabling and disabling take effect at once. Code changes need a restart.";
+    var enabledCount = Model.Count(e => e.IsEnabled);
+    var problemCount = Model.Count(e => e.Problem is not null);
+    var types = Model.Select(e => e.Type).Where(t => t != "-").Distinct().Order().ToList();
+
+    static string TypeIcon(string type) => type switch
+    {
+        "theme" => "palette",
+        "authentication" => "log-in",
+        "connector" => "plug",
+        "library" => "package",
+        "admin" => "panel",
+        "widget" => "gauge",
+        "provider" => "bell",
+        "module" => "box",
+        _ => "puzzle",
+    };
+    string State(PluginRowViewModel e) => e.IsEnabled ? "enabled" : "disabled";
 }
 
-<p class="muted">Installed extensions and extensions discovered under the <code>extensions/</code> folder.
-    Invalid manifests are flagged and never loaded.</p>
+<section class="card" aria-labelledby="extensions-title" data-collection>
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" id="extensions-title">Extensions</h2>
+            <p class="card-description" data-collection-count>@Model.Count total</p>
+        </div>
+    </div>
 
-<table class="data">
-    <thead>
-        <tr><th>Name</th><th>Version</th><th>Type</th><th>Status</th><th>Author</th><th>Manifest</th><th>Source</th></tr>
-    </thead>
-    <tbody>
-    @foreach (var ext in Model)
-    {
-        <tr>
-            <td><strong>@ext.Name</strong><br /><span class="muted">@ext.Id</span></td>
-            <td>@ext.Version</td>
-            <td>@ext.Type</td>
-            <td>@ext.Status</td>
-            <td>@ext.Author</td>
-            <td>
-                @if (ext.ValidManifest)
-                {
-                    <span class="badge ok">valid</span>
-                }
-                else
-                {
-                    <span class="badge warn">invalid</span>
-                }
-            </td>
-            <td class="muted">@ext.Source</td>
-        </tr>
-    }
     @if (Model.Count == 0)
     {
-        <tr><td colspan="7" class="muted">No extensions found.</td></tr>
+        <empty-state icon="puzzle" title="No extensions found" text="Put an extension folder with a dotnetforge.extension.json manifest under extensions/ and it appears here." />
     }
-    </tbody>
-</table>
+    else
+    {
+        <div class="toolbar" data-js-only hidden>
+            <div class="segmented" role="group" aria-label="Filter by status">
+                <button type="button" data-collection-filter="state" data-value="" aria-pressed="true">All <span class="text-subtle">@Model.Count</span></button>
+                <button type="button" data-collection-filter="state" data-value="enabled" aria-pressed="false">Enabled <span class="text-subtle">@enabledCount</span></button>
+                <button type="button" data-collection-filter="state" data-value="disabled" aria-pressed="false">Disabled <span class="text-subtle">@(Model.Count - enabledCount)</span></button>
+                @if (problemCount > 0)
+                {
+                    <button type="button" data-collection-filter="state" data-value="problem" aria-pressed="false">Needs attention <span class="text-subtle">@problemCount</span></button>
+                }
+            </div>
+            <span class="toolbar-spacer"></span>
+            <div class="toolbar-search input-icon">
+                <icon name="search" size="sm" />
+                <label class="sr-only" for="extension-search">Search extensions</label>
+                <input id="extension-search" type="search" class="input-sm" placeholder="Search extensions" data-collection-search />
+            </div>
+            <label class="sr-only" for="extension-type">Type</label>
+            <select id="extension-type" class="input-sm" data-collection-filter="type">
+                <option value="">All types</option>
+                @foreach (var type in types)
+                {
+                    <option value="@type">@type</option>
+                }
+            </select>
+        </div>
+
+        <div class="extension-list">
+            @foreach (var ext in Model)
+            {
+                <article class="extension-card @(ext.IsEnabled ? "is-enabled" : null)" data-item data-type="@ext.Type"
+                         data-state="@State(ext)@(ext.Problem is not null ? " problem" : null)" aria-labelledby="ext-@ext.Id">
+                    <div class="extension-head">
+                        <span class="extension-icon" aria-hidden="true"><icon name="@TypeIcon(ext.Type)" /></span>
+                        <div class="grow">
+                            <div class="cluster">
+                                <h3 class="extension-name" id="ext-@ext.Id">@ext.Name</h3>
+                                <span class="text-xs text-subtle">v@(ext.Version)</span>
+                            </div>
+                            <div class="text-xs text-muted text-truncate" title="@ext.Id · extensions/@ext.Folder">@ext.Id</div>
+                        </div>
+                        @if (ext.IsEnabled)
+                        {
+                            <badge tone="Success" dot="true">Enabled</badge>
+                        }
+                        else
+                        {
+                            <badge dot="true">Disabled</badge>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(ext.Description))
+                    {
+                        <p class="text-muted">@ext.Description</p>
+                    }
+
+                    <div class="cluster">
+                        <badge tone="Accent">@ext.Type</badge>
+                        @if (ext.HasCode)
+                        {
+                            <badge><icon name="code" size="sm" /> Code</badge>
+                        }
+                        @foreach (var dependency in ext.Dependencies)
+                        {
+                            <badge class="badge-outline" title="Needs @dependency"><icon name="link" size="sm" /> @dependency</badge>
+                        }
+                    </div>
+
+                    @if (ext.Problem is not null)
+                    {
+                        <alert tone="@(ext.ValidManifest ? Tone.Warning : Tone.Danger)" title="@(ext.ValidManifest ? "Not running" : "Invalid manifest")">@ext.Problem</alert>
+                    }
+
+                    <div class="extension-foot">
+                        <span class="text-xs text-muted">by @ext.Author</span>
+                        @if (ext.CanToggle && ext.IsEnabled)
+                        {
+                            <form method="post" action="/admin/plugins/@Uri.EscapeDataString(ext.Id)/disable" class="inline"
+                                  data-confirm="Disable '@ext.Name'? Everything it adds stops working until you enable it again."
+                                  data-confirm-title="Disable extension" data-confirm-action="Disable">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm"><icon name="power" size="sm" /> Disable</button>
+                            </form>
+                        }
+                        else if (ext.CanToggle && ext.Problem is null)
+                        {
+                            <form method="post" action="/admin/plugins/@Uri.EscapeDataString(ext.Id)/enable" class="inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-primary btn-sm"><icon name="power" size="sm" /> Enable</button>
+                            </form>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+        <empty-state icon="search" title="No matching extensions" text="Try another search or filter." compact="true" data-collection-empty hidden />
+    }
+</section>

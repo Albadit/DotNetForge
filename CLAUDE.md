@@ -16,7 +16,8 @@ app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker fi
 
 ```bash
 cp .env.example .env                              # once
-dotnet run --project src/DotNetForge.Web          # http://localhost:5000 → /setup on a fresh DB
+run                                               # build all + start (run.cmd / ./run.sh); http://localhost:5000 → /setup on a fresh DB
+dotnet run --project src/DotNetForge.Web          # start without building the extensions
 dotnet build                                      # whole solution
 dotnet test                                       # unit + integration tests
 python .claude/skills/verify/check_links.py       # docs link check
@@ -27,10 +28,15 @@ python .claude/skills/verify/check_links.py       # docs link check
 - All DI in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. Admin controllers derive from `AdminControllerBase`; API
   controllers from `ApiControllerBase` with `[RequireApiPermission]` on every action.
 - Filter every tenant-scoped query by `TenantId` from the base controller - there are no global query filters.
-- Content-page rules live only in `src/DotNetForge.Web/Services/PageService.cs`; public visibility only in `HomeController.Live`.
+- Content-page rules live only in `src/DotNetForge.Web/Services/PageService.cs`; public visibility only in
+  `PageVisibility.Live` (`src/DotNetForge.Shared/Content/PublishedPages.cs`).
 - Every admin POST: `[ValidateAntiForgeryToken]` + `AuditService.LogAsync(AuditActions.X, ...)`.
 - The deployment directory is read-only: never write runtime files under the content root - use `IFileStorage`
   (media) or the database; `ReadOnlyDeploymentTests` fails otherwise. No inline script/style in views (CSP).
+- UI = the Forge design system (`.docs/architecture/design-system.md`): tokens/components in
+  `src/DotNetForge.Web/wwwroot/css/forge/`, behaviours in `wwwroot/js/forge/ui.js`, tag helpers in
+  `src/DotNetForge.Web/Ui/`, sidebar only in `AdminNavigation.Tree` (hidden per role, never the gate); feedback via
+  `TempData` toasts + `data-confirm`; `<form-errors />`, never `asp-validation-summary`. `AdminUiTests` checks it.
 - Content/media actions check permissions with `Can`/`CanModify` (`AdminControllerBase`); inject `IAuditService` and
   `IPageService` (interfaces in `src/DotNetForge.Shared`), not the concrete classes.
 - Schema changes need a migration for **each SQL context**: `DotNetForgeDbContext` (SQLite), `PostgreSqlDbContext`,
@@ -38,6 +44,14 @@ python .claude/skills/verify/check_links.py       # docs link check
   navigations) so MongoDB can run it. Database code lives in `src/DotNetForge.Data/Database/` (.docs/database/):
   one self-contained folder per database in `Providers/<Database>/` (provider, SQL builder, executor, context,
   `Migrations/`). SQL code is copied, not shared, so a fix to shared SQL behaviour goes into all four SQL folders.
+- Extensions live only in `extensions/` (manifest, code against `src/DotNetForge.Sdk`, views); they contribute only
+  while enabled on Plugins, and "is it active?" is answered only by `ExtensionCatalog` (`.docs/features/extensions.md`).
+  `dotnet build` builds the samples; integration tests build fixtures in `tests/fixtures/extensions/`. Code changes
+  need a restart.
+- Page builder (`.docs/features/page-builder.md`): C# in `src/DotNetForge.PageBuilder`, editor in
+  `wwwroot/js/builder` (plain ES modules, no build). One schema copy in `wwwroot/builder/schema/` (embedded by the C#
+  project) - change it, or the JS core/renderer, only with `node tests/js/page-builder-fixtures.mjs` and the
+  `PageBuilder` unit tests green (C# and JS must render byte-identically).
 - `IEmailSender` has no implementation and webhooks are not delivered (see `.docs/implementation-status.md`).
 - Optional: `DNF_TEST_POSTGRES` runs the integration tests on PostgreSQL; `DNF_TEST_S3_*` runs live S3 tests
   (`docker/compose.dev.yml` provides both servers).

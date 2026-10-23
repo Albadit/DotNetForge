@@ -52,6 +52,24 @@ public sealed class PageServiceTests : IAsyncLifetime
         _service.ApplyAsync(page, new PageInput { Title = "T", Slug = slug, ParentPageId = parent }, _tenant);
 
     [Fact]
+    public async Task Published_is_the_only_switch_and_saving_clears_the_legacy_disabled_flag()
+    {
+        // A page saved before the Disabled switch was removed: published but disabled, so not live.
+        var page = await AddAsync("legacy");
+        page.Published = true;
+        page.Disabled = true;
+        await _db.SaveChangesAsync();
+        Assert.False(PageInput.From(page).Published); // the form shows it switched off ("Disabled")
+        Assert.Empty(_db.Pages.Live(DateTime.UtcNow).Where(p => p.Id == page.Id));
+
+        // Switching Published on makes it live and clears the old flag.
+        Assert.Null(await _service.ApplyAsync(page, new PageInput { Title = "Legacy", Slug = "legacy", Published = true }, _tenant));
+        await _db.SaveChangesAsync();
+        Assert.False(page.Disabled);
+        Assert.Single(_db.Pages.Live(DateTime.UtcNow).Where(p => p.Id == page.Id));
+    }
+
+    [Fact]
     public async Task Slugifies_and_applies_valid_input()
     {
         var page = new Page { TenantId = _tenant };

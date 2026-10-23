@@ -19,7 +19,7 @@ configures logging and `AllowedHosts`. Production values and a deployment checkl
 | `STORAGE_S3_ACCESS_KEY_ID` | outside Development | - | non-empty | `S3FileStorage` |
 | `STORAGE_S3_SECRET_ACCESS_KEY` | outside Development | - | non-empty; **secret** | `S3FileStorage` |
 | `STORAGE_S3_REGION` | without a service URL (AWS) | `auto` when `STORAGE_S3_SERVICE_URL` is set | - | `S3FileStorage` (signing region) |
-| `EXTENSIONS_PATH` | no | `extensions/` next to the app, else at the repository root | absolute, or relative to the content root | `ExtensionLoader`, runtime Razor compilation of extension views ([extensions](extensions.md#discovery)) |
+| `EXTENSIONS_PATH` | no | `extensions/` next to the app, else at the repository root | absolute, or relative to the content root | `ExtensionLoader`, `ExtensionRuntime` (code loading), runtime Razor compilation of extension views ([extensions](extensions.md#discovery)) |
 | `STORAGE_S3_FORCE_PATH_STYLE` | no | `false` | `true` or `false` (`bool.TryParse`, case-insensitive) | `S3FileStorage` (`endpoint/bucket/key` URLs for MinIO, Supabase, SeaweedFS) |
 
 Uploaded media always goes to S3-compatible object storage; there is no provider key, because R2, AWS S3, MinIO,
@@ -34,6 +34,25 @@ All keys are read by `EnvConfigurationLoader` (`src/DotNetForge.Infrastructure/C
 `S3BucketKey`, `S3AccessKeyIdKey`, `S3SecretAccessKeyKey`, `S3RegionKey`, `S3ForcePathStyleKey`, `ExtensionsPathKey`.
 
 Changing any key requires a restart.
+
+## Extension settings
+
+Extensions add no core keys. An extension reads its own values - typically secrets - with
+`ExtensionContext.GetEnvironmentValue(name)` (`src/DotNetForge.Sdk/ExtensionContext.cs`), which uses
+`AppEnvironment.Lookup`: the same resolution as the core keys ([Resolution rules](#resolution-rules): non-empty
+process environment variable, else non-empty `.env` value, else `null`). The `.env` file is parsed once at startup,
+so a change needs a restart. Non-secret options belong in the manifest `settings` instead
+([extensions → Manifest](extensions.md#manifest)).
+
+Keys the samples read (none is in `.env.example`; each is documented by its extension):
+
+| Key | Extension | Without it |
+| --- | --- | --- |
+| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | `extensions/authentication/discord-login` | `ConfigureServices` throws → the extension shows **not running** on [Plugins](../pages/plugins.md) and cannot be enabled |
+| `S3_CONNECTOR_ACCESS_KEY_ID`, `S3_CONNECTOR_SECRET_ACCESS_KEY` | `extensions/connectors/s3-storage` | the storage factory throws when media storage is first used while the connector is enabled |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | `extensions/providers/sms-notifications` | only needed for its `twilio` gateway; the default `log` gateway works offline |
+
+Treat them like the core secrets ([Secrets](#secrets)): `.env` locally, the host's secret store in production.
 
 ## Database
 
@@ -132,7 +151,7 @@ Read by the framework, not by `EnvConfigurationLoader`:
 | --- | --- | --- |
 | Development config | `.env` copied from `.env.example`, `src/DotNetForge.Web/Properties/launchSettings.json`, `src/DotNetForge.Web/appsettings.Development.json`; runtime data in `<contentRoot>/storage/` (git-ignored) | committed `.env` |
 | Production config | process environment variables set by the host or orchestrator ([environment variables](../guides/deployment.md#environment-variables)); the image contains no configuration | files inside the deployment directory |
-| Secrets | `DATABASE_CONNECTION_STRING` (database password), `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY` - in `.env` locally, in the host's secret store in production | documentation, `.env.example`, logs |
+| Secrets | `DATABASE_CONNECTION_STRING` (database password), `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY`, extension secrets ([Extension settings](#extension-settings)) - in `.env` locally, in the host's secret store in production | documentation, `.env.example`, logs, manifests |
 | Uploaded media | `STORAGE_*`: object storage or an absolute path on a volume ([media storage](media-storage.md#storage-architecture)) | the deployment directory |
 | Database | `DATABASE_*`: PostgreSQL or a SQLite file on a volume ([deployment → database](../guides/deployment.md#database)); also holds the ASP.NET Core Data Protection key ring (table `DataProtectionKeys`) | the deployment directory |
 
@@ -148,7 +167,7 @@ Read by the framework, not by `EnvConfigurationLoader`:
 | `docker/compose.dev.yml` | development-only PostgreSQL 17 (port 5432) and SeaweedFS S3 (port 8333, bucket `dotnetforge`) to run against |
 | `UserSecretsId` `dotnetforge-cms` in the csproj | present but unused - secrets belong in `.env` or the environment |
 | `Setting` rows | runtime key/value settings edited on the [Settings screen](../pages/settings.md); no code reads them yet |
-| Extension manifest `settings` | passed to admin extension views as `ViewData["Settings"]` ([extensions](extensions.md)) |
+| Extension manifest `settings` | `ExtensionContext` (code and views) and `ViewData["Settings"]` in every extension view ([extensions](extensions.md#manifest)); read-only, no screen edits them |
 
 ## Design-time configuration
 

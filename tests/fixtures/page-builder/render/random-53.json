@@ -1,0 +1,1420 @@
+{
+  "name": "random-53",
+  "input": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "contentWidth": 1065
+        },
+        "children": [
+          "n2",
+          "n6",
+          "n9",
+          "na"
+        ],
+        "layout": {
+          "base": {
+            "rowHeight": 499,
+            "rowMode": "fixed",
+            "colGap": 379,
+            "colSizes": [
+              "120px",
+              "2fr",
+              "1fr",
+              "0fr"
+            ],
+            "rows": 1,
+            "height": 482
+          },
+          "tablet": {
+            "gap": 42,
+            "align": "center",
+            "wrap": false,
+            "colGap": 383,
+            "rows": 4
+          },
+          "mobile": {
+            "direction": "row",
+            "gap": 353,
+            "align": "center",
+            "justify": "around",
+            "wrap": true,
+            "columns": 12,
+            "rowHeight": 423,
+            "rowMode": "auto",
+            "rowGap": 161,
+            "compact": false,
+            "rows": 2
+          },
+          "desktop": {
+            "direction": "row",
+            "gap": 20,
+            "align": "baseline",
+            "justify": "center",
+            "wrap": true,
+            "columns": 10,
+            "rowHeight": 16,
+            "rowMode": "fixed",
+            "compact": true,
+            "rowSizes": [
+              "120px",
+              "auto"
+            ],
+            "height": 259
+          }
+        },
+        "place": {
+          "mobile": {
+            "col": 3,
+            "colSpan": 6,
+            "rowSpan": 4,
+            "y": 377,
+            "w": 515,
+            "h": 472
+          },
+          "desktop": {
+            "col": 8,
+            "row": 4,
+            "colSpan": 7,
+            "rowSpan": 3,
+            "x": 9,
+            "h": 510
+          }
+        },
+        "style": {
+          "base": {
+            "width": {
+              "mode": "percent",
+              "value": 31
+            },
+            "maxHeight": 65.791,
+            "zIndex": 494,
+            "padding": [
+              53,
+              0,
+              35,
+              40
+            ],
+            "bgPosition": "right",
+            "borderWidth": 4.825,
+            "borderSides": [
+              7,
+              23,
+              21,
+              8
+            ],
+            "strokeAlign": "inside",
+            "shadow": "sm",
+            "letterSpacing": -1.287
+          }
+        },
+        "name": "A & B <c> \"d\" 'e'",
+        "vars": {
+          "--a": "1px",
+          "--b": "x;y",
+          "bad": "1"
+        }
+      },
+      "n2": {
+        "id": "n2",
+        "type": "container",
+        "parent": "n1",
+        "props": {
+          "tag": "aside",
+          "href": "mailto:a@b.c"
+        },
+        "children": [
+          "n3",
+          "n4",
+          "n5"
+        ],
+        "layout": {
+          "base": {
+            "mode": "free",
+            "direction": "column",
+            "columns": 21,
+            "rowHeight": 540,
+            "rowMode": "fixed",
+            "compact": true,
+            "rowSizes": [
+              "0fr"
+            ],
+            "height": 33
+          }
+        },
+        "place": {
+          "base": {
+            "col": 10,
+            "colSpan": 1,
+            "x": 381,
+            "w": 299
+          },
+          "tablet": {
+            "col": 12,
+            "colSpan": 14,
+            "x": 574,
+            "y": 577,
+            "h": 171
+          },
+          "desktop": {
+            "col": 6,
+            "row": 7,
+            "rowSpan": 7,
+            "x": 492,
+            "y": 167,
+            "w": 63
+          }
+        },
+        "style": {
+          "tablet": {
+            "alignSelf": "end",
+            "aspectRatio": 8.815
+          },
+          "mobile": {
+            "maxHeight": 72,
+            "flip": "-1 -1",
+            "bgPosition": "bottom",
+            "fillHidden": "hidden",
+            "opacity": 0.592,
+            "textAlign": "right"
+          }
+        },
+        "visibility": {
+          "devices": [
+            "mobile",
+            "tablet"
+          ],
+          "audience": "authenticated",
+          "roles": [
+            1,
+            2,
+            "x"
+          ]
+        },
+        "className": "ok-class"
+      },
+      "n3": {
+        "id": "n3",
+        "type": "text",
+        "parent": "n2",
+        "props": {
+          "content": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "A & B <c> \"d\" 'e'",
+                  "u": false,
+                  "s": false
+                }
+              ]
+            },
+            {
+              "type": "ul",
+              "items": [
+                [
+                  {
+                    "text": "Ünïcödé ✓"
+                  }
+                ],
+                [
+                  {
+                    "text": "Hello",
+                    "b": true
+                  }
+                ]
+              ]
+            },
+            {
+              "type": "h4",
+              "runs": [
+                {
+                  "text": "Hello"
+                }
+              ]
+            }
+          ]
+        },
+        "place": {
+          "base": {
+            "col": 9,
+            "rowSpan": 8,
+            "y": -6,
+            "w": 554,
+            "h": 319
+          },
+          "tablet": {
+            "row": 1,
+            "rowSpan": 8,
+            "w": 298
+          },
+          "desktop": {
+            "col": 3,
+            "colSpan": 11,
+            "rowSpan": 5,
+            "h": 533
+          }
+        },
+        "style": {
+          "desktop": {
+            "minWidth": 227,
+            "maxHeight": 278,
+            "justifySelf": "auto",
+            "borderColor": "#123456",
+            "strokeHidden": "bogus",
+            "textTransform": "lowercase"
+          }
+        }
+      },
+      "n4": {
+        "id": "n4",
+        "type": "post",
+        "parent": "n2",
+        "props": {
+          "alt": "Line\nbreak",
+          "title": "Ünïcödé ✓",
+          "text": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "A & B <c> \"d\" 'e'",
+                  "u": true,
+                  "s": true
+                }
+              ]
+            },
+            {
+              "type": "ol",
+              "items": [
+                [
+                  {
+                    "text": "Hello"
+                  }
+                ],
+                [
+                  {
+                    "text": "Ünïcödé ✓",
+                    "b": true
+                  }
+                ]
+              ]
+            },
+            {
+              "type": "script",
+              "runs": [
+                {
+                  "text": "Ünïcödé ✓"
+                }
+              ]
+            }
+          ],
+          "comments": [
+            {
+              "author": "A & B <c> \"d\" 'e'",
+              "avatar": "/a",
+              "meta": "Hello",
+              "text": "<script>alert(1)</script>"
+            },
+            {
+              "text": "<script>alert(1)</script>"
+            },
+            {
+              "author": "No text"
+            },
+            "bad"
+          ],
+          "commentsLabel": "Line\nbreak",
+          "closeLabel": "Ünïcödé ✓"
+        },
+        "place": {
+          "base": {
+            "row": 4,
+            "colSpan": 1,
+            "rowSpan": 5,
+            "x": 32,
+            "w": 141
+          },
+          "tablet": {
+            "col": 11,
+            "row": 5,
+            "y": 77,
+            "w": 587
+          }
+        },
+        "style": {
+          "base": {
+            "rotation": -63.227,
+            "bgSize": "contain",
+            "borderStyle": "solid",
+            "borderColor": "var(--dnn-color-primary)",
+            "opacity": 1,
+            "lineHeight": 3.805
+          },
+          "desktop": {
+            "flip": "-1 1",
+            "padding": [
+              80,
+              14,
+              13,
+              74
+            ],
+            "margin": [
+              -12,
+              63,
+              -8,
+              -42
+            ],
+            "borderWidth": 27,
+            "strokeAlign": "outside",
+            "radius": [
+              41,
+              12,
+              19,
+              74
+            ],
+            "shadow": {
+              "x": 7,
+              "y": 19,
+              "blur": 16,
+              "spread": -4,
+              "color": "#fff",
+              "inset": false
+            },
+            "fontFamily": "mono",
+            "textAlign": "justify",
+            "textTransform": "capitalize"
+          }
+        },
+        "name": "Ünïcödé ✓"
+      },
+      "n5": {
+        "id": "n5",
+        "type": "post",
+        "parent": "n2",
+        "props": {
+          "author": "Ünïcödé ✓",
+          "avatar": "relative.html",
+          "meta": "Line\nbreak",
+          "image": "/a",
+          "title": "Hello",
+          "text": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "<script>alert(1)</script>",
+                  "u": true,
+                  "s": false
+                }
+              ]
+            },
+            {
+              "type": "ol",
+              "items": [
+                [
+                  {
+                    "text": "A & B <c> \"d\" 'e'"
+                  }
+                ],
+                [
+                  {
+                    "text": "A & B <c> \"d\" 'e'",
+                    "b": true
+                  }
+                ]
+              ]
+            },
+            {
+              "type": "quote",
+              "runs": [
+                {
+                  "text": "Line\nbreak"
+                }
+              ]
+            }
+          ],
+          "comments": [
+            {
+              "author": "",
+              "avatar": "#top",
+              "meta": "<script>alert(1)</script>",
+              "text": "Hello"
+            },
+            {
+              "text": "A & B <c> \"d\" 'e'"
+            },
+            {
+              "author": "No text"
+            },
+            "bad"
+          ],
+          "commentsLabel": "Ünïcödé ✓",
+          "closeLabel": "<script>alert(1)</script>"
+        },
+        "style": {
+          "base": {
+            "margin": [
+              80,
+              -14,
+              37,
+              -36
+            ],
+            "borderWidth": 16.454,
+            "strokeHidden": "visible"
+          },
+          "desktop": {
+            "margin": [
+              78,
+              -41,
+              -50,
+              39
+            ],
+            "background": "rgb(10, 20, 30)",
+            "bgRepeat": "repeat-x",
+            "borderWidth": 37,
+            "fontStyle": "bogus"
+          }
+        },
+        "permissions": {
+          "editRoles": [
+            5,
+            "x",
+            6
+          ]
+        }
+      },
+      "n6": {
+        "id": "n6",
+        "type": "container",
+        "parent": "n1",
+        "props": {
+          "tag": "div",
+          "href": "javascript:alert(1)",
+          "unknownProp": "x"
+        },
+        "children": [
+          "n7",
+          "n8"
+        ],
+        "layout": {
+          "base": {
+            "direction": "row",
+            "gap": 214,
+            "wrap": false,
+            "rowHeight": 514,
+            "rowGap": 83,
+            "rowSizes": [
+              "5000px",
+              "0.25fr",
+              "bad"
+            ]
+          }
+        },
+        "place": {
+          "base": {
+            "col": 14,
+            "row": 1,
+            "colSpan": 4,
+            "rowSpan": 3,
+            "y": 406,
+            "w": 566,
+            "h": 384
+          }
+        },
+        "style": {
+          "base": {
+            "justifySelf": "stretch",
+            "rotation": 13.262,
+            "background": "rgb(10, 20, 30)",
+            "bgPosition": "bottom",
+            "bgRepeat": "repeat",
+            "borderWidth": 7.609,
+            "borderColor": "var(--dnn-color-primary)",
+            "borderSides": [
+              9,
+              18,
+              23,
+              15
+            ],
+            "fillHidden": "visible",
+            "shadow": {
+              "x": 3,
+              "y": 1,
+              "blur": 38,
+              "spread": -4,
+              "color": "red;}",
+              "inset": true
+            },
+            "fontSize": 351.179,
+            "fontWeight": "200",
+            "lineHeight": 3.233,
+            "fontStyle": "bogus"
+          },
+          "mobile": {
+            "flip": "-1 1",
+            "bgPosition": "bogus",
+            "borderWidth": 19.122
+          }
+        }
+      },
+      "n7": {
+        "id": "n7",
+        "type": "links",
+        "parent": "n6",
+        "props": {
+          "items": [
+            {
+              "label": "Ünïcödé ✓",
+              "href": "https://x.org/y?z=1&w=2",
+              "newTab": false,
+              "icon": "arrow-right"
+            },
+            {
+              "label": "Two",
+              "href": "relative.html"
+            },
+            "bad"
+          ],
+          "direction": "row",
+          "variant": "tiles"
+        },
+        "place": {
+          "tablet": {
+            "col": 11,
+            "rowSpan": 6,
+            "y": 107,
+            "h": 399
+          }
+        },
+        "style": {
+          "base": {
+            "width": {
+              "mode": "auto"
+            },
+            "rotation": 235.862,
+            "bgSize": "contain",
+            "strokeAlign": "center",
+            "fontWeight": "500",
+            "textTransform": "bogus",
+            "fontStyle": "normal"
+          }
+        },
+        "locked": true
+      },
+      "n8": {
+        "id": "n8",
+        "type": "button",
+        "parent": "n6",
+        "props": {
+          "label": "A & B <c> \"d\" 'e'",
+          "newTab": true,
+          "variant": "link",
+          "icon": "constructor"
+        },
+        "place": {
+          "base": {
+            "col": 3,
+            "w": 260
+          },
+          "desktop": {
+            "row": 6,
+            "colSpan": 9,
+            "rowSpan": 3,
+            "x": 78,
+            "y": 350,
+            "w": -9
+          }
+        },
+        "style": {
+          "base": {
+            "rotation": 228,
+            "zIndex": 106,
+            "bgRepeat": "bogus",
+            "color": "var(--dnn-color-primary)",
+            "fontFamily": "sans",
+            "fontWeight": "300",
+            "lineHeight": 3,
+            "letterSpacing": 14,
+            "fontStyle": "italic"
+          }
+        },
+        "visibility": {
+          "devices": [
+            "mobile",
+            "tablet"
+          ],
+          "audience": "authenticated"
+        }
+      },
+      "n9": {
+        "id": "n9",
+        "type": "spacer",
+        "parent": "n1",
+        "props": {},
+        "place": {
+          "base": {
+            "col": 3,
+            "row": 2,
+            "rowSpan": 5,
+            "y": 481,
+            "w": 237
+          }
+        },
+        "style": {
+          "desktop": {
+            "width": {
+              "mode": "percent",
+              "value": 81.346
+            },
+            "flip": "-1 -1",
+            "zIndex": 118,
+            "aspectRatio": 3,
+            "background": "hsl(200 50% 50%)",
+            "bgPosition": "left",
+            "overflow": "clip"
+          }
+        },
+        "hidden": true
+      },
+      "na": {
+        "id": "na",
+        "type": "video",
+        "parent": "n1",
+        "props": {
+          "url": "",
+          "title": "Hello",
+          "aspect": "1:1"
+        },
+        "place": {
+          "base": {
+            "col": 2,
+            "row": 6,
+            "colSpan": 4,
+            "rowSpan": 1,
+            "x": 482,
+            "w": 383,
+            "h": 413
+          }
+        },
+        "style": {
+          "base": {
+            "minHeight": 292.781,
+            "justifySelf": "end",
+            "flip": "-1 -1",
+            "margin": [
+              -27,
+              -45,
+              67,
+              -33
+            ],
+            "bgImage": "relative.html"
+          },
+          "tablet": {
+            "flip": "1 -1",
+            "borderStyle": "double",
+            "strokeHidden": "visible",
+            "shadow": "xl",
+            "color": "#123456",
+            "textAlign": "justify"
+          },
+          "mobile": {
+            "alignSelf": "start",
+            "radius": [
+              38,
+              34,
+              6,
+              14
+            ],
+            "opacity": 0
+          },
+          "desktop": {
+            "margin": [
+              -35,
+              79,
+              63,
+              -35
+            ],
+            "background": "#11223344",
+            "bgRepeat": "no-repeat",
+            "borderSides": [
+              40,
+              32,
+              26,
+              1
+            ],
+            "strokeAlign": "inside",
+            "color": "var(--dnn-color-primary)",
+            "fontFamily": "serif",
+            "fontSize": 175
+          }
+        },
+        "visibility": {
+          "devices": [
+            "desktop"
+          ],
+          "audience": "anonymous"
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": "x"
+      }
+    }
+  },
+  "normalized": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "section",
+          "contentWidth": 1065,
+          "anchor": ""
+        },
+        "children": [
+          "n2",
+          "n6",
+          "n9",
+          "na"
+        ],
+        "name": "A & B <c> \"d\" 'e'",
+        "layout": {
+          "base": {
+            "rowHeight": 499,
+            "rowMode": "fixed",
+            "colGap": 379,
+            "colSizes": [
+              "120px",
+              "2fr",
+              "1fr",
+              "1fr"
+            ],
+            "rows": 1,
+            "height": 482
+          },
+          "tablet": {
+            "gap": 42,
+            "align": "center",
+            "wrap": false,
+            "colGap": 383,
+            "rows": 4
+          },
+          "mobile": {
+            "direction": "row",
+            "gap": 353,
+            "align": "center",
+            "justify": "around",
+            "wrap": true,
+            "columns": 12,
+            "rowHeight": 423,
+            "rowMode": "auto",
+            "rowGap": 161,
+            "compact": false,
+            "rows": 2
+          }
+        },
+        "place": {
+          "mobile": {
+            "col": 3,
+            "colSpan": 6,
+            "rowSpan": 4,
+            "y": 377,
+            "w": 515,
+            "h": 472
+          }
+        },
+        "style": {
+          "base": {
+            "width": {
+              "mode": "percent",
+              "value": 31
+            },
+            "maxHeight": 65.79,
+            "zIndex": 494,
+            "padding": [
+              53,
+              0,
+              35,
+              40
+            ],
+            "bgPosition": "right",
+            "borderWidth": 4.83,
+            "borderSides": [
+              7,
+              23,
+              21,
+              8
+            ],
+            "strokeAlign": "inside",
+            "shadow": "sm",
+            "letterSpacing": -1.29
+          }
+        },
+        "vars": {
+          "--a": "1px"
+        }
+      },
+      "n2": {
+        "id": "n2",
+        "type": "container",
+        "parent": "n1",
+        "props": {
+          "tag": "aside",
+          "href": "mailto:a@b.c"
+        },
+        "children": [
+          "n3",
+          "n4",
+          "n5"
+        ],
+        "layout": {
+          "base": {
+            "mode": "free",
+            "direction": "column",
+            "columns": 21,
+            "rowHeight": 540,
+            "rowMode": "fixed",
+            "compact": true,
+            "rowSizes": [
+              "auto"
+            ],
+            "height": 33
+          }
+        },
+        "place": {
+          "base": {
+            "col": 10,
+            "colSpan": 1,
+            "x": 381,
+            "w": 299
+          },
+          "tablet": {
+            "col": 12,
+            "colSpan": 14,
+            "x": 574,
+            "y": 577,
+            "h": 171
+          }
+        },
+        "style": {
+          "tablet": {
+            "alignSelf": "end",
+            "aspectRatio": 8.82
+          },
+          "mobile": {
+            "maxHeight": 72,
+            "flip": "-1 -1",
+            "bgPosition": "bottom",
+            "fillHidden": "hidden",
+            "opacity": 0.59,
+            "textAlign": "right"
+          }
+        },
+        "visibility": {
+          "devices": [
+            "tablet",
+            "mobile"
+          ],
+          "audience": "authenticated",
+          "roles": [
+            1,
+            2
+          ]
+        },
+        "className": "ok-class"
+      },
+      "n3": {
+        "id": "n3",
+        "type": "text",
+        "parent": "n2",
+        "props": {
+          "content": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "A & B <c> \"d\" 'e'"
+                }
+              ]
+            },
+            {
+              "type": "ul",
+              "items": [
+                [
+                  {
+                    "text": "Ünïcödé ✓"
+                  }
+                ],
+                [
+                  {
+                    "text": "Hello",
+                    "b": true
+                  }
+                ]
+              ]
+            },
+            {
+              "type": "h4",
+              "runs": [
+                {
+                  "text": "Hello"
+                }
+              ]
+            }
+          ]
+        },
+        "place": {
+          "base": {
+            "col": 9,
+            "rowSpan": 8,
+            "y": -6,
+            "w": 554,
+            "h": 319
+          },
+          "tablet": {
+            "row": 1,
+            "rowSpan": 8,
+            "w": 298
+          }
+        }
+      },
+      "n4": {
+        "id": "n4",
+        "type": "post",
+        "parent": "n2",
+        "props": {
+          "author": "Author",
+          "avatar": "",
+          "meta": "Just now",
+          "image": "",
+          "alt": "Line\nbreak",
+          "title": "Ünïcödé ✓",
+          "text": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "A & B <c> \"d\" 'e'",
+                  "u": true,
+                  "s": true
+                }
+              ]
+            },
+            {
+              "type": "ol",
+              "items": [
+                [
+                  {
+                    "text": "Hello"
+                  }
+                ],
+                [
+                  {
+                    "text": "Ünïcödé ✓",
+                    "b": true
+                  }
+                ]
+              ]
+            }
+          ],
+          "comments": [
+            {
+              "author": "A & B <c> \"d\" 'e'",
+              "avatar": "/a",
+              "meta": "Hello",
+              "text": "<script>alert(1)</script>"
+            },
+            {
+              "author": "",
+              "avatar": "",
+              "meta": "",
+              "text": "<script>alert(1)</script>"
+            },
+            {
+              "author": "No text",
+              "avatar": "",
+              "meta": "",
+              "text": ""
+            }
+          ],
+          "commentsLabel": "Line\nbreak",
+          "emptyLabel": "Read more",
+          "closeLabel": "Ünïcödé ✓"
+        },
+        "name": "Ünïcödé ✓",
+        "place": {
+          "base": {
+            "row": 4,
+            "colSpan": 1,
+            "rowSpan": 5,
+            "x": 32,
+            "w": 141
+          },
+          "tablet": {
+            "col": 11,
+            "row": 5,
+            "y": 77,
+            "w": 587
+          }
+        },
+        "style": {
+          "base": {
+            "rotation": -63.23,
+            "bgSize": "contain",
+            "borderStyle": "solid",
+            "borderColor": "var(--dnn-color-primary)",
+            "opacity": 1,
+            "lineHeight": 3.81
+          }
+        }
+      },
+      "n5": {
+        "id": "n5",
+        "type": "post",
+        "parent": "n2",
+        "props": {
+          "author": "Ünïcödé ✓",
+          "avatar": "",
+          "meta": "Line\nbreak",
+          "image": "/a",
+          "alt": "",
+          "title": "Hello",
+          "text": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "<script>alert(1)</script>",
+                  "u": true
+                }
+              ]
+            },
+            {
+              "type": "ol",
+              "items": [
+                [
+                  {
+                    "text": "A & B <c> \"d\" 'e'"
+                  }
+                ],
+                [
+                  {
+                    "text": "A & B <c> \"d\" 'e'",
+                    "b": true
+                  }
+                ]
+              ]
+            },
+            {
+              "type": "quote",
+              "runs": [
+                {
+                  "text": "Line\nbreak"
+                }
+              ]
+            }
+          ],
+          "comments": [
+            {
+              "author": "",
+              "avatar": "",
+              "meta": "<script>alert(1)</script>",
+              "text": "Hello"
+            },
+            {
+              "author": "",
+              "avatar": "",
+              "meta": "",
+              "text": "A & B <c> \"d\" 'e'"
+            },
+            {
+              "author": "No text",
+              "avatar": "",
+              "meta": "",
+              "text": ""
+            }
+          ],
+          "commentsLabel": "Ünïcödé ✓",
+          "emptyLabel": "Read more",
+          "closeLabel": "<script>alert(1)</script>"
+        },
+        "style": {
+          "base": {
+            "margin": [
+              80,
+              -14,
+              37,
+              -36
+            ],
+            "borderWidth": 16.45,
+            "strokeHidden": "visible"
+          }
+        },
+        "permissions": {
+          "editRoles": [
+            5,
+            6
+          ]
+        }
+      },
+      "n6": {
+        "id": "n6",
+        "type": "container",
+        "parent": "n1",
+        "props": {
+          "tag": "div",
+          "href": ""
+        },
+        "children": [
+          "n7",
+          "n8"
+        ],
+        "layout": {
+          "base": {
+            "direction": "row",
+            "gap": 214,
+            "wrap": false,
+            "rowHeight": 514,
+            "rowGap": 83,
+            "rowSizes": [
+              "auto",
+              "0.25fr",
+              "auto"
+            ]
+          }
+        },
+        "place": {
+          "base": {
+            "col": 14,
+            "row": 1,
+            "colSpan": 4,
+            "rowSpan": 3,
+            "y": 406,
+            "w": 566,
+            "h": 384
+          }
+        },
+        "style": {
+          "base": {
+            "justifySelf": "stretch",
+            "rotation": 13.26,
+            "background": "rgb(10, 20, 30)",
+            "bgPosition": "bottom",
+            "bgRepeat": "repeat",
+            "borderWidth": 7.61,
+            "borderColor": "var(--dnn-color-primary)",
+            "borderSides": [
+              9,
+              18,
+              23,
+              15
+            ],
+            "fillHidden": "visible",
+            "fontSize": 351.18,
+            "fontWeight": "200",
+            "lineHeight": 3.23
+          },
+          "mobile": {
+            "flip": "-1 1",
+            "borderWidth": 19.12
+          }
+        }
+      },
+      "n7": {
+        "id": "n7",
+        "type": "links",
+        "parent": "n6",
+        "props": {
+          "items": [
+            {
+              "label": "Ünïcödé ✓",
+              "href": "https://x.org/y?z=1&w=2",
+              "newTab": false,
+              "icon": "arrow-right"
+            },
+            {
+              "label": "Two",
+              "href": "#",
+              "newTab": false
+            }
+          ],
+          "direction": "row",
+          "variant": "tiles"
+        },
+        "place": {
+          "tablet": {
+            "col": 11,
+            "rowSpan": 6,
+            "y": 107,
+            "h": 399
+          }
+        },
+        "style": {
+          "base": {
+            "width": {
+              "mode": "auto"
+            },
+            "rotation": 235.86,
+            "bgSize": "contain",
+            "strokeAlign": "center",
+            "fontWeight": "500",
+            "fontStyle": "normal"
+          }
+        },
+        "locked": true
+      },
+      "n8": {
+        "id": "n8",
+        "type": "button",
+        "parent": "n6",
+        "props": {
+          "label": "A & B <c> \"d\" 'e'",
+          "href": "#",
+          "newTab": true,
+          "variant": "link",
+          "icon": "",
+          "iconPosition": "start"
+        },
+        "place": {
+          "base": {
+            "col": 3,
+            "w": 260
+          }
+        },
+        "style": {
+          "base": {
+            "rotation": 228,
+            "zIndex": 106,
+            "color": "var(--dnn-color-primary)",
+            "fontFamily": "sans",
+            "fontWeight": "300",
+            "lineHeight": 3,
+            "letterSpacing": 14,
+            "fontStyle": "italic"
+          }
+        },
+        "visibility": {
+          "devices": [
+            "tablet",
+            "mobile"
+          ],
+          "audience": "authenticated"
+        }
+      },
+      "n9": {
+        "id": "n9",
+        "type": "spacer",
+        "parent": "n1",
+        "props": {},
+        "place": {
+          "base": {
+            "col": 3,
+            "row": 2,
+            "rowSpan": 5,
+            "y": 481,
+            "w": 237
+          }
+        },
+        "hidden": true
+      },
+      "na": {
+        "id": "na",
+        "type": "video",
+        "parent": "n1",
+        "props": {
+          "url": "",
+          "title": "Hello",
+          "aspect": "1:1"
+        },
+        "place": {
+          "base": {
+            "col": 2,
+            "row": 6,
+            "colSpan": 4,
+            "rowSpan": 1,
+            "x": 482,
+            "w": 383,
+            "h": 413
+          }
+        },
+        "style": {
+          "base": {
+            "minHeight": 292.78,
+            "justifySelf": "end",
+            "flip": "-1 -1",
+            "margin": [
+              -27,
+              -45,
+              67,
+              -33
+            ]
+          },
+          "tablet": {
+            "flip": "1 -1",
+            "borderStyle": "double",
+            "strokeHidden": "visible",
+            "shadow": "xl",
+            "color": "#123456",
+            "textAlign": "justify"
+          },
+          "mobile": {
+            "alignSelf": "start",
+            "radius": [
+              38,
+              34,
+              6,
+              14
+            ],
+            "opacity": 0
+          }
+        },
+        "visibility": {
+          "devices": [
+            "desktop"
+          ],
+          "audience": "anonymous"
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 1024,
+        "mobile": 640
+      }
+    }
+  },
+  "error": false,
+  "context": {
+    "mode": "view"
+  },
+  "html": "<div class=\"pe-root pe-node pe-t-page pe-n-n0\"><section class=\"pe-node pe-t-section pe-n-n1\"><div class=\"pe-in\"><a class=\"pe-node pe-t-container pe-n-n2 pe-hide-d ok-class\" href=\"mailto:a@b.c\"><div class=\"pe-node pe-t-text pe-n-n3\"><p>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</p><ul><li>Ünïcödé ✓</li><li><strong>Hello</strong></li></ul><h4>Hello</h4></div><article class=\"pe-node pe-t-post pe-n-n4\"><div class=\"pe-post-head\"><span class=\"pe-post-avatar\"></span><div class=\"pe-post-by\"><strong>Author</strong><span>Just now</span></div></div><h3 class=\"pe-post-title\">Ünïcödé ✓</h3><div class=\"pe-post-text\"><p><u><s>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</s></u></p><ol><li>Hello</li><li><strong>Ünïcödé ✓</strong></li></ol></div><a class=\"pe-post-open\" href=\"#pe-post-n4\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\"/></svg><span>Line\nbreak</span><span class=\"pe-post-count\">3</span></a><div class=\"pe-post-dialog\" id=\"pe-post-n4\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Ünïcödé ✓\"><a class=\"pe-post-backdrop\" href=\"#_\" aria-label=\"Ünïcödé ✓\"></a><div class=\"pe-post-sheet\"><a class=\"pe-post-close\" href=\"#_\" aria-label=\"Ünïcödé ✓\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></a><div class=\"pe-post-head\"><span class=\"pe-post-avatar\"></span><div class=\"pe-post-by\"><strong>Author</strong><span>Just now</span></div></div><h3 class=\"pe-post-title\">Ünïcödé ✓</h3><div class=\"pe-post-text\"><p><u><s>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</s></u></p><ol><li>Hello</li><li><strong>Ünïcödé ✓</strong></li></ol></div><ul class=\"pe-post-comments\"><li><img class=\"pe-post-avatar\" src=\"/a\" alt=\"\" loading=\"lazy\" decoding=\"async\"><div class=\"pe-post-bubble\"><strong>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</strong><span>Hello</span><p>&lt;script&gt;alert(1)&lt;/script&gt;</p></div></li><li><span class=\"pe-post-avatar\"></span><div class=\"pe-post-bubble\"><p>&lt;script&gt;alert(1)&lt;/script&gt;</p></div></li><li><span class=\"pe-post-avatar\"></span><div class=\"pe-post-bubble\"><strong>No text</strong><p></p></div></li></ul></div></div></article><article class=\"pe-node pe-t-post pe-n-n5\"><div class=\"pe-post-head\"><span class=\"pe-post-avatar\"></span><div class=\"pe-post-by\"><strong>Ünïcödé ✓</strong><span>Line\nbreak</span></div></div><img class=\"pe-post-img\" src=\"/a\" alt=\"\" loading=\"lazy\" decoding=\"async\"><h3 class=\"pe-post-title\">Hello</h3><div class=\"pe-post-text\"><p><u>&lt;script&gt;alert(1)&lt;/script&gt;</u></p><ol><li>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</li><li><strong>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</strong></li></ol><blockquote><p>Line<br>break</p></blockquote></div><a class=\"pe-post-open\" href=\"#pe-post-n5\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\"/></svg><span>Ünïcödé ✓</span><span class=\"pe-post-count\">3</span></a><div class=\"pe-post-dialog\" id=\"pe-post-n5\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Hello\"><a class=\"pe-post-backdrop\" href=\"#_\" aria-label=\"&lt;script&gt;alert(1)&lt;/script&gt;\"></a><div class=\"pe-post-sheet\"><a class=\"pe-post-close\" href=\"#_\" aria-label=\"&lt;script&gt;alert(1)&lt;/script&gt;\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></a><div class=\"pe-post-head\"><span class=\"pe-post-avatar\"></span><div class=\"pe-post-by\"><strong>Ünïcödé ✓</strong><span>Line\nbreak</span></div></div><img class=\"pe-post-img\" src=\"/a\" alt=\"\" loading=\"lazy\" decoding=\"async\"><h3 class=\"pe-post-title\">Hello</h3><div class=\"pe-post-text\"><p><u>&lt;script&gt;alert(1)&lt;/script&gt;</u></p><ol><li>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</li><li><strong>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</strong></li></ol><blockquote><p>Line<br>break</p></blockquote></div><ul class=\"pe-post-comments\"><li><span class=\"pe-post-avatar\"></span><div class=\"pe-post-bubble\"><span>&lt;script&gt;alert(1)&lt;/script&gt;</span><p>Hello</p></div></li><li><span class=\"pe-post-avatar\"></span><div class=\"pe-post-bubble\"><p>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</p></div></li><li><span class=\"pe-post-avatar\"></span><div class=\"pe-post-bubble\"><strong>No text</strong><p></p></div></li></ul></div></div></article></a><div class=\"pe-node pe-t-container pe-n-n6\"><nav class=\"pe-node pe-t-links pe-n-n7 pe-links-row pe-links-tiles\"><ul><li><a href=\"https://x.org/y?z=1&amp;w=2\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg>Ünïcödé ✓</a></li><li><a href=\"#\">Two</a></li></ul></nav><a class=\"pe-node pe-t-button pe-n-n8 pe-btn pe-btn-link pe-hide-d\" href=\"#\" target=\"_blank\" rel=\"noopener noreferrer\">A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</a></div><div class=\"pe-node pe-t-video pe-n-na pe-ar-1-1 pe-hide-t pe-hide-m\"></div></div></section></div>",
+  "css": ".pe-root.pe-n-n0{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap}\n.pe-root .pe-n-n1{width:31%;max-height:65.79px;z-index:494;padding:53px 0px 35px 40px;background-position:right;border-width:7px 23px 21px 8px;border-style:solid;box-shadow:0 1px 2px rgba(0,0,0,.08);letter-spacing:-1.29px;--a:1px}.pe-root .pe-n-n1>.pe-in{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap;max-width:1065px;margin-inline:auto}\n@media (max-width:1023.98px){.pe-root .pe-n-n1>.pe-in{gap:42px;align-items:center}}\n@media (max-width:639.98px){.pe-root .pe-n-n1>.pe-in{flex-direction:row;gap:353px;justify-content:space-around;flex-wrap:wrap}}\n.pe-root a.pe-n-n2{display:block;position:relative;height:33px}\n@media (max-width:1023.98px){.pe-root a.pe-n-n2{align-self:end;aspect-ratio:8.82}}\n@media (max-width:639.98px){.pe-root a.pe-n-n2{max-height:72px;scale:-1 -1;background-position:bottom;opacity:0.59;text-align:right}}\n.pe-root .pe-n-n3{position:absolute;left:0px;top:-6px;width:554px;height:319px}\n@media (max-width:1023.98px){.pe-root .pe-n-n3{width:298px}}\n.pe-root .pe-n-n4{position:absolute;left:32px;top:0px;width:141px;height:120px;rotate:-63.23deg;background-size:contain;border-style:solid;border-color:var(--dnn-color-primary);opacity:1;line-height:3.81}\n@media (max-width:1023.98px){.pe-root .pe-n-n4{top:77px;width:587px}}\n.pe-root .pe-n-n5{position:absolute;left:0px;top:0px;width:240px;height:120px;margin:80px -14px 37px -36px;border-width:16.45px;border-style:solid}\n.pe-root .pe-n-n6{display:flex;flex-direction:row;gap:214px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap;justify-self:stretch;rotate:13.26deg;background-color:rgb(10, 20, 30);background-position:bottom;background-repeat:repeat;border-width:9px 18px 23px 15px;border-style:solid;border-color:var(--dnn-color-primary);font-size:351.18px;font-weight:200;line-height:3.23}\n@media (max-width:639.98px){.pe-root .pe-n-n6{scale:-1 1}}\n.pe-root .pe-n-n7{rotate:235.86deg;background-size:contain;font-weight:500;font-style:normal}\n.pe-root a.pe-n-n8{rotate:228deg;z-index:106;color:var(--dnn-color-primary);font-family:system-ui,-apple-system,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;font-weight:300;line-height:3;letter-spacing:14px;font-style:italic}\n.pe-root .pe-n-na{min-height:292.78px;justify-self:end;scale:-1 -1;margin:-27px -45px 67px -33px}\n@media (max-width:1023.98px){.pe-root .pe-n-na{scale:1 -1;border-style:double;box-shadow:0 24px 64px rgba(0,0,0,.18);color:#123456;text-align:justify}}\n@media (max-width:639.98px){.pe-root .pe-n-na{align-self:start;border-radius:38px 34px 6px 14px;opacity:0}}\n@media (min-width:1024px){.pe-root .pe-hide-d{display:none!important}}\n@media (min-width:640px) and (max-width:1023.98px){.pe-root .pe-hide-t{display:none!important}}\n@media (max-width:639.98px){.pe-root .pe-hide-m{display:none!important}}"
+}

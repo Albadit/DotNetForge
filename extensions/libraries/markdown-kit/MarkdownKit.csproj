@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Library extension: shared code other extensions reference (extensions/Directory.Build.props sets the rest). -->
+
+</Project>

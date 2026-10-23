@@ -1,26 +1,125 @@
+@using DotNetForge.Web.Areas.Admin.Navigation
 @model DashboardViewModel
+@inject AdminNavigationService Navigation
 @{
     ViewData["Title"] = "Dashboard";
+    var nav = await Navigation.BuildAsync(Context, "Dashboard");
 }
 
-<p class="muted">Admin overview for <strong>@Model.AppName</strong>.</p>
+<div class="stack-lg">
+    <section class="dashboard-hero" aria-labelledby="welcome">
+        <div>
+            <h2 id="welcome">Welcome back, @Model.Greeting</h2>
+            <p>Manage your pages, media and extensions from here.</p>
+        </div>
+        <div class="btn-group">
+            @if (Model.CanCreatePages)
+            {
+                <form method="post" action="/admin/content/create" class="inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-primary"><icon name="plus" /> New page</button>
+                </form>
+            }
+            @if (Model.CanUpload)
+            {
+                <a class="btn" href="/admin/media#upload"><icon name="upload" /> Upload media</a>
+            }
+            @if (nav.Allows("/admin/api-tokens"))
+            {
+                <a class="btn" href="/admin/api-tokens/create"><icon name="key" /> New API token</a>
+            }
+        </div>
+    </section>
 
-<div class="stat-grid">
-    <div class="stat-card"><div class="stat-num">@Model.Users</div><div class="stat-label">Users</div></div>
-    <div class="stat-card"><div class="stat-num">@Model.Roles</div><div class="stat-label">Roles</div></div>
-    <div class="stat-card"><div class="stat-num">@Model.Pages</div><div class="stat-label">Pages</div></div>
-    <div class="stat-card"><div class="stat-num">@Model.Media</div><div class="stat-label">Media files</div></div>
-    <div class="stat-card"><div class="stat-num">@Model.ApiTokens</div><div class="stat-label">API tokens</div></div>
-    <div class="stat-card"><div class="stat-num">@Model.Webhooks</div><div class="stat-label">Webhooks</div></div>
-    <div class="stat-card"><div class="stat-num">@Model.Extensions</div><div class="stat-label">Extensions</div></div>
-    <div class="stat-card"><div class="stat-num">@Model.AuditEntries</div><div class="stat-label">Audit entries</div></div>
-</div>
+    <div class="grid grid-4">
+        <stat-card icon="pages" label="Pages" value="@Model.Pages.ToString()" href="/admin/content" />
+        <stat-card icon="image" label="Media files" value="@Model.Media.ToString()" href="/admin/media" />
+        @if (nav.Allows("/admin/users"))
+        {
+            <stat-card icon="users" label="Users" value="@Model.Users.ToString()" href="/admin/users" />
+        }
+        else
+        {
+            <stat-card icon="users" label="Users" value="@Model.Users.ToString()" />
+        }
+        @if (nav.Allows("/admin/plugins"))
+        {
+            <stat-card icon="puzzle" label="Enabled extensions" value="@Model.Extensions.ToString()" href="/admin/plugins" />
+        }
+        else
+        {
+            <stat-card icon="puzzle" label="Enabled extensions" value="@Model.Extensions.ToString()" />
+        }
+    </div>
 
-<div class="panel">
-    <h2>System</h2>
-    <table class="kv">
-        <tr><th>CMS version</th><td>@Model.CmsVersion</td></tr>
-        <tr><th>Installed</th><td>@(Model.InstalledAtUtc?.ToString("u") ?? "-")</td></tr>
-        <tr><th>Operating modes</th><td>Traditional · Headless · Hybrid</td></tr>
-    </table>
+    <div class="dashboard-columns">
+        <section class="card" aria-labelledby="activity-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="activity-title">Recent activity</h2>
+                    <p class="card-description">The latest actions in this tenant.</p>
+                </div>
+                @if (nav.Allows("/admin/audit-logs"))
+                {
+                    <a class="btn btn-ghost btn-sm" href="/admin/audit-logs">View all <icon name="arrow-right" size="sm" /></a>
+                }
+            </div>
+            @if (Model.RecentActivity.Count == 0)
+            {
+                <empty-state icon="activity" title="No activity yet" text="Sign-ins, content changes and uploads appear here." compact="true" />
+            }
+            else
+            {
+                <ul class="list">
+                    @foreach (var entry in Model.RecentActivity)
+                    {
+                        <li>
+                            <span class="activity-icon @(entry.Success ? null : "fail")"><icon name="@AuditPresentation.Icon(entry.Action)" size="sm" /></span>
+                            <div class="grow">
+                                <div class="weight-medium">
+                                    @AuditPresentation.Label(entry.Action)
+                                    @if (!string.IsNullOrEmpty(entry.EntityDisplaySnapshot))
+                                    {
+                                        <span class="text-muted">· @entry.EntityDisplaySnapshot</span>
+                                    }
+                                </div>
+                                <div class="text-xs text-muted">@(entry.UserDisplaySnapshot ?? "System")</div>
+                            </div>
+                            @if (!entry.Success)
+                            {
+                                <badge tone="Danger">Failed</badge>
+                            }
+                            <timestamp value="@entry.Timestamp" class="text-xs text-muted text-nowrap" />
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <div class="stack">
+            <section class="card" aria-labelledby="glance-title">
+                <div class="card-header"><h2 class="card-title" id="glance-title">At a glance</h2></div>
+                <div class="card-body">
+                    <dl class="dl">
+                        <dt>Roles</dt><dd>@Model.Roles</dd>
+                        <dt>Active API tokens</dt><dd>@Model.ApiTokens</dd>
+                        <dt>Webhooks</dt><dd>@Model.Webhooks</dd>
+                        <dt>Audit entries</dt><dd>@Model.AuditEntries</dd>
+                    </dl>
+                </div>
+            </section>
+            <section class="card" aria-labelledby="system-title">
+                <div class="card-header"><h2 class="card-title" id="system-title">System</h2></div>
+                <div class="card-body">
+                    <dl class="dl">
+                        <dt>CMS version</dt><dd><badge tone="Accent">v@(Model.CmsVersion)</badge></dd>
+                        <dt>Installed</dt><dd><timestamp value="@Model.InstalledAtUtc" absolute="true" empty="-" /></dd>
+                        <dt>Modes</dt><dd>Traditional · Headless · Hybrid</dd>
+                    </dl>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    @await Component.InvokeAsync("ExtensionWidgets")
 </div>

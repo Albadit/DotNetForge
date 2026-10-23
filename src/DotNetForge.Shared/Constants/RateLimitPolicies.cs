@@ -11,4 +11,7 @@ public static class RateLimitPolicies
 
     /// <summary>The headless API.</summary>
     public const string Api = "api";
+
+    /// <summary>Anonymous form posts on the public site, e.g. an extension's contact form (spam protection).</summary>
+    public const string Forms = "forms";
 }

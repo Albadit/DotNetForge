@@ -19,4 +19,15 @@
     <ProjectReference Include="..\..\src\DotNetForge.Web\DotNetForge.Web.csproj" />
   </ItemGroup>
 
+  <!--
+    Extensions the tests load at run time (the fixtures under tests/fixtures/extensions and the samples under
+    extensions/): built first so their bin/ exists, but never referenced - the host loads them like any extension.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\fixtures\extensions\test-kit\TestKit.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\extensions\libraries\markdown-kit\MarkdownKit.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\extensions\modules\contact-form\ContactForm.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\extensions\plugins\seo-toolkit\SeoToolkit.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>

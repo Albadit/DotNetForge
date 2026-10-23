@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Widget extension: Views/Widget.cshtml on the dashboard, data from WeatherService (extensions/Directory.Build.props
+       sets the rest). -->
+
+</Project>

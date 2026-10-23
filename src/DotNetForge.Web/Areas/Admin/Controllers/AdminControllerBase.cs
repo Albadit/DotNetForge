@@ -22,10 +22,13 @@ public abstract class AdminControllerBase : Controller
     protected Guid? CurrentUserId =>
         Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : null;
 
-    /// <summary>Whether any of the signed-in user's roles grants <paramref name="action"/> in <paramref name="area"/>.</summary>
+    /// <summary>
+    /// Whether any of the signed-in user's roles grants <paramref name="action"/> in <paramref name="area"/> - from the
+    /// roles' stored grants in the user's tenant, so custom roles count.
+    /// </summary>
     protected bool Can(string area, string action) =>
         HttpContext.RequestServices.GetRequiredService<IPermissionService>()
-            .HasAny(User.FindAll(ClaimTypes.Role).Select(c => c.Value), area, action);
+            .HasAny(TenantId, User.FindAll(ClaimTypes.Role).Select(c => c.Value), area, action);
 
     /// <summary>
     /// Whether the user may perform <paramref name="anyAction"/> on any record, or <paramref name="ownAction"/> on a
@@ -33,4 +36,18 @@ public abstract class AdminControllerBase : Controller
     /// </summary>
     protected bool CanModify(string area, string anyAction, string ownAction, Guid? createdById) =>
         Can(area, anyAction) || (createdById is not null && createdById == CurrentUserId && Can(area, ownAction));
+
+    /// <summary>
+    /// Whether the user may edit <paramref name="page"/> (.docs/features/content-pages-and-routing.md#page-permissions):
+    /// a page-level rule decides first - blocked for this user, or allowed by a user or role edit grant - otherwise
+    /// <c>Collection types</c> update (update.own on pages they created).
+    /// </summary>
+    protected async Task<bool> CanEditPageAsync(DotNetForge.Shared.Entities.Page page) =>
+        await PageEditRuleAsync(page) ?? CanModify(DotNetForge.Shared.Constants.PermissionAreas.CollectionTypes,
+            DotNetForge.Shared.Constants.PermissionActions.Update, DotNetForge.Shared.Constants.PermissionActions.UpdateOwn, page.CreatedById);
+
+    /// <summary>The page's own rule for this user: false = blocked, true = allowed, null = none.</summary>
+    protected Task<bool?> PageEditRuleAsync(DotNetForge.Shared.Entities.Page page) =>
+        HttpContext.RequestServices.GetRequiredService<PagePermissionService>()
+            .EditRuleAsync(page.Id, TenantId, User, HttpContext.RequestAborted);
 }

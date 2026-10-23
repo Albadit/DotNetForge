@@ -2,150 +2,195 @@
 
 ## Purpose
 
-Read-only list of user accounts in the active tenant with their roles, status and last sign-in. Used by Super
-Admins and Admins to see who has access. After a fresh install it contains only the Super Admin created by
-[Setup](setup.md).
+Lists the admin users of the active tenant and lets holders of the **Users** grants create, edit, enable/disable and
+delete them and assign their roles. The edit screen shows each user's effective permissions - what their roles allow
+together. After a fresh install the list contains only the Super Admin created by [Setup](setup.md).
 
 ## Route / Navigation
 
 | Item | Value |
 | --- | --- |
-| Route | `GET /admin/users` |
-| Navigation entry | Sidebar → **Settings · Administration Panel** → **Users** |
-| Parameters / children | none |
+| Routes | `GET /admin/users` (list) · `GET /admin/users/create` · `POST /admin/users/create` · `GET /admin/users/{id}` (edit) · `POST /admin/users/{id}` (save) · `POST /admin/users/{id}/enable` · `POST /admin/users/{id}/disable` · `POST /admin/users/{id}/delete` |
+| Sidebar entry | **Settings → Administration Panel → Users** (`AdminNavigation.Tree`) |
+| Breadcrumbs | Settings › Administration Panel › Users › *Create user* / *Edit user* |
+| Parameters | none on the list (search, filters, sort and paging are client-side) |
+| Linked from | the sidebar; the **Users** KPI card on the [Dashboard](dashboard.md); member links on the [Roles](roles.md) editor |
 
 ## Relevant source files
 
 ```text
-src/DotNetForge.Web/Areas/Admin/Controllers/AdminListControllers.cs   UsersController + nested UserListItem record
-src/DotNetForge.Web/Areas/Admin/Views/Users/Index.cshtml              table
-src/DotNetForge.Shared/Entities/User.cs           entity
+src/DotNetForge.Web/Areas/Admin/Controllers/UsersController.cs   list, form, POST actions; UserListItem, UserFormModel, RoleOption
+src/DotNetForge.Web/Services/UserManagementService.cs            rules, persistence, audit (UserInput, ManagementActor)
+src/DotNetForge.Web/Areas/Admin/Views/Users/Index.cshtml         list with toolbar, Initials() helper
+src/DotNetForge.Web/Areas/Admin/Views/Users/Edit.cshtml          create / edit form, account, effective permissions, status, delete
+src/DotNetForge.Core/Validation/PasswordPolicy.cs, InputValidation.cs (EmailValidator)
+src/DotNetForge.Shared/Entities/User.cs                          entity
 ```
 
 ## Page layout
 
 ```text
-Users (_AdminLayout, title "Users")
-├── "Users with access to this tenant."
-└── table.data: Email · Name · Roles · Status · Last login
+List - Users (h1) · [Create user]
+└── section.card[data-collection][data-page-size=25]
+    ├── card-header: **All users** · "N total"
+    ├── .toolbar (JS only): search · All roles ▾ · Any status ▾
+    ├── table: **User** ⇅ (avatar, name link, "You" badge, email) · **Roles** · **Status** ⇅ · **Last sign-in** ⇅ · row menu ⋯ (Edit/View, Enable/Disable, Delete)
+    └── .pagination (JS, more than 25 matching rows)
+
+Form - "Create user" / "Edit user" (h1, the email as description)
+├── form.editor-main
+│   ├── card **Details**: First name · Last name · Email* · Password* (create) / New password (edit, optional)
+│   └── card **Roles***: one checkbox row per tenant role (built-in badge, description) · [Manage roles]
+│       · footer: Cancel · [Create user] / [Save changes] (the form has no status: see Disable access)
+└── aside.editor-aside (edit only)
+    ├── card **Account**: status badge · Created · Last sign-in
+    ├── card **Effective permissions**: per catalog area - "Full access", action badges or "No access"
+    ├── card **Disable access** / **Enable access** (not on your own account)
+    └── card.card-danger **Delete user** (not on your own account)
 ```
 
 ## Components
 
-`UserListItem(Email, Name, Status, LastLogin, Roles)` rows ordered by email. **Name** = first + last name trimmed
-(blank if neither). **Roles** = comma-joined role names. **Status** badge: `Enabled` → ok, otherwise warn.
-**Last login** in `"u"` format or "never".
+| Element | Rendering |
+| --- | --- |
+| **User** | `.avatar` with up to two initials; name (first + last) as a link to the form with the email below, or only the email; **You** on your own row |
+| **Roles** | one badge per role (`Accent` when the name contains "Admin"), "No role" when none |
+| **Status** | `Enabled` → `Success`, `Disabled` → `Danger` dot badge |
+| **Last sign-in** | `<timestamp>`, "Never" before the first sign-in |
+| Row menu (⋯) | **Edit** (or **View** without `Users` / `update`); **Enable**/**Disable** (with `update`) and **Delete** (with `delete`, confirmation dialog) - not on your own row; these post `returnTo=list`, so the result toast shows on the list |
+| Role checkbox | `name="RoleIds" value="{roleId}"`; `Super Admin` is disabled with "Only a Super Admin can give this role." for non-Super Admins (a held one is posted as a hidden field) |
+| Effective permissions | `PermissionCatalog.Areas` × the saved roles' grants from `IRoleGrantStore` (Super Admin: everything) |
 
 ## Functionality
 
-Display only - no invite, create, edit, disable, delete, role assignment or password reset.
+| Action | What happens |
+| --- | --- |
+| Create | `UserManagementService.CreateAsync`: validates, hashes the password (`IPasswordHasher`), creates the user **enabled** (the form has no status field), adds the role links → toast "Created … They can sign in now." and the edit form. |
+| Save | `UpdateAsync`: details and role links (never the status - **Disable user** / **Enable user** change it); the password only when a new one is entered → toast "Saved. Role changes apply the next time the user signs in." |
+| Enable / Disable | `SetStatusAsync` → toast; a disabled user can't sign in and an open session ends within 30 seconds. |
+| Delete | `DeleteAsync` after a confirmation dialog: role links, then the user → list with a toast. Audit entries keep the user's name snapshot. |
+
+Role changes reach a signed-in user at their next sign-in (roles are claims); [grant](roles.md) changes apply at once.
 
 ## Data used by the page
 
-`Users` of the active tenant with `UserRoles → Role.Name`.
+Single-table queries combined in memory (every provider, including MongoDB): `Users` of the tenant, `UserRoles` of
+those users, `Roles` of the tenant. Links to a role outside the tenant are dropped.
 
 ## State
 
-None.
+Server: the `Users` / `UserRoles` rows. Client: the list's search, filters, sort and page (lost on reload).
 
 ## Permissions
 
-`AdminArea` + `[Authorize(Roles = "Super Admin,Admin")]`; others → [Access denied](access-denied.md).
+| Route | Requires |
+| --- | --- |
+| list, form (`GET`) | `AdminArea` + `Users` / `read` |
+| create (`GET`/`POST`) | + `Users` / `create` |
+| save, enable, disable | + `Users` / `update` |
+| delete | + `Users` / `delete` |
+
+Defaults: Super Admin and Admin. Without `update` the form is read-only ("View only"). Rules that hold regardless of
+grants ([authorization → safety rules](../features/authorization.md#safety-rules-for-users-and-roles)): only a Super
+Admin assigns `Super Admin` or changes/disables/deletes a Super Admin; the last enabled Super Admin stays; nobody
+disables or deletes their own account.
 
 ## Validation / error handling / loading
 
-Not applicable / global only / one server-side query.
+Errors are shown in `<form-errors />` with the input kept (the password is cleared); enable/disable/delete errors are
+toasts.
+
+| Rule | Message |
+| --- | --- |
+| Email valid, at most 256 characters | "Enter a valid email address (at most 256 characters)." |
+| Email unique in the tenant (case-insensitive) | "Another user already uses …" |
+| Names at most 100 characters each | "First and last name are limited to 100 characters each." |
+| Password (required on create) | `PasswordPolicy`: 8+ characters, a letter, a number, not a common password |
+| At least one role of the tenant | "Choose at least one role." / "One of the chosen roles no longer exists. Reload the page and try again." |
+| `Super Admin` role by a non-Super Admin | "Only a Super Admin can give the Super Admin role." |
+| Changing a Super Admin by a non-Super Admin | "Only a Super Admin can change or delete a Super Admin." |
+| Last enabled Super Admin | "This is the last enabled Super Admin. Give another user the Super Admin role first." |
+| Own account | "You can't disable your own account." / "You can't delete your own account." |
 
 ## Empty states
 
-None handled; at least the installing admin exists.
+| Case | Text |
+| --- | --- |
+| Search/filters match nothing (JS) | "No user matches the search or filters." |
+| User without roles (effective permissions) | "No roles, so no permissions." |
 
 ## User interactions
 
-None.
+Search, filter, sort and page the list; open a user; edit and save; enable/disable; delete (confirmation dialog,
+`data-confirm`).
 
 ## Dependencies
 
-`UsersController` → `DotNetForgeDbContext`.
+```text
+UsersController
+├── DotNetForgeDbContext (reads)
+├── IRoleGrantStore        effective permissions
+└── UserManagementService
+    ├── DotNetForgeDbContext
+    ├── IPasswordHasher
+    └── IAuditService      user.created / user.updated / user.deleted / role.changed
+```
 
 ## Page flow
 
 ```mermaid
 flowchart LR
-    A["GET /admin/users"] --> B{"Super Admin or Admin?"}
-    B -- no --> D["/account/denied"]
-    B -- yes --> C["Query tenant users + role names"] --> E[Table]
+    L["GET /admin/users"] --> E["GET /admin/users/{id}"]
+    L --> C["GET /admin/users/create"] --> P1["POST create"] -->|ok| E
+    E --> S["POST /admin/users/{id}"] -->|ok| E
+    S -->|error| E2["form + error"]
+    E --> T["POST {id}/enable | disable"] --> E
+    E --> X["POST {id}/delete"] --> L
 ```
 
 ## Related pages
 
-[Roles](roles.md), [Dashboard](dashboard.md), `GET /api/users` ([headless API](../features/headless-api.md)).
+[Roles](roles.md), [Dashboard](dashboard.md), [Audit Logs](audit-logs.md), `GET /api/users`
+([headless API](../features/headless-api.md)).
 
 ## Important implementation details
 
-- `LastLoginDate` is updated by `AuthService` on each successful sign-in.
-- Lockout state (`FailedLoginCount`, `LockoutEndUtc`) is not shown.
-- A user whose `Status` is changed to anything but `Enabled` (or whose row is deleted) - today only possible in the
-  database - loses their admin session within 30 seconds: the cookie's `OnValidatePrincipal` calls
-  `AuthService.IsActiveAsync` (cached 30 s per user) and signs them out ([sign in → State](login.md#state)).
-  Role changes still take effect only at the next sign-in.
+- Audit: `user.created`, `user.updated` (details `Enabled`/`Disabled` for the status actions), `user.deleted`, and
+  `role.changed` ("Role assignment changed") when a save changes the roles.
+- Emails are stored trimmed as entered; sign-in compares them exactly (`AuthService`), uniqueness is checked
+  case-insensitively.
+- `LastLoginDate` is updated by `AuthService` on each successful sign-in; lockout state is not shown.
+- The whole tenant's user list is rendered in one response; pagination only hides rows.
 
 ## Known limitations
 
-No user management at all (see [Planned](#planned-not-implemented)); the only way to add users today is direct
-database access or code.
+- No invitations or password-reset emails (`IEmailSender` has no implementation): share the initial password yourself.
+- No optimistic concurrency: two people saving the same user at once - the last save wins.
+- No server-side paging or search.
 
 ## Planned (not implemented)
 
 Target behaviour from the original product specification. Nothing in this section exists in the code unless marked ✔.
-Role model, field rules and invariants: [authorization](../features/authorization.md#planned-not-implemented).
 
 ### Requirements
 
-- Holders of the **Users** permission (default `Super Admin`, `Admin`) can: list users with roles, status and last
-  login ✔; **create**, **edit**, **disable**, **delete** users; **assign roles**.
-- The screen lists every user with access to the admin of the active tenant.
-- Only a Super Admin may create, edit, disable or delete a Super Admin user, or assign the `Super Admin` role.
-- Effective permissions of a user are the union of its roles; the screen surfaces them when roles are combined.
-
-### User flows
-
-| Flow | Steps |
-| --- | --- |
-| Create user | **Create user** → First name, Last name (optional), Email (required, unique), Password (`PasswordPolicy`), one or more Roles, Status (default `Enabled`) → save: validate email format/uniqueness and password, hash with `IPasswordHasher`, set `CreatedDate`. |
-| Edit user | Open a user → change details and role assignments → save (same validation; password optional). |
-| Assign roles | Open a user → add/remove roles → save. Blocked if it removes the last enabled Super Admin or produces a disallowed conflicting assignment. Audited as `role.changed`. |
-| Disable user | Set Status to `Disabled` (form or list action) → save. Blocked for the last enabled Super Admin and for the actor's own account. The user can no longer sign in (✔ `AuthService` rejects `Disabled`) and its active sessions end on the next request (✔ within 30 s, `AuthService.IsActiveAsync`). |
-| Delete user | **Delete** → confirm. Blocked for the last enabled Super Admin and the actor's own account. Audit entries written by the user are kept (✔ `AuditLogEntry.UserId` has no foreign key; `UserDisplaySnapshot` keeps the name). |
-
-### Rules and validation
-
-- Required: Email, Password (on create), at least one role, Status (`Enabled` / `Disabled`).
-- Email: valid format (`EmailValidator`), unique within the tenant (✔ unique index `(TenantId, Email)`).
-- Password: `PasswordPolicy`; never displayed, returned or logged.
-- Every POST: antiforgery and an audit entry ([audit logging](../features/audit-logging.md#planned-not-implemented)).
+- Invite users by email instead of setting their password (needs `IEmailSender`, [email](../features/email.md)).
+- Flag semantically conflicting role combinations (effective permissions are the union ✔ and are shown ✔).
 
 ### Edge cases
 
-- **Last enabled Super Admin:** disabling, deleting or removing its `Super Admin` role is rejected with a clear error.
-- **Own account:** a user cannot disable or delete itself through this screen (prevents self-lockout).
-- **Conflicting roles:** effective permissions are the union; semantically conflicting combinations (a restricting
-  role plus one granting the same area) are flagged and the resulting effective permissions are shown.
-- **Active sessions:** disabling a user invalidates its sessions on the next request (✔ within 30 s -
-  `DependencyRegistration.ValidateSessionAsync`; role changes are not re-read). API tokens are separate credentials
-  ([API tokens](api-tokens.md)).
-- **Duplicate email** on create or edit: validation error, no partial user is written.
 - **Concurrent edits** of the same user: optimistic concurrency with a conflict notice
   ([authorization](../features/authorization.md#edge-cases)).
+- **Role change of a signed-in user** applies on the next request (today: next sign-in).
 
 ### Acceptance criteria
 
-- [ ] The Users screen lists users and supports create, edit, disable, delete, assign roles, view last login and view account status (list, last login and status ✔ `UsersController`).
-- [ ] A user cannot disable or delete their own account.
-- [ ] Conflicting multi-role assignments resolve to the union of permissions and display the resulting effective permissions.
+- [x] The Users screen lists users and supports create, edit, disable, delete, assign roles, view last login and view account status (`UsersController`, `UserManagementService`).
+- [x] A user cannot disable or delete their own account.
+- [x] Multi-role assignments resolve to the union of permissions and the screen shows the resulting effective permissions (conflicts are not flagged).
 
 ## Extension points
 
-User creation belongs in a service (hash with `IPasswordHasher`, validate with `PasswordPolicy`/`EmailValidator`,
-respect the `(TenantId, Email)` unique index), called from new POST actions on `UsersController`, audited with new
-`AuditActions` constants.
+New user rules belong in `UserManagementService`. Actions in a view go in `@section Actions` (header) or a
+`.col-actions` cell; destructive ones use `data-confirm` and report with `TempData["Success"]`/`["Error"]` toasts
+([design system → feedback](../architecture/design-system.md#feedback)).

@@ -24,6 +24,32 @@ public sealed class ManifestValidationTests
         Permissions = new[] { "content.read", "media.read" },
     };
 
+    [Theory]
+    [InlineData("bin/Acme.Seo.dll", true)]
+    [InlineData("Acme.dll", true)]
+    [InlineData("bin/net10.0/Acme_Seo-2.dll", true)]
+    [InlineData("../other/Acme.dll", false)]
+    [InlineData("bin/../../Acme.dll", false)]
+    [InlineData("/abs/Acme.dll", false)]
+    [InlineData("C:/Acme.dll", false)]
+    [InlineData(@"bin\Acme.dll", false)]
+    [InlineData("bin/.hidden.dll", false)]
+    [InlineData("bin/Acme.exe", false)]
+    [InlineData("", false)]
+    public void Assembly_must_be_a_dll_inside_the_extension_folder(string assembly, bool valid)
+    {
+        var manifest = ValidManifest();
+        manifest.Assembly = assembly;
+
+        var result = _validator.Validate(manifest);
+
+        Assert.Equal(valid, result.IsValid);
+        if (!valid)
+        {
+            Assert.Contains(result.Errors, e => e.Field == "Assembly");
+        }
+    }
+
     [Fact]
     public void Valid_manifest_passes()
     {

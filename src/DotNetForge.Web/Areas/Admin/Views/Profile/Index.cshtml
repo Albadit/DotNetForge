@@ -1,0 +1,111 @@
+@using DotNetForge.Web.Services
+@model ProfileController.ProfileViewModel
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = "Profile";
+    ViewData["Description"] = "Your own account: how your name and email appear, and your password.";
+    var details = Model.Details;
+    var initials = string.Concat(Model.DisplayName
+        .Split(new[] { ' ', '@', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0]));
+}
+
+<div class="editor">
+    <div class="editor-main">
+        <form method="post" action="/admin/profile" novalidate>
+            @Html.AntiForgeryToken()
+            <section class="card" aria-labelledby="details-title">
+                <div class="card-header"><h2 class="card-title" id="details-title">Details</h2></div>
+                <div class="card-body stack">
+                    @if (Model.Form == "details")
+                    {
+                        <form-errors />
+                    }
+                    <div class="form-grid">
+                        <div class="field">
+                            <label class="field-label" for="FirstName">First name<span class="field-optional">optional</span></label>
+                            <input id="FirstName" name="FirstName" value="@details.FirstName" maxlength="@UserManagementService.MaxNameLength" autocomplete="given-name" />
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="LastName">Last name<span class="field-optional">optional</span></label>
+                            <input id="LastName" name="LastName" value="@details.LastName" maxlength="@UserManagementService.MaxNameLength" autocomplete="family-name" />
+                        </div>
+                        <div class="field span-2">
+                            <label class="field-label" for="Email">Email<span class="field-required" aria-hidden="true">*</span></label>
+                            <input id="Email" name="Email" type="email" value="@details.Email" required maxlength="@UserManagementService.MaxEmailLength"
+                                   autocomplete="email" aria-describedby="email-hint" />
+                            <span class="field-hint" id="email-hint">You sign in with this address.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary"><icon name="check" /> Save details</button>
+                </div>
+            </section>
+        </form>
+
+        <form method="post" action="/admin/profile/password" novalidate>
+            @Html.AntiForgeryToken()
+            <section class="card" aria-labelledby="password-title">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" id="password-title">Password</h2>
+                        <p class="card-description">At least 8 characters with a letter and a number.</p>
+                    </div>
+                </div>
+                <div class="card-body stack">
+                    @if (Model.Form == "password")
+                    {
+                        <form-errors />
+                    }
+                    <div class="field">
+                        <label class="field-label" for="CurrentPassword">Current password<span class="field-required" aria-hidden="true">*</span></label>
+                        <input id="CurrentPassword" name="CurrentPassword" type="password" required autocomplete="current-password" />
+                    </div>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label class="field-label" for="NewPassword">New password<span class="field-required" aria-hidden="true">*</span></label>
+                            <input id="NewPassword" name="NewPassword" type="password" required autocomplete="new-password" />
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="ConfirmPassword">Confirm new password<span class="field-required" aria-hidden="true">*</span></label>
+                            <input id="ConfirmPassword" name="ConfirmPassword" type="password" required autocomplete="new-password" />
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary"><icon name="key" /> Change password</button>
+                </div>
+            </section>
+        </form>
+    </div>
+
+    <aside class="editor-aside">
+        <section class="card" aria-labelledby="account-title">
+            <div class="card-body stack">
+                <div class="profile-identity">
+                    <span class="avatar avatar-lg" aria-hidden="true">@initials</span>
+                    <div class="stack-sm">
+                        <h2 class="card-title" id="account-title">@Model.DisplayName</h2>
+                        <span class="text-sm text-muted">@Model.Email</span>
+                    </div>
+                </div>
+                <dl class="dl dl-compact">
+                    <dt>Roles</dt>
+                    <dd>
+                        <span class="cluster">
+                            @foreach (var role in Model.Roles)
+                            {
+                                <badge tone="@(role.Contains("Admin") ? Tone.Accent : Tone.Neutral)">@role</badge>
+                            }
+                        </span>
+                    </dd>
+                    <dt>Member since</dt>
+                    <dd><timestamp value="@Model.Created" /></dd>
+                    <dt>Last sign-in</dt>
+                    <dd><timestamp value="@Model.LastLogin" empty="Never" /></dd>
+                </dl>
+                <p class="text-xs text-muted">Roles and status are changed by an administrator on the Users screen.</p>
+            </div>
+        </section>
+    </aside>
+</div>

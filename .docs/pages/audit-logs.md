@@ -10,72 +10,105 @@ Read-only. What gets logged and how: [audit logging](../features/audit-logging.m
 | Item | Value |
 | --- | --- |
 | Route | `GET /admin/audit-logs` |
-| Navigation entry | Sidebar → **Settings · Administration Panel** → **Audit Logs** |
-| Parameters | none (no paging, filter or search parameters) |
+| Sidebar entry | **Settings → Administration Panel → Audit Logs** (`AdminNavigation.Tree`) |
+| Breadcrumbs | Settings › Administration Panel › **Audit Logs** |
+| Parameters | none - search, filters, sort and paging are client-side over the 100 loaded entries, not URL parameters |
+| Linked from | the sidebar; **View all** on the dashboard's "Recent activity" card ([Dashboard](dashboard.md), shown only to users who may open this screen) |
 
 ## Relevant source files
 
 ```text
-src/DotNetForge.Web/Areas/Admin/Controllers/AdminListControllers.cs   AuditLogsController
-src/DotNetForge.Web/Areas/Admin/Views/AuditLogs/Index.cshtml          table
-src/DotNetForge.Shared/Entities/AuditLogEntry.cs  entity
+src/DotNetForge.Web/Areas/Admin/Controllers/AuditLogsController.cs     AuditLogsController
+src/DotNetForge.Web/Areas/Admin/Views/AuditLogs/Index.cshtml          card with toolbar + table
+src/DotNetForge.Web/Ui/AuditPresentation.cs                           friendly action labels (Label) and icons (Icon)
+src/DotNetForge.Web/Ui/UiTagHelpers.cs                                <timestamp>, <badge>, <icon>
+src/DotNetForge.Web/wwwroot/js/forge/ui.js                            data-collection search / filter / sort / paging
+src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs         sidebar entry, breadcrumbs
+src/DotNetForge.Shared/Entities/AuditLogEntry.cs                      entity
 src/DotNetForge.Web/Services/AuditService.cs                          writer (IAuditService, src/DotNetForge.Shared/Auditing/IAuditService.cs)
 ```
 
 ## Page layout
 
 ```text
-Audit Logs (_AdminLayout, title "Audit Logs")
-├── "The 100 most recent actions. Audit logs are append-only and cannot be edited or deleted."
-└── table.data: When (UTC) · User · Action · Entity · Result · IP
+_AdminLayout - top bar: Settings › Administration Panel › Audit Logs
+Audit Logs (h1) - "The 100 most recent actions in this tenant. Entries are append-only: they can't be edited or deleted."
+└── section.card[data-collection][data-page-size=25]
+    ├── card-header: **Activity** · "N total" (data-collection-count)
+    ├── .toolbar (JS only): search "Search user, action, entity or IP" · **All areas** ▾ · **Any result** ▾ (Succeeded, Failed)
+    ├── table.table.table-stack: **When** ⇅ · **Action** ⇅ · **User** ⇅ · **Entity** · **Result** · **IP address**
+    └── .pagination (JS, only when more than 25 entries match)
 ```
 
 ## Components
 
-| Column | Source |
+| Column | Source / rendering |
 | --- | --- |
-| When (UTC) | `Timestamp` (`"u"`) |
-| User | `UserDisplaySnapshot` or `-` |
-| Action | `Action` in `<code>` (e.g. `content.updated`) |
-| Entity | `-` when `EntityType` is null, else `EntityType EntityDisplaySnapshot` |
-| Result | badge **ok** / **fail** from `Success` |
-| IP | `IpAddress` |
+| **When** | `<timestamp value="Timestamp">` - relative time ("just now", "3 h ago", "3 Oct 2026"), exact UTC time in the tooltip; sorts by the ISO value |
+| **Action** | `AuditPresentation.Label(Action)` as `.cell-primary` (e.g. "Updated a page") with the raw key in `<code class="cell-sub">` (`content.updated`); unknown keys (extension-defined, e.g. `contactform.submitted`) show the raw key in both places |
+| **User** | `UserDisplaySnapshot`, or "System" when it is null (anonymous requests) |
+| **Entity** | `-` when `EntityType` is null, else `EntityType` (muted) + `EntityDisplaySnapshot` |
+| **Result** | `<badge dot="true">` **Succeeded** (`Success` tone) or **Failed** (`Danger` tone) from `Success` |
+| **IP address** | `IpAddress` (monospace, muted) |
 
 `UserAgent`, `EntityId`, `Details` and `TenantId` are not shown.
 
+Toolbar ([design system → behaviours](../architecture/design-system.md#behaviours)), revealed only when scripts run:
+
+| Control | Matches |
+| --- | --- |
+| Search | the row's whole text (relative time, label, raw key, user, entity, result, IP), case-insensitive substring |
+| Area filter (**All areas** + the distinct first segment of the loaded actions, alphabetical: e.g. `apitoken`, `content`, `user`) | the row's `data-area` |
+| Result filter (**Any result** / **Succeeded** / **Failed**) | the row's `data-result` (`ok` / `fail`) |
+| Sort | **When** by date, **Action** by the label text, **User** by text |
+
 ## Functionality
 
-Display only.
+Display only. Search, filters, sort and pagination are progressive enhancements in `ui.js` over the 100
+server-rendered rows: without JavaScript the toolbar stays hidden and all 100 rows show newest first on one page.
+They never query the server, so they only ever see these 100 entries.
 
 ## Data used by the page
 
 `AuditLogs` where `TenantId == active tenant || TenantId == null`, ordered by `Id` descending, `Take(100)`, as full
 entities. Entries without a tenant are those written by an anonymous request - failed sign-ins
-(`user.login.failed`), where no account was resolved - and stay visible; entries of other tenants never appear.
+(`user.login.failed`), where no account was resolved, and anonymous extension actions such as the Contact Form's
+`contactform.submitted` - and stay visible; entries of other tenants never appear
+([audit logging → tenant scoping](../features/audit-logging.md#tenant-scoping-of-reads)).
 
 ## State
 
-None.
+No server state. DOM only: search text, filters, sort and current page - lost on reload.
 
 ## Permissions
 
-`AdminArea` + `[Authorize(Roles = "Super Admin,Admin")]`; others → [Access denied](access-denied.md).
+`AdminArea` (on `AdminControllerBase`) + `[RequirePermission(Audit logs, read)]` (default: Super Admin, Admin); others
+→ [Access denied](access-denied.md). The sidebar link and the dashboard's **View all** are hidden from users who fail that check
+(`AdminNavigationService`; hiding is not the gate). No finer-grained check.
 
 ## Validation / error handling / loading
 
-Not applicable / global only / one server-side query.
+Not applicable / global only / one server-rendered response, no indicators.
 
 ## Empty states
 
-"No audit entries yet." row - in practice the first sign-in already writes `user.login`.
+| Case | Text |
+| --- | --- |
+| No entries (in practice the first sign-in already writes `user.login`) | "No audit entries yet." |
+| Search/filters match nothing (JS) | "No entry matches the search or filters." (`[data-collection-empty]`) |
 
 ## User interactions
 
-None.
+Typing in the search box, choosing an area or result, clicking a sortable column header (toggles ascending /
+descending, `aria-sort`), the pagination buttons. All client-side; nothing is posted.
 
 ## Dependencies
 
-`AuditLogsController` → `DotNetForgeDbContext`.
+```text
+AuditLogsController
+└── DotNetForgeDbContext
+View → AuditPresentation; <timestamp>, <badge>, <icon> tag helpers; ui.js (data-collection)
+```
 
 ## Page flow
 
@@ -83,14 +116,15 @@ None.
 flowchart LR
     A["GET /admin/audit-logs"] --> B{"Super Admin or Admin?"}
     B -- no --> D["/account/denied"]
-    B -- yes --> C["Top 100 by Id desc"] --> E[Table]
+    B -- yes --> C["Top 100 by Id desc (tenant + tenant-less)"] --> E["Table (ui.js: search / filter / sort / page)"]
 ```
 
 ## Related pages
 
-[Dashboard](dashboard.md) (count with the same tenant scope), the sample **Audit Dashboard** admin extension
-([extension host](extension-host.md)) shows the latest 50 plus a failed-login count - it queries `AuditLogs`
-itself and is **not** tenant-scoped.
+[Dashboard](dashboard.md) ("Recent activity" shows the latest 8 entries with the same tenant scope and the same
+`AuditPresentation` labels; "Audit entries" count under "At a glance"); the sample **Audit Dashboard** admin extension
+([extension host](extension-host.md)) shows the latest 50 plus a failed-login count - it queries `AuditLogs` itself and
+is **not** tenant-scoped.
 
 ## Important implementation details
 
@@ -98,18 +132,22 @@ itself and is **not** tenant-scoped.
   Admin also sees only the active tenant; there is no all-tenants view.
 - Actors: a signed-in user's entries carry `UserId` and the email in `UserDisplaySnapshot` - including `user.login`
   (the sign-in request sets `HttpContext.User` before auditing) and `cms.installed`. Actions done with an API token
-  have `UserId = null` and **User** `API token <id>`.
+  have `UserId = null` and **User** `API token <id>`. Anonymous entries (failed sign-ins, Contact Form submissions)
+  show **User** "System"; for a failed sign-in the typed email is in the **Entity** column (`User <email>`).
 - Actions written today: `user.login`, `user.login.failed`, `user.logout`, `content.created`, `content.updated`,
   `content.deleted`, `content.reordered`, `media.uploaded`, `media.deleted`, `settings.changed`, `apitoken.created`,
-  `apitoken.revoked`, `cms.installed` (`AuditActions`).
+  `apitoken.revoked`, `plugin.enabled`, `plugin.disabled`, `cms.installed` (`AuditActions`), plus extension-defined
+  keys. `AuditPresentation` has labels for every `AuditActions` constant.
+- The **Area** options are built from the 100 loaded entries, so an area appears only when one of them has it.
 - `AuditService` truncates snapshots to the column lengths (user 256, entity id 100, entity display 400, user agent
   512), so an oversized input never fails the audited request.
 - Ordering by `Id` gives stable insertion order even with identical timestamps.
 
 ## Known limitations
 
-No filtering, search, paging, detail view or export (`audit.exported` is unused) - see
-[Planned](#planned-not-implemented).
+- Only the latest 100 entries are reachable; search, filters and pagination work within them, not over the whole log.
+- No server-side filtering, detail view or export (`audit.exported` is unused) - see [Planned](#planned-not-implemented).
+- "System" is shown for every anonymous actor, so a failed sign-in reads as a system action in the **User** column.
 
 ## Planned (not implemented)
 
@@ -118,15 +156,18 @@ What is recorded, redaction, retention and permissions: [audit logging](../featu
 
 ### Requirements
 
-- Spec navigation: **Administration Panel → Audit Logs** (✔ sidebar **Settings · Administration Panel → Audit Logs**).
-- Paginated, sortable list; default order Timestamp descending, ties broken by `Id` (✔ ordered by `Id`, fixed top 100).
+- Spec navigation: **Administration Panel → Audit Logs** (✔ sidebar **Settings → Administration Panel → Audit Logs**).
+- Paginated, sortable list over the whole log; default order Timestamp descending, ties broken by `Id` (✔ ordered by
+  `Id`; ✔ client-side pagination and sorting, but only over a fixed top 100).
 - Columns: User, Action, Entity type, Entity ID, IP address, Timestamp and a Details summary (today Entity ID and
   Details are not shown).
 - Detail view per entry with the full, redacted Details payload.
 - Entries scoped to the active tenant (✔ plus tenant-less entries); a Super Admin can view all tenants (✘).
-- Timestamps rendered in the viewer's configured timezone (today UTC, `"u"` format).
-- Filters: **user**, **action**, **entity type** and/or **entity ID**, **date range** (from/to).
-- Search across user, action, entity type/ID, IP address and non-sensitive Details.
+- Timestamps rendered in the viewer's configured timezone (today relative time, exact UTC in the tooltip).
+- Filters: **user**, **action**, **entity type** and/or **entity ID**, **date range** (from/to) - server-side (today
+  only client-side **area** and **result** filters over the loaded 100).
+- Search across user, action, entity type/ID, IP address and non-sensitive Details - server-side (today a client-side
+  text search over the loaded 100).
 - **Export** of the current filtered/searched result set as CSV or JSON.
 - Never any edit or delete control.
 
@@ -147,7 +188,7 @@ What is recorded, redaction, retention and permissions: [audit logging](../featu
 
 ### Acceptance criteria
 
-- [ ] The screen lists entries paginated and ordered by timestamp descending by default (newest first ✔ by `Id`; no pagination).
+- [ ] The screen lists entries paginated and ordered by timestamp descending by default (newest first ✔ by `Id`; pagination ✔ client-side, but only over the latest 100).
 - [ ] Logs can be filtered by user, action, entity type/entity ID and date range, and the filters combine correctly.
 - [ ] A date-range filter rejects invalid ranges (from after to) with a clear error.
 - [ ] Logs can be searched across indexed fields, and search combines with filters.
@@ -155,5 +196,6 @@ What is recorded, redaction, retention and permissions: [audit logging](../featu
 
 ## Extension points
 
-Add filters as query parameters on `AuditLogsController.Index` and keep the existing `TenantId` filter; keep the
-table read-only - never add edit/delete actions.
+Add server-side filters and paging as query parameters on `AuditLogsController.Index` and keep the existing
+`TenantId` filter; keep the table read-only - never add edit/delete actions. A label for a new `AuditActions` constant
+goes into `AuditPresentation.Labels` (and its icon prefix into `AuditPresentation.Icon`, using an icon the sprite has).

@@ -1,0 +1,272 @@
+{
+  "name": "random-51",
+  "input": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "header",
+          "contentWidth": 636,
+          "anchor": "1abc"
+        },
+        "children": [
+          "n2"
+        ],
+        "layout": {
+          "mobile": {
+            "mode": "stack",
+            "gap": 38,
+            "columns": 4,
+            "colGap": 325,
+            "rowGap": 117,
+            "rows": 5,
+            "height": 492
+          }
+        },
+        "place": {
+          "base": {
+            "col": 3,
+            "row": 4,
+            "rowSpan": 5,
+            "y": 465,
+            "w": 588,
+            "h": 421
+          }
+        },
+        "style": {
+          "base": {
+            "width": {
+              "mode": "fixed",
+              "value": 401.723
+            },
+            "minWidth": 8,
+            "maxWidth": 147,
+            "justifySelf": "auto",
+            "bgSize": "auto",
+            "borderSides": [
+              0,
+              24,
+              35,
+              18
+            ],
+            "strokeHidden": "hidden",
+            "opacity": 0.886,
+            "fontSize": 130.705,
+            "fontStyle": "normal"
+          },
+          "mobile": {
+            "bgPosition": "left",
+            "borderWidth": 5,
+            "borderColor": "#11223344",
+            "fontWeight": "900",
+            "letterSpacing": 14.352
+          },
+          "desktop": {
+            "width": {
+              "mode": "fixed",
+              "value": 287.268
+            },
+            "minWidth": 483.467,
+            "zIndex": -54,
+            "padding": [
+              41,
+              20,
+              78,
+              14
+            ],
+            "margin": [
+              -22,
+              22,
+              12,
+              -25
+            ],
+            "opacity": -1,
+            "fontFamily": "inherit"
+          }
+        },
+        "locked": true
+      },
+      "n2": {
+        "id": "n2",
+        "type": "image",
+        "parent": "n1",
+        "props": {
+          "src": "//evil",
+          "fit": "cover",
+          "href": "",
+          "caption": "Hello"
+        },
+        "place": {
+          "base": {
+            "row": 2,
+            "colSpan": 2,
+            "rowSpan": 1,
+            "x": 556,
+            "h": 349
+          }
+        },
+        "style": {
+          "desktop": {
+            "height": {
+              "mode": "percent",
+              "value": null
+            },
+            "margin": [
+              1,
+              2
+            ],
+            "bgRepeat": "no-repeat",
+            "fillHidden": "visible",
+            "radius": [
+              22,
+              24,
+              49,
+              17
+            ]
+          }
+        },
+        "visibility": {
+          "devices": [
+            "tv"
+          ],
+          "audience": "nobody"
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 1024,
+        "mobile": 640
+      }
+    }
+  },
+  "normalized": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "header",
+          "contentWidth": 636,
+          "anchor": ""
+        },
+        "children": [
+          "n2"
+        ],
+        "layout": {
+          "mobile": {
+            "mode": "stack",
+            "gap": 38,
+            "columns": 4,
+            "colGap": 325,
+            "rowGap": 117,
+            "rows": 5,
+            "height": 492
+          }
+        },
+        "place": {
+          "base": {
+            "col": 3,
+            "row": 4,
+            "rowSpan": 5,
+            "y": 465,
+            "w": 588,
+            "h": 421
+          }
+        },
+        "style": {
+          "base": {
+            "width": {
+              "mode": "fixed",
+              "value": 401.72
+            },
+            "minWidth": 8,
+            "maxWidth": 147,
+            "justifySelf": "auto",
+            "bgSize": "auto",
+            "borderSides": [
+              0,
+              24,
+              35,
+              18
+            ],
+            "strokeHidden": "hidden",
+            "opacity": 0.89,
+            "fontSize": 130.71,
+            "fontStyle": "normal"
+          },
+          "mobile": {
+            "bgPosition": "left",
+            "borderWidth": 5,
+            "borderColor": "#11223344",
+            "fontWeight": "900",
+            "letterSpacing": 14.35
+          }
+        },
+        "locked": true
+      },
+      "n2": {
+        "id": "n2",
+        "type": "image",
+        "parent": "n1",
+        "props": {
+          "src": "",
+          "alt": "",
+          "fit": "cover",
+          "href": "",
+          "newTab": false,
+          "caption": "Hello"
+        },
+        "place": {
+          "base": {
+            "row": 2,
+            "colSpan": 2,
+            "rowSpan": 1,
+            "x": 556,
+            "h": 349
+          }
+        },
+        "visibility": {
+          "devices": []
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 1024,
+        "mobile": 640
+      }
+    }
+  },
+  "error": false,
+  "context": {
+    "mode": "canvas"
+  },
+  "html": "<div class=\"pe-root pe-node pe-t-page pe-n-n0\" data-pe-id=\"n0\"><header class=\"pe-node pe-t-section pe-n-n1\" data-pe-id=\"n1\"><div class=\"pe-in\"><figure class=\"pe-node pe-t-image pe-n-n2 pe-fit-cover pe-hide-d pe-hide-t pe-hide-m\" data-pe-id=\"n2\"><div class=\"pe-empty pe-empty-image\"></div><figcaption>Hello</figcaption></figure></div></header></div>",
+  "css": ".pe-root.pe-n-n0{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap}\n.pe-root .pe-n-n1{width:401.72px;min-width:8px;max-width:147px;justify-self:auto;background-size:auto;opacity:0.89;font-size:130.71px;font-style:normal}.pe-root .pe-n-n1>.pe-in{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap;max-width:636px;margin-inline:auto}\n@media (max-width:639.98px){.pe-root .pe-n-n1{background-position:left;font-weight:900;letter-spacing:14.35px}.pe-root .pe-n-n1>.pe-in{gap:38px}}\n@media (min-width:1024px){.pe-root .pe-hide-d{display:none!important}}\n@media (min-width:640px) and (max-width:1023.98px){.pe-root .pe-hide-t{display:none!important}}\n@media (max-width:639.98px){.pe-root .pe-hide-m{display:none!important}}"
+}

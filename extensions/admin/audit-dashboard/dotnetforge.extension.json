@@ -10,7 +10,7 @@
   "website": "https://example.com/extensions/audit-dashboard",
   "license": "MIT",
   "dependencies": [],
-  "routes": ["/admin/ext/audit-dashboard"],
+  "routes": [],
   "settings": {
     "showFailedLogins": true
   }

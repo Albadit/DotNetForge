@@ -1,0 +1,550 @@
+{
+  "name": "random-15",
+  "input": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "header",
+          "contentWidth": -5,
+          "anchor": "top"
+        },
+        "children": [
+          "n2",
+          "n3",
+          "n4"
+        ],
+        "layout": {
+          "base": {
+            "mode": "stack",
+            "gap": 109,
+            "align": "baseline",
+            "columns": 2,
+            "rowHeight": 15,
+            "rowMode": "auto",
+            "rowGap": 239,
+            "compact": false,
+            "rows": 5,
+            "height": 87
+          }
+        },
+        "place": {
+          "base": {
+            "row": 7,
+            "colSpan": 2,
+            "y": 477,
+            "h": 141
+          },
+          "desktop": {
+            "row": 2,
+            "colSpan": 14,
+            "x": 104,
+            "w": 531
+          }
+        },
+        "style": {
+          "base": {
+            "padding": [
+              78,
+              9,
+              30,
+              42
+            ],
+            "bgImage": "https://x.org/y?z=1&w=2",
+            "bgSize": "cover",
+            "borderColor": "transparent",
+            "borderSides": [
+              1,
+              2
+            ]
+          },
+          "mobile": {
+            "height": {
+              "mode": "fill"
+            },
+            "flip": "-1 1",
+            "padding": [
+              0,
+              77,
+              2,
+              24
+            ],
+            "bgImage": "javascript:alert(1)",
+            "borderSides": [
+              33,
+              36,
+              18,
+              26
+            ],
+            "textTransform": "uppercase"
+          },
+          "desktop": {
+            "flip": "-1 -1",
+            "borderWidth": 10,
+            "fontWeight": "600",
+            "lineHeight": 1.323,
+            "fontStyle": "italic"
+          }
+        },
+        "name": "Ünïcödé ✓",
+        "className": "ok-class"
+      },
+      "n2": {
+        "id": "n2",
+        "type": "heading",
+        "parent": "n1",
+        "props": {
+          "text": [
+            {
+              "text": "<script>alert(1)</script>",
+              "b": false,
+              "i": false
+            },
+            {
+              "text": "A & B <c> \"d\" 'e'",
+              "href": "/b c.png",
+              "newTab": false,
+              "code": false
+            }
+          ],
+          "level": "5"
+        },
+        "style": {
+          "base": {
+            "alignSelf": "center",
+            "bgPosition": "right",
+            "bgRepeat": "no-repeat",
+            "borderSides": [
+              22,
+              21,
+              31,
+              36
+            ],
+            "fillHidden": "hidden",
+            "opacity": 0,
+            "shadow": "xl",
+            "overflow": "visible",
+            "fontStyle": "italic"
+          },
+          "tablet": {
+            "alignSelf": "start",
+            "borderWidth": 14,
+            "borderColor": "red;}",
+            "strokeHidden": "hidden"
+          }
+        },
+        "vars": {
+          "--a": "1px",
+          "--b": "x;y",
+          "bad": "1"
+        }
+      },
+      "n3": {
+        "id": "n3",
+        "type": "post",
+        "parent": "n1",
+        "props": {
+          "author": "A & B <c> \"d\" 'e'",
+          "avatar": "",
+          "meta": "A & B <c> \"d\" 'e'",
+          "image": "javascript:alert(1)",
+          "alt": "Ünïcödé ✓",
+          "title": "A & B <c> \"d\" 'e'",
+          "emptyLabel": "",
+          "closeLabel": "<script>alert(1)</script>",
+          "unknownProp": "x"
+        },
+        "place": {
+          "base": {
+            "col": 11,
+            "x": 308,
+            "y": 600,
+            "h": 453
+          }
+        },
+        "style": {
+          "desktop": {
+            "alignSelf": "end",
+            "rotation": 173,
+            "aspectRatio": 5.093,
+            "bgImage": "",
+            "bgSize": "cover",
+            "strokeHidden": "visible",
+            "radius": [
+              43,
+              11,
+              7,
+              13
+            ],
+            "color": "#123456",
+            "lineHeight": 0.693,
+            "letterSpacing": 3,
+            "textTransform": "capitalize"
+          }
+        },
+        "name": "Line\nbreak",
+        "visibility": {
+          "devices": [],
+          "audience": "anonymous"
+        }
+      },
+      "n4": {
+        "id": "n4",
+        "type": "post",
+        "parent": "n1",
+        "props": {
+          "author": "Line\nbreak",
+          "avatar": "/b c.png",
+          "meta": "Line\nbreak",
+          "image": "/a",
+          "alt": "A & B <c> \"d\" 'e'",
+          "title": "Line\nbreak",
+          "comments": [
+            {
+              "author": "<script>alert(1)</script>",
+              "avatar": "https://x.org/\"x",
+              "meta": "<script>alert(1)</script>",
+              "text": ""
+            },
+            {
+              "text": "<script>alert(1)</script>"
+            },
+            {
+              "author": "No text"
+            },
+            "bad"
+          ],
+          "emptyLabel": "A & B <c> \"d\" 'e'"
+        },
+        "style": {
+          "tablet": {
+            "height": {
+              "mode": "fixed",
+              "value": 484
+            },
+            "maxHeight": 352,
+            "margin": [
+              -4,
+              -2,
+              -43,
+              -35
+            ],
+            "bgRepeat": "repeat-x",
+            "strokeHidden": "visible",
+            "radius": [
+              48,
+              65,
+              13,
+              77
+            ]
+          },
+          "mobile": {
+            "width": {
+              "mode": "hug"
+            },
+            "maxHeight": 304.976,
+            "rotation": 214.903,
+            "aspectRatio": 3,
+            "borderColor": "#123456",
+            "borderSides": [
+              15,
+              11,
+              33,
+              40
+            ],
+            "strokeAlign": "outside",
+            "color": "#fff",
+            "fontSize": 173
+          }
+        },
+        "name": ""
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": "x"
+      }
+    }
+  },
+  "normalized": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "header",
+          "contentWidth": 0,
+          "anchor": "top"
+        },
+        "children": [
+          "n2",
+          "n3",
+          "n4"
+        ],
+        "name": "Ünïcödé ✓",
+        "layout": {
+          "base": {
+            "mode": "stack",
+            "gap": 109,
+            "align": "baseline",
+            "columns": 2,
+            "rowHeight": 15,
+            "rowMode": "auto",
+            "rowGap": 239,
+            "compact": false,
+            "rows": 5,
+            "height": 87
+          }
+        },
+        "place": {
+          "base": {
+            "row": 7,
+            "colSpan": 2,
+            "y": 477,
+            "h": 141
+          }
+        },
+        "style": {
+          "base": {
+            "padding": [
+              78,
+              9,
+              30,
+              42
+            ],
+            "bgImage": "https://x.org/y?z=1&w=2",
+            "bgSize": "cover",
+            "borderColor": "transparent"
+          },
+          "mobile": {
+            "height": {
+              "mode": "fill"
+            },
+            "flip": "-1 1",
+            "padding": [
+              0,
+              77,
+              2,
+              24
+            ],
+            "borderSides": [
+              33,
+              36,
+              18,
+              26
+            ],
+            "textTransform": "uppercase"
+          }
+        },
+        "className": "ok-class"
+      },
+      "n2": {
+        "id": "n2",
+        "type": "heading",
+        "parent": "n1",
+        "props": {
+          "text": [
+            {
+              "text": "<script>alert(1)</script>"
+            },
+            {
+              "text": "A & B <c> \"d\" 'e'",
+              "href": "/b%20c.png"
+            }
+          ],
+          "level": "5"
+        },
+        "style": {
+          "base": {
+            "alignSelf": "center",
+            "bgPosition": "right",
+            "bgRepeat": "no-repeat",
+            "borderSides": [
+              22,
+              21,
+              31,
+              36
+            ],
+            "fillHidden": "hidden",
+            "opacity": 0,
+            "shadow": "xl",
+            "overflow": "visible",
+            "fontStyle": "italic"
+          },
+          "tablet": {
+            "alignSelf": "start",
+            "borderWidth": 14,
+            "strokeHidden": "hidden"
+          }
+        },
+        "vars": {
+          "--a": "1px"
+        }
+      },
+      "n3": {
+        "id": "n3",
+        "type": "post",
+        "parent": "n1",
+        "props": {
+          "author": "A & B <c> \"d\" 'e'",
+          "avatar": "",
+          "meta": "A & B <c> \"d\" 'e'",
+          "image": "",
+          "alt": "Ünïcödé ✓",
+          "title": "A & B <c> \"d\" 'e'",
+          "text": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "Write the post here."
+                }
+              ]
+            }
+          ],
+          "comments": [],
+          "commentsLabel": "Comments",
+          "emptyLabel": "",
+          "closeLabel": "<script>alert(1)</script>"
+        },
+        "name": "Line\nbreak",
+        "place": {
+          "base": {
+            "col": 11,
+            "x": 308,
+            "y": 600,
+            "h": 453
+          }
+        },
+        "visibility": {
+          "devices": [],
+          "audience": "anonymous"
+        }
+      },
+      "n4": {
+        "id": "n4",
+        "type": "post",
+        "parent": "n1",
+        "props": {
+          "author": "Line\nbreak",
+          "avatar": "/b%20c.png",
+          "meta": "Line\nbreak",
+          "image": "/a",
+          "alt": "A & B <c> \"d\" 'e'",
+          "title": "Line\nbreak",
+          "text": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "Write the post here."
+                }
+              ]
+            }
+          ],
+          "comments": [
+            {
+              "author": "<script>alert(1)</script>",
+              "avatar": "",
+              "meta": "<script>alert(1)</script>",
+              "text": ""
+            },
+            {
+              "author": "",
+              "avatar": "",
+              "meta": "",
+              "text": "<script>alert(1)</script>"
+            },
+            {
+              "author": "No text",
+              "avatar": "",
+              "meta": "",
+              "text": ""
+            }
+          ],
+          "commentsLabel": "Comments",
+          "emptyLabel": "A & B <c> \"d\" 'e'",
+          "closeLabel": "Close"
+        },
+        "style": {
+          "tablet": {
+            "height": {
+              "mode": "fixed",
+              "value": 484
+            },
+            "maxHeight": 352,
+            "margin": [
+              -4,
+              -2,
+              -43,
+              -35
+            ],
+            "bgRepeat": "repeat-x",
+            "strokeHidden": "visible",
+            "radius": [
+              48,
+              65,
+              13,
+              77
+            ]
+          },
+          "mobile": {
+            "width": {
+              "mode": "hug"
+            },
+            "maxHeight": 304.98,
+            "rotation": 214.9,
+            "aspectRatio": 3,
+            "borderColor": "#123456",
+            "borderSides": [
+              15,
+              11,
+              33,
+              40
+            ],
+            "strokeAlign": "outside",
+            "color": "#fff",
+            "fontSize": 173
+          }
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 1024,
+        "mobile": 640
+      }
+    }
+  },
+  "error": false,
+  "context": {
+    "mode": "canvas"
+  },
+  "html": "<div class=\"pe-root pe-node pe-t-page pe-n-n0\" data-pe-id=\"n0\"><header class=\"pe-node pe-t-section pe-n-n1 ok-class\" id=\"top\" data-pe-id=\"n1\"><div class=\"pe-in\"><h5 class=\"pe-node pe-t-heading pe-n-n2\" data-pe-id=\"n2\">&lt;script&gt;alert(1)&lt;/script&gt;<a href=\"/b%20c.png\">A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</a></h5><article class=\"pe-node pe-t-post pe-n-n3 pe-hide-d pe-hide-t pe-hide-m\" data-pe-id=\"n3\"><div class=\"pe-post-head\"><span class=\"pe-post-avatar\"></span><div class=\"pe-post-by\"><strong>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</strong><span>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</span></div></div><div class=\"pe-post-img pe-empty pe-empty-image\"></div><h3 class=\"pe-post-title\">A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</h3><div class=\"pe-post-text\"><p>Write the post here.</p></div><a class=\"pe-post-open\" href=\"#pe-post-n3\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\"/></svg><span></span></a><div class=\"pe-post-dialog\" id=\"pe-post-n3\" role=\"dialog\" aria-modal=\"true\" aria-label=\"A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;\"><a class=\"pe-post-backdrop\" href=\"#_\" aria-label=\"&lt;script&gt;alert(1)&lt;/script&gt;\"></a><div class=\"pe-post-sheet\"><a class=\"pe-post-close\" href=\"#_\" aria-label=\"&lt;script&gt;alert(1)&lt;/script&gt;\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></a><div class=\"pe-post-head\"><span class=\"pe-post-avatar\"></span><div class=\"pe-post-by\"><strong>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</strong><span>A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</span></div></div><div class=\"pe-post-img pe-empty pe-empty-image\"></div><h3 class=\"pe-post-title\">A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;</h3><div class=\"pe-post-text\"><p>Write the post here.</p></div></div></div></article><article class=\"pe-node pe-t-post pe-n-n4\" data-pe-id=\"n4\"><div class=\"pe-post-head\"><img class=\"pe-post-avatar\" src=\"/b%20c.png\" alt=\"\" loading=\"lazy\" decoding=\"async\"><div class=\"pe-post-by\"><strong>Line\nbreak</strong><span>Line\nbreak</span></div></div><img class=\"pe-post-img\" src=\"/a\" alt=\"A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;\" loading=\"lazy\" decoding=\"async\"><h3 class=\"pe-post-title\">Line\nbreak</h3><div class=\"pe-post-text\"><p>Write the post here.</p></div><a class=\"pe-post-open\" href=\"#pe-post-n4\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\"/></svg><span>Comments</span><span class=\"pe-post-count\">3</span></a><div class=\"pe-post-dialog\" id=\"pe-post-n4\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Line\nbreak\"><a class=\"pe-post-backdrop\" href=\"#_\" aria-label=\"Close\"></a><div class=\"pe-post-sheet\"><a class=\"pe-post-close\" href=\"#_\" aria-label=\"Close\"><svg class=\"pe-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></a><div class=\"pe-post-head\"><img class=\"pe-post-avatar\" src=\"/b%20c.png\" alt=\"\" loading=\"lazy\" decoding=\"async\"><div class=\"pe-post-by\"><strong>Line\nbreak</strong><span>Line\nbreak</span></div></div><img class=\"pe-post-img\" src=\"/a\" alt=\"A &amp; B &lt;c&gt; &quot;d&quot; &#39;e&#39;\" loading=\"lazy\" decoding=\"async\"><h3 class=\"pe-post-title\">Line\nbreak</h3><div class=\"pe-post-text\"><p>Write the post here.</p></div><ul class=\"pe-post-comments\"><li><span class=\"pe-post-avatar\"></span><div class=\"pe-post-bubble\"><strong>&lt;script&gt;alert(1)&lt;/script&gt;</strong><span>&lt;script&gt;alert(1)&lt;/script&gt;</span><p></p></div></li><li><span class=\"pe-post-avatar\"></span><div class=\"pe-post-bubble\"><p>&lt;script&gt;alert(1)&lt;/script&gt;</p></div></li><li><span class=\"pe-post-avatar\"></span><div class=\"pe-post-bubble\"><strong>No text</strong><p></p></div></li></ul></div></div></article></div></header></div>",
+  "css": ".pe-root.pe-n-n0{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap}\n.pe-root .pe-n-n1{padding:78px 9px 30px 42px;background-image:url(\"https://x.org/y?z=1&w=2\");background-size:cover;border-color:transparent}.pe-root .pe-n-n1>.pe-in{display:flex;flex-direction:column;gap:109px;align-items:baseline;justify-content:flex-start;flex-wrap:nowrap}\n@media (max-width:639.98px){.pe-root .pe-n-n1{flex:1 1 0px;scale:-1 1;padding:0px 77px 2px 24px;text-transform:uppercase;border-width:33px 36px 18px 26px;border-style:solid}}\n.pe-root .pe-n-n2{align-self:center;background-position:right;background-repeat:no-repeat;opacity:0;box-shadow:0 24px 64px rgba(0,0,0,.18);overflow:visible;font-style:italic;border-width:22px 21px 31px 36px;border-style:solid;--a:1px}\n@media (max-width:1023.98px){.pe-root .pe-n-n2{align-self:start;border-width:unset;border-style:unset}}\n@media (max-width:1023.98px){.pe-root .pe-n-n4{height:484px;flex:0 0 auto;max-height:352px;margin:-4px -2px -43px -35px;background-repeat:repeat-x;border-radius:48px 65px 13px 77px}}\n@media (max-width:639.98px){.pe-root .pe-n-n4{width:fit-content;max-height:304.98px;rotate:214.9deg;aspect-ratio:3;border-color:#123456;color:#fff;font-size:173px;border-width:15px 11px 33px 40px;border-style:solid}}\n@media (min-width:1024px){.pe-root .pe-hide-d{display:none!important}}\n@media (min-width:640px) and (max-width:1023.98px){.pe-root .pe-hide-t{display:none!important}}\n@media (max-width:639.98px){.pe-root .pe-hide-m{display:none!important}}"
+}

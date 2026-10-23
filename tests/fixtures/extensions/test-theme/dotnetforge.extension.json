@@ -1,0 +1,12 @@
+{
+  "id": "tests.theme.plain",
+  "name": "tests.theme.plain",
+  "description": "Integration-test fixture.",
+  "version": "1.0.0",
+  "type": "theme",
+  "author": "Tests",
+  "entryPoint": "None",
+  "permissions": [
+    "core.read"
+  ]
+}

@@ -1,7 +1,7 @@
 # Scheduled publishing
 
 Content pages can carry a UTC publish and unpublish time. Visibility is decided per request by
-`HomeController.Live` ([liveness](content-pages-and-routing.md#liveness)); the background job only finalizes the
+`PageVisibility.Live` ([liveness](content-pages-and-routing.md#liveness)); the background job only finalizes the
 stored state after a schedule has passed. The fields are edited on the
 [Content Manager](../pages/content-manager.md#save-page-settings) (**Publishing** section of the form).
 
@@ -39,5 +39,5 @@ stored state after a schedule has passed. The fields are edited on the
 
 - Interval or delay: the two `static readonly TimeSpan` fields.
 - What "due" means or side effects (audit, webhooks): `ApplySchedulesAsync`. Keep visibility logic in
-  `HomeController.Live`, not here. Any new side effect must stay idempotent or get a cross-instance lock, because
+  `PageVisibility.Live` (`src/DotNetForge.Shared/Content/PublishedPages.cs`), not here. Any new side effect must stay idempotent or get a cross-instance lock, because
   every instance runs the job.

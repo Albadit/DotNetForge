@@ -1,19 +1,23 @@
 {
   "id": "dotnetforge.connector.s3",
-  "name": "Amazon S3 Storage",
-  "description": "Stores and serves media from an Amazon S3 bucket instead of local disk.",
-  "version": "2.0.1",
+  "name": "S3 Media Storage",
+  "description": "Stores and serves media in an S3-compatible bucket of its own instead of the CMS's configured storage.",
+  "version": "3.0.0",
   "type": "connector",
   "author": "Cloudforge",
-  "entryPoint": "S3StorageConnector",
+  "assembly": "bin/S3Storage.dll",
+  "entryPoint": "S3Storage.S3StorageConnector",
   "permissions": ["media.read", "media.upload", "media.delete"],
   "website": "https://example.com/extensions/s3-storage",
   "license": "MIT",
   "dependencies": [],
   "routes": [],
   "settings": {
-    "region": "us-east-1",
-    "bucket": "",
-    "publicBaseUrl": ""
+    // The defaults match the local S3 server of docker/compose.dev.yml (docker compose -f docker/compose.dev.yml up -d).
+    // Credentials never go here: set S3_CONNECTOR_ACCESS_KEY_ID and S3_CONNECTOR_SECRET_ACCESS_KEY in .env.
+    "serviceUrl": "http://localhost:8333",
+    "bucket": "dotnetforge",
+    "region": "auto",
+    "forcePathStyle": true
   }
 }

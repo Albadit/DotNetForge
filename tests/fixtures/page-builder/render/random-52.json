@@ -1,0 +1,258 @@
+{
+  "name": "random-52",
+  "input": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "main",
+          "contentWidth": 605,
+          "anchor": ""
+        },
+        "children": [],
+        "layout": {
+          "base": {
+            "direction": "column",
+            "align": "end",
+            "justify": "end",
+            "rowHeight": 10,
+            "colSizes": [
+              "120px",
+              "5000px",
+              "0.333fr",
+              "0.25fr"
+            ],
+            "rowSizes": [
+              "0.333fr"
+            ]
+          },
+          "tablet": {
+            "mode": "stack",
+            "direction": "column",
+            "justify": "start",
+            "columns": 14,
+            "rowHeight": 23,
+            "colGap": 280,
+            "rowGap": 371,
+            "compact": true,
+            "colSizes": [
+              "0.25fr",
+              "bad",
+              "bad",
+              "auto",
+              "auto"
+            ],
+            "rows": 4,
+            "height": 216
+          },
+          "desktop": {
+            "mode": "flex",
+            "align": "baseline",
+            "wrap": false,
+            "columns": 18,
+            "rowMode": "fixed",
+            "colGap": 258,
+            "height": 91
+          }
+        },
+        "place": {
+          "base": {
+            "col": 9,
+            "row": 6,
+            "colSpan": 1,
+            "rowSpan": 3,
+            "x": 465,
+            "y": 51,
+            "h": 382
+          },
+          "tablet": {
+            "row": 5,
+            "x": 113,
+            "y": 37,
+            "w": 491,
+            "h": 273
+          },
+          "mobile": {
+            "row": 2,
+            "colSpan": 9,
+            "rowSpan": 1,
+            "w": 417,
+            "h": 257
+          }
+        },
+        "style": {
+          "mobile": {
+            "height": {
+              "mode": "hug"
+            },
+            "justifySelf": "end",
+            "flip": "1 -1",
+            "padding": [
+              50,
+              39,
+              0,
+              79
+            ],
+            "bgImage": "tel:+3112",
+            "bgSize": "contain",
+            "borderWidth": 30.179,
+            "strokeAlign": "outside",
+            "fillHidden": "hidden",
+            "overflow": "bogus",
+            "fontWeight": "500",
+            "lineHeight": 1,
+            "letterSpacing": 34,
+            "textAlign": "center",
+            "fontStyle": "italic"
+          }
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 900,
+        "mobile": 480
+      }
+    }
+  },
+  "normalized": {
+    "schema": 1,
+    "root": "n0",
+    "nodes": {
+      "n0": {
+        "id": "n0",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "n1"
+        ]
+      },
+      "n1": {
+        "id": "n1",
+        "type": "section",
+        "parent": "n0",
+        "props": {
+          "tag": "main",
+          "contentWidth": 605,
+          "anchor": ""
+        },
+        "children": [],
+        "layout": {
+          "base": {
+            "direction": "column",
+            "align": "end",
+            "justify": "end",
+            "rowHeight": 10,
+            "colSizes": [
+              "120px",
+              "1fr",
+              "0.33fr",
+              "0.25fr"
+            ],
+            "rowSizes": [
+              "0.33fr"
+            ]
+          },
+          "tablet": {
+            "mode": "stack",
+            "direction": "column",
+            "justify": "start",
+            "columns": 14,
+            "rowHeight": 23,
+            "colGap": 280,
+            "rowGap": 371,
+            "compact": true,
+            "colSizes": [
+              "0.25fr",
+              "1fr",
+              "1fr",
+              "auto",
+              "auto"
+            ],
+            "rows": 4,
+            "height": 216
+          }
+        },
+        "place": {
+          "base": {
+            "col": 9,
+            "row": 6,
+            "colSpan": 1,
+            "rowSpan": 3,
+            "x": 465,
+            "y": 51,
+            "h": 382
+          },
+          "tablet": {
+            "row": 5,
+            "x": 113,
+            "y": 37,
+            "w": 491,
+            "h": 273
+          },
+          "mobile": {
+            "row": 2,
+            "colSpan": 9,
+            "rowSpan": 1,
+            "w": 417,
+            "h": 257
+          }
+        },
+        "style": {
+          "mobile": {
+            "height": {
+              "mode": "hug"
+            },
+            "justifySelf": "end",
+            "flip": "1 -1",
+            "padding": [
+              50,
+              39,
+              0,
+              79
+            ],
+            "bgSize": "contain",
+            "borderWidth": 30.18,
+            "strokeAlign": "outside",
+            "fillHidden": "hidden",
+            "fontWeight": "500",
+            "lineHeight": 1,
+            "letterSpacing": 34,
+            "textAlign": "center",
+            "fontStyle": "italic"
+          }
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 900,
+        "mobile": 480
+      }
+    }
+  },
+  "error": false,
+  "context": {
+    "mode": "view",
+    "hidden": [
+      "n1",
+      "n3"
+    ]
+  },
+  "html": "<div class=\"pe-root pe-node pe-t-page pe-n-n0\"></div>",
+  "css": ".pe-root.pe-n-n0{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap}\n.pe-root .pe-n-n1>.pe-in{display:flex;flex-direction:column;gap:16px;align-items:flex-end;justify-content:flex-end;flex-wrap:nowrap;max-width:605px;margin-inline:auto}\n@media (max-width:899.98px){.pe-root .pe-n-n1>.pe-in{justify-content:flex-start}}\n@media (max-width:479.98px){.pe-root .pe-n-n1{height:fit-content;flex:0 0 auto;justify-self:end;scale:1 -1;padding:50px 39px 0px 79px;background-size:contain;outline-width:30.18px;outline-style:solid;font-weight:500;line-height:1;letter-spacing:34px;text-align:center;font-style:italic}}\n@media (min-width:900px){.pe-root .pe-hide-d{display:none!important}}\n@media (min-width:480px) and (max-width:899.98px){.pe-root .pe-hide-t{display:none!important}}\n@media (max-width:479.98px){.pe-root .pe-hide-m{display:none!important}}"
+}

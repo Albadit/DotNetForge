@@ -17,7 +17,8 @@ same data. Full documentation: [`.docs/README.md`](../../.docs/README.md).
 ## Where things live
 
 See [codebase.md](../../.docs/architecture/codebase.md) for every folder. Screens and routes:
-[pages.md](../../.docs/architecture/pages.md#route-map).
+[pages.md](../../.docs/architecture/pages.md#route-map). UI (components, tag helpers, sidebar, light/dark):
+[design-system.md](../../.docs/architecture/design-system.md).
 
 ## Key invariants (as implemented)
 
@@ -26,7 +27,9 @@ See [codebase.md](../../.docs/architecture/codebase.md) for every folder. Screen
   See [authorization](../../.docs/features/authorization.md).
 - One tenant is seeded and used; queries filter by `TenantId` manually; there is no tenant resolution.
   See [multi-tenancy](../../.docs/features/multi-tenancy.md).
-- Extensions are discovered and validated from `extensions/`; only `admin` extensions are rendered.
+- Extensions live in `extensions/` (manifest + optional code compiled against `DotNetForge.Sdk` + views); they
+  contribute only while enabled on the Plugins screen, and `ExtensionCatalog` decides. See
+  [extension system](extension-system.md).
 - The deployment directory is read-only: runtime files go to object storage via `IFileStorage` (local in development,
   S3-compatible in production), everything else to the database. See [deployment](../../.docs/guides/deployment.md).
   See [extensions](../../.docs/features/extensions.md).

@@ -1,0 +1,12 @@
+{
+  "id": "tests.plugin.kit",
+  "name": "Test Kit",
+  "description": "Integration-test extension: endpoints, a controller, media storage, an audit handler and a login provider.",
+  "version": "1.0.0",
+  "type": "plugin",
+  "author": "Tests",
+  "assembly": "bin/TestKit.dll",
+  "entryPoint": "TestKit.TestKitExtension",
+  "permissions": ["core.read"],
+  "settings": { "greeting": "pong" }
+}

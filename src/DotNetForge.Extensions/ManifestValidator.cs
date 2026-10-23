@@ -7,7 +7,7 @@ namespace DotNetForge.Extensions;
 /// <summary>
 /// Validates an <see cref="ExtensionManifest"/> before installation. Enforces presence of the eight
 /// required fields, a known extension <c>type</c>, a semver-shaped <c>version</c>, and well-formed,
-/// non-empty <c>permissions</c>. Error <c>Field</c> values use the manifest's PascalCase property
+/// non-empty <c>permissions</c>, and an optional <c>assembly</c> that stays inside the extension folder. Error <c>Field</c> values use the manifest's PascalCase property
 /// names (.docs/features/extensions.md, .docs/guides/testing.md).
 /// </summary>
 public sealed partial class ManifestValidator : IManifestValidator
@@ -24,6 +24,10 @@ public sealed partial class ManifestValidator : IManifestValidator
 
     [GeneratedRegex(@"^[a-z0-9]+(?:[._-][a-z0-9]+)*\.[a-z0-9]+(?:[._-][a-z0-9]+)*$", RegexOptions.CultureInvariant)]
     private static partial Regex PermissionKey();
+
+    /// <summary>A relative, forward-slash path of plain segments ending in <c>.dll</c>; no segment starts with a dot, so it can't be rooted or traverse.</summary>
+    [GeneratedRegex(@"^[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*\.dll$", RegexOptions.CultureInvariant)]
+    private static partial Regex AssemblyPath();
 
     public ValidationResult Validate(ExtensionManifest manifest)
     {
@@ -70,6 +74,12 @@ public sealed partial class ManifestValidator : IManifestValidator
                         $"'{permission}' is not a valid permission key (expected dotted form, e.g. content.read).");
                 }
             }
+        }
+
+        if (manifest.Assembly is not null && !AssemblyPath().IsMatch(manifest.Assembly))
+        {
+            result.Add(nameof(manifest.Assembly),
+                "Assembly must be a .dll path inside the extension folder (e.g. bin/MyExtension.dll).");
         }
 
         return result;

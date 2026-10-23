@@ -1,0 +1,208 @@
+@using DotNetForge.Web.Services
+@model UsersController.UserFormModel
+@{
+    var creating = Model.Id is null;
+    var saved = Model.Saved;
+    var input = Model.Input;
+    ViewData["PageWidth"] = creating ? "narrow" : "medium";
+    ViewData["Title"] = creating ? "Create user" : "Edit user";
+    ViewData["Description"] = creating
+        ? "Add a person who can sign in to the admin. Their roles decide what they can do."
+        : saved!.Email;
+    var chosen = input.RoleIds.ToHashSet();
+    var readOnly = !Model.CanSave;
+}
+
+<div class="editor">
+    <form method="post" action="@(creating ? "/admin/users/create" : $"/admin/users/{Model.Id}")" class="editor-main" novalidate>
+        @Html.AntiForgeryToken()
+        <form-errors />
+        @if (readOnly)
+        {
+            <alert tone="Info" title="View only">You can see this user but not change them.</alert>
+        }
+
+        <fieldset class="stack-lg" disabled="@(readOnly ? "disabled" : null)">
+            <section class="card" aria-labelledby="details-title">
+                <div class="card-header"><h2 class="card-title" id="details-title">Details</h2></div>
+                <div class="card-body form-grid">
+                    <div class="field">
+                        <label class="field-label" for="FirstName">First name<span class="field-optional">optional</span></label>
+                        <input id="FirstName" name="FirstName" value="@input.FirstName" maxlength="@UserManagementService.MaxNameLength" autocomplete="off" />
+                    </div>
+                    <div class="field">
+                        <label class="field-label" for="LastName">Last name<span class="field-optional">optional</span></label>
+                        <input id="LastName" name="LastName" value="@input.LastName" maxlength="@UserManagementService.MaxNameLength" autocomplete="off" />
+                    </div>
+                    <div class="field span-2">
+                        <label class="field-label" for="Email">Email<span class="field-required" aria-hidden="true">*</span></label>
+                        <input id="Email" name="Email" type="email" value="@input.Email" required maxlength="@UserManagementService.MaxEmailLength"
+                               autocomplete="off" aria-describedby="email-hint" />
+                        <span class="field-hint" id="email-hint">They sign in with this address.</span>
+                    </div>
+                    <div class="field span-2">
+                        <label class="field-label" for="Password">
+                            @(creating ? "Password" : "New password")
+                            @if (creating)
+                            {
+                                <span class="field-required" aria-hidden="true">*</span>
+                            }
+                            else
+                            {
+                                <span class="field-optional">optional</span>
+                            }
+                        </label>
+                        <input id="Password" name="Password" type="password" required="@(creating ? "required" : null)" autocomplete="new-password"
+                               aria-describedby="password-hint" />
+                        <span class="field-hint" id="password-hint">
+                            At least 8 characters with a letter and a digit.@(creating ? " Share it with the user securely." : " Leave empty to keep the current password.")
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="roles-title">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" id="roles-title">Roles<span class="field-required" aria-hidden="true">*</span></h2>
+                        <p class="card-description">The user can do everything any of their roles allows. Changes apply at their next sign-in.</p>
+                    </div>
+                    <a class="btn btn-ghost btn-sm" href="/admin/roles"><icon name="shield" /> Manage roles</a>
+                </div>
+                <div class="card-body">
+                    <div class="choice-list">
+                        @foreach (var role in Model.Roles)
+                        {
+                            var isChosen = chosen.Contains(role.Id);
+                            <label class="check choice-row">
+                                <input type="checkbox" name="RoleIds" value="@role.Id" checked="@(isChosen ? "checked" : null)"
+                                       disabled="@(role.Locked ? "disabled" : null)" />
+                                <span class="check-text">
+                                    <span class="weight-semibold">
+                                        @role.Name
+                                        @if (role.IsBuiltIn)
+                                        {
+                                            <badge tone="Neutral">Built-in</badge>
+                                        }
+                                    </span>
+                                    <span class="check-hint">
+                                        @(role.Locked ? "Only a Super Admin can give this role." : role.Description ?? "Custom role")
+                                    </span>
+                                </span>
+                            </label>
+                            @if (role.Locked && isChosen)
+                            {
+                                @* A disabled checkbox isn't posted; keep the held role (the service rejects changing a Super Admin anyway). *@
+                                <input type="hidden" name="RoleIds" value="@role.Id" />
+                            }
+                        }
+                    </div>
+                </div>
+                @if (!readOnly)
+                {
+                    @* The status is not part of this form: a new user is enabled, and Disable/Enable access (aside) changes it. *@
+                    <div class="card-footer">
+                        <a class="btn btn-ghost" href="/admin/users">Cancel</a>
+                        <button type="submit" class="btn btn-primary"><icon name="@(creating ? "plus" : "check")" /> @(creating ? "Create user" : "Save changes")</button>
+                    </div>
+                }
+            </section>
+
+        </fieldset>
+    </form>
+
+    @if (saved is not null)
+    {
+        <aside class="editor-aside">
+            <section class="card" aria-labelledby="account-title">
+                <div class="card-header">
+                    <h2 class="card-title" id="account-title">Account</h2>
+                    <badge tone="@(saved.Enabled ? Tone.Success : Tone.Danger)" dot="true">@(saved.Enabled ? "Enabled" : "Disabled")</badge>
+                </div>
+                <div class="card-body">
+                    <dl class="dl dl-compact">
+                        <dt>Created</dt>
+                        <dd><timestamp value="@saved.Created" /></dd>
+                        <dt>Last sign-in</dt>
+                        <dd><timestamp value="@saved.LastLogin" empty="Never" /></dd>
+                    </dl>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="effective-title">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" id="effective-title">Effective permissions</h2>
+                        <p class="card-description">What the saved roles allow together.</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (saved.Roles.Count == 0)
+                    {
+                        <p class="text-muted text-sm">No roles, so no permissions.</p>
+                    }
+                    else
+                    {
+                        <ul class="effective-list">
+                            @foreach (var (area, actions) in saved.Permissions)
+                            {
+                                <li>
+                                    <span class="weight-semibold">@area.Label</span>
+                                    @if (actions.Count == 0)
+                                    {
+                                        <span class="text-subtle text-sm">No access</span>
+                                    }
+                                    else if (actions.Count == area.Actions.Count)
+                                    {
+                                        <badge tone="Success">Full access</badge>
+                                    }
+                                    else
+                                    {
+                                        <span class="cluster">
+                                            @foreach (var action in actions)
+                                            {
+                                                <badge>@DotNetForge.Shared.Authorization.PermissionCatalog.ActionLabel(action)</badge>
+                                            }
+                                        </span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </section>
+
+            @if (Model.CanSave && !Model.IsSelf)
+            {
+                <section class="card" aria-labelledby="status-title">
+                    <div class="card-header"><h2 class="card-title" id="status-title">@(saved.Enabled ? "Disable access" : "Enable access")</h2></div>
+                    <div class="card-body stack-sm">
+                        <p class="text-sm text-muted">
+                            @(saved.Enabled ? "Stops the user signing in without deleting them." : "Lets the user sign in again.")
+                        </p>
+                        <form method="post" action="/admin/users/@Model.Id/@(saved.Enabled ? "disable" : "enable")">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-secondary btn-sm"><icon name="power" /> @(saved.Enabled ? "Disable user" : "Enable user")</button>
+                        </form>
+                    </div>
+                </section>
+            }
+
+            @if (Model.CanDelete)
+            {
+                <section class="card card-danger" aria-labelledby="danger-title">
+                    <div class="card-header"><h2 class="card-title" id="danger-title">Delete user</h2></div>
+                    <div class="card-body stack-sm">
+                        <p class="text-sm text-muted">Removes the account and its role assignments. Audit entries keep their name.</p>
+                        <form method="post" action="/admin/users/@Model.Id/delete"
+                              data-confirm="Delete @saved.Email? They can't sign in any more. This can't be undone."
+                              data-confirm-title="Delete user" data-confirm-action="Delete user">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-danger-soft btn-sm"><icon name="trash" /> Delete user</button>
+                        </form>
+                    </div>
+                </section>
+            }
+        </aside>
+    }
+</div>

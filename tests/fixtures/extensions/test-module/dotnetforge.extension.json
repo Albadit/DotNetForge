@@ -1,0 +1,17 @@
+{
+  "id": "tests.module.hello",
+  "name": "tests.module.hello",
+  "description": "Integration-test fixture.",
+  "version": "1.0.0",
+  "type": "module",
+  "author": "Tests",
+  "entryPoint": "None",
+  "permissions": [
+    "core.read"
+  ],
+  "settings": {
+    "pages": [
+      "about"
+    ]
+  }
+}

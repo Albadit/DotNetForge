@@ -1,18 +1,20 @@
 {
   "id": "dotnetforge.plugin.seo-toolkit",
   "name": "SEO Toolkit",
-  "description": "Sitemaps, meta tag suggestions, and broken-link checks for content.",
-  "version": "3.1.0",
+  "description": "Serves /sitemap.xml with every live page and /robots.txt pointing search engines at it.",
+  "version": "3.2.0",
   "type": "plugin",
   "author": "RankForge",
-  "entryPoint": "SeoToolkitPlugin",
-  "permissions": ["content.read", "content.update", "settings.read"],
+  "assembly": "bin/SeoToolkit.dll",
+  "entryPoint": "SeoToolkit.SeoToolkitPlugin",
+  "permissions": ["content.read", "settings.read"],
   "website": "https://example.com/extensions/seo-toolkit",
   "license": "MIT",
-  "dependencies": ["dotnetforge.library.markdown-kit"],
-  "routes": ["/admin/ext/seo", "/sitemap.xml"],
+  "dependencies": [],
+  "routes": ["/sitemap.xml", "/robots.txt"],
   "settings": {
     "generateSitemap": true,
-    "defaultTitleSuffix": " | DotNetForge"
+    // Extra "Disallow:" lines for robots.txt (the admin area is always disallowed).
+    "disallow": ["/account/"]
   }
 }

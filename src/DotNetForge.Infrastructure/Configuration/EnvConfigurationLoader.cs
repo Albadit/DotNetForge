@@ -81,6 +81,7 @@ public static class EnvConfigurationLoader
             AppUrl = appUrl,
             Storage = LoadStorage(Get, contentRoot, isDevelopment),
             ExtensionsPath = ResolveExtensionsPath(Get(ExtensionsPathKey), contentRoot),
+            Lookup = Get,
         };
     }
 

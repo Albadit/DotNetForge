@@ -1,0 +1,61 @@
+/* Default Theme. Colours are custom properties so the accent classes and dark mode only swap values. */
+:root {
+    --bg: #ffffff;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --accent: #4f46e5;
+}
+
+body.accent-teal { --accent: #0d9488; }
+body.accent-rose { --accent: #e11d48; }
+
+/* Dark: the visitor's system preference, unless <html data-theme> says otherwise (the page builder's canvas sets it
+   to show the page light or dark - .docs/features/themes.md#theme-views). */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body.auto-dark { --bg: #0b1120; --ink: #e2e8f0; --muted: #94a3b8; --line: #1e293b; }
+    :root:not([data-theme="light"]) body.auto-dark.accent-indigo { --accent: #818cf8; }
+    :root:not([data-theme="light"]) body.auto-dark.accent-teal { --accent: #2dd4bf; }
+    :root:not([data-theme="light"]) body.auto-dark.accent-rose { --accent: #fb7185; }
+}
+:root[data-theme="dark"] body.auto-dark { --bg: #0b1120; --ink: #e2e8f0; --muted: #94a3b8; --line: #1e293b; }
+:root[data-theme="dark"] body.auto-dark.accent-indigo { --accent: #818cf8; }
+:root[data-theme="dark"] body.auto-dark.accent-teal { --accent: #2dd4bf; }
+:root[data-theme="dark"] body.auto-dark.accent-rose { --accent: #fb7185; }
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: var(--ink); background: var(--bg); }
+/* Page builder layouts take the theme's colours (.docs/features/page-builder.md#theme-colours). Set on body, so they
+   win over the defaults on :root and follow the accent classes and dark mode above. */
+body {
+    --dnn-color-primary: var(--accent);
+    --dnn-color-primary-contrast: #ffffff;
+    --dnn-color-background: var(--bg);
+    --dnn-color-surface: var(--bg);
+    --dnn-color-foreground: var(--ink);
+    --dnn-color-neutral: var(--line);
+}
+a { color: var(--accent); }
+.wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+.site-header { border-bottom: 1px solid var(--line); }
+.site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; flex-wrap: wrap; }
+.brand { font-weight: 700; font-size: 18px; color: var(--ink); text-decoration: none; }
+.site-header nav { display: flex; gap: 20px; flex-wrap: wrap; }
+.site-header nav a { color: var(--muted); text-decoration: none; font-weight: 500; }
+.site-header nav a:hover, .site-header nav a.active { color: var(--accent); }
+
+main.wrap { padding-top: 48px; padding-bottom: 64px; min-height: 60vh; }
+main.full { min-height: 60vh; } /* a page builder layout: its sections set their own width */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+h1 { font-size: 36px; line-height: 1.2; margin: 0 0 12px; }
+.lead { font-size: 19px; color: var(--muted); margin-top: 0; }
+.muted { color: var(--muted); }
+.hero { padding: 24px 0 32px; }
+.page-list { padding-left: 20px; }
+.page-list li { margin: 6px 0; }
+
+.site-footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+.site-footer .wrap { padding: 24px; }
+
+.ext-error { color: var(--muted); font-style: italic; }

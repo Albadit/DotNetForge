@@ -15,7 +15,7 @@ constants, a signer and a placeholder screen. Nothing creates, fires or delivers
 | Permission area | `PermissionAreas.Webhooks`; `PermissionMatrix` grants Admin every action | reference data, not consulted at request time ([authorization](authorization.md)) |
 | Audit | `AuditActions.WebhookCreated` = `webhook.created` | never written |
 | Dashboard | `DashboardController` counts `Webhooks` of the active tenant | always `0` ([Dashboard](../pages/dashboard.md)) |
-| Screen | `GET /admin/webhooks` → `ModulesController.Webhooks`; sidebar **Settings · Global Settings → Webhooks** | [placeholder](../pages/module-placeholders.md), `AdminArea` policy (any admin-capable role) |
+| Screen | `GET /admin/webhooks` → `ModulesController.Webhooks`; sidebar **Settings → Global Settings → Webhooks** | [placeholder](../pages/module-placeholders.md), `AdminArea` policy (any admin-capable role) |
 
 ### `Webhook`
 

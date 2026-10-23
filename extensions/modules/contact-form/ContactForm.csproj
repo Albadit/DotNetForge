@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Module extension. Uses the Markdown Kit library (manifest "dependencies"): referenced, never copied - the host
+       shares the library's own copy at run time. -->
+
+  <ItemGroup>
+    <ProjectReference Include="../../libraries/markdown-kit/MarkdownKit.csproj" Private="false" />
+  </ItemGroup>
+
+</Project>

@@ -1,11 +1,16 @@
 # Authentication
 
-Two independent schemes, both registered in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`:
+Two independent schemes, both registered in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`, plus a
+short-lived helper cookie for sign-in extensions:
 
 | Scheme | Name | Used for | Credential | Selected by |
 | --- | --- | --- | --- | --- |
-| Cookie (default) | `CookieAuthenticationDefaults.AuthenticationScheme` ("Cookies") | admin area, extension views | email + password → cookie `dnf.auth` | default scheme |
+| Cookie (default) | `CookieAuthenticationDefaults.AuthenticationScheme` ("Cookies") | admin area, extension views | email + password (or an external provider) → cookie `dnf.auth` | default scheme |
 | API token | `ApiTokenDefaults.Scheme` = `"ApiToken"` | `/api/*` | `Authorization: Bearer dnf_<prefix>_<secret>` | `[Authorize(AuthenticationSchemes = "ApiToken")]` on `ApiControllerBase` |
+| External (helper) | `ExternalLogin.SignInScheme` = `"dnf.external"` | carrying an authentication extension's result to `ExternalLoginController` | cookie `dnf.external`, 10 min, `HttpOnly`, `SameSite=Lax`, `Secure` as `dnf.auth` | the extension's remote scheme signs into it - [External sign-in extensions](#external-sign-in-extensions) |
+
+Extensions may register further schemes (e.g. the Discord sample's `discord` OAuth scheme) from
+`IExtension.ConfigureServices`.
 
 A cookie never authenticates an API call and a token never authenticates an admin screen. Authorization (who may do
 what once authenticated) is in [authorization.md](authorization.md).
@@ -22,7 +27,7 @@ Screens: [Sign in](../pages/login.md), [Access denied](../pages/access-denied.md
 | `LoginPath` | `/account/login` |
 | `LogoutPath` | `/account/logout` |
 | `AccessDeniedPath` | `/account/denied` |
-| `ExpireTimeSpan` | 8 hours, `SlidingExpiration = true` |
+| `ExpireTimeSpan` | 8 hours, `SlidingExpiration = true`; **Remember me**: persistent cookie, 30 days (`AccountController.RememberMeLifetime`), also sliding |
 | `Cookie.Name` | `dnf.auth` |
 | `HttpOnly` | `true` |
 | `SameSite` | `Lax` |
@@ -37,10 +42,11 @@ or through a TLS-terminating proxy with forwarded headers - [deployment](../guid
 1. Rate limit `credentials` (10 per minute per client IP, `429` beyond) - see [Rate limiting](#rate-limiting).
 2. Antiforgery check.
 3. `AuthService.GetDefaultTenantIdAsync` → `AuthService.ValidateAsync(email, password, tenantId)` (below).
-4. Success → `SignInAsync` (cookie), then `HttpContext.User` is set to the new principal so the `user.login` audit
+4. Success → `SignInAsync` (cookie; `IsPersistent` + `ExpiresUtc` when **Remember me** is ticked), then `HttpContext.User` is set to the new principal so the `user.login` audit
    entry carries the user and tenant, then `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - a
    missing or external `returnUrl` goes to the dashboard.
-5. Failure → message per status, `user.login.failed` with the typed email ([audit logging](audit-logging.md)).
+5. Failure → message per status as an error toast (`TempData["Error"]`), `user.login.failed` with the typed email
+   ([audit logging](audit-logging.md)).
 
 ### `AuthService.ValidateAsync(email, password, tenantId)`
 
@@ -101,6 +107,46 @@ tenant** (`Tenants.OrderBy(CreatedDate)`). There is no tenant selection; see [mu
 `POST /account/logout` (antiforgery-protected) writes `user.logout`, signs out and redirects to `/account/login`.
 Triggered by the **Sign out** button in `_AdminLayout` and the **Sign out** button (a POST form) on the denied screen.
 
+## External sign-in extensions
+
+An `authentication` extension adds a "Sign in with ..." button to the [Sign in](../pages/login.md) screen. It
+registers its own remote scheme (OAuth/OIDC) with `SignInScheme = ExternalLogin.SignInScheme` and calls
+`services.AddLoginProvider(context, scheme, displayName)` (`DotNetForge.Sdk`); the host does the rest. Writing one:
+[extension development guide](../guides/extension-development.md); sample: `extensions/authentication/discord-login`
+(needs `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET`, see [configuration](configuration.md#extension-settings)).
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant L as /account/login
+    participant X as ExternalLoginController
+    participant P as Provider (extension's scheme)
+    participant A as AuthService
+    U->>L: GET (buttons from LoginProviders.GetActiveAsync)
+    U->>X: POST /account/external/{scheme} (antiforgery)
+    X->>P: Challenge(scheme), RedirectUri = /account/external/callback
+    P-->>U: provider sign-in, then the scheme's own callback
+    P->>X: signs into dnf.external, redirects to /account/external/callback
+    X->>X: read + delete dnf.external, check provider still active, email claim
+    X->>A: ValidateExternalAsync(email, default tenant)
+    A-->>X: Success / InvalidCredentials / Disabled / LockedOut
+    X-->>U: dnf.auth cookie + user.login "via <provider>" → returnUrl or /admin
+```
+
+| Step | Rule (`ExternalLoginController`, `AuthService.ValidateExternalAsync`) |
+| --- | --- |
+| Buttons | `LoginProviders` (`src/DotNetForge.Web/Services/`) lists the `LoginProviderContribution`s whose extension is active (`ExtensionCatalog`); a disabled extension's button disappears at once |
+| Challenge | `POST /account/external/{scheme}`: antiforgery, rate limit `credentials`; unknown or inactive scheme → `404`; a non-local `returnUrl` is dropped |
+| Callback | `GET /account/external/callback` (rate limit `credentials`): authenticates and immediately signs out `dnf.external`; the provider recorded in the challenge must still be active; the principal must carry a `ClaimTypes.Email` claim |
+| Matching | the **existing** user of the default tenant with exactly that email (trimmed, same collation rules as password sign-in). No account is ever created |
+| Account state | `Disabled` and locked-out (`LockoutEndUtc > now`) accounts are refused, as for a password sign-in. Failed-attempt counters are not changed |
+| Success | `LastLoginDate`, same principal as a password sign-in (`AuthService`), cookie `dnf.auth`, audit `user.login` with details `via <DisplayName>`, `LocalRedirect` to a local `returnUrl` or `/admin` |
+| Failure | audit `user.login.failed` (`success: false`, the email if known, details `via <DisplayName>` or `external sign-in`), message in `TempData["Error"]` (an error toast), redirect to `/account/login` ([messages](../pages/login.md#error-handling)) |
+
+Trust: the host believes the email claim the extension produces, so a sign-in extension must only pass on emails the
+provider has verified (the Discord sample adds the claim only when Discord reports `verified: true`). Like all
+extension code it runs with full host privileges ([extensions → Security model](extensions.md#security-model)).
+
 ## Rate limiting
 
 ASP.NET Core's built-in rate limiter (`AddRateLimiter` in `DependencyRegistration.AddRateLimits`, `UseRateLimiter()`
@@ -109,8 +155,9 @@ after `UseAuthentication()` in `Program.cs`). Policy names are constants in
 
 | Policy | Applied to | Limit | Partition |
 | --- | --- | --- | --- |
-| `credentials` | `POST /account/login`, `POST /setup` | 10 requests per 1-minute fixed window, no queue | `Connection.RemoteIpAddress` |
+| `credentials` | `POST /account/login`, `POST /setup`, `POST /account/external/{scheme}`, `GET /account/external/callback` | 10 requests per 1-minute fixed window, no queue | `Connection.RemoteIpAddress` |
 | `api` | every API controller (`ApiControllerBase`) | 300 requests per 1-minute fixed window, no queue | `Connection.RemoteIpAddress` |
+| `forms` | anonymous public form posts of extensions that opt in (`.RequireRateLimiting(RateLimitPolicies.Forms)`, e.g. the Contact Form sample's `POST /ext/contact-form/submit`) | 5 requests per 1-minute fixed window, no queue | `Connection.RemoteIpAddress` |
 
 A rejected request gets `429 Too Many Requests`. Counters are in memory per instance. Behind a reverse proxy enable
 forwarded headers (`ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`), otherwise every client shares the proxy's address
@@ -161,8 +208,9 @@ iterations can be raised without invalidating existing hashes.
 
 ## Not implemented
 
-Sign-up, password reset, email confirmation, OAuth/social providers and per-provider settings
-([Planned](#planned-not-implemented)) are not built. `AuthProvider` rows are seeded (Email
+Sign-up, password reset, email confirmation, built-in OAuth/social providers and per-provider settings
+([Planned](#planned-not-implemented)) are not built; social sign-in exists only through
+[extensions](#external-sign-in-extensions), for existing users. `AuthProvider` rows are seeded (Email
 enabled, 16 OAuth providers disabled) but nothing reads them; **Providers** and **Advanced Settings** are
 [placeholders](../pages/module-placeholders.md). There is no way to create additional users in the UI.
 
@@ -184,7 +232,8 @@ Target behaviour from the original product specification. Nothing in this sectio
   | CAS (single sign-on) | CAS |
 
 - More providers can be installed as `authentication` extensions; they appear in the providers list with the same
-  controls ([extensions](extensions.md#planned-not-implemented)).
+  controls ([extensions](extensions.md#planned-not-implemented)). ✔ such extensions add a sign-in button when enabled
+  ([External sign-in extensions](#external-sign-in-extensions)); ✘ no providers list.
 - Sign-in in all three CMS modes ([product](../product.md)): the login screen (Traditional/Hybrid) and a login API
   (Headless; today `/api` accepts only API tokens - [headless API](headless-api.md)).
 - Self sign-up, password reset, email confirmation and social login, governed by the **Advanced User Settings**.
@@ -195,7 +244,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Providers screen
 
-`/admin/providers` (sidebar **Settings · Users & Permissions Plugin**), today a
+`/admin/providers` (sidebar **Settings → Users & Permissions Plugin**), today a
 [placeholder](../pages/module-placeholders.md) open to every admin-capable role (`ModulesController` has no role
 restriction).
 
@@ -216,7 +265,7 @@ email      Enabled       Edit
 
 ### Advanced settings screen
 
-`/admin/advanced-settings` (sidebar **Settings · Users & Permissions Plugin**), today a
+`/admin/advanced-settings` (sidebar **Settings → Users & Permissions Plugin**), today a
 [placeholder](../pages/module-placeholders.md). No entity or setting keys exist for these values.
 
 | Setting | Type | Rule |
@@ -235,7 +284,7 @@ email      Enabled       Edit
 | Flow | Steps |
 | --- | --- |
 | Email login (delta to today) | As [Cookie sign-in](#cookie-sign-in), plus: email confirmation on and account unconfirmed → reject with "confirm your email" and offer to resend; Headless mode uses a login API instead of the form. |
-| Social / OAuth login | Pick an **Enabled** provider → redirect to its authorization endpoint (client credentials + callback URL) → user authenticates there → callback with code → exchange code, read profile incl. email, validate → existing account: sign in; none: registration sub-flow (subject to **Enable sign-ups** and **One account per email address**) → session/token → redirect to destination. |
+| Social / OAuth login | Pick an **Enabled** provider → redirect to its authorization endpoint (client credentials + callback URL) → user authenticates there → callback with code → exchange code, read profile incl. email, validate → existing account: sign in (✔ for extension providers); none: registration sub-flow (subject to **Enable sign-ups** and **One account per email address**; ✘ today refused) → session/token → redirect to destination. |
 | Registration | Start via email form or a provider → **Enable sign-ups** `false` → stop → validate input (email format; for email: `PasswordPolicy` + confirmation match) → **One account per email address** and email exists under any provider → reject → create account with the default role → confirmation on: send the *Email confirmation* template ([email](email.md#planned-not-implemented)), mark unconfirmed → tell the user the next step. |
 | Password reset | Submit email → always a neutral response → if the account exists: single-use, time-limited token, *Password reset* email linking to the **Reset password page URL** → user submits new password + confirmation → validate token (unexpired, unused) and password → update hash, invalidate token → redirect to login. |
 | Email confirmation | Single-use, time-limited link in the confirmation email → validate token → mark confirmed, invalidate token → redirect to the **Email confirmation redirection URL**. |
@@ -293,7 +342,8 @@ These settings belong to the **Users** and **Settings** permission areas.
 - [ ] A provider installed as an `authentication` extension appears in the list with the same controls.
 - [ ] Only Super Admin and Admin can view the providers list, enable/disable providers, edit provider settings and edit Advanced User Settings; only Super Admin can install provider extensions.
 - [x] A user can sign in with email and a correct password; a wrong password is rejected and increments the lockout counter (`AuthService.ValidateAsync`).
-- [ ] A user can sign in through each enabled social/OAuth provider via the full redirect/callback exchange.
+- [ ] A user can sign in through each enabled social/OAuth provider via the full redirect/callback exchange (✔ for
+  providers added by `authentication` extensions, existing users only; no built-in providers).
 - [ ] A new user can register via email when sign-ups are enabled and gets the configured default role.
 - [ ] With **Enable sign-ups** `false`, registration is rejected for every provider, including OAuth-driven account creation.
 - [ ] With **One account per email address** `true`, an email already in use never yields a second account.
@@ -306,7 +356,7 @@ These settings belong to the **Users** and **Settings** permission areas.
 - [ ] Saving a default role that does not reference an existing role is rejected.
 - [x] After the configured number of failed attempts the account is locked and sign-in is refused until the window elapses (`AuthService`: fixed `MaxFailedAttempts` 5, `LockoutWindow` 15 min).
 - [x] Login attempts are rate limited at the endpoint level (`[EnableRateLimiting(RateLimitPolicies.Credentials)]` on `AccountController.Login`: 10/min per client IP → 429).
-- [ ] Disabling a provider removes it from the login screen and blocks new logins through it without deleting accounts.
+- [ ] Disabling a provider removes it from the login screen and blocks new logins through it without deleting accounts (✔ for extension providers: disabling the extension; ✘ for `AuthProvider` rows).
 - [ ] All authentication forms and APIs enforce input validation and CSRF protection, and passwords are stored only as secure hashes (CSRF on login ✔ and PBKDF2 hashing ✔; no server-side email format check on login).
 
 ## Where to change things
@@ -316,4 +366,7 @@ These settings belong to the **Users** and **Settings** permission areas.
   Data Protection: `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. Policy names: `RateLimitPolicies`.
 - Token validation, verification cache, `LastUsedDate` throttle: `ApiTokenAuthenticationHandler`. Token format:
   `ApiTokenFactory`.
+- External sign-in: `ExternalLoginController` (flow, messages, audit), `AuthService.ValidateExternalAsync` (matching
+  and account checks), `LoginProviders` (which buttons), the `dnf.external` cookie in `DependencyRegistration`; the
+  extension contract (`AddLoginProvider`, `ExternalLogin.SignInScheme`) in `src/DotNetForge.Sdk`.
 - Never build a `ClaimsPrincipal` for a user anywhere else - reuse `AuthService` so claims stay consistent.

@@ -1,24 +1,123 @@
 @model List<UsersController.UserListItem>
 @{
     ViewData["Title"] = "Users";
+    ViewData["Description"] = "People with access to this tenant and the roles that decide what they can do.";
+    var roles = Model.SelectMany(u => u.Roles).Distinct().Order().ToList();
+    var canCreate = ViewData["CanCreate"] as bool? == true;
+    var canUpdate = ViewData["CanUpdate"] as bool? == true;
+    var canDelete = ViewData["CanDelete"] as bool? == true;
+
+    static string Initials(string name, string email) =>
+        string.Concat((string.IsNullOrWhiteSpace(name) ? email : name)
+            .Split(new[] { ' ', '@', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0]));
 }
 
-<p class="muted">Users with access to this tenant.</p>
-
-<table class="data">
-    <thead>
-        <tr><th>Email</th><th>Name</th><th>Roles</th><th>Status</th><th>Last login</th></tr>
-    </thead>
-    <tbody>
-    @foreach (var user in Model)
+@section Actions {
+    @if (canCreate)
     {
-        <tr>
-            <td><strong>@user.Email</strong></td>
-            <td>@user.Name</td>
-            <td>@string.Join(", ", user.Roles)</td>
-            <td><span class="badge @(user.Status == "Enabled" ? "ok" : "warn")">@user.Status</span></td>
-            <td class="muted">@(user.LastLogin?.ToString("u") ?? "never")</td>
-        </tr>
+        <a class="btn btn-primary" href="/admin/users/create"><icon name="plus" /> Create user</a>
     }
-    </tbody>
-</table>
+}
+
+<section class="card" aria-labelledby="users-title" data-collection data-page-size="25">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" id="users-title">All users</h2>
+            <p class="card-description" data-collection-count>@Model.Count total</p>
+        </div>
+    </div>
+    <div class="toolbar" data-js-only hidden>
+        <div class="toolbar-search input-icon">
+            <icon name="search" size="sm" />
+            <label class="sr-only" for="user-search">Search users</label>
+            <input id="user-search" type="search" class="input-sm" placeholder="Search by name or email" data-collection-search />
+        </div>
+        <label class="sr-only" for="user-role">Role</label>
+        <select id="user-role" class="input-sm" data-collection-filter="roles">
+            <option value="">All roles</option>
+            @foreach (var role in roles)
+            {
+                <option value="@role.Replace(' ', '-')">@role</option>
+            }
+        </select>
+        <label class="sr-only" for="user-status">Status</label>
+        <select id="user-status" class="input-sm" data-collection-filter="status">
+            <option value="">Any status</option>
+            <option value="enabled">Enabled</option>
+            <option value="disabled">Disabled</option>
+        </select>
+    </div>
+    <div class="table-wrap">
+        <table class="table table-stack">
+            <thead>
+                <tr>
+                    <th scope="col" data-sort="text">User</th>
+                    <th scope="col">Roles</th>
+                    <th scope="col" data-sort="text">Status</th>
+                    <th scope="col" data-sort="date">Last sign-in</th>
+                    <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    var enabled = user.Status == "Enabled";
+                    <tr data-item data-status="@user.Status.ToLowerInvariant()" data-roles="@string.Join(' ', user.Roles.Select(r => r.Replace(' ', '-')))"
+                        data-search="@user.Name @user.Email">
+                        <td class="cell-lead" data-sort-value="@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)">
+                            <div class="cluster">
+                                <span class="avatar" aria-hidden="true">@Initials(user.Name, user.Email)</span>
+                                <span>
+                                    <a class="cell-primary" href="/admin/users/@user.Id">@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</a>
+                                    @if (user.IsSelf)
+                                    {
+                                        <badge tone="Neutral">You</badge>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(user.Name))
+                                    {
+                                        <span class="cell-sub">@user.Email</span>
+                                    }
+                                </span>
+                            </div>
+                        </td>
+                        <td data-label="Roles">
+                            <div class="cluster">
+                                @foreach (var role in user.Roles)
+                                {
+                                    <badge tone="@(role.Contains("Admin") ? Tone.Accent : Tone.Neutral)">@role</badge>
+                                }
+                                @if (user.Roles.Count == 0)
+                                {
+                                    <span class="text-subtle">No role</span>
+                                }
+                            </div>
+                        </td>
+                        <td data-label="Status"><badge tone="@(enabled ? Tone.Success : Tone.Danger)" dot="true">@user.Status</badge></td>
+                        <td data-label="Last sign-in" data-sort-value="@(user.LastLogin?.ToString("O") ?? "")"><timestamp value="@user.LastLogin" empty="Never" /></td>
+                        <td class="col-actions">
+                            <action-menu label="Actions for @user.Email">
+                                <menu-link href="/admin/users/@user.Id" icon="@(canUpdate ? "pencil" : "eye")">@(canUpdate ? "Edit" : "View")</menu-link>
+                                @if (canUpdate && !user.IsSelf)
+                                {
+                                    <menu-post action="/admin/users/@user.Id/@(enabled ? "disable" : "enable")" icon="power" field-returnTo="list">@(enabled ? "Disable" : "Enable")</menu-post>
+                                }
+                                @if (canDelete && !user.IsSelf)
+                                {
+                                    <menu-separator />
+                                    <menu-post action="/admin/users/@user.Id/delete" icon="trash" danger="true" field-returnTo="list"
+                                               confirm="Delete @user.Email? They can't sign in any more. This can't be undone." confirm-title="Delete user" confirm-action="Delete user">Delete</menu-post>
+                                }
+                            </action-menu>
+                        </td>
+                    </tr>
+                }
+                <tr class="table-empty" data-collection-empty hidden><td colspan="5">No user matches the search or filters.</td></tr>
+                @if (Model.Count == 0)
+                {
+                    <tr class="table-empty"><td colspan="5">No users in this tenant yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="pagination" data-collection-pagination hidden></div>
+</section>

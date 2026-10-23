@@ -24,14 +24,18 @@ content page. The editing screen is [Content Manager](../pages/content-manager.m
 | `MetaDescription` | `<meta name="description">` | ✔ | ✔ |
 | `CanonicalUrl` | `<link rel="canonical">` | ✔ | ✔ |
 | `SeoKeywords` | comma-separated keywords | ✔ | ✘ |
-| `Published` | author intent | ✔ | ✔ part of *live* |
-| `Disabled` | hard off switch | ✔ | ✔ part of *live* |
+| `NoIndex` | `<meta name="robots" content="noindex">`, left out of sitemaps (`PublishedPage.NoIndex`) | ✔ (SEO tab) | ✔ |
+| `SocialImageUrl` | `og:image` (https URL or site path, max 2000) | ✔ (SEO tab) | ✔ |
+| `ThemeId` | theme extension for this page, `null` = the site's theme (max 100) | ✔ (Theme tab) | ✔ ([themes](themes.md#which-theme-is-active)) |
+| `LayoutJson`, `DraftLayoutJson`, `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate` | the [page builder](page-builder.md#drafts-and-publishing) layout: published, draft and conflict detection | via the page builder | `LayoutJson` ✔ |
+| `Published` | the page's one switch: on = published, off = **disabled** | ✔ | ✔ part of *live* |
+| `Disabled` | legacy off switch, no longer set or shown: pages saved with it stay hidden and show as disabled; saving a page clears it (`PageService.ApplyAsync`) | ✘ | ✔ part of *live* |
 | `DisplayInMenu` | menu flag | ✔ | ✘ there is no public menu |
 | `ScheduledPublishDate` / `ScheduledUnpublishDate` | UTC schedule window | ✔ | ✔ part of *live* |
 | `CreatedById`, `CreatedDate`, `UpdatedDate` | audit fields; `CreatedById` also decides "own page" [permissions](#permissions) (set by `ContentController.Create`, `null` for seeded and API-created pages) | - | ✘ |
 
-There is no body/content field: the page builder is not implemented, so a live page renders only its title, slug,
-dynamic route values and a fixed note.
+The page's content is its [page builder](page-builder.md) layout (`LayoutJson`). A live page without a published
+layout renders its title, slug, dynamic route values and a note.
 
 ## Page rules (`IPageService`)
 
@@ -47,7 +51,9 @@ and **never saves** - the caller saves and writes the audit entry.
 | `DeleteAsync(page)` | - | `ContentController.Delete` | `content.deleted` |
 
 `PageInput` holds the editable fields as posted by the Content Manager form (`_PageForm.cshtml` is typed to it) or
-built by the API; `PageInput.From(page)` fills it from a stored page. `PagePosition(Id, ParentPageId, SortOrder)` is
+built by the API; `PageInput.From(page)` fills it from a stored page. `ApplyAsync` also checks `SocialImageUrl` (https
+or a site path, no quotes or spaces) and the shape of `ThemeId`; that the theme is installed is checked by
+`ContentController.Update`. Layouts are saved by the page builder (`PageBuilderService`), not through `PageInput`. `PagePosition(Id, ParentPageId, SortOrder)` is
 one tree position from drag-and-drop.
 
 ### `ApplyAsync` - save and create
@@ -85,7 +91,8 @@ Validates the tree **after** all posted moves (current parents overlaid with the
 | 5 | at most one `[...]` page per parent | `A parent would get more than one dynamic route ([…]); only one is allowed per parent.` |
 
 Only pages whose parent or sort order actually changed get a new `UpdatedDate`; an empty list is a no-op.
-`ContentController.Reorder` returns `400 { error }` on failure and `admin-content.js` shows the message in an alert.
+`ContentController.Reorder` returns `400 { error }` on failure and `wwwroot/js/forge/content.js` shows the message in a
+danger toast, then reloads.
 
 ### `DeleteAsync` - delete
 
@@ -111,10 +118,9 @@ The form's `datetime-local` inputs post zoneless values (`DateTimeKind.Unspecifi
 
 | Behaviour | Where |
 | --- | --- |
-| New page defaults: title `Untitled page`, slug `new-page-<8 hex>`, `Published = false`, `Disabled = true`, `Standard`, last among siblings, `CreatedById` = current user. The parent (if any) must exist in the tenant, else 404. Does not call `ApplyAsync` | `ContentController.Create` |
+| New page defaults: title `Untitled page`, slug `new-page` (or `new-page-2`, `-3`, ... - the first free one among the siblings), `Published = false` (disabled), `Standard`, last among siblings, `CreatedById` = current user. The parent (if any) must exist in the tenant, else 404. Does not call `ApplyAsync` | `ContentController.Create` |
 | Who may create, edit, publish, delete and reorder ([Permissions](#permissions)) | `ContentController` via `AdminControllerBase.Can` / `CanModify` |
-| `Published` and `Disabled` are mutually exclusive in the form | client-side only, `src/DotNetForge.Web/wwwroot/js/admin-content.js` |
-| API create defaults: `Published = false`, `Disabled = false`, root level, `SortOrder = 0`, `Standard`, no `CreatedById` (fields then validated by `ApplyAsync`) | `ContentApiController.CreatePage` ([headless API](headless-api.md#create-a-page)) |
+| API create defaults: `Published = false`, root level, `SortOrder = 0`, `Standard`, no `CreatedById` (fields then validated by `ApplyAsync`) | `ContentApiController.CreatePage` ([headless API](headless-api.md#create-a-page)) |
 
 ## Permissions
 
@@ -132,12 +138,40 @@ The Content Manager checks the signed-in user's roles against the permission are
 
 With the built-in roles: Super Admin, Admin and Editor can do everything; an **Author** creates pages and edits or
 deletes only pages they created, and cannot publish, schedule or reorder. Seeded pages have no `CreatedById`, so
-Authors cannot edit them. Viewing the tree needs only the `AdminArea` policy. API tokens are checked against their
+Authors cannot edit them. Viewing the tree needs only the `AdminArea` policy. A role with a page **edit** grant
+([page permissions](#page-permissions)) may also save that page and open its page builder.
+
+### Page permissions
+
+Per-page rules, edited on the Content Manager's **Permissions** tab (`PagePermissionService`,
+`src/DotNetForge.Web/Services/PagePermissionService.cs`):
+
+- **Roles** - `PagePermission` rows (`TenantId`, `PageId`, `RoleId`, `Permission` = `view` / `edit`): allow only.
+- **Users** - `PageUserPermission` rows (`TenantId`, `PageId`, `UserId`, `Permission`, `Allow`): **allow** or
+  **block** one user, per permission.
+
+Changing them needs `Collection types` / `update` (on every page); each change is audited as `permission.changed`
+(entity `Page`, details list the roles and users).
+
+| Permission | Who may |
+| --- | --- |
+| **view** | 1. Super Admins - always. 2. A user **blocked** from viewing - never (404). 3. A user **allowed** to view - yes. 4. When nobody is allowed explicitly (no role and no user view grant, the default), everyone. 5. Otherwise holders of a granted role (`Public` = everyone, `Authenticated` = any signed-in user), users allowed to edit the page, and users with `Collection types` / `update`. Anonymous visitors who may not see it are redirected to `/account/login?returnUrl=…`; signed-in users get **404** (the page's existence is not revealed). |
+| **edit** | 1. Super Admins - always. 2. A user **blocked** from editing - never: no saving, no page builder, no deleting, whatever their roles grant. 3. A user **allowed** to edit, or holding a role with an edit grant - yes. 4. Otherwise the `Collection types` grants (`update`, or `update.own` on pages they created). Publishing still needs `publish`. Edit grants and blocks are not for `Public` / `Authenticated`. |
+
+Safety rules: nobody can block their own access, and Super Admins can't be blocked. The Super Admin role and its users are not offered on the Permissions tab, and a grant to the Super Admin role is ignored on save. A block on one user doesn't make
+the page restricted for others. Pages anyone is explicitly allowed to view (role or user grant), and their
+descendants, are left out of `IPublishedPages` - menus and sitemaps list only pages everyone may see. Grants are
+removed when the page is deleted; a user's entries when the user is deleted (`UserManagementService`). Integration
+tests: `PageBuilderTests.Page_permissions_seo_and_theme_are_saved_from_the_page_editor`,
+`PageBuilderTests.Single_users_can_be_allowed_or_blocked_on_a_page`. Integration test:
+`PageBuilderTests.Page_permissions_seo_and_theme_are_saved_from_the_page_editor`. API tokens are checked against their
 permission key instead (`content.create`, [headless API](headless-api.md)).
 
 ## Liveness
 
-A page is **live** (publicly visible) when all of these hold at request time (`HomeController.Live`):
+A page is **live** (publicly visible) when all of these hold at request time - `PageVisibility.Live(this
+IQueryable<Page>, DateTime nowUtc)` in `src/DotNetForge.Shared/Content/PublishedPages.cs`, the only place the rule is
+defined (used by `HomeController` and `PublishedPageService`; extensions can call it too):
 
 ```text
 Published && !Disabled
@@ -145,15 +179,27 @@ Published && !Disabled
 && (ScheduledUnpublishDate == null || ScheduledUnpublishDate >  UtcNow)
 ```
 
+### Live pages with their URLs - `IPublishedPages`
+
+`IPublishedPages.ListAsync()` (contract in `src/DotNetForge.Shared/Content/PublishedPages.cs`, implementation
+`src/DotNetForge.Web/Services/PublishedPageService.cs`, scoped) returns every live page reachable at a fixed URL as a
+`PublishedPage(Id, ParentPageId, Title, Path, DisplayInMenu, SortOrder, UpdatedDate, MetaDescription, NoIndex)`. It
+runs a single-table query of the live pages (and one of the view grants) and builds each `Path` in memory by walking up
+the parents: a top-level `/` or `home` slug is `/`, a top-level page is `/<slug>`, a child is `<parent path>/<slug>`.
+Pages below a page that is not live, dynamic `[param]` pages and pages restricted by [view grants](#page-permissions)
+(and their descendants) are left out. Order: depth, then `SortOrder`, then path.
+Like the public routing it has no tenant filter. Used for the theme menu ([themes](themes.md#theme-views)) and by
+extensions (the SEO Toolkit sample's `/sitemap.xml`).
+
 ```mermaid
 stateDiagram-v2
-    [*] --> Draft : created (Disabled, not Published)
-    Draft --> Scheduled : Published + future ScheduledPublishDate
-    Draft --> Live : Published, no future publish date
+    [*] --> Disabled : created (Published off)
+    Disabled --> Scheduled : Published + future ScheduledPublishDate
+    Disabled --> Live : Published, no future publish date
     Scheduled --> Live : clock passes ScheduledPublishDate
     Live --> Offline : clock passes ScheduledUnpublishDate
-    Live --> Draft : author unchecks Published / checks Disabled
-    Offline --> Draft : scheduler sets Published = false
+    Live --> Disabled : author switches Published off
+    Offline --> Disabled : scheduler sets Published = false
 ```
 
 `ScheduledPublishingService` later tidies stored state (clears passed publish dates; sets `Published = false` and
@@ -165,20 +211,28 @@ clears passed unpublish dates) - it never makes a page live by itself. See
 ### `GET /` - `HomeController.Index`
 
 1. Find a live page whose slug is `/` (preferred) or `home` - **any tenant, any parent**.
-2. Found → render `src/DotNetForge.Web/Views/Home/Page.cshtml` with it.
-3. Otherwise render `src/DotNetForge.Web/Views/Home/Index.cshtml` with every live page (title, slug) ordered by `SortOrder`.
+2. Found → render `Page` with it.
+3. Otherwise render `Index` with every live page (title, slug) ordered by `SortOrder`.
+
+`Page` and `Index` are the active theme's `Views/Page.cshtml` / `Views/Index.cshtml` when a theme extension is enabled
+and has that file, else `src/DotNetForge.Web/Views/Home/Page.cshtml` / `Index.cshtml` (`HomeController.ThemedViewAsync`,
+[themes](themes.md)).
 
 ### Any other path - `HomeController.RenderPage` (fallback)
 
 Mapped by `app.MapFallbackToController("RenderPage", "Home")`, i.e. only paths with **no file extension** that no
-other route matched.
+other route matched - including endpoints mapped by extensions (`await app.MapDotNetForgeExtensionsAsync()`).
 
 1. Trim slashes; empty → redirect to `Index`.
 2. Load only the tree shape (`Id`, `ParentPageId`, `Slug`) of **all live pages of all tenants** into memory.
 3. Starting at `parent = null`, for each segment: pick the child of `parent` whose slug equals the segment
    (case-insensitive); if none, the child whose slug is `[...]`; if none → **404**.
 4. When a dynamic child matched, store `routeValues[<name without brackets>] = segment`.
-5. Load the matched page in full by `Id` (gone in between → 404) and render `Page` with `ViewData["RouteValues"]`.
+5. Load the matched page in full by `Id` (gone in between → 404), check its [view grants](#page-permissions)
+   (`HomeController.ViewPageAsync`; the root page in step 2 of `GET /` too) and render `Page` (the page's own theme,
+   else the site theme, else built-in) with `ViewData["RouteValues"]`. A page with a published layout renders it with
+   the `PageLayout` view component ([page builder → Rendering](page-builder.md#rendering)). The page view renders the active [module extensions](extensions.md#slots) whose `pages`
+   setting lists the current path (`ExtensionModules` view component).
 
 ```mermaid
 flowchart LR
@@ -198,9 +252,10 @@ Consequences worth knowing:
   segment `/`, which can't occur). Top-level pages are siblings of the root page.
 - Exact slugs win over a dynamic sibling. Only one dynamic sibling per parent is allowed by `PageService` on every
   write path (save, reorder, delete, API create); if older data still holds two, the first in load order wins.
-- Slugs that collide with real routes (`admin`, `setup`, `account`, `api`, `error`, `health`) never reach
-  `RenderPage`.
-- `PageType`, `TargetUrl`, `FileReference`, `DisplayInMenu` and `SeoKeywords` have no effect on rendering.
+- Slugs that collide with real routes (`admin`, `setup`, `account`, `api`, `error`, `health`, `ext`) and paths mapped
+  by a loaded extension (enabled or not) never reach `RenderPage`.
+- `PageType`, `TargetUrl`, `FileReference` and `SeoKeywords` have no effect on rendering; `DisplayInMenu` only feeds
+  the theme menu.
 - No caching: every public request runs a narrow tree query, walks the list, then loads the one matched page.
 
 ## Planned (not implemented)
@@ -264,16 +319,16 @@ Every field the spec lists for a page already exists on `Page` and in the form (
 
 | Item | Target | Today |
 | --- | --- | --- |
-| `PageType.Standard` | content from the page builder | renders title only |
+| `PageType.Standard` | content from the page builder | ✔ the [page builder](page-builder.md) layout, else title only |
 | `PageType.ExistingPage` | pointer/alias to another page in the tree; needs a page reference | no reference column |
 | `PageType.UrlRedirect` | redirects the visitor to `TargetUrl` | stored, not honoured |
 | `PageType.File` | serves or links a File Manager asset via `FileReference` | free-text string, not honoured |
 | `DisplayInMenu` | page appears in generated menus | no menu exists |
 | `SeoKeywords` | rendered SEO keywords (string list or CSV) | CSV stored, not rendered |
-| View roles / view users | per-page access (below) | ✘ |
-| Theme, layout, layout settings | `themeId`, `layoutId`, per-page layout overrides ([themes](themes.md#planned-not-implemented)) | ✘ |
+| View roles / view users | per-page access (below) | ✔ view and edit roles, users allowed or blocked ([page permissions](#page-permissions)) |
+| Theme, layout, layout settings | `themeId`, `layoutId`, per-page layout overrides ([themes](themes.md#planned-not-implemented)) | ✔ `ThemeId` and the page builder layout; ✘ shared layouts (`layoutId`) |
 | Tags | references into the tenant tag vocabulary | ✘ |
-| Defaults | spec: `Published`, `Disabled`, `DisplayInMenu` = `false`, `SortOrder` = `0` | `ContentController.Create` deliberately creates pages `Disabled = true` and last among siblings |
+| Defaults | spec: `Published`, `Disabled`, `DisplayInMenu` = `false`, `SortOrder` = `0` | `ContentController.Create` creates pages unpublished (disabled) and last among siblings; the separate `Disabled` switch was removed (`Published` is the only one) |
 | Schedule effect | spec: the system sets `Published = true` at the publish time and `false` at the unpublish time | liveness is derived per request; the author must check **Published** (see [Liveness](#liveness)) |
 
 Per-page permissions:
@@ -288,10 +343,12 @@ Per-page permissions:
 ### Page builder
 
 - Place **built-in modules**, the built-in **Razor module** (raw Razor/markup) and **extension modules** (extension
-  types `module` and `widget`) on a Standard page; each placed module has its own configuration. Contract:
-  `IModuleExtension.Render(config)` (✔ interface exists, nothing calls it - [extensions](extensions.md)).
-- **Preview**: renders the draft exactly as a visitor would see it; never resolvable by anonymous visitors.
-- **Draft vs published**: saves go to the draft; publishing promotes the draft to the live version.
+  types `module` and `widget`) on a Standard page; each placed module has its own configuration. Today ✔ `module`
+  extensions render on the pages their manifest `pages` setting lists ([extensions → Slots](extensions.md#slots)); ✘
+  no per-page placement or configuration in the admin, no built-in or Razor modules.
+- ✔ **Preview**: renders the draft exactly as a visitor would see it; never resolvable by anonymous visitors
+  ([page builder](page-builder.md#drafts-and-publishing)).
+- ✔ **Draft vs published**: saves go to the draft; publishing promotes the draft to the live version.
 - Every save creates a content-history version.
 
 ### Content history and review
@@ -492,7 +549,7 @@ Content (pages and entries):
 | Media fields reference assets the user may use; tag fields reference tenant tags (or create them with tag-management permission) | ✘ |
 | Mandatory review + no direct-publish permission: a publish attempt becomes a review submission | ✘ |
 | Reject and request-revision require a comment | ✘ |
-| Every form and API validates server-side; client-side checks are advisory | partial: save, reorder, delete and `POST /api/content/pages` go through `IPageService`; `Create` writes fixed defaults; `Published`/`Disabled` exclusivity is client-side only |
+| Every form and API validates server-side; client-side checks are advisory | partial: save, reorder, delete and `POST /api/content/pages` go through `IPageService`; `Create` writes fixed defaults |
 | No reference to another tenant's parent, asset, user or tag | partial: parent ✔ (save, reorder, create) |
 
 Dynamic routes (validated before saving):
@@ -596,7 +653,7 @@ Content:
 - [ ] Simultaneous edits produce a version-conflict error with a diff and resolution options; no save silently
   overwrites a newer version.
 - [ ] All inputs are validated server-side and every action is audited (✔ for pages: save, reorder, delete and API
-  create go through `IPageService` and are audited; `Published`/`Disabled` exclusivity is still client-side only).
+  create go through `IPageService` and are audited).
 
 Dynamic routes:
 
@@ -634,8 +691,8 @@ Dynamic routes:
   admin UI.
 - [ ] Concurrent conflicting saves in a tenant are serialized so uniqueness/conflict checks stay authoritative.
 - [ ] The admin area is never reachable through a public dynamic route and never affected by frontend themes (holds
-  today only because the fallback endpoint has the lowest priority and no themes exist; there is no reserved-path
-  validation).
+  today because the fallback endpoint has the lowest priority and only `HomeController` uses themes; there is no
+  reserved-path validation).
 
 ## Where to change things
 
@@ -644,6 +701,6 @@ Dynamic routes:
 | New page field | `Page` entity → `DotNetForgeDbContext` config → migrations (every SQL provider, [database](../architecture/database.md)) → `PageInput` + `PageInput.From` → `PageService.ApplyAsync` mapping (+ `FindTooLong` if it has a column limit) → `_PageForm.cshtml` → (API) `CreatePageRequest` → (render) `Page.cshtml` |
 | New validation rule | `PageService` only: `ApplyAsync` for one page; `FindConflict` for tree-wide rules (used by `ReorderAsync` and `DeleteAsync`). Never in controllers |
 | Who may do what | `ContentController` (`Can` / `CanModify` in `Collection types`); default grants in `PermissionMatrix` ([authorization](authorization.md)) |
-| Who sees what publicly | `HomeController.Live` (move it to a shared helper if a second caller appears) |
+| Who sees what publicly | `PageVisibility.Live` (`src/DotNetForge.Shared/Content/PublishedPages.cs`) - never re-implement the rule; the URL list for menus/sitemaps is `PublishedPageService` |
 | URL matching | `HomeController.RenderPage` |
 | Honour `PageType` (redirect/file) | `HomeController.RenderPage`/`Index` after a match - not in the view |

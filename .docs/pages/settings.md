@@ -11,71 +11,96 @@ yet; they are readable through `GET /api/settings`.
 | Item | Value |
 | --- | --- |
 | Routes | `GET /admin/settings`, `POST /admin/settings/save` |
-| Navigation entry | Sidebar → **Settings · Global Settings** → **Settings** |
+| Navigation entry | Sidebar → **Settings** → **Global Settings** → **Settings** (`AdminNavigation.Tree`); breadcrumbs **Settings / Global Settings / Settings** |
 | Parameters | none |
-| Access | `Super Admin`, `Admin` only (the sidebar link is shown to every admin-capable role; others land on [access denied](access-denied.md)) |
+| Access | `Super Admin`, `Admin` only; the sidebar hides the link from other roles, and opening the URL directly lands on [access denied](access-denied.md) |
 
 ## Relevant source files
 
 ```text
 src/DotNetForge.Web/Areas/Admin/Controllers/SettingsController.cs   Index, Save, BuildAsync, MaxKeyLength / MaxValueLength
-src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs           SettingsIndexViewModel
-src/DotNetForge.Web/Areas/Admin/Views/Settings/Index.cshtml         table + add/update form
-src/DotNetForge.Shared/Entities/SystemState.cs  Setting entity (same file)
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs           SettingsIndexViewModel (AppName, Settings)
+src/DotNetForge.Web/Areas/Admin/Views/Settings/Index.cshtml         "All settings" table card + "Add or update" form card
+src/DotNetForge.Web/wwwroot/js/forge/ui.js                          data-collection (search, sort, paging), data-fill (Edit → form)
+src/DotNetForge.Web/wwwroot/css/forge/admin.css                     .settings-layout (two columns, one below 64rem)
+src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                   success toast after a save (rendered by _AdminLayout)
+src/DotNetForge.Shared/Entities/SystemState.cs                      Setting entity (same file)
 src/DotNetForge.Web/Services/AuditService.cs                        settings.changed (via IAuditService)
 ```
 
 ## Page layout
 
 ```text
-Settings (_AdminLayout, title "Settings")
-├── Flash message                         after a save
-├── note: "Key/value settings for <APP_NAME>. Global settings (no tenant) are read-only here; ..."
-└── .content-layout
-    ├── panel: table.data (Key · Value)   or "No settings yet."
-    └── aside.panel "Add / update"
-        ├── Validation summary
-        └── Form (POST /admin/settings/save): Key*, Value, [Save setting]
+Settings (_AdminLayout; header "Settings" + description "Key/value settings for <APP_NAME>. Saving creates or
+│         updates a value for this tenant; global values (no tenant) stay as they are.")
+└── .settings-layout
+    ├── card "All settings" [data-collection, 25 per page]   "N total" / "x of N"
+    │   ├── toolbar (JS only): search "Search keys and values"
+    │   ├── table.table.table-stack: Key (sortable, <code>) · Value ("(empty)" when blank) · [Edit] (JS only)
+    │   │   └── row "No setting matches the search."   [data-collection-empty]
+    │   └── pagination                                  JS, more than 25 matching rows
+    │   (no settings → empty state "No settings yet" instead of toolbar and table)
+    └── card "Add or update" - "An existing key is overwritten for this tenant."
+        └── form#settingForm (POST /admin/settings/save, antiforgery)
+            ├── <form-errors />
+            ├── Key * (placeholder "site.tagline", monospace) · Value (optional, textarea)
+            └── [Clear] (reset) · [Save setting]
 ```
 
 ## Components
 
+Component mechanics: [design system → components](../architecture/design-system.md#components) and
+[behaviours](../architecture/design-system.md#behaviours).
+
 | Component | Inputs | Behaviour |
 | --- | --- | --- |
-| Settings table | `SettingsIndexViewModel.Settings` (`(Key, Value)` list ordered by key) | read-only; global and tenant rows are indistinguishable |
-| Add / update form | `key`, `value` (simple parameters) | posts to `SettingsController.Save` |
+| Settings table | `SettingsIndexViewModel.Settings` (`(Key, Value)` list ordered by key) | read-only; global and tenant rows are indistinguishable; client-side search over key and value, sort by **Key**, 25 rows per page |
+| **Edit** button | `data-fill="#settingForm"` + `data-fill-key` / `data-fill-value` | copies the row's key and value into the form and focuses **Key**; nothing is saved until **Save setting** |
+| Add or update form | `key`, `value` (simple parameters) | posts to `SettingsController.Save`; **Clear** resets the fields |
 
 ## Functionality
 
 ### Add or update a setting
 
-1. **Trigger:** **Save setting**.
+1. **Trigger:** **Save setting** (optionally after **Edit** on a row).
 2. **Validation:** browser `required` on Key; server: key not blank (`Key is required.`); trimmed key ≤ 200 and
    value ≤ 4000 characters (`Keys are limited to 200 characters and values to 4000.`).
 3. **Call:** `SettingsController.Save(key, value)`.
 4. **Backend:** trims the key; finds a `Setting` with `TenantId` = active tenant and that key; creates it if missing;
    sets `Value` (untrimmed, may be empty/null); `SaveChangesAsync`; audit `settings.changed` (entity `Setting`, id and
    display = key - the value is not recorded).
-5. **Result:** redirect to `/admin/settings`, flash `Saved '<key>'.`.
-6. **Errors:** blank or too-long key/value → same screen with the message (the form fields are not re-filled).
+5. **Result:** redirect to `/admin/settings`, success toast `Saved '<key>'.`.
+6. **Errors:** blank or too-long key/value → same screen with the message in `<form-errors />` (the form fields are
+   not re-filled).
 
 There is no delete.
 
+### Find a setting
+
+Client-side over the server-rendered table: search box, click **Key** to sort, pagination. Without JavaScript the
+toolbar, **Edit** buttons and pagination stay hidden and every row is listed.
+
 ## Data used by the page
 
-`Settings` where `TenantId == null || TenantId == active tenant`; `AppEnvironment.AppName`.
+`Settings` where `TenantId == null || TenantId == active tenant`; `AppEnvironment.AppName` (description).
 
 ## State
 
-Flash message (`TempData`), `ModelState` on failure. Persisted `Setting` rows.
+| State | Where | Changes when |
+| --- | --- | --- |
+| Result message | `TempData["Success"]` → toast | after a save |
+| Errors | `ModelState` | failed save (same request) |
+| Search, sort, page, filled form | DOM only (`ui.js`) | lost on reload |
+| Settings | `Setting` rows | save |
 
 ## Permissions
 
-`[Authorize(Roles = "Super Admin,Admin")]` on `SettingsController`, on top of the `AdminArea` policy. **Breaking
-change:** `Editor` and `Author` previously had full access; they are now redirected to `/account/denied` (403
-[access denied](access-denied.md)) for both the GET and the POST. Covered by
-`SecurityTests.Editors_can_no_longer_change_settings`. The sidebar still shows the **Settings** link to every
-admin-capable role.
+`[RequirePermission(Settings, read)]` on `SettingsController` and `[RequirePermission(Settings, update)]` on
+`Save`, on top of the `AdminArea` policy ([authorization → screen access](../features/authorization.md#screen-access)).
+With the default grants only Super Admin and Admin pass; `Editor` and `Author` are redirected to `/account/denied`
+(403 [access denied](access-denied.md)) for both the GET and the POST
+(`SecurityTests.Editors_can_no_longer_change_settings`). The sidebar evaluates the same attributes and hides the
+**Settings** link from them (`AdminUiTests.The_sidebar_shows_only_screens_the_role_may_open`) - hiding is not the gate.
 
 ## Validation
 
@@ -86,22 +111,26 @@ before saving so PostgreSQL never rejects the insert. No key format, no duplicat
 
 | Failure | User sees |
 | --- | --- |
-| Blank key | "Key is required." in the summary |
-| Key > 200 or value > 4000 characters | "Keys are limited to 200 characters and values to 4000." in the summary |
+| Blank key | "Key is required." in `<form-errors />` |
+| Key > 200 or value > 4000 characters | "Keys are limited to 200 characters and values to 4000." in `<form-errors />` |
 | Editor / Author opens or posts | redirect to `/account/denied` (403) |
 | Other DB failure | global [error page](error.md) |
 
 ## Loading behaviour
 
-Server-rendered; one query.
+Server-rendered; one query. No skeletons.
 
 ## Empty states
 
-"No settings yet." - the normal state on a fresh install (nothing seeds settings).
+| When | Text |
+| --- | --- |
+| No settings (the normal state on a fresh install - nothing seeds settings) | **No settings yet** - "Add the first key/value pair with the form." |
+| Search matches nothing | "No setting matches the search." |
 
 ## User interactions
 
-Form submit; Enter submits.
+Search box, **Key** column sort, pagination, **Edit** (fills the form), **Clear**, **Save setting**; Enter in **Key**
+submits.
 
 ## Dependencies
 
@@ -116,10 +145,11 @@ flowchart TD
     A["GET /admin/settings"] --> R{"Super Admin or Admin?"}
     R -- no --> X["302 /account/denied"]
     R -- yes --> B[List global + tenant settings]
+    B -- "Edit (JS)" --> B
     B --> C[POST save key/value]
     C --> D{"key blank or too long?"}
     D -- yes --> E[Re-render with error] --> B
-    D -- no --> F["upsert tenant row + audit settings.changed"] --> G["302 + flash"] --> A
+    D -- no --> F["upsert tenant row + audit settings.changed"] --> G["302 + toast"] --> A
 ```
 
 ## Related pages
@@ -131,13 +161,14 @@ flowchart TD
 ## Important implementation details
 
 - Saving a key that exists as a **global** row creates a tenant row with the same key; both then appear in the list
-  (global rows cannot be edited here).
+  (global rows cannot be edited here). **Edit** on a global row therefore prepares a tenant override.
 - Values are displayed HTML-encoded; there is no secret masking - don't store secrets here.
 
 ## Known limitations
 
 - No delete, no typed settings, no grouping, no logo upload or overview diagnostics (see
   [planned](#planned-not-implemented)).
+- Global and tenant rows look the same in the table.
 - No consumer of `Setting` rows in the application.
 
 ## Planned (not implemented)
@@ -148,7 +179,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 **Global Settings → Overview** is the landing screen of the Global Settings group (today the sidebar entry is
 labelled **Settings** and opens this key/value editor - see the
-[sidebar differences](../architecture/pages.md#canonical-sidebar-tree-vs-_sidebarcshtml)). It shows read-only
+[sidebar differences](../architecture/pages.md#canonical-sidebar-tree-vs-the-sidebar)). It shows read-only
 diagnostics, two logo uploads, a **Check for updates** action, a system health indicator and the settings hub table.
 
 **Overview diagnostics (read-only)**
@@ -161,7 +192,7 @@ diagnostics, two logo uploads, a **Check for updates** action, a system health i
 | ASP.NET Core version | string | runtime | ✘ |
 | Database provider | `sqlite` \| `postgresql` | detected from `DATABASE_CONNECTION_STRING` | ✔ `AppEnvironment.Provider` (not displayed) |
 | Environment | e.g. `Development`, `Production` | hosting environment | ✔ `IWebHostEnvironment.EnvironmentName` (not displayed) |
-| Installed extensions | count (optional list) | extension registry ([extensions](../features/extensions.md)) | `InstalledExtensions` is never written; on-disk discovery is `IExtensionLoader.Discover` |
+| Installed extensions | count (optional list) | extension registry ([extensions](../features/extensions.md)) | `InstalledExtensions` holds the enabled state (written on enable/disable); on-disk discovery is `IExtensionLoader.Discover`, "is it active" is `ExtensionCatalog` |
 | System health | `Healthy` \| `Degraded` \| `Unhealthy` + per-check detail | health check service | ✘ (`GET /health` returns a static `ok`) |
 
 Instance-wide facts (versions, provider, environment) are identical for every tenant; tenant-scoped settings and
@@ -171,8 +202,8 @@ branding reflect the active tenant only.
 
 | Field | Required | Shown on | Cleared → |
 | --- | --- | --- | --- |
-| Admin menu logo | no | admin sidebar/header (today `wwwroot/img/logo-dark.svg` in `_AdminLayout` `.admin-logo`) | built-in default |
-| Authentication/login logo | no | sign-in and setup screens (`_AuthLayout`, today the app name) | built-in default |
+| Admin menu logo | no | admin sidebar/header (today `wwwroot/img/logo.svg` in the light and `logo-dark.svg` in the dark `_AdminLayout` sidebar) | built-in default |
+| Authentication/login logo | no | sign-in and setup screens (`_AuthLayout`, today `wwwroot/img/logo-dark.svg` in the brand panel, `logo-mark.svg` + app name in the narrow-screen header) | built-in default |
 
 Stored through the media subsystem (✔ uploads exist - `MediaService` + `IFileStorage`,
 [upload flow](../features/media-storage.md#upload-flow); logo storage itself is not built), URL generated there,
@@ -263,15 +294,15 @@ and `Admin` can open this screen and save tenant settings (fixed role check, not
 - [ ] Server-side validation rejects unsafe uploads even when client validation is bypassed.
 - [ ] The hub table links to every settings screen (API Tokens, Content History, Internationalization, File Manager,
   Plugins, Transfer, Webhooks, Email, Administration Panel, Users & Permissions Plugin).
-- [x] Marketplace is reachable from the admin **Main** menu - `_Sidebar.cshtml` → `/admin/marketplace`
-  (`ModulesController.Marketplace`, placeholder screen).
+- [x] Marketplace is reachable from the admin **Main** menu - `AdminNavigation.Tree` → `/admin/marketplace`
+  (`ModulesController.Marketplace`, placeholder screen; "Soon" badge in the sidebar).
 - [ ] **Check for updates** reports an available version (with link) or "Up to date", and an error state when the
   check fails.
 - [ ] System health shows `Healthy`/`Degraded`/`Unhealthy` with failing-subsystem detail.
-- [ ] Users without the `Settings` permission cannot view or modify Global Settings - partly: only `Super Admin` and
-  `Admin` can (`[Authorize(Roles = ...)]` on `SettingsController`), but by fixed role, not by `Settings` grants.
+- [x] Users without the `Settings` permission cannot view or modify Global Settings (`[RequirePermission]` on
+  `SettingsController`: `read` to view, `update` to save).
 - [x] `Super Admin` has full access to Global Settings and every sub-screen - passes `AdminArea` and every
-  controller `[Authorize(Roles = ...)]` (`AdminListControllers.cs`, `ApiTokensController`).
+  controller check (`Super Admin` holds every grant; `PluginsController` requires the role).
 - [ ] Every successful global settings change (logo upload, logo reset, update action) is audited - only key/value
   saves exist and are audited.
 - [ ] The admin menu logo and admin area are unaffected by any active public theme.

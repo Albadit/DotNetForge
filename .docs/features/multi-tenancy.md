@@ -19,7 +19,8 @@ design is in [Planned](#planned-not-implemented) below.
 
 - **No tenant resolution** from host, subdomain, path or header. Sign-in and setup always use the oldest tenant
   (`AuthService.GetDefaultTenantIdAsync`: `Tenants.OrderBy(t => t.CreatedDate)`).
-- **No tenant switcher.** `_AdminLayout` shows a static "Tenant: **Default**" label.
+- **No tenant switcher** and no tenant indicator in the admin (the static "Tenant Default" block was removed - the
+  CMS is run as one site per installation).
 - **No global query filters.** Each query adds `Where(x => x.TenantId == TenantId)` by hand.
 
 ## Scoping per screen / endpoint
@@ -27,13 +28,14 @@ design is in [Planned](#planned-not-implemented) below.
 | Code | Tenant-scoped? |
 | --- | --- |
 | Content Manager (incl. the parent check on create and reorder validation), Media (list, upload, delete), Settings (tenant rows + global rows), Roles, Users, API Tokens | yes |
-| Dashboard | Users, Roles, Pages, Media, API tokens, Webhooks: yes; Audit entries: yes (active tenant + entries without a tenant); **Extensions: global count** |
+| Dashboard | Users, Roles, Pages, Media, API tokens, Webhooks: yes; Audit entries: yes (active tenant + entries without a tenant); **Enabled extensions: global count**; widgets: whatever each widget extension reads |
 | Audit Logs screen | yes - `TenantId == active || TenantId == null` (tenant-less entries are failed sign-ins) |
-| Audit Dashboard extension | **no** - shows entries of all tenants |
+| Audit Dashboard extension | yes - same filter as the Audit Logs screen (tenant from the `dnf:tenant` claim) |
 | Media downloads `GET /media/{id}/{fileName?}` (`MediaFilesController`) | public files: **no** - anyone with the link; private files: yes - only admin-capable users whose `dnf:tenant` is the file's tenant, everyone else gets 404 |
 | Stored media objects | keys start with the tenant id (`{tenantId:N}/{yyyy}/{MM}/...`) - [media storage](media-storage.md#storage-architecture) |
-| Plugins | n/a (extensions are global) |
-| Public site (`HomeController.Index`, `RenderPage`) | **no** - live pages of all tenants are considered |
+| Plugins, enabled state | n/a (extensions are global; enabling applies to every tenant) |
+| Public site (`HomeController.Index`, `RenderPage`), `IPublishedPages` (theme menu, extension sitemaps) | **no** - live pages of all tenants are considered; the active theme comes from the default (oldest) tenant's `DefaultTheme` |
+| Extension code (endpoints, audit handlers, storage connectors) | up to each extension; audit handlers receive every tenant's events |
 | `ScheduledPublishingService` | **no** (intentionally global) |
 | All `/api/*` endpoints | yes (token's tenant); `/api/settings` also returns global rows; `/api/extensions` is global |
 | `ApiTokenAuthenticationHandler` prefix lookup | global (prefixes are random) |
@@ -42,8 +44,8 @@ design is in [Planned](#planned-not-implemented) below.
 
 - Always filter tenant-scoped tables by the active tenant from the base controller.
 - Never take a tenant id from request input (query, form, body).
-- If you add a second tenant or tenant resolution, revisit every "no" row above - the public site and the Audit
-  Dashboard extension would leak across tenants, and tenant-less audit entries would show in every tenant.
+- If you add a second tenant or tenant resolution, revisit every "no" row above - the public site, `IPublishedPages`
+  and the theme choice would leak across tenants, and tenant-less audit entries would show in every tenant.
 
 ## Planned (not implemented)
 
@@ -100,10 +102,10 @@ Every read and write path filters these by the active tenant:
 | Media | ✔ `MediaFile.TenantId`; storage keys prefixed with the tenant id; private downloads check it |
 | Users, roles | ✔ `User.TenantId`, `Role.TenantId` |
 | Settings | ✔ `Setting.TenantId` (null = global) |
-| Themes, layouts, menus | no entities (only `Tenant.DefaultTheme`) |
+| Themes, layouts, menus | no entities; `Tenant.DefaultTheme` of the default (oldest) tenant picks the active theme ([themes](themes.md#which-theme-is-active)); the theme menu lists every tenant's live pages |
 | API tokens, webhooks | ✔ `ApiToken.TenantId`, `Webhook.TenantId` |
-| Extensions (shared, per-tenant enablement) | `InstalledExtension` has no `TenantId` |
-| Audit logs | ✔ `AuditLogEntry.TenantId` (nullable) - screen and Dashboard count scoped; Audit Dashboard extension not |
+| Extensions (shared, per-tenant enablement) | `InstalledExtension` has no `TenantId`: enabling is global |
+| Audit logs | ✔ `AuditLogEntry.TenantId` (nullable) - screen, Dashboard count and Audit Dashboard extension scoped; extension audit handlers receive every tenant's events |
 | Import / export | not built ([transfer and updates](transfer-and-updates.md)) |
 
 ### Routing order
@@ -127,8 +129,8 @@ more than one tenant.
 
 Owned here; the admin shell only places it ([page architecture](../architecture/pages.md#planned-not-implemented)).
 
-- Shown in the admin chrome on every admin screen with the **active tenant** clearly displayed (today: the static
-  "Tenant: **Default**" block, `.tenant-switcher` in `_AdminLayout`).
+- Shown in the admin chrome on every admin screen with the **active tenant** clearly displayed (today: nothing is
+  shown).
 - Offers switching only to users authorized for more than one tenant: `Super Admin` → all tenants; tenant admin →
   assigned tenants only; never an unassigned tenant.
 - Selecting a tenant sets the active admin context and reloads the current screen filtered to it: content, media,
@@ -199,12 +201,12 @@ A tenant admin never sees, queries or modifies data of an unassigned tenant. Rol
 - [ ] Every tenant-scoped entity (pages, content, media, users, roles, settings, themes, layouts, menus, API tokens,
   webhooks, extensions, dynamic routes, audit logs, content history, import/export) is filtered by the active tenant -
   partly: see [scoping per screen](#scoping-per-screen--endpoint).
-- [ ] No request, query or API call returns another tenant's data - the public site and the Audit Dashboard extension
-  consider all tenants (Audit Logs ✔ and private media ✔ are scoped).
+- [ ] No request, query or API call returns another tenant's data - the public site and `IPublishedPages` consider all
+  tenants (Audit Logs ✔, the Audit Dashboard extension ✔ and private media ✔ are scoped).
 - [ ] A global `Super Admin` can view and manage all tenants.
 - [ ] A tenant admin can manage only assigned tenants.
 - [ ] The admin area offers a tenant switch limited to tenants the user may manage.
-- [ ] Admin screens show an active-tenant indicator that reflects the current context - static "Default" label.
+- [ ] Admin screens show an active-tenant indicator that reflects the current context - none today.
 - [ ] API requests resolve the tenant from domain, path, header or token - token only today.
 - [x] An API token cannot access another tenant unless explicitly granted - `ApiControllerBase.TenantId` comes only
   from the token's `dnf:tenant` claim (`ApiTokenAuthenticationHandler`); no grant mechanism exists.

@@ -1,0 +1,60 @@
+@*
+    Default Theme layout: the document shell of every public page while this theme is active. The host passes
+    Extension (settings), ResourceBase (public URL of Views/Resources/), AppName and Menu (top-level live pages marked
+    "display in menu"). No inline script or style (CSP): everything visual is in Views/Resources/css/theme.css.
+*@
+@{
+    var extension = (ExtensionContext)ViewData["Extension"]!;
+    var resourceBase = ViewData["ResourceBase"] as string;
+    var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
+    var menu = ViewData["Menu"] as IReadOnlyList<PublishedPage> ?? Array.Empty<PublishedPage>();
+    var current = Context.Request.Path.Value?.TrimEnd('/') is { Length: > 0 } p ? p : "/";
+    var accent = extension.GetString("accent", "indigo") is "teal" or "rose" ? extension.GetString("accent") : "indigo";
+    var bodyClass = $"accent-{accent}" + (extension.GetBool("supportsDarkMode") ? " auto-dark" : string.Empty);
+    var title = ViewData["Title"] as string;
+    var fullWidth = ViewData["FullWidth"] as bool? == true;
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(string.IsNullOrEmpty(title) ? appName : $"{title} · {appName}")</title>
+    @if (ViewData["MetaDescription"] is string description && description.Length > 0)
+    {
+        <meta name="description" content="@description" />
+    }
+    @if (ViewData["CanonicalUrl"] is string canonical && canonical.Length > 0)
+    {
+        <link rel="canonical" href="@canonical" />
+    }
+    @if (ViewData["NoIndex"] as bool? == true)
+    {
+        <meta name="robots" content="noindex" />
+    }
+    @if (ViewData["SocialImage"] is string image && image.Length > 0)
+    {
+        <meta property="og:image" content="@(image.StartsWith('/') ? $"{Context.Request.Scheme}://{Context.Request.Host}{image}" : image)" />
+    }
+    <link rel="stylesheet" href="@resourceBase/css/theme.css" />
+</head>
+<body class="@bodyClass">
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="/">@appName</a>
+            <nav>
+                @foreach (var item in menu)
+                {
+                    <a href="@item.Path" class="@(string.Equals(item.Path, current, StringComparison.OrdinalIgnoreCase) ? "active" : null)">@item.Title</a>
+                }
+            </nav>
+        </div>
+    </header>
+    <main class="@(fullWidth ? "full" : "wrap")">
+        @RenderBody()
+    </main>
+    <footer class="site-footer">
+        <div class="wrap">@extension.GetString("tagline")</div>
+    </footer>
+</body>
+</html>

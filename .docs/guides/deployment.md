@@ -12,15 +12,17 @@ everything it writes at runtime goes to the database or to object storage, never
 | Data Protection key ring (auth cookies, antiforgery tokens) | the `DataProtectionKeys` table | the default `~/.aspnet/DataProtection-Keys` folder |
 | Upload buffering (multipart bodies over 64 KB) | the OS temp directory: `ASPNETCORE_TEMP`, else `/tmp` | - must be writable (tmpfs), is not storage |
 | Logs | stdout/stderr (console logger) | log files |
-| Admin extension views | compiled **in memory** from `extensions/` (read only) | - |
+| Extension views | compiled **in memory** from `extensions/` (read only) | - |
+| Extension code | loaded at startup from each extension's built `bin/` (read into memory, files never locked) | building inside the running container |
+| Enabled extensions | the `InstalledExtensions` table (enable/disable on the Plugins screen writes only the database) | files under `extensions/` |
 
 What enforces this:
 
 - Outside Development, `EnvConfigurationLoader` refuses any default that points inside the deployment directory: a
   SQLite database needs an explicit **absolute** `Data Source`, and media needs S3 settings. The process exits with
   code 1 and a clear message otherwise ([configuration](../features/configuration.md)).
-- `ReadOnlyDeploymentTests` runs setup, sign-in, admin screens, uploads, downloads and deletes, and fails if any file
-  under the content root changed. CI also boots the Docker image with `--read-only` (job `read-only-container`).
+- `ReadOnlyDeploymentTests` runs setup, sign-in, enabling an extension, admin screens (including an admin extension
+  tab), uploads, downloads and deletes, and fails if any file under the content root changed. CI also boots the Docker image with `--read-only` (job `read-only-container`).
 - Verified manually (October 2026): the image with `--read-only --tmpfs /tmp` against PostgreSQL 17 and an
   S3-compatible server passed 19 end-to-end checks with an empty `docker diff`, and sessions survived a container
   restart.
@@ -65,7 +67,10 @@ Full key reference with validation messages: [configuration](../features/configu
 ## Docker
 
 `docker/Dockerfile` builds a framework-dependent image (`mcr.microsoft.com/dotnet/aspnet:10.0`, non-root
-`$APP_UID`, port 8080, `ASPNETCORE_ENVIRONMENT=Production`). `dotnet publish` includes `wwwroot/` and `extensions/`. Build from the repository root (the build context):
+`$APP_UID`, port 8080, `ASPNETCORE_ENVIRONMENT=Production`). Before `dotnet publish` it builds every
+`extensions/**/*.csproj` in Release (each into its own `bin/`); `dotnet publish` then includes `wwwroot/` and
+`extensions/` (without `obj/`), so the image carries the extensions' views and compiled code. Build from the
+repository root (the build context):
 
 ```bash
 docker build -f docker/Dockerfile -t dotnetforge .
@@ -87,8 +92,23 @@ On first start the app applies the database migrations and seeds baseline data, 
 `/setup` until the first Super Admin is created. `GET /health` returns `{ "status": "ok", "app": "<APP_NAME>" }` and
 is not affected by the install gate - use it for liveness probes.
 
-Without Docker: `dotnet publish src/DotNetForge.Web/DotNetForge.Web.csproj -c Release -o out`, deploy `out/` read-only, set the same
-environment variables, run `dotnet DotNetForge.Web.dll`.
+Without Docker: build the extensions with code first (`dotnet build -c Release` builds the solution, samples
+included), then `dotnet publish src/DotNetForge.Web/DotNetForge.Web.csproj -c Release -o out`, deploy `out/`
+read-only, set the same environment variables, run `dotnet DotNetForge.Web.dll`.
+
+### Extensions in production
+
+- Every extension starts **disabled**; a Super Admin enables it on **Plugins** after deployment. The choice is stored
+  in the database, so it survives redeploys and applies to every instance (others follow within 30 s).
+- Adding, removing or changing an extension in a read-only deployment means a new publish or image; a changed DLL
+  needs a restart, which a new deployment does anyway.
+- Extension secrets (e.g. `DISCORD_CLIENT_ID`, `S3_CONNECTOR_SECRET_ACCESS_KEY`) are environment variables like the
+  core ones ([configuration → extension settings](../features/configuration.md#extension-settings)).
+- Check the startup log for `Extension {id} is enabled but not running: ...` (warning; information while disabled); such an extension cannot be enabled.
+- Extensions run with full host privileges - deploy only trusted ones ([extensions → Security
+  model](../features/extensions.md#security-model)). An extension can also be built against a published CMS (no
+  `src/`): `extensions/Directory.Build.props` then references the SDK DLLs next to the app
+  ([extensions → Deployment](../features/extensions.md#deployment)).
 
 ## Behind a reverse proxy
 
@@ -137,7 +157,9 @@ What already works across instances: Data Protection keys are shared through the
 storage; the scheduled-publishing job is idempotent (running on every instance is harmless).
 
 What is per instance: rate limits (in memory, so N instances allow N× the limit), the API-token verification cache
-and the session-validation cache (both short-lived and self-correcting), and the extension discovery cache.
+and the session-validation cache (both short-lived and self-correcting), the extension discovery cache, the
+enabled-extensions cache (30 s, so an enable/disable reaches other instances within 30 s) and the queue that feeds
+extension audit handlers (events are handled on the instance that wrote them).
 
 ## Backups
 

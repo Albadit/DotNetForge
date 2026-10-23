@@ -2,7 +2,8 @@
 
 The main technical reference for DotNetForge CMS: a server-rendered ASP.NET Core MVC content-management system on
 .NET 10 with EF Core (SQLite, PostgreSQL, SQL Server, MySQL or MongoDB), a role-gated admin area, a public site that resolves URLs from a page
-tree, a token-secured headless API, an on-disk extension system, and media in S3-compatible object storage. It is
+tree, a token-secured headless API, an extension system (code, views and assets under `extensions/`, enabled on the
+Plugins screen), and media in S3-compatible object storage. It is
 built to run from a **read-only deployment directory** ([deployment](guides/deployment.md)). Everything here is verified against the code;
 **the code is the source of truth**. Work that is planned but not built lives in a clearly marked
 **Planned (not implemented)** section at the end of the document that owns the topic, and is summarised in
@@ -13,7 +14,8 @@ New here? Read in this order:
 1. [Architecture overview](architecture/overview.md) - one page: layout, layering, key decisions
 2. [Codebase architecture](architecture/codebase.md) - projects, folders, layers, rules for changes
 3. [Data flow](architecture/data-flow.md) - startup, request pipeline, routing, auth and API flows
-4. [Page (screen) architecture](architecture/pages.md) - route map, layouts, navigation, how screens talk to the backend
+4. [Page (screen) architecture](architecture/pages.md) - route map, layouts, navigation, how screens talk to the backend;
+   the UI itself is the [design system](architecture/design-system.md)
 5. [Feature documents](#features) - one authoritative document per concept
 6. [Screen documents](#screens) - one per screen
 7. [Development guide](guides/development.md) - run, debug, troubleshoot
@@ -35,6 +37,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 │   ├── codebase.md              projects, folders, layers, DI, architectural rules
 │   ├── data-flow.md             startup, pipeline, routing, auth/API/DB/background/error flows
 │   ├── pages.md                 screen architecture + full route map
+│   ├── design-system.md         UI: tokens, components, tag helpers, layouts, themes, accessibility
 │   ├── database.md              tables, ER diagram, migrations, seeding
 │   └── dependencies.md          project refs, NuGet, DI registrations, must-not-bypass list
 ├── database/                    the database layer: providers, routing, configuration, MongoDB, security
@@ -51,6 +54,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | [codebase.md](architecture/codebase.md) | What is each project/folder for? Where does new code go? Which rules must changes follow? |
 | [data-flow.md](architecture/data-flow.md) | What happens at startup and on each request? How are URLs routed? |
 | [pages.md](architecture/pages.md) | Which screens exist, at which routes, with which permissions? How is a screen built? |
+| [design-system.md](architecture/design-system.md) | How do screens look and behave? Which components, tag helpers, icons and tokens exist? Light/dark, accessibility. |
 | [database.md](architecture/database.md) | Which tables exist, what writes them, how are migrations and seeding done? |
 | [dependencies.md](architecture/dependencies.md) | What references what? Which services are registered and who uses them? |
 
@@ -72,18 +76,19 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | --- | --- |
 | Install gate + first Super Admin | [installation.md](features/installation.md) |
 | `.env` configuration | [configuration.md](features/configuration.md) |
-| Cookie sign-in, lockout, API token authentication, hashing | [authentication.md](features/authentication.md) |
-| Roles, `AdminArea` policy, permission matrix, API permission keys | [authorization.md](features/authorization.md) |
+| Cookie sign-in, lockout, external sign-in extensions, API token authentication, hashing | [authentication.md](features/authentication.md) |
+| Roles, permission evaluation, screen access, permission catalog, API permission keys | [authorization.md](features/authorization.md) |
 | Tenants (current single-tenant behaviour) | [multi-tenancy.md](features/multi-tenancy.md) |
-| Content pages, tree rules, liveness, public URL resolution | [content-pages-and-routing.md](features/content-pages-and-routing.md) |
+| Content pages, tree rules, liveness, page permissions, public URL resolution | [content-pages-and-routing.md](features/content-pages-and-routing.md) |
+| Page builder: layout documents, editor, drafts and publishing, rendering | [page-builder.md](features/page-builder.md) |
 | Scheduled publish/unpublish job | [scheduled-publishing.md](features/scheduled-publishing.md) |
 | Headless API endpoints and tokens | [headless-api.md](features/headless-api.md) |
-| Extensions, manifests, admin extensions | [extensions.md](features/extensions.md) |
-| Audit entries | [audit-logging.md](features/audit-logging.md) |
-| Media, object storage (`IFileStorage`), provider choice | [media-storage.md](features/media-storage.md) |
+| Extensions: manifests, code loading, enable/disable, slots, SDK, samples | [extensions.md](features/extensions.md) |
+| Audit entries, extension audit handlers | [audit-logging.md](features/audit-logging.md) |
+| Media, object storage (`IFileStorage`), provider choice, storage connectors | [media-storage.md](features/media-storage.md) |
 | Security controls and known gaps | [security.md](features/security.md) |
 | Logging and error handling | [logging-and-error-handling.md](features/logging-and-error-handling.md) |
-| Themes (planned) | [themes.md](features/themes.md) |
+| Themes (site-wide and per-page theme built; per-tenant planned) | [themes.md](features/themes.md) |
 | Webhooks (planned) | [webhooks.md](features/webhooks.md) |
 | Email (planned) | [email.md](features/email.md) |
 | Internationalization (planned) | [internationalization.md](features/internationalization.md) |
@@ -101,6 +106,8 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Public | Error | `/error` | [error.md](pages/error.md) |
 | Admin | Dashboard | `/admin` | [dashboard.md](pages/dashboard.md) |
 | Admin | Content Manager | `/admin/content` | [content-manager.md](pages/content-manager.md) |
+| Admin | Page builder | `/admin/content/{id}/builder` | [page-builder.md](pages/page-builder.md) |
+| Admin | Profile | `/admin/profile` | [profile.md](pages/profile.md) |
 | Admin | Media | `/admin/media` | [media.md](pages/media.md) |
 | Admin | Settings | `/admin/settings` | [settings.md](pages/settings.md) |
 | Admin | API Tokens | `/admin/api-tokens` | [api-tokens.md](pages/api-tokens.md) |
@@ -118,14 +125,14 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | [development.md](guides/development.md) | setup, commands, resetting state, migrations, debugging, conventions, troubleshooting |
 | [testing.md](guides/testing.md) | test projects, what they cover, how to add tests, CI |
 | [deployment.md](guides/deployment.md) | read-only deployment requirements, environment variables, Docker, reverse proxy, database, object storage, backups |
-| [extension-development.md](guides/extension-development.md) | writing a manifest and an admin extension |
+| [extension-development.md](guides/extension-development.md) | writing an extension: manifest, code, views, slots |
 
 ## Planned work
 
 There is no separate specification folder. Each document that owns a topic ends with a
 **Planned (not implemented)** section holding the remaining requirements, user flows, rules, edge cases and
 acceptance criteria for that topic (criteria already met are ticked). Modules that do not exist yet at all
-(themes, webhooks, email, internationalization, transfer/updates) have a feature document with a short
+(webhooks, email, internationalization, transfer/updates) have a feature document with a short
 *Current state* and a *Planned* section. [implementation-status.md](implementation-status.md) links every module to
 its planned section; [product.md](product.md) holds the product goals and MVP scope.
 
@@ -149,4 +156,5 @@ against the code), tick or remove the acceptance criteria it satisfies, and upda
 | [`/README.md`](../README.md) | project overview and quick start |
 | [`/CLAUDE.md`](../CLAUDE.md) | orientation for Claude Code sessions |
 | [`/.github/agents/`](../.github/agents/) | short AI-agent quick references (spec deliverable) pointing here |
+| [`extensions/README.md`](../extensions/README.md) | how to try each sample extension |
 | `extensions/themes/default-theme/README.md` | sample theme note |

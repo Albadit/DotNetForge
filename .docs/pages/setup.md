@@ -22,8 +22,12 @@ transaction, concurrency) is in [installation](../features/installation.md).
 
 ```text
 src/DotNetForge.Web/Controllers/SetupController.cs                   GET/POST actions, sign-in after install, cms.installed audit
-src/DotNetForge.Web/Views/Setup/Index.cshtml                         the form (uses _AuthLayout)
-src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml                  centered card layout
+src/DotNetForge.Web/Views/Setup/Index.cshtml                         heading + form (Layout = "_AuthLayout")
+src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml                  brand panel + form column, theme menu, _Feedback; loads theme.js, ui.js, auth.css
+src/DotNetForge.Web/Views/Shared/_ThemeMenu.cshtml                   Light / Dark / System menu (needs JS)
+src/DotNetForge.Web/Ui/UiTagHelpers.cs                               <form-errors /> (model-state errors), <icon>
+src/DotNetForge.Web/wwwroot/css/forge/auth.css                       auth layout styles
+src/DotNetForge.Web/wwwroot/js/forge/ui.js                           data-reveal (show/hide password), data-js-only, theme menu
 src/DotNetForge.Shared/Dtos/SetupRequest.cs      form model
 src/DotNetForge.Core/Installation/InstallationService.cs   validation + user creation
 src/DotNetForge.Core/Validation/PasswordPolicy.cs, InputValidation.cs (EmailValidator)
@@ -39,30 +43,40 @@ src/DotNetForge.Web/Startup/DependencyRegistration.cs                credentials
 
 ```text
 Setup (_AuthLayout, title "Setup · <APP_NAME>")
-└── Auth card
-    ├── <APP_NAME> brand
-    ├── "Welcome - let's get set up" + explanation (account becomes Super Admin)
-    ├── Validation summary
-    └── Form (POST /setup, antiforgery)
-        ├── First name · Last name          optional
-        ├── Email*                          type=email
-        ├── Password*                       + hint "At least 8 characters, including a letter and a number."
-        ├── Confirm password*
-        └── [Create admin & install]
+├── aside.auth-panel (brand panel - white in light, charcoal in dark; hidden below 56rem)
+└── main.auth-main
+    ├── .auth-top: <APP_NAME> mark (→ /, only below 56rem) · theme menu (JS only)
+    ├── .auth-card
+    │   ├── h1 **Welcome to DotNetForge** + "Create the first administrator. This account becomes the **Super Admin**, with full access to every setting."
+    │   └── form.form (POST /setup, antiforgery)
+    │       ├── <form-errors />                         only after a failure
+    │       ├── .form-grid: **First name** · **Last name**   each labelled "optional"
+    │       ├── **Email** *                             type=email
+    │       ├── **Password** * + eye button (data-reveal="#Password", JS only)
+    │       │   └── hint "At least 8 characters, including a letter and a number." (aria-describedby)
+    │       ├── **Confirm password** *
+    │       └── [**Create admin and install**] (.btn-primary.btn-lg.btn-block)
+    └── footer line "<APP_NAME> · Powered by DotNetForge"
 ```
+
+The brand panel is the same as on [Sign in](login.md#page-layout); mechanics:
+[design system → auth layout](../architecture/design-system.md#auth-layout).
 
 ## Components
 
 | Component | Purpose | Inputs / outputs | Behaviour |
 | --- | --- | --- | --- |
 | Setup form | collect the first admin | binds `SetupRequest` (`FirstName`, `LastName`, `Email`, `Password`, `ConfirmPassword`) | posts to `SetupController.Index(SetupRequest)` |
-| Validation summary | show the single failure message | `ModelState` | empty until a failed POST |
+| `<form-errors />` | show the single failure message (`div.validation-summary-errors[role=alert]`) | `ModelState` | renders nothing until a failed POST |
+| Password reveal | show/hide the **Password** field (not **Confirm password**) | `data-reveal="#Password"` ([behaviours](../architecture/design-system.md#behaviours)) | hidden until `ui.js` runs |
+| Required / optional markers | `span.field-required` "*" (`aria-hidden`) on Email, Password, Confirm password; `span.field-optional` "optional" on the names | - | static |
+| Theme menu | Light / Dark / System ([themes](../architecture/design-system.md#themes)) | `localStorage` `dnf-theme` | JS only |
 
 ## Functionality
 
 ### Create the first admin and install
 
-1. **Trigger:** **Create admin & install**.
+1. **Trigger:** **Create admin and install**.
 2. **Validation:** rate limit (10/min per IP, before the action); browser `required`/`type=email`; server
    `InstallationService.InstallAsync` (already installed, email format and ≤ 256 characters, first/last name ≤ 100
    characters each, password policy, confirmation match) - see
@@ -75,8 +89,8 @@ Setup (_AuthLayout, title "Setup · <APP_NAME>")
    succeeds; audit `cms.installed` (entity `User`, id = new user's id, display = trimmed email), so the entry carries
    the new Super Admin and the tenant.
 6. **UI:** `302 /admin` → [Dashboard](dashboard.md).
-7. **Errors:** any failure re-renders the form with the message; **both password fields are cleared**, other fields
-   kept.
+7. **Errors:** any failure re-renders the form with the message in `<form-errors />`; **both password fields are
+   cleared**, other fields kept.
 
 ## Data used by the page
 
@@ -86,7 +100,8 @@ role, `SystemState`.
 ## State
 
 Form values (posted model) and `ModelState` for one request. Persisted: the new user and the installed flag.
-In memory: `InstallationStatusCache` becomes `true` for the rest of the process lifetime.
+In memory: `InstallationStatusCache` becomes `true` for the rest of the process lifetime. Client side: the
+revealed/hidden password (not persisted) and the theme choice (`localStorage` `dnf-theme`).
 
 ## Permissions
 
@@ -103,7 +118,7 @@ columns and are checked before saving: email ≤ 256 (`A valid email address is 
 
 | Failure | User sees | Recovery |
 | --- | --- | --- |
-| Validation | message in summary, passwords cleared | correct and resubmit |
+| Validation | message in `<form-errors />` above the fields, passwords cleared | correct and resubmit |
 | More than 10 POSTs per minute from one IP | `429` with an empty body | wait a minute |
 | Another setup committed first | "The CMS is already installed." | next request is redirected to `/admin`; sign in |
 | Seed missing (no tenant / role) | "The default tenant has not been seeded." / "The Super Admin role has not been seeded." | restart (seeding runs at startup) |
@@ -112,7 +127,8 @@ columns and are checked before saving: email ≤ 256 (`A valid email address is 
 ## Loading behaviour
 
 Single synchronous POST; PBKDF2 hashing (120 000 iterations) runs twice (hash + verify during sign-in) so the
-submit takes noticeably longer than other forms. No indicator.
+submit takes noticeably longer than other forms. No indicator. Server-rendered; `ui.js` (deferred) only reveals the
+password and theme buttons.
 
 ## Empty states
 
@@ -120,7 +136,9 @@ Not applicable.
 
 ## User interactions
 
-Form submit only. Enter submits.
+Enter submits the form. The eye button shows/hides the password (`aria-pressed`, label "Show password" / "Hide
+password"); the theme menu switches Light / Dark / System. Both appear only when JavaScript runs. "Skip to content"
+jumps to the form column.
 
 ## Dependencies
 
@@ -171,6 +189,11 @@ flowchart TD
   concurrency token on `SystemState`), creating two Super Admins.
 - The confirmation comparison is ordinal (case-sensitive); the email is trimmed but not lower-cased - the admin must
   later sign in with the same casing.
+- The screen title is "Setup" (`<title>`), but the visible `<h1>` reads "Welcome to DotNetForge" - it is fixed text,
+  not `APP_NAME`.
+- No inline script or style (CSP). Unlike `/account/login`, `/setup` is not among the screens
+  `AdminUiTests.Every_screen_renders_without_inline_script_or_style` checks (the test installs first, after which
+  `/setup` redirects).
 
 ## Known limitations
 

@@ -1,0 +1,13 @@
+{
+  "id": "tests.plugin.broken",
+  "name": "tests.plugin.broken",
+  "description": "Integration-test fixture.",
+  "version": "1.0.0",
+  "type": "plugin",
+  "author": "Tests",
+  "entryPoint": "Missing.Entry",
+  "permissions": [
+    "core.read"
+  ],
+  "assembly": "bin/Missing.dll"
+}

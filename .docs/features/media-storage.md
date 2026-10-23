@@ -12,8 +12,9 @@ Screen: [Media](../pages/media.md). Still-unbuilt File Manager features: [Planne
 | `IFileStorage`, `StoredFile`, `StorageKey` | `src/DotNetForge.Abstractions/Storage/IFileStorage.cs` | Provider-neutral contract and key validation |
 | `LocalFileStorage` | `src/DotNetForge.Infrastructure/Storage/LocalFileStorage.cs` | Development fallback (`storage/media`) when no S3 storage is configured; the integration tests' stand-in |
 | `S3FileStorage` | `src/DotNetForge.Infrastructure/Storage/S3FileStorage.cs` | Any S3-compatible service (Cloudflare R2, AWS S3, MinIO, Supabase Storage) |
+| `ExtensionMediaStorage` | `src/DotNetForge.Web/Services/ExtensionMediaStorage.cs` | The `IFileStorage` everyone injects: routes each call to an enabled storage-connector extension, else to the host's own storage ([Storage connectors](#storage-connectors)) |
 | `MediaService` | `src/DotNetForge.Web/Services/MediaService.cs` | Upload/delete rules: allowed types, size cap, generated keys, audit, failure handling |
-| Admin screen | `src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs` | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}` |
+| Admin screen | `src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs` | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}`, `POST /admin/media/delete-selected` ([delete flow](#delete-flow)) |
 | Download endpoint | `src/DotNetForge.Web/Controllers/MediaFilesController.cs` | `GET /media/{id}/{fileName?}`: authorization, then presigned redirect or stream |
 | `MediaFile` entity | `src/DotNetForge.Shared/Entities/Content.cs` | Metadata row (`RelativePath` holds the storage key) |
 | API list | `GET /api/media` (`media.read`) | Lists the token tenant's media ([headless API](headless-api.md)) |
@@ -51,7 +52,31 @@ Design decisions:
   presigned URL that expires (public files: 1 hour, private files: 5 minutes). No public bucket and no CDN rules to
   keep in sync.
 - **Provider code stays behind the interface.** Only `src/DotNetForge.Web/Startup/DependencyRegistration.cs` decides which implementation
-  is used; controllers and services depend on `IFileStorage`.
+  is used; controllers and services depend on `IFileStorage`. The host's own storage (`S3FileStorage` or
+  `LocalFileStorage`) is registered as a **keyed** singleton (`ExtensionMediaStorage.CoreStorageKey = "core"`); the
+  unkeyed `IFileStorage` is `ExtensionMediaStorage`, which wraps it.
+
+## Storage connectors
+
+A `connector` extension (any type may, by convention it is `connector`) can replace where media is stored by calling
+`services.AddMediaStorage(context, sp => new MyStorage(...))` (`DotNetForge.Sdk`) from `ConfigureServices`. The
+factory returns any `IFileStorage`.
+
+| Rule (`ExtensionMediaStorage`) | Behaviour |
+| --- | --- |
+| Which storage | per call: the storage of the **first** contribution (registration order) whose extension is active (`ExtensionCatalog.IsActiveAsync`), else the core storage |
+| Switching | enabling or disabling the connector on [Plugins](../pages/plugins.md) takes effect without a restart (other instances within 30 s) |
+| Existing objects | **not moved**: media stored before a switch stays in the previous storage and its downloads fail (404/stream error) while the other storage is in use - switch on a fresh site or copy the objects yourself |
+| Creation | the connector's storage is created on first use (`Lazy`, `PublicationOnly`): a factory that throws (missing secret, bad setting) fails that media operation and is retried on the next call, it never fails startup |
+| Disposal | created connector storages that are `IDisposable` are disposed with the app |
+| Keys and rules | unchanged: `MediaService` still generates keys and enforces upload rules; connectors should enforce `StorageKey.IsValid` like the built-in providers |
+
+Sample: `extensions/connectors/s3-storage` (`dotnetforge.connector.s3`) - its own S3-compatible bucket from manifest
+`settings` (`serviceUrl`, `bucket`, `region`, `forcePathStyle`; defaults point at the `docker/compose.dev.yml`
+server) and secrets `S3_CONNECTOR_ACCESS_KEY_ID` / `S3_CONNECTOR_SECRET_ACCESS_KEY`
+([configuration → extension settings](configuration.md#extension-settings)). Extensions can also **use** media storage
+directly by injecting `IFileStorage` (the Contact Form sample stores messages under `ext/contact-form/...`); such
+objects have no `MediaFiles` row and do not appear on the Media screen.
 
 ## Provider choice
 
@@ -175,6 +200,20 @@ Images, video, audio and PDF are served `inline`; everything else as `attachment
 nothing ever points at a missing object), then the object; if the object delete fails it is logged as orphaned. Audit:
 `media.deleted`.
 
+`POST /admin/media/delete-selected` (`MediaController.DeleteSelected`, the library's bulk action) applies the same
+rules to a list of files:
+
+| Rule | Behaviour |
+| --- | --- |
+| Input | form field `ids` (repeated), de-duplicated; 1 to `MediaController.MaxBulkDelete` = 100, else nothing is deleted and `TempData["Error"]` is "Select at least one file." / "Delete at most 100 files at a time." |
+| Tenant | only rows with `TenantId` = the active tenant are loaded; unknown or other-tenant ids are skipped silently |
+| Permission | per file, the same `CanModify(Media, delete, delete.own, UploadedById)` as the single delete; refused files are skipped and counted |
+| Deletion and audit | `MediaService.DeleteAsync` per permitted file - one `media.deleted` entry each, exactly like the single delete |
+| Result | redirect to `/admin/media`; `TempData["Success"]` "Deleted N files." when any were deleted; `TempData["Error"]` "N files were not deleted: your role may not delete them." for refused files, or "None of the selected files exist any more." when nothing was deleted or refused |
+
+Covered by `AdminUiTests.Bulk_delete_removes_the_selected_files_the_user_may_delete`. Screen details:
+[Media → Delete selected files](../pages/media.md#delete-selected-files).
+
 ## Local development
 
 - Default: no `STORAGE_S3_*` key set → uploads go to `storage/media` at the repository root (Development only;
@@ -198,7 +237,8 @@ Target behaviour from the original product specification. Nothing in this sectio
 - File Manager: folders with arbitrary nesting, rename and move files and folders, breadcrumbs, drag-and-drop
   upload, delete with in-use protection (pages of type `File`, `Page.FileReference`).
 - Private files with explicit role/user **access grants** (today private = admin-capable users of the tenant).
-- Search, filter and sort by name, type/MIME, tag, folder, date and size; tags on files.
+- Search, filter and sort by name, type/MIME, tag, folder, date and size; tags on files (today: in-browser search by
+  name/content type and type/access filters on the loaded list ✔).
 - Configurable allowed types and maximum size per tenant (today fixed in `MediaService`); content sniffing or
   malware scanning of uploads.
 - Duplicate strategy (reject, auto-rename or replace) based on checksum or name.
@@ -216,7 +256,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 | --- | --- | --- |
 | `extension` | derived from `RelativePath` | |
 | `folderId` | `FolderPath` (always `/`) | new `MediaFolder` entity: `id`, `tenantId`, `name`, `parentId`, materialized `path`, `isPublic`, `createdBy`, `createdDate` |
-| `storageProvider` | - | only needed if several providers must coexist; today one provider per deployment |
+| `storageProvider` | - | needed so files stay reachable after switching storage; today one storage is used at a time (core or the first enabled [connector](#storage-connectors)) and older objects are not tracked per row |
 | `tags`, `width`, `height`, `variants`, `checksum`, `updatedDate` | - | |
 
 Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `userId?` (at least one).
@@ -243,7 +283,7 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 
 ### Acceptance criteria
 
-- [ ] Upload via drag/drop and file picker, including multiple files at once (picker with multiple files ✔ `Media/Index.cshtml`; no drag/drop).
+- [x] Upload via drag/drop and file picker, including multiple files at once (`Media/Index.cshtml`: the `.dropzone` covers a real `<input type="file" multiple>`, so dropped files are selected natively and upload with **Upload**).
 - [x] Uploads over the maximum size are rejected (`MediaService.MaxUploadBytes`, fixed 25 MB - not configurable yet).
 - [ ] Uploads whose MIME type/extension is not allowlisted are rejected; detection does not rely only on the client extension (allowlist ✔ `MediaService.AllowedTypes`; type comes from the extension, no content sniffing).
 - [ ] Unsafe uploads are scanned or blocked and never served (active formats are not allowlisted; no scanning).
@@ -252,11 +292,11 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 - [ ] Folders can be created, renamed, moved and deleted, with arbitrary nesting.
 - [ ] Breadcrumbs reflect the folder hierarchy and every segment is clickable.
 - [ ] A folder cannot be moved into itself or a descendant.
-- [ ] Files and folders can be marked public or private (files at upload time ✔; no later toggle, no folders).
+- [ ] Files and folders can be marked public or private (files ✔ at upload and later per file - `MediaController.Visibility`; no folders).
 - [ ] Private files enforce role/user access grants; unauthorized download → `403`, missing → `404`, no metadata leakage (private files return `404` to anyone but admin-capable users of the tenant - `MediaFilesController`; no grants).
 - [x] Public files are directly downloadable, including anonymously (`MediaFilesController`).
 - [ ] Stable URLs exist for every file and every responsive variant (files ✔ `/media/{id}/{name}`; no variants).
-- [ ] Search by name, type, tag, folder and date, with ascending/descending sort.
+- [ ] Search by name, type, tag, folder and date, with ascending/descending sort (client-side search by name/content type and type and access filters ✔ on the Media screen; no tag, folder or date, no sort).
 - [ ] Responsive friendly upload generates small/medium/large variants when on.
 - [ ] Size optimization reduces image size when on.
 - [ ] Auto orientation rotates images using EXIF when on.
@@ -270,16 +310,20 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 
 ## Where to change things
 
-- **New provider** (e.g. Azure Blob): implement `IFileStorage` in `src/DotNetForge.Infrastructure/Storage/`, add a
-  `StorageProvider` value, its keys in `EnvConfigurationLoader`, the registration branch in
+- **New provider without touching the core** (e.g. Azure Blob): a connector extension
+  ([Storage connectors](#storage-connectors), [extension development](../guides/extension-development.md)).
+- **New built-in provider**: implement `IFileStorage` in `src/DotNetForge.Infrastructure/Storage/`, add a
+  `StorageProvider` value, its keys in `EnvConfigurationLoader`, the keyed (`"core"`) registration branch in
   `src/DotNetForge.Web/Startup/DependencyRegistration.cs`, and run the shared contract tests in `tests/DotNetForge.Tests/FileStorageTests.cs`
   against it. Never call a provider SDK outside its `IFileStorage` implementation.
+- **Which storage is used**: `ExtensionMediaStorage` only. Tests replace the keyed core storage, not `IFileStorage`
+  (`DotNetForgeWebFactory`).
 - **Upload rules** (types, size, naming, duplicates, image processing): `MediaService` only - the admin controller and
   a future API upload must share it.
 - **Who may do what**: `MediaController` via `Can`/`CanModify` on the `Media` permission area; download access in
   `MediaFilesController.CanReadPrivate`.
-- **Entities** (folders, grants, variants): `src/DotNetForge.Shared/Entities`, `DotNetForgeDbContext`, and a migration
-  for **both** providers (`database-change` skill).
+- **Entities** (folders, grants, variants): `src/DotNetForge.Shared/Entities`, the fluent configuration, and a migration
+  for **each** SQL context (`database-change` skill).
 - **Webhooks**: raise `WebhookEvents.MediaCreate/MediaUpdate/MediaDelete` from `MediaService` once a dispatcher exists.
 - **Rule**: no code may write runtime files under the content root; use `IFileStorage` (or the OS temp directory for
   transient processing). `ReadOnlyDeploymentTests` fails if anything does.

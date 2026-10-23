@@ -1,18 +1,20 @@
 {
   "id": "dotnetforge.auth.discord",
   "name": "Discord Login",
-  "description": "Adds Discord OAuth as a sign-in provider.",
-  "version": "1.2.0",
+  "description": "Adds \"Sign in with Discord\" to the sign-in screen for users whose verified Discord email matches their CMS account.",
+  "version": "2.0.0",
   "type": "authentication",
   "author": "Nimbus Integrations",
-  "entryPoint": "DiscordAuthenticationProvider",
-  "permissions": ["users.read", "users.create"],
-  "website": "https://example.com/extensions/discord-login",
+  "assembly": "bin/DiscordLogin.dll",
+  "entryPoint": "DiscordLogin.DiscordLoginExtension",
+  "permissions": ["users.read"],
+  "website": "https://discord.com/developers/docs/topics/oauth2",
   "license": "Apache-2.0",
   "dependencies": [],
   "routes": ["/auth/discord/callback"],
   "settings": {
-    "clientId": "",
+    // Register an application at https://discord.com/developers/applications, add the redirect
+    // <APP_URL>/auth/discord/callback, then put DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET in .env.
     "scopes": ["identify", "email"]
   }
 }

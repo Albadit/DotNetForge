@@ -1,23 +1,57 @@
 @{
     var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
+    var title = ViewData["Title"] as string;
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@(ViewData["Title"] != null ? ViewData["Title"] + " · " : "")@appName</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>@(title is null ? "" : title + " · ")@appName</title>
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="~/css/site.css" />
+    <script src="~/js/forge/theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/css/forge/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/forge/auth.css" asp-append-version="true" />
+    <script src="~/js/forge/ui.js" asp-append-version="true" defer></script>
 </head>
 @*
-    The setup and login pages use this dedicated, built-in layout. They are intentionally isolated
-    from public frontend themes (.docs/architecture/pages.md / .docs/features/themes.md).
+    Setup, sign-in and access denied (.docs/architecture/design-system.md#auth-layout). Built-in and isolated from
+    public themes (.docs/features/themes.md).
 *@
 <body class="auth">
-    <div class="auth-card">
-        <h1 class="auth-brand">@appName</h1>
-        @RenderBody()
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="auth-shell">
+        <aside class="auth-panel">
+            <img class="auth-panel-logo logo-on-light" src="~/img/logo.svg" alt="DotNetForge" width="196" height="48" />
+            <img class="auth-panel-logo logo-on-dark" src="~/img/logo-dark.svg" alt="DotNetForge" width="196" height="48" />
+            <div class="auth-pitch">
+                <p class="auth-pitch-title">Build, publish and extend - from one place.</p>
+                <ul class="auth-points">
+                    <li><icon name="pages" /> Pages, media and SEO in a clean editor</li>
+                    <li><icon name="puzzle" /> Extensions without touching the core</li>
+                    <li><icon name="shield" /> Roles, audit log and scoped API tokens</li>
+                </ul>
+            </div>
+            <span class="auth-forge" aria-hidden="true"><span></span><span></span><span></span></span>
+        </aside>
+
+        <main class="auth-main" id="main" tabindex="-1">
+            <div class="auth-top">
+                <a class="auth-mobile-brand" href="/" aria-label="@appName home">
+                    <img src="~/img/logo-mark.svg" alt="" width="32" height="32" />
+                    <span>@appName</span>
+                </a>
+                <partial name="_ThemeMenu" />
+            </div>
+            <div class="auth-card">
+                @RenderBody()
+            </div>
+            <p class="auth-foot">@appName · Powered by DotNetForge</p>
+        </main>
     </div>
+    <partial name="_Feedback" />
 </body>
 </html>

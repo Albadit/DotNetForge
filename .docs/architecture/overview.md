@@ -3,7 +3,8 @@
 DotNetForge CMS is a server-rendered **ASP.NET Core MVC** CMS (C#, EF Core, Razor) on **.NET 10**, with **SQLite**
 (default) or **PostgreSQL**, configured through `.env`. It serves a role-gated admin area, a public site resolved from
 a page tree, and a token-secured headless API over the same data, and keeps the core (`src/`) separate from
-user extensions (`extensions/`).
+user extensions (`extensions/`): a CMS user customizes the site only there - code, views and assets that plug into
+the host once enabled.
 
 This is the one-page overview. The detailed, code-verified architecture:
 
@@ -12,6 +13,7 @@ This is the one-page overview. The detailed, code-verified architecture:
 | Projects, folders, layers, DI, rules for changes | [codebase.md](codebase.md) |
 | Startup, request pipeline, routing, auth/API/background flows | [data-flow.md](data-flow.md) |
 | Screens, route map, layouts, navigation | [pages.md](pages.md) |
+| UI: tokens, components, tag helpers, themes, accessibility | [design-system.md](design-system.md) |
 | Tables, migrations, seeding | [database.md](database.md) |
 | Project references, packages, DI registrations | [dependencies.md](dependencies.md) |
 | Built vs. specified | [implementation-status.md](../implementation-status.md) |
@@ -28,10 +30,11 @@ src/
   DotNetForge.Core/            installation, permission matrix evaluation, validators (no EF Core)
   DotNetForge.Data/            EF Core contexts, migrations (SQLite + PostgreSQL), seeding, provider selection
   DotNetForge.Infrastructure/  BCL implementations: hashing, tokens, signing, .env, paths, file storage
-  DotNetForge.Extensions/      manifest validation + discovery
+  DotNetForge.Extensions/      manifest validation, discovery, code loading, ExtensionCatalog
+  DotNetForge.Sdk/             the extension SDK (what extensions compile against)
   DotNetForge.Api/             headless API controllers, token auth, permission filter
-tests/        DotNetForge.Tests (unit), DotNetForge.IntegrationTests (real host)
-extensions/   extensions by type (one manifest per folder); copied next to the app on publish
+tests/        DotNetForge.Tests (unit), DotNetForge.IntegrationTests (real host), fixtures/extensions
+extensions/   extensions by type (one manifest per folder, optional .csproj → bin/); copied next to the app on publish
 docker/       Dockerfile (read-only friendly production image) and compose.dev.yml (local PostgreSQL + S3)
 .docs/        technical documentation, incl. planned work per topic
 ```
@@ -48,29 +51,37 @@ flowchart BT
     Core --> Shared
     Data --> Shared
     Infrastructure --> Core
+    Sdk --> Shared
     Extensions --> Core
+    Extensions --> Sdk
     Api --> Core
     Api --> Data
     Web["Web"] --> Api & Extensions & Infrastructure
+    UserExt["extensions/ (loaded at runtime)"] -. compile against .-> Sdk
 ```
 
 - `Core` and `Data` are siblings; `Core` needs persistence only through interfaces in `Shared/Stores`
   (`IInstallationStore`).
 - `Api` queries `Data` directly - a documented shortcut.
 - `PermissionMatrix` lives in `Shared` so the seeder and `PermissionService` share it.
-- All DI is in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`.
+- All host DI is in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`; extensions add theirs through
+  `IExtension.ConfigureServices`, called from there.
 
 ## Key decisions
 
-- **Server-rendered admin**, no SPA or Node build; progressive enhancement only.
+- **Server-rendered admin**, no SPA or Node build; progressive enhancement only. One dependency-free design system
+  (CSS tokens + components, Razor tag helpers, vanilla `ui.js`, light/dark) for every built-in screen, shaped by the
+  CSP ([design system](design-system.md)).
 - **Two auth schemes:** cookie (`dnf.auth`) for the admin, `ApiToken` bearer for `/api`.
 - **Role-based admin gating** (`AdminArea` policy + `[Authorize(Roles = ...)]`), plus `(area, action)` checks from the
   permission matrix for content and media actions; granular permission keys for API tokens.
 - **Install gate** middleware until the first Super Admin exists.
 - **Liveness of content pages is computed per request** from `Published`, `Disabled` and the schedule; a background
   job only tidies passed schedules.
-- **Extensions are discovered from disk and validated**; only `admin` extensions are rendered (runtime Razor
-  compilation, iframe). No extension assemblies are loaded.
+- **Extensions are discovered from disk, validated and loaded** (one load context each, at startup), and contribute
+  only while a Super Admin has enabled them: admin tabs, dashboard widgets, the public theme, page modules, endpoints,
+  media storage, sign-in providers, audit handlers. One gate (`ExtensionCatalog`) decides; views compile in memory.
+  Extension code is trusted and runs in-process ([extensions](../features/extensions.md)).
 - **BCL-only security primitives** (PBKDF2, HMAC, RNG) and an in-house `.env` parser - no extra dependencies.
 - **Read-only deployment directory.** Runtime data goes to the database (incl. the Data Protection key ring) and to
   object storage behind `IFileStorage` (local directory in development, S3-compatible - Cloudflare R2 recommended - in

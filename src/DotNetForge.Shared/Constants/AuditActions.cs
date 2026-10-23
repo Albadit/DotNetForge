@@ -9,12 +9,17 @@ public static class AuditActions
     public const string UserLogin = "user.login";
     public const string UserLoginFailed = "user.login.failed";
     public const string UserLogout = "user.logout";
+    public const string UserCreated = "user.created";
+    public const string UserUpdated = "user.updated";
+    public const string UserDeleted = "user.deleted";
     public const string ContentCreated = "content.created";
     public const string ContentUpdated = "content.updated";
     public const string ContentDeleted = "content.deleted";
     public const string MediaUploaded = "media.uploaded";
     public const string MediaDeleted = "media.deleted";
+    public const string MediaUpdated = "media.updated";
     public const string PluginInstalled = "plugin.installed";
+    public const string PluginEnabled = "plugin.enabled";
     public const string PluginDisabled = "plugin.disabled";
     public const string RoleChanged = "role.changed";
     public const string PermissionChanged = "permission.changed";

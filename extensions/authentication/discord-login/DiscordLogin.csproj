@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Authentication extension: an OAuth scheme from ASP.NET Core itself, so no packages are needed. -->
+
+</Project>

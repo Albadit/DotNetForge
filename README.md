@@ -28,8 +28,8 @@ built versus planned is in
 # 1. Configure the environment (secrets live in .env, never committed)
 cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
 
-# 2. Run the web app (from the repository root)
-dotnet run --project src/DotNetForge.Web      # or: dotnet watch --project src/DotNetForge.Web
+# 2. Build everything (incl. extensions) and run the web app, from the repository root
+run                           # Windows (run.cmd); Linux/macOS: ./run.sh
 ```
 
 Then open <http://localhost:5000>. On first run the app redirects to **`/setup`**, where you create
@@ -60,9 +60,10 @@ project; the web app is `src/DotNetForge.Web`.
 
 | Command | What it does |
 | --- | --- |
-| `dotnet run --project src/DotNetForge.Web` | Builds and runs the web app (http://localhost:5000). |
+| `run` (Windows) / `./run.sh` | Builds the solution with every extension, then runs the web app (http://localhost:5000). |
+| `dotnet run --project src/DotNetForge.Web` | Builds and runs only the web app (extensions as last built). |
 | `dotnet watch --project src/DotNetForge.Web` | Same, with hot reload. |
-| `dotnet build` | Builds the whole solution. |
+| `dotnet build` | Builds the whole solution, including the sample extensions. |
 | `dotnet test` | Runs the unit and integration tests. |
 
 In VS Code, **F5** starts the debugger and **Run Build Task** offers build, run, watch and test tasks.
@@ -104,9 +105,9 @@ Both providers apply their committed EF Core migrations on startup; see
 DotNetForge.slnx         # Solution: every project below
 src/
   DotNetForge.Web/       # ASP.NET Core MVC web app: admin area, public site, setup, composition root
-  DotNetForge.*/         # Libraries: Abstractions, Shared, Core, Data, Infrastructure, Extensions, Api
+  DotNetForge.*/         # Libraries: Abstractions, Shared, Core, Data, Infrastructure, Extensions, Sdk, Api
 tests/                   # DotNetForge.Tests (unit) + DotNetForge.IntegrationTests (integration)
-extensions/              # Extensions, by type (themes, plugins, modules, widgets, admin, ...); read-only at runtime
+extensions/              # Your extensions, by type (themes, plugins, modules, widgets, admin, ...); read-only at runtime
 docker/                  # Dockerfile (+ its .dockerignore) and compose.dev.yml for local PostgreSQL + S3
 .docs/                   # Technical documentation (start at .docs/README.md), incl. planned work per topic
 .github/                 # CI workflow, Dependabot, and AI-agent quick references (.github/agents/)
@@ -121,21 +122,30 @@ See [.docs/architecture/overview.md](.docs/architecture/overview.md) for a one-p
 
 The admin UI and the first-run **setup wizard** are **server-rendered ASP.NET Core MVC** in the
 [`src/DotNetForge.Web/Areas/Admin/`](src/DotNetForge.Web/Areas/Admin/) area, served at **`/admin`** (and **`/setup`** for the wizard). No Node
-build step - it ships with the host; styling is a small hand-rolled stylesheet in
-[`src/DotNetForge.Web/wwwroot/css/admin.css`](src/DotNetForge.Web/wwwroot/css/admin.css). Forms post with antiforgery tokens; the only fetch
-call is the Content Manager's drag-and-drop reorder (sending the token in an `X-CSRF-TOKEN` header).
+build step - it ships with the host. Every screen uses the dependency-free **Forge design system** (light and dark,
+role-aware sidebar, works on phones and without JavaScript): CSS in
+[`src/DotNetForge.Web/wwwroot/css/forge/`](src/DotNetForge.Web/wwwroot/css/forge/), Razor tag helpers in
+[`src/DotNetForge.Web/Ui/`](src/DotNetForge.Web/Ui/) - see [design-system.md](.docs/architecture/design-system.md).
+Forms post with antiforgery tokens; the only fetch call is the Content Manager's drag-and-drop reorder (sending the
+token in an `X-CSRF-TOKEN` header).
 
 Built screens: Dashboard, **Content Manager** (page tree + settings + scheduling), **Media** (upload, download,
-delete; local or S3-compatible storage), Settings, Users, Roles, Audit Logs, Plugins, API Tokens. Remaining planned
-areas link to documented placeholders.
+delete and bulk delete; local or S3-compatible storage), Settings, Users, Roles, Audit Logs, Plugins (enable/disable extensions),
+API Tokens. Remaining planned areas link to documented placeholders.
 
-**Admin extensions** are server-rendered too: drop an `admin`-type manifest with a `Views/Index.cshtml`
-under [`extensions/admin/`](extensions/) and a sidebar tab appears at **`/admin/ext/{id}`** (rendered via
-runtime Razor compilation, isolated in an iframe) with no code changes - see the audit-dashboard sample.
+## Extensions
+
+You customize the CMS only in [`extensions/`](extensions/), never in `src/`. An extension is a folder with a
+`dotnetforge.extension.json` manifest, optional C# code compiled against `DotNetForge.Sdk`, and optional Razor views
+and static files. Once a Super Admin enables it on **Plugins** it can add an admin tab, a dashboard widget, the public
+theme, content on chosen pages, its own endpoints, a media storage backend, a "Sign in with ..." provider or a
+reaction to audit events. Nine runnable samples ship with the repository - try them with
+[extensions/README.md](extensions/README.md); write your own with the
+[extension development guide](.docs/guides/extension-development.md).
 
 ## The headless API
 
-As a Super Admin or Admin, create a scoped token from the admin sidebar (**Settings · Global Settings → API Tokens**;
+As a Super Admin or Admin, create a scoped token from the admin sidebar (**Settings → Global Settings → API Tokens**;
 the full secret is shown once), then call the API with a bearer token:
 
 ```bash
@@ -173,7 +183,8 @@ dotnet format --verify-no-changes                # style check (.editorconfig)
   disabled.
 - Uploads: allowlisted types, size cap, generated storage keys; private files served only after authorization.
 - API tokens stored only as salted hashes; the plaintext is shown exactly once.
-- Extension manifests validated before an extension is listed or rendered; HMAC-SHA256 signer ready for webhooks.
+- Extension manifests validated, extensions disabled until a Super Admin enables them (audited), endpoints of
+  inactive extensions answer 404; extension code itself is trusted. HMAC-SHA256 signer ready for webhooks.
 - CSRF protection on forms, HttpOnly/SameSite cookies, secrets confined to `.env`.
 
 Controls, known gaps and remaining requirements: [.docs/features/security.md](.docs/features/security.md).

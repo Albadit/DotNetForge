@@ -10,14 +10,15 @@ The protections that exist in the code, where they are, and the known gaps. Targ
 | Password storage | PBKDF2-SHA256, 120 000 iterations, random salt, constant-time verify | `Pbkdf2PasswordHasher` |
 | Weak passwords | `PasswordPolicy` (≥ 8, letter + digit, common-password list) - **setup only** | `src/DotNetForge.Core/Validation/PasswordPolicy.cs` |
 | Brute force | per-account lockout: 5 failures → 15 min; plus per-IP rate limiting (below) | `AuthService` |
-| Rate limiting | built-in ASP.NET Core rate limiter, fixed window per client IP (`RemoteIpAddress`), `429` on rejection: policy `credentials` = 10/min on `POST /account/login` and `POST /setup`; policy `api` = 300/min on every API controller | `DependencyRegistration.AddRateLimits`, `RateLimitPolicies`, `[EnableRateLimiting]` on `AccountController`, `SetupController`, `ApiControllerBase` |
+| Rate limiting | built-in ASP.NET Core rate limiter, fixed window per client IP (`RemoteIpAddress`), `429` on rejection: policy `credentials` = 10/min on `POST /account/login`, `POST /setup` and the external sign-in endpoints; policy `api` = 300/min on every API controller; policy `forms` = 5/min for anonymous extension form posts that opt in (Contact Form sample) | `DependencyRegistration.AddRateLimits`, `RateLimitPolicies`, `[EnableRateLimiting]` on `AccountController`, `SetupController`, `ExternalLoginController`, `ApiControllerBase`; `.RequireRateLimiting(RateLimitPolicies.Forms)` in extensions |
 | Account enumeration | unknown email and wrong password return the same message | `AuthService`, `AccountController` |
 | Session cookie | `HttpOnly`, `SameSite=Lax`, 8 h sliding; `Secure` **always** outside Development (`SameAsRequest` in Development) | `DependencyRegistration` |
+| External sign-in cookie | `dnf.external`: `HttpOnly`, `SameSite=Lax`, 10 min, same `Secure` rule; read and deleted on the callback; only existing users with the exact email are signed in, disabled/locked accounts refused | `DependencyRegistration`, `ExternalLoginController` ([authentication](authentication.md#external-sign-in-extensions)) |
 | Session re-validation | every cookie request checks that the user still exists and is `Enabled` (`AuthService.IsActiveAsync`, cached 30 s per user); otherwise the session is rejected and signed out. Roles stay as issued at sign-in | `DependencyRegistration.ValidateSessionAsync` ([authentication](authentication.md#session-re-validation)) |
-| CSRF | antiforgery token on every admin/account/setup POST (`[ValidateAntiForgeryToken]`); `X-CSRF-TOKEN` header for the reorder `fetch` | controllers, `admin-content.js` |
-| Open redirect | after login: `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - an external `returnUrl` falls back to the dashboard | `AccountController.Login` |
+| CSRF | antiforgery token on every admin/account/setup POST (`[ValidateAntiForgeryToken]`); `X-CSRF-TOKEN` header for the reorder `fetch` | controllers, `wwwroot/js/forge/content.js` |
+| Open redirect | after login (password or external): `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - an external `returnUrl` falls back to the dashboard | `AccountController.Login`, `ExternalLoginController` |
 | Security headers | on every response: `Content-Security-Policy` (`Content-Security-Policy-Report-Only` in Development), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` | `src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs` |
-| Content Security Policy | `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'`. Views carry no inline script or style (delete confirms use `data-confirm` handled by `site.js`; the denied screen's sign-out is a real POST form; public page styles are in `src/DotNetForge.Web/wwwroot/css/page.css`) | `SecurityHeadersMiddleware.ContentSecurityPolicy` |
+| Content Security Policy | `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self'; connect-src 'self'; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'`. Views carry no inline script or style: styles in `wwwroot/css/forge/`, behaviour in `wwwroot/js/forge/` via data attributes (`data-confirm` opens the confirm dialog in `ui.js`), validation errors via `<form-errors />` instead of `asp-validation-summary` (whose empty state emits `<li style="display:none">`), the denied screen's sign-out is a real POST form, no web fonts or CDNs ([design system](../architecture/design-system.md)). `AdminUiTests.Every_screen_renders_without_inline_script_or_style` verifies every admin screen, sign-in, `/` and a content page. The two video hosts are allowed in `frame-src` for the page builder's video component. Page builder layouts keep the policy: their CSS is the external `/page-css/{id}.css`, the editor writes canvas CSS into constructable stylesheets ([page builder](page-builder.md#validation-and-security)) | `SecurityHeadersMiddleware.ContentSecurityPolicy`, `AdminUiTests` |
 | Admin access | `AdminArea` policy + role restrictions; `(area, action)` checks in the Content Manager and Media | [authorization](authorization.md) |
 | API tokens | 256-bit secret, only a salted hash stored, prefix lookup, expiry, revocation, per-endpoint permission keys; verification cached 10 min under a SHA-256 of the token, revocation/expiry re-read every request | [headless API](headless-api.md), [authentication](authentication.md#api-token-authentication) |
 | Tenant isolation | manual `TenantId` filters in admin and API queries; Audit Logs and the Dashboard audit count are scoped; private media checks the file's tenant | [multi-tenancy](multi-tenancy.md) (gaps listed there) |
@@ -25,8 +26,9 @@ The protections that exist in the code, where they are, and the known gaps. Targ
 | Content structure | reorder validates tenant ownership, cycles, duplicate slugs and a second dynamic segment per parent → `400 { error }`; delete refuses when re-parented children would clash | `PageService.ReorderAsync` / `DeleteAsync` |
 | File uploads | allow-list of extensions (no SVG/HTML/JS), content type derived from the extension (never the client), 25 MB per file, 10 files per request, generated storage keys (no user input), sanitized display names; non-media served as `attachment`; private files only to admin-capable users of the file's tenant, else 404 | `MediaService`, `MediaFilesController` - details in [media storage](media-storage.md#upload-flow) |
 | SQL injection | EF Core LINQ only, no raw SQL | everywhere |
-| XSS | Razor HTML-encodes all `@` output; no `Html.Raw` in the host's views; CSP blocks inline script | views |
-| Path traversal | extension resources confined to `Views/Resources/`; extensions found by manifest id, not by path; `StorageKey` validation + `LocalFileStorage` containment check | `ExtensionViewController.Resource`, `StorageKey`, `LocalFileStorage` |
+| XSS | Razor HTML-encodes all `@` output; no `Html.Raw` in the host's views; the UI tag helpers HTML-encode the text they emit; CSP blocks inline script | views, `src/DotNetForge.Web/Ui/UiTagHelpers.cs` |
+| Path traversal | extension resources confined to `Views/Resources/`; extensions found by manifest id, not by path; manifest `assembly` must be a relative `.dll` path inside the extension folder (no `..`, no rooted path); `StorageKey` validation + `LocalFileStorage` containment check | `ExtensionResources.Serve` (`ExtensionViewController.cs`), `ManifestValidator`, `StorageKey`, `LocalFileStorage` |
+| Extensions | nothing an extension offers is used until a Super Admin enables it (audited); an extension's endpoints answer `404` while it is inactive (`ExtensionEndpointGateMiddleware`); failing extension code is isolated to "not running" and never stops startup; a throwing widget/module view is replaced by a notice. Extension code itself is **trusted** - it runs in-process with full privileges ([extensions → Security model](extensions.md#security-model)) | `ExtensionCatalog`, `ExtensionLifecycleService`, `Startup/ExtensionHosting.cs`, `ExtensionViewRenderer` |
 | Secrets | `.env` git-ignored and excluded from the build | `.gitignore`, csproj |
 | Data Protection keys | the key ring (cookies, antiforgery) is stored in the database table `DataProtectionKeys`, shared by all instances and kept across restarts on a read-only filesystem | `DependencyRegistration` (`PersistKeysToDbContext<DotNetForgeDbContext>`) |
 | Transport | `UseHsts()` outside Development; HTTPS redirection is left to the TLS-terminating proxy ([deployment](../guides/deployment.md#behind-a-reverse-proxy)) | `Program.cs` |
@@ -37,7 +39,8 @@ The protections that exist in the code, where they are, and the known gaps. Targ
 | Webhook signing | HMAC-SHA256 hex (`HmacWebhookSigner`) - exists but no deliveries are made | `Infrastructure/Security` |
 
 Pipeline order (`Program.cs`): exception handler + HSTS (outside Development) → `SecurityHeadersMiddleware` → static
-files → routing → `InstallationMiddleware` → authentication → rate limiter → authorization.
+files → routing → `InstallationMiddleware` → `ExtensionEndpointGateMiddleware` → authentication → rate limiter →
+authorization.
 
 ## Known gaps
 
@@ -48,9 +51,12 @@ Verified in the current code; each is a candidate for a hardening change.
   [authorization](authorization.md).
 - **Roles are fixed at sign-in:** session re-validation only checks that the user exists and is enabled; role changes
   apply at the next sign-in.
-- **Admin extensions run with full host privileges** (DbContext via `@inject`), manifest permissions are not
-  enforced, and any admin-capable role can open them (the sample Audit Dashboard shows every tenant's audit entries to
-  Authors). See [extensions](extensions.md#admin-extensions).
+- **Extensions run with full host privileges** (code in-process, DbContext via `@inject`), manifest permissions are
+  not enforced, enabled admin tabs and widgets are open to every admin-capable role (Authors too), and an extension's
+  own endpoints are public unless it protects them. Install only trusted extensions. See
+  [extensions → Security model](extensions.md#security-model).
+- **Sign-in extensions are trusted with identity:** the host signs in whoever the extension's email claim names; an
+  extension that passes on unverified emails allows account takeover.
 - **Cross-tenant reads:** the public site (`HomeController.Index` and `RenderPage`) ignores `TenantId` (single tenant
   only today).
 - **CSP:** no nonce support for future inline scripts; `img-src` and `media-src` allow any `https:` origin (needed for
@@ -76,7 +82,9 @@ Verified in the current code; each is a candidate for a hardening change.
 - Never build file paths from request input without the `GetFullPath` + prefix check; storage keys go through
   `StorageKey`.
 - Never return entities from the API (they contain `PasswordHash`, `TokenHash`, `Secret`).
-- No inline `<script>`/`<style>` or event-handler attributes in views - the CSP blocks them; put code in `src/DotNetForge.Web/wwwroot/js`.
+- No inline `<script>`/`<style>`, `style=` or event-handler attributes in views - the CSP blocks them; put code in
+  `src/DotNetForge.Web/wwwroot/js/forge/`, styles in `wwwroot/css/forge/`, and use `<form-errors />`, never
+  `asp-validation-summary`.
 - Check input lengths against the column limits before saving (PostgreSQL rejects over-long values).
 - New credential-like endpoints get `[EnableRateLimiting(RateLimitPolicies.Credentials)]`.
 
@@ -122,7 +130,7 @@ documents hold the details.
 - [x] API tokens are generated with a cryptographically secure method and stored only as hashes; plaintext is shown once at creation (`ApiTokenFactory` uses `RandomNumberGenerator`; `ApiTokensController`).
 - [x] All secrets are loaded from `.env`; `.env` is git-ignored and never committed; `.env.example` ships placeholders only (`EnvConfigurationLoader`, `.gitignore`; connection string and S3 credentials today).
 - [ ] Extension manifests are validated against `id`, `name`, `description`, `version`, `type`, `author`, `entryPoint`, `permissions` before installation (`ManifestValidator` checks all eight ✔; there is no install flow).
-- [ ] Invalid, unsafe or incompatible extensions are refused at install and load time (invalid admin extensions are not rendered ✔ `ExtensionsController`; no install flow, no compatibility check).
+- [ ] Invalid, unsafe or incompatible extensions are refused at install and load time (invalid or failing extensions are never used ✔ `ExtensionCatalog`; no install flow, no safety or compatibility check).
 - [x] Secure HTTP response headers are sent on all responses (`SecurityHeadersMiddleware`; CSP is report-only in Development).
 - [x] Security-relevant events, including login and failed login, are written to the audit log with full context (`AccountController` → `AuditService`: user or typed email, IP, user agent, timestamp, success flag).
 - [ ] Outbound webhook requests are signed (signer ✔ `HmacWebhookSigner`; no deliveries exist).

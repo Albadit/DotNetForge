@@ -1,49 +1,40 @@
-@{
-    var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "/admin";
-    string Active(string href) =>
-        string.Equals(path, href, StringComparison.OrdinalIgnoreCase) ? "active" : "";
-}
-@* Canonical admin sidebar tree (.docs/architecture/pages.md), server-rendered Razor admin served under /admin. *@
-<nav class="admin-nav">
-    <div class="nav-group">
-        <div class="nav-group-title">Main</div>
-        <a class="nav-item @Active("/admin")" href="/admin">Dashboard</a>
-        <a class="nav-item @Active("/admin/content")" href="/admin/content">Content Manager</a>
-        <a class="nav-item @Active("/admin/media")" href="/admin/media">Media</a>
-        <a class="nav-item @Active("/admin/marketplace")" href="/admin/marketplace">Marketplace</a>
-    </div>
-
-    <div class="nav-group">
-        <div class="nav-group-title">Settings · Global Settings</div>
-        <a class="nav-item @Active("/admin/settings")" href="/admin/settings">Settings</a>
-        <a class="nav-item @Active("/admin/api-tokens")" href="/admin/api-tokens">API Tokens</a>
-        <a class="nav-item @Active("/admin/content-history")" href="/admin/content-history">Content History</a>
-        <a class="nav-item @Active("/admin/internationalization")" href="/admin/internationalization">Internationalization</a>
-        <a class="nav-item @Active("/admin/plugins")" href="/admin/plugins">Plugins</a>
-        <a class="nav-item @Active("/admin/transfer")" href="/admin/transfer">Transfer</a>
-        <a class="nav-item @Active("/admin/webhooks")" href="/admin/webhooks">Webhooks</a>
-    </div>
-
-    <div class="nav-group">
-        <div class="nav-group-title">Settings · Administration Panel</div>
-        <a class="nav-item @Active("/admin/roles")" href="/admin/roles">Roles</a>
-        <a class="nav-item @Active("/admin/users")" href="/admin/users">Users</a>
-        <a class="nav-item @Active("/admin/audit-logs")" href="/admin/audit-logs">Audit Logs</a>
-    </div>
-
-    <div class="nav-group">
-        <div class="nav-group-title">Settings · Email</div>
-        <a class="nav-item @Active("/admin/email/configuration")" href="/admin/email/configuration">Configuration</a>
-        <a class="nav-item @Active("/admin/email/templates")" href="/admin/email/templates">Templates</a>
-    </div>
-
-    <div class="nav-group">
-        <div class="nav-group-title">Settings · Users &amp; Permissions Plugin</div>
-        <a class="nav-item @Active("/admin/roles")" href="/admin/roles">Roles</a>
-        <a class="nav-item @Active("/admin/providers")" href="/admin/providers">Providers</a>
-        <a class="nav-item @Active("/admin/advanced-settings")" href="/admin/advanced-settings">Advanced Settings</a>
-    </div>
-
-    @* Admin-extension tabs contributed from extensions/admin/* manifests. *@
-    @await Component.InvokeAsync("AdminExtensionsNav")
+@using DotNetForge.Web.Areas.Admin.Navigation
+@model AdminNavModel
+@*
+    Admin sidebar (.docs/architecture/pages.md#navigation), built by AdminNavigationService from AdminNavigation.Tree:
+    only links the user may open, the active one marked with aria-current. Settings sub-groups are <details>: the one
+    holding the active screen is open; ui.js remembers what the user opened or closed.
+*@
+<nav class="nav" aria-label="Main navigation">
+    @foreach (var navSection in Model.Sections)
+    {
+        <div class="nav-section">
+            <p class="nav-section-title">@navSection.Label</p>
+            @if (navSection.Links.Count > 0)
+            {
+                <ul class="nav-list">
+                    @foreach (var link in navSection.Links)
+                    {
+                        <li><partial name="_NavLink" model="link" /></li>
+                    }
+                </ul>
+            }
+            @foreach (var group in navSection.Groups)
+            {
+                <details class="nav-group" data-nav-group="@group.Label" open="@(group.ContainsActive ? "open" : null)"
+                         data-nav-active="@(group.ContainsActive ? "true" : null)">
+                    <summary class="nav-group-title">
+                        <span>@group.Label</span>
+                        <icon name="chevron-right" size="sm" class="nav-group-chevron" />
+                    </summary>
+                    <ul class="nav-list">
+                        @foreach (var link in group.Links)
+                        {
+                            <li><partial name="_NavLink" model="link" /></li>
+                        }
+                    </ul>
+                </details>
+            }
+        </div>
+    }
 </nav>

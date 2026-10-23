@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Extension host: manifest discovery & validation, lifecycle, DI registration. -->
+  <!-- Extension host: manifest discovery & validation, code loading (one load context per extension). -->
 
   <ItemGroup>
     <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
     <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
     <ProjectReference Include="..\DotNetForge.Core\DotNetForge.Core.csproj" />
+    <ProjectReference Include="..\DotNetForge.Sdk\DotNetForge.Sdk.csproj" />
   </ItemGroup>
 
 </Project>

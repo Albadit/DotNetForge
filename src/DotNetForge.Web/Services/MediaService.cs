@@ -129,6 +129,23 @@ public sealed class MediaService
         return (file, null);
     }
 
+    /// <summary>
+    /// Makes a file public (anyone with the link) or private (signed-in admin users of its tenant). Only the row's flag
+    /// changes - the stored object stays where it is; <c>MediaFilesController</c> checks the flag on every download.
+    /// </summary>
+    public async Task SetVisibilityAsync(MediaFile file, bool isPublic, CancellationToken ct = default)
+    {
+        if (file.IsPublic == isPublic)
+        {
+            return;
+        }
+
+        file.IsPublic = isPublic;
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.MediaUpdated, "MediaFile", file.Id.ToString(), file.FileName,
+            details: isPublic ? "Made public" : "Made private", cancellationToken: ct);
+    }
+
     /// <summary>Deletes the row first (so nothing references a missing object), then the stored object.</summary>
     public async Task DeleteAsync(MediaFile file, CancellationToken ct = default)
     {

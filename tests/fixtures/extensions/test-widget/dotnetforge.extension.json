@@ -1,0 +1,15 @@
+{
+  "id": "tests.widget.hello",
+  "name": "tests.widget.hello",
+  "description": "Integration-test fixture.",
+  "version": "1.0.0",
+  "type": "widget",
+  "author": "Tests",
+  "entryPoint": "None",
+  "permissions": [
+    "core.read"
+  ],
+  "settings": {
+    "word": "WIDGET-OK"
+  }
+}

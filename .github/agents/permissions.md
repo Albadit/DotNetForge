@@ -4,24 +4,27 @@ Full description: [authorization.md](../../.docs/features/authorization.md).
 
 ## Roles (most → least privileged)
 
-`Super Admin`, `Admin`, `Editor`, `Author`, `Authenticated`, `Public` (`DotNetForge.Shared.Constants.Roles`). Only the
-setup wizard assigns a role (Super Admin); there is no role or user management UI.
+`Super Admin`, `Admin`, `Editor`, `Author`, `Authenticated`, `Public` (`DotNetForge.Shared.Constants.Roles`), plus
+custom roles. Users and roles are managed on `/admin/users` and `/admin/roles` (`UserManagementService`,
+`RoleManagementService`).
 
 ## What is enforced
 
 | Mechanism | Where | Enforced |
 | --- | --- | --- |
-| `AdminArea` policy (Super Admin, Admin, Editor, Author) | every admin controller via `AdminControllerBase`, `ExtensionViewController` | yes |
-| `[Authorize(Roles = "Super Admin,Admin")]` | Users, Roles, Audit Logs, API Tokens | yes |
-| `[Authorize(Roles = "Super Admin")]` | Plugins | yes |
+| `AdminArea` policy (`AuthorizationPolicies.AdminArea`: any role except Authenticated/Public, `Roles.CanEnterAdmin`) | every admin controller via `AdminControllerBase`, `ExtensionViewController` | yes |
+| `[RequirePermission(area, action)]` (stored grants) | Users, Roles, Audit Logs, API Tokens, Settings - screen (`read`) and mutating actions | yes |
+| `[Authorize(Roles = "Super Admin")]` | Plugins (list, enable, disable) | yes |
 | `[RequireApiPermission("<key>")]` | every API action (`401` unauthenticated, `403` missing key) | yes |
-| `IPermissionService.HasAny(roles, area, action)` / `PermissionMatrix` via `AdminControllerBase.Can`/`CanModify` | Content Manager (`Collection types`) and Media (`Media`) actions | yes (static matrix; stored `RolePermission` rows are not read) |
-| `[Authorize(Roles = "Super Admin,Admin")]` | Settings | yes |
+| `IPermissionService.HasAny(tenantId, roles, area, action)` via `AdminControllerBase.Can`/`CanModify` | Content Manager (`Collection types`) and Media (`Media`) actions | yes (stored `RolePermission` grants via `IRoleGrantStore`; Super Admin always) |
 
 Consequences: Authors create pages and edit/delete only their own (no publishing, scheduling or reordering) and delete
-only their own uploads; Editors and Admins can do everything in content and media; Settings is Super Admin/Admin only.
+only their own uploads; Editors and Admins can do everything in content and media; Settings is Super Admin/Admin only
+by default. Custom roles get exactly their grants.
+The admin sidebar hides links whose controller the role cannot open (`AdminNavigationService`) - convenience only,
+the attributes above are the gate.
 
-## Permission matrix (reference data, `PermissionMatrix`)
+## Default grants (`PermissionMatrix`, seeded per tenant)
 
 | Capability | SA | Admin | Editor | Author | Authenticated | Public |
 | --- | --- | --- | --- | --- | --- | --- |
