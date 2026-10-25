@@ -89,6 +89,14 @@ CMS code therefore follows one rule on every provider: **one collection per quer
 See `src/DotNetForge.Web/Areas/Admin/Controllers/RolesController.cs`, `UsersController.cs` and
 `src/DotNetForge.Web/Services/AuthService.cs`. `GroupBy` over results already in memory is fine.
 
+## Write rules
+
+The SQL providers send a `SaveChanges` call's deletes before its inserts; the MongoDB provider does not guarantee that.
+To replace a set of rows that has a unique index, **diff, don't delete and re-add**: remove the rows no longer wanted,
+add the new ones and change the rest in place. Re-adding a row with the same unique key in the same `SaveChanges`
+fails on MongoDB with `E11000 duplicate key`. `PagePermissionService` (`ReplaceRolesAsync`, `ReplaceUsersAsync`),
+`UserManagementService` and `RoleManagementService` follow this.
+
 ## Operations
 
 - **Version pinning.**

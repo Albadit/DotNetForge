@@ -171,8 +171,8 @@ route), [Audit Logs](audit-logs.md) (the sample's data source).
 - Enabling or disabling on the Plugins screen takes effect on this instance at once, on other instances within 30 s
   (`ExtensionState.Lifetime`).
 - Discovery is cached in the `ExtensionLoader` singleton. A `FileSystemWatcher` on `AppEnvironment.ExtensionsPath`
-  (filter `dotnetforge.extension.json`, subdirectories included) clears the cache when a manifest is created,
-  changed, renamed or deleted, or when the watcher reports an error; a version counter keeps a scan that overlapped a
+  (no name filter, subdirectories included) clears the cache when any file or folder below it is created, changed,
+  renamed or deleted, or when the watcher reports an error; a version counter keeps a scan that overlapped a
   change from being cached. If the watcher cannot be created (missing folder at startup, unsupported file system),
   every call rescans. Changes to view files are picked up by runtime compilation, not by this cache.
 - The three endpoints and the sidebar share one lookup, `ExtensionCatalog`; none combines discovery and enabled

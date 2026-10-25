@@ -120,12 +120,13 @@ jobs:
     # The full integration suite on the other supported databases (.docs/database/providers.md#testing): each
     # provider must behave like SQLite and PostgreSQL for the CMS and for IDatabaseService.
     name: Integration tests (${{ matrix.provider }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - provider: sqlserver
+            runner: ubuntu-latest
             start: >-
               docker run -d --name db -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=DotNetForge!2026 -p 1433:1433
               mcr.microsoft.com/mssql/server:2022-latest
@@ -133,11 +134,14 @@ jobs:
             variable: DNF_TEST_SQLSERVER
             connection: Server=localhost,1433;User Id=sa;Password=DotNetForge!2026;TrustServerCertificate=true
           - provider: mysql
+            runner: ubuntu-latest
             start: docker run -d --name db -e MYSQL_ROOT_PASSWORD=dotnetforge -p 3306:3306 mysql:8.4
             ready: "docker exec db mysqladmin -uroot -pdotnetforge ping 2>/dev/null | grep -q alive"
             variable: DNF_TEST_MYSQL
             connection: Server=localhost;Port=3306;Uid=root;Pwd=dotnetforge
           - provider: mongodb
+            # MongoDB 8.x refuses to start on Linux kernels 6.19+ (SERVER-121912), which ubuntu-latest (26.04) has.
+            runner: ubuntu-24.04
             # A single-node replica set: the CMS saves several documents at once, which needs transactions.
             start: docker run -d --name db -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
             ready: >-

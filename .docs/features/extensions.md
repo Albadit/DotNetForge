@@ -62,10 +62,12 @@ per `dotnetforge.extension.json` found **recursively** under the root, valid or 
 `dotnet run --project src/DotNetForge.Web` and a published `/app` both find it
 ([where the app finds its files](../guides/development.md#where-the-app-finds-its-files)).
 
-**Caching.** The scan result is cached in memory. A `FileSystemWatcher` on the root (filter
-`dotnetforge.extension.json`, subdirectories included) clears the cache on `Created`, `Changed`, `Deleted`,
-`Renamed` and `Error` (buffer overflow) and increments a version counter; a scan is only cached when no change
-arrived while it ran. If the root does not exist at startup or the watcher cannot be created, every call rescans.
+**Caching.** The scan result is cached in memory. A `FileSystemWatcher` on the root (no name filter, subdirectories
+included) clears the cache on `Created`, `Changed`, `Deleted`, `Renamed` and `Error` (buffer overflow) for any file or
+folder and increments a version counter. Folder events matter: on Linux a manifest written right after its new folder
+is created can arrive before that folder is watched, and a folder moved in raises no manifest event. A scan is only
+cached when no change arrived while it ran. If the root does not exist at startup or the watcher cannot be created,
+every call rescans.
 A new or changed manifest is therefore picked up without a restart; new or changed **code** is not (see below).
 Tests: `tests/DotNetForge.Tests/ExtensionLoaderTests.cs`.
 

@@ -188,8 +188,22 @@ public sealed class PagePermissionService
             return false;
         }
 
-        _db.PageUserPermissions.RemoveRange(current);
-        foreach (var (userId, permission, allow) in wanted)
+        // Change rows in place instead of delete + re-insert: MongoDB may insert before it deletes, and a re-added row
+        // would then collide with its old self on the unique (PageId, UserId, Permission) index.
+        var wantedByKey = wanted.ToDictionary(w => (w.UserId, w.Item2), w => w.Allow);
+        foreach (var row in current)
+        {
+            if (!wantedByKey.Remove((row.UserId, row.Permission), out var allow))
+            {
+                _db.PageUserPermissions.Remove(row);
+            }
+            else if (row.Allow != allow)
+            {
+                row.Allow = allow;
+            }
+        }
+
+        foreach (var ((userId, permission), allow) in wantedByKey)
         {
             _db.PageUserPermissions.Add(new PageUserPermission { TenantId = page.TenantId, PageId = page.Id, UserId = userId, Permission = permission, Allow = allow });
         }

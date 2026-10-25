@@ -11,8 +11,8 @@ namespace DotNetForge.Extensions;
 /// </summary>
 /// <remarks>
 /// The sidebar asks for extensions on every admin screen, so results are cached. A <see cref="FileSystemWatcher"/>
-/// invalidates the cache when any manifest is created, changed, renamed or deleted; if the watcher cannot be
-/// created (e.g. an unsupported file system), every call rescans so results are never stale.
+/// invalidates the cache when any file or folder below the root is created, changed, renamed or deleted; if the
+/// watcher cannot be created (e.g. an unsupported file system), every call rescans so results are never stale.
 /// </remarks>
 public sealed class ExtensionLoader : IExtensionLoader, IDisposable
 {
@@ -82,7 +82,10 @@ public sealed class ExtensionLoader : IExtensionLoader, IDisposable
 
         try
         {
-            var watcher = new FileSystemWatcher(root, ExtensionManifest.FileName)
+            // No name filter: it would also drop folder events. On Linux a manifest written right after its new
+            // folder is created can land before the folder is watched, and a folder moved in raises no manifest
+            // event at all - the folder's own event is what invalidates the cache then.
+            var watcher = new FileSystemWatcher(root)
             {
                 IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite |

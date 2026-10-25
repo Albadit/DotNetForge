@@ -254,7 +254,9 @@ Never write into the repository from a test: use `factory.StoragePath`, the fact
   (`DNF_TEST_S3_*` set) and the integration tests on PostgreSQL (`DNF_TEST_POSTGRES` set).
 - **database-providers** (`Integration tests (<provider>)`) on Ubuntu: a matrix that starts SQL Server 2022, MySQL 8.4
   or MongoDB 8.0 (single-node replica set) with `docker run` and runs the integration suite with `DNF_TEST_SQLSERVER`,
-  `DNF_TEST_MYSQL` or `DNF_TEST_MONGODB`.
+  `DNF_TEST_MYSQL` or `DNF_TEST_MONGODB`. The MongoDB entry runs on `ubuntu-24.04`: MongoDB 8.x exits at startup on
+  Linux kernels 6.19 and newer ([SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912)), which the Ubuntu
+  26.04 `ubuntu-latest` image has.
 - **read-only-container** (`Read-only container`) on Ubuntu: `docker build -f docker/Dockerfile -t dotnetforge:ci .`, then
   `docker run --read-only --tmpfs /tmp` with SQLite at `/tmp/cms.db` and media at `/tmp/media`; probes `/health` and
   `/setup` and asserts `docker diff app` is empty ([deployment](deployment.md#docker)).
