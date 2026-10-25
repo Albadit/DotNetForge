@@ -128,7 +128,8 @@ public sealed class DatabaseServiceContractTests : IClassFixture<DatabaseService
 
         Assert.Equal(new[] { $"{_prefix}-50%_off" }, await Keys(DatabaseFilter.Contains("Key", "50%_")));
         Assert.Equal(new[] { $"{_prefix}-a.*b" }, await Keys(DatabaseFilter.Contains("Key", ".*")));
-        Assert.Equal(new[] { $"{_prefix}-ABC" }, await Keys(DatabaseFilter.Contains("Key", "abc", ignoreCase: true)));
+        // "-abc", not "abc": the random hex prefix can contain "abc" itself.
+        Assert.Equal(new[] { $"{_prefix}-ABC" }, await Keys(DatabaseFilter.Contains("Key", "-abc", ignoreCase: true)));
     }
 
     [Fact]
