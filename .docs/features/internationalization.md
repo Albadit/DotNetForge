@@ -1,17 +1,16 @@
 # Internationalization
 
-Locales for the admin UI and the public site: which locales a tenant has, which one is the default (the fallback
+Locales for the admin UI and the public site: which locales the site has, which one is the default (the fallback
 for missing translations), and how content is translated. Today the CMS is English-only and has no locale model.
 
 ## Current state
 
 | Piece | Location | Status |
 | --- | --- | --- |
-| `Tenant.DefaultLocale` (string, max 20, default `"en"`) | `src/DotNetForge.Shared/Entities/Tenant.cs`, `DotNetForgeDbContext` | seeded `"en"` by `DataSeeder`; **read nowhere** |
 | `InvariantGlobalization` = `false` | `Directory.Build.props` (every project) | ICU culture data is available (SQL Server's client requires it); the process culture comes from the OS/container (`LANG`), which is the invariant culture in the default images |
 | Internationalization screen | `GET /admin/internationalization` → `ModulesController.Internationalization` | [placeholder](../pages/module-placeholders.md), sidebar **Settings → Global Settings** |
 
-Not present: locale entities or settings, request-culture middleware (`UseRequestLocalization`), `IStringLocalizer`
+Not present: locale entities or settings (no default-locale column either), request-culture middleware (`UseRequestLocalization`), `IStringLocalizer`
 or resource files, per-user admin language, localized fields on `Page`, and any locale parameter on the
 [headless API](headless-api.md). Every UI string is hard-coded English and every layout (`_Layout`,
 `_AuthLayout`, `_AdminLayout`, `src/DotNetForge.Web/Views/Home/Page.cshtml`) writes `<html lang="en">`.
@@ -22,7 +21,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Requirements
 
-Configured on **Settings → Global Settings → Internationalization**, per tenant ([multi-tenancy](multi-tenancy.md)):
+Configured on **Settings → Global Settings → Internationalization**:
 
 | Setting | Meaning |
 | --- | --- |
@@ -35,9 +34,9 @@ Configured on **Settings → Global Settings → Internationalization**, per ten
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| Locale code | string (BCP-47) | yes | e.g. `en`, `en-US`, `de-DE`, `pt-BR`, `zh-Hans`; unique per tenant |
+| Locale code | string (BCP-47) | yes | e.g. `en`, `en-US`, `de-DE`, `pt-BR`, `zh-Hans`; unique |
 | Locale display name | string | yes | e.g. "English (United States)" |
-| Is default locale | bool | yes | exactly one `true` per tenant |
+| Is default locale | bool | yes | exactly one `true` |
 | Enabled | bool | yes | the default locale is always enabled |
 
 **Content localization**: localizable fields (e.g. content page `Title`, `MetaTitle`, `MetaDescription`, body
@@ -54,8 +53,6 @@ Locale management is part of the **Settings** permission area (role model: [auth
 | Translate content | ✔ | ✔ | ✔ | own content only | ✘ | ✘ |
 | View localized public content | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 
-A global Super Admin manages locales of every tenant; a tenant-scoped Admin only those of assigned tenants.
-
 ### User flows
 
 1. **Add locale**: *Add locale* → code + display name + enabled → validate (BCP-47, unique) → create with
@@ -70,10 +67,10 @@ A global Super Admin manages locales of every tenant; a tenant-scoped Admin only
 
 ### Rules and validation
 
-- Locale code: valid BCP-47 tag; unique within the tenant; malformed or duplicate codes rejected with no partial
+- Locale code: valid BCP-47 tag; unique; malformed or duplicate codes rejected with no partial
   record.
 - Display name: required, non-empty.
-- Exactly one default per tenant at all times - never zero, never two.
+- Exactly one default at all times - never zero, never two.
 - The default locale is enabled; making a disabled locale the default enables it.
 - At least one locale must exist; the last one cannot be removed.
 - Changing the default requires explicit confirmation and is atomic (promote and demote together).
@@ -85,18 +82,16 @@ A global Super Admin manages locales of every tenant; a tenant-scoped Admin only
 - Deleting a locale with content: warn and confirm; its translations are removed and content falls back to the
   default; default-locale values are never touched.
 - Missing translation: fall back to the default locale value; if that is empty too, render empty (no error).
-- Disabling a locale in use (published content, admin/website language, a tenant's default): warn; stored
-  translations are kept so re-enabling restores them.
+- Disabling a locale in use (published content, admin/website language): warn; stored translations are kept so
+  re-enabling restores them.
 - Concurrent "set default" requests: serialized or transactional so exactly one default remains.
-- Tenant default: disabling or deleting a locale that is a tenant's default is blocked until that tenant's default
-  is reassigned.
 
 ### Acceptance criteria
 
 - [ ] Admin language, website/page language, default locale and additional locales are configurable on Settings → Global Settings → Internationalization (today a placeholder).
 - [ ] Each locale has code, display name, is-default and enabled.
 - [ ] Adding a locale validates the code as BCP-47 and rejects malformed codes.
-- [ ] Locale codes are unique per installation and per tenant.
+- [ ] Locale codes are unique.
 - [ ] Exactly one default locale exists at all times; zero or several can never be persisted.
 - [ ] Changing the default shows a confirmation dialog and applies only after confirmation.
 - [ ] Promoting the new default and demoting the old one are atomic.
@@ -106,7 +101,6 @@ A global Super Admin manages locales of every tenant; a tenant-scoped Admin only
 - [ ] A missing translation falls back to the default locale at render time.
 - [ ] Disabling a locale in active use warns; the default locale cannot be disabled.
 - [ ] Only Super Admin and Admin (Settings permission) manage locales; Editors/Authors translate per their content permissions.
-- [ ] Each tenant has its own default locale and the one-default rule is enforced per tenant (only the `Tenant.DefaultLocale` column exists; nothing reads or validates it).
 - [ ] Concurrent default changes never produce two defaults.
 - [ ] Locale and default-locale changes are audited.
 
@@ -115,14 +109,13 @@ A global Super Admin manages locales of every tenant; a tenant-scoped Admin only
 - **Globalization mode** ✔: `InvariantGlobalization` is already `false` in `Directory.Build.props` (SQL Server's client
   needs ICU), so culture data is available for formatting and `CultureInfo` validation; the `aspnet:10.0` runtime image
   ships ICU.
-- **Locale entity**: a tenant-scoped `Locale` (code, display name, is-default, enabled) in
-  `src/DotNetForge.Shared/Entities`, configured in `DotNetForgeDbContext` with a unique (`TenantId`, `Code`) index,
-  plus a migration (`database-change` skill). Decide whether `Tenant.DefaultLocale` stays as the source of truth or is
-  derived from the default `Locale` row - keep one source only.
+- **Locale entity**: a `Locale` (code, display name, is-default, enabled) in `src/DotNetForge.Shared/Entities`,
+  configured in `DotNetForgeDbContext` with a unique `Code` index, plus a migration for each SQL context
+  (`database-change` skill). The default is the `Locale` row with is-default - keep one source only.
 - **Rules** (one default, default enabled, last locale, atomic switch): one `src/DotNetForge.Web/Services/LocaleService` running the
   switch in a single `SaveChangesAsync`/transaction; pure code validation in `src/DotNetForge.Core/Validation`.
 - **Request culture**: register localization in `src/DotNetForge.Web/Startup/DependencyRegistration.cs` and add
-  `UseRequestLocalization` in `Program.cs` with a provider that reads the tenant's enabled locales; set `<html lang>`
+  `UseRequestLocalization` in `Program.cs` with a provider that reads the enabled locales; set `<html lang>`
   from the resolved culture in every layout.
 - **Translated content**: a translation table keyed by (`PageId`, locale) rather than per-locale columns on `Page`;
   field mapping and fallback stay in `PageService` and the public render path (`HomeController`), not in views.

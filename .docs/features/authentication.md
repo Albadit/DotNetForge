@@ -41,16 +41,16 @@ or through a TLS-terminating proxy with forwarded headers - [deployment](../guid
 
 1. Rate limit `credentials` (10 per minute per client IP, `429` beyond) - see [Rate limiting](#rate-limiting).
 2. Antiforgery check.
-3. `AuthService.GetDefaultTenantIdAsync` → `AuthService.ValidateAsync(email, password, tenantId)` (below).
+3. `AuthService.ValidateAsync(email, password)` (below).
 4. Success → `SignInAsync` (cookie; `IsPersistent` + `ExpiresUtc` when **Remember me** is ticked), then `HttpContext.User` is set to the new principal so the `user.login` audit
-   entry carries the user and tenant, then `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - a
+   entry carries the user, then `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - a
    missing or external `returnUrl` goes to the dashboard.
 5. Failure → message per status as an error toast (`TempData["Error"]`), `user.login.failed` with the typed email
    ([audit logging](audit-logging.md)).
 
-### `AuthService.ValidateAsync(email, password, tenantId)`
+### `AuthService.ValidateAsync(email, password)`
 
-1. Trim the email and find the user by **exact** `(TenantId, Email)` - the comparison is whatever the database
+1. Trim the email and find the user by **exact** `Email` (unique) - the comparison is whatever the database
    collation does (case-sensitive on SQLite's default `BINARY` and on PostgreSQL), so `Admin@x.com` ≠ `admin@x.com`.
 2. Not found → `InvalidCredentials` (no counter change - neutral response against enumeration).
 3. `Status == Disabled` → `Disabled`.
@@ -69,7 +69,6 @@ different message for each ([login screen](../pages/login.md#error-handling)).
 | `ClaimTypes.NameIdentifier` | `User.Id` |
 | `ClaimTypes.Name` | `User.DisplayName` (first + last name, or email) |
 | `ClaimTypes.Email` | `User.Email` |
-| `dnf:tenant` (`AuthService.TenantClaimType`) | `User.TenantId` |
 | `ClaimTypes.Role` | one per assigned role name |
 
 Claims are fixed at sign-in. Role changes and a lockout do **not** affect an existing cookie until it expires or the
@@ -97,11 +96,6 @@ flowchart TD
 - A disabled or deleted user loses access within 30 s; the next admin request redirects to the sign-in screen.
 - Only existence and `Status` are checked. Role claims are **not** refreshed - role changes apply at the next sign-in.
 
-### Tenant choice at sign-in
-
-`AccountController` and `SetupController` call `AuthService.GetDefaultTenantIdAsync`, which returns the **oldest
-tenant** (`Tenants.OrderBy(CreatedDate)`). There is no tenant selection; see [multi-tenancy](multi-tenancy.md).
-
 ### Sign-out
 
 `POST /account/logout` (antiforgery-protected) writes `user.logout`, signs out and redirects to `/account/login`.
@@ -128,7 +122,7 @@ sequenceDiagram
     P-->>U: provider sign-in, then the scheme's own callback
     P->>X: signs into dnf.external, redirects to /account/external/callback
     X->>X: read + delete dnf.external, check provider still active, email claim
-    X->>A: ValidateExternalAsync(email, default tenant)
+    X->>A: ValidateExternalAsync(email)
     A-->>X: Success / InvalidCredentials / Disabled / LockedOut
     X-->>U: dnf.auth cookie + user.login "via <provider>" → returnUrl or /admin
 ```
@@ -138,7 +132,7 @@ sequenceDiagram
 | Buttons | `LoginProviders` (`src/DotNetForge.Web/Services/`) lists the `LoginProviderContribution`s whose extension is active (`ExtensionCatalog`); a disabled extension's button disappears at once |
 | Challenge | `POST /account/external/{scheme}`: antiforgery, rate limit `credentials`; unknown or inactive scheme → `404`; a non-local `returnUrl` is dropped |
 | Callback | `GET /account/external/callback` (rate limit `credentials`): authenticates and immediately signs out `dnf.external`; the provider recorded in the challenge must still be active; the principal must carry a `ClaimTypes.Email` claim |
-| Matching | the **existing** user of the default tenant with exactly that email (trimmed, same collation rules as password sign-in). No account is ever created |
+| Matching | the **existing** user with exactly that email (trimmed, same collation rules as password sign-in). No account is ever created |
 | Account state | `Disabled` and locked-out (`LockoutEndUtc > now`) accounts are refused, as for a password sign-in. Failed-attempt counters are not changed |
 | Success | `LastLoginDate`, same principal as a password sign-in (`AuthService`), cookie `dnf.auth`, audit `user.login` with details `via <DisplayName>`, `LocalRedirect` to a local `returnUrl` or `/admin` |
 | Failure | audit `user.login.failed` (`success: false`, the email if known, details `via <DisplayName>` or `external sign-in`), message in `TempData["Error"]` (an error toast), redirect to `/account/login` ([messages](../pages/login.md#error-handling)) |
@@ -184,7 +178,7 @@ read-only filesystem and are valid on every instance that shares the database. T
 | No candidate with the prefix verifies | `Fail("Unknown token.")` → 401 |
 | `Revoked` | `Fail("Token has been revoked.")` → 401 |
 | `ExpirationDate <= now` | `Fail("Token has expired.")` → 401 |
-| Valid | `LastUsedDate` updated when older than 5 min; principal with `NameIdentifier` = token id, `dnf:token`, `dnf:tenant`, one `dnf:permission` per key |
+| Valid | `LastUsedDate` updated when older than 5 min; principal with `NameIdentifier` = token id, `dnf:token`, one `dnf:permission` per key |
 
 Performance and resilience:
 
@@ -261,7 +255,6 @@ email      Enabled       Edit
   provider client secrets in `.env` - decide which applies before building.
 - Enable / disable a provider. A disabled provider is hidden from the login screen and blocks new logins through it;
   accounts created through it are kept.
-- `AuthProvider` has no `TenantId`: providers are global today.
 
 ### Advanced settings screen
 

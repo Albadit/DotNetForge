@@ -17,7 +17,7 @@ Screen: [Media](../pages/media.md). Still-unbuilt File Manager features: [Planne
 | Admin screen | `src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs` | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}`, `POST /admin/media/delete-selected` ([delete flow](#delete-flow)) |
 | Download endpoint | `src/DotNetForge.Web/Controllers/MediaFilesController.cs` | `GET /media/{id}/{fileName?}`: authorization, then presigned redirect or stream |
 | `MediaFile` entity | `src/DotNetForge.Shared/Entities/Content.cs` | Metadata row (`RelativePath` holds the storage key) |
-| API list | `GET /api/media` (`media.read`) | Lists the token tenant's media ([headless API](headless-api.md)) |
+| API list | `GET /api/media` (`media.read`) | Lists the media files ([headless API](headless-api.md)) |
 | Configuration | `StorageSettings` on `AppEnvironment`; `STORAGE_S3_*` keys | Endpoint and credentials ([configuration](configuration.md)) |
 
 ## Storage architecture
@@ -45,8 +45,9 @@ Design decisions:
   `DeleteAsync` (idempotent) and `GetDownloadUrlAsync` (a short-lived signed URL, or `null` when the provider can't
   sign). These are the operations the application actually uses. There are no separate exists/metadata calls:
   `OpenReadAsync` covers both, and content type, size and name are stored in `MediaFiles`.
-- **Keys never contain user input.** `MediaService` generates `{tenantId:N}/{yyyy}/{MM}/{random:N}{ext}`;
-  `StorageKey.IsValid` (1-512 characters, `/`-separated segments of `[A-Za-z0-9._-]`, no `.`, `..` or empty
+- **Keys never contain user input.** `MediaService` generates `{yyyy}/{MM}/{random:N}{ext}` (files uploaded before
+  the `RemoveTenants` migration keep their stored `{tenantId:N}/{yyyy}/{MM}/...` keys and still work - the key is read
+  from `RelativePath`, never rebuilt); `StorageKey.IsValid` (1-512 characters, `/`-separated segments of `[A-Za-z0-9._-]`, no `.`, `..` or empty
   segments) is enforced by every provider, so traversal or odd object names are impossible.
 - **Objects stay private in the bucket.** Access control is decided by the application, then the browser gets a
   presigned URL that expires (public files: 1 hour, private files: 5 minutes). No public bucket and no CDN rules to
@@ -141,9 +142,9 @@ sequenceDiagram
     U->>C: POST /admin/media/upload (multipart, antiforgery, ≤ 10 files)
     C->>C: Media/create permission; file count; request size limit
     loop each file
-        C->>M: UploadAsync(file, isPublic, tenant, user)
+        C->>M: UploadAsync(file, isPublic, user)
         M->>M: size ≤ 25 MB; extension in AllowedTypes → content type; sanitize display name
-        M->>S: SaveAsync("{tenant}/{yyyy}/{MM}/{random}{ext}", stream, contentType)
+        M->>S: SaveAsync("{yyyy}/{MM}/{random}{ext}", stream, contentType)
         alt storage fails
             M-->>C: "'x' could not be stored right now. Try again later." (error logged)
         else stored
@@ -175,8 +176,8 @@ sequenceDiagram
     participant DB as DotNetForgeDbContext
     participant S as IFileStorage
     B->>D: GET /media/{id}/{fileName}
-    D->>DB: MediaFile by id (tenant, name, type, key, IsPublic)
-    alt missing, or private and not an admin-capable user of that tenant
+    D->>DB: MediaFile by id (name, type, key, IsPublic)
+    alt missing, or private and not a signed-in admin-capable user
         D-->>B: 404 (existence not revealed)
     end
     D->>S: GetDownloadUrlAsync(key, Content-Disposition, 1 h public / 5 min private)
@@ -206,7 +207,7 @@ rules to a list of files:
 | Rule | Behaviour |
 | --- | --- |
 | Input | form field `ids` (repeated), de-duplicated; 1 to `MediaController.MaxBulkDelete` = 100, else nothing is deleted and `TempData["Error"]` is "Select at least one file." / "Delete at most 100 files at a time." |
-| Tenant | only rows with `TenantId` = the active tenant are loaded; unknown or other-tenant ids are skipped silently |
+| Unknown ids | skipped silently |
 | Permission | per file, the same `CanModify(Media, delete, delete.own, UploadedById)` as the single delete; refused files are skipped and counted |
 | Deletion and audit | `MediaService.DeleteAsync` per permitted file - one `media.deleted` entry each, exactly like the single delete |
 | Result | redirect to `/admin/media`; `TempData["Success"]` "Deleted N files." when any were deleted; `TempData["Error"]` "N files were not deleted: your role may not delete them." for refused files, or "None of the selected files exist any more." when nothing was deleted or refused |
@@ -236,10 +237,10 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 - File Manager: folders with arbitrary nesting, rename and move files and folders, breadcrumbs, drag-and-drop
   upload, delete with in-use protection (pages of type `File`, `Page.FileReference`).
-- Private files with explicit role/user **access grants** (today private = admin-capable users of the tenant).
+- Private files with explicit role/user **access grants** (today private = any signed-in admin-capable user).
 - Search, filter and sort by name, type/MIME, tag, folder, date and size; tags on files (today: in-browser search by
   name/content type and type/access filters on the loaded list ✔).
-- Configurable allowed types and maximum size per tenant (today fixed in `MediaService`); content sniffing or
+- Configurable allowed types and maximum size (today fixed in `MediaService`); content sniffing or
   malware scanning of uploads.
 - Duplicate strategy (reject, auto-rename or replace) based on checksum or name.
 - Image processing toggles: responsive variants (small/medium/large), size optimization, EXIF auto-orientation;
@@ -255,7 +256,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 | Target field | Today | Notes |
 | --- | --- | --- |
 | `extension` | derived from `RelativePath` | |
-| `folderId` | `FolderPath` (always `/`) | new `MediaFolder` entity: `id`, `tenantId`, `name`, `parentId`, materialized `path`, `isPublic`, `createdBy`, `createdDate` |
+| `folderId` | `FolderPath` (always `/`) | new `MediaFolder` entity: `id`, `name`, `parentId`, materialized `path`, `isPublic`, `createdBy`, `createdDate` |
 | `storageProvider` | - | needed so files stay reachable after switching storage; today one storage is used at a time (core or the first enabled [connector](#storage-connectors)) and older objects are not tracked per row |
 | `tags`, `width`, `height`, `variants`, `checksum`, `updatedDate` | - | |
 
@@ -293,7 +294,7 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 - [ ] Breadcrumbs reflect the folder hierarchy and every segment is clickable.
 - [ ] A folder cannot be moved into itself or a descendant.
 - [ ] Files and folders can be marked public or private (files ✔ at upload and later per file - `MediaController.Visibility`; no folders).
-- [ ] Private files enforce role/user access grants; unauthorized download → `403`, missing → `404`, no metadata leakage (private files return `404` to anyone but admin-capable users of the tenant - `MediaFilesController`; no grants).
+- [ ] Private files enforce role/user access grants; unauthorized download → `403`, missing → `404`, no metadata leakage (private files return `404` to anyone but signed-in admin-capable users - `MediaFilesController`; no grants).
 - [x] Public files are directly downloadable, including anonymously (`MediaFilesController`).
 - [ ] Stable URLs exist for every file and every responsive variant (files ✔ `/media/{id}/{name}`; no variants).
 - [ ] Search by name, type, tag, folder and date, with ascending/descending sort (client-side search by name/content type and type and access filters ✔ on the Media screen; no tag, folder or date, no sort).
@@ -303,7 +304,6 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 - [ ] Local storage is the default and an external provider can be selected - deliberately not: deployments always use S3-compatible storage (any provider, chosen by endpoint); local storage remains only as the Development fallback.
 - [x] A broken storage provider fails gracefully and the failure is logged (`MediaService.UploadAsync` returns a message and logs; existing files are unaffected).
 - [ ] Deleting a file referenced by a page/content is blocked or needs explicit confirmation, with dependents listed.
-- [x] All media operations are tenant-scoped with no cross-tenant access (admin list/upload/delete filter by tenant; private downloads check the tenant; public downloads are public by design).
 - [ ] `media.create`, `media.update` and `media.delete` webhook events fire.
 - [ ] Media settings (allowed types, max size, image toggles, default provider) are configurable by Super Admin and Admin only.
 - [x] Storage secrets come from `.env` / the environment and are never committed (`STORAGE_S3_SECRET_ACCESS_KEY`, `.gitignore`).

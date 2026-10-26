@@ -33,7 +33,7 @@ src/DotNetForge.Core/Installation/InstallationService.cs   validation + user cre
 src/DotNetForge.Core/Validation/PasswordPolicy.cs, InputValidation.cs (EmailValidator)
 src/DotNetForge.Data/InstallationStore.cs        transactional persistence
 src/DotNetForge.Web/Services/InstallationStatusCache.cs              flipped to installed after success
-src/DotNetForge.Web/Services/AuthService.cs                          GetDefaultTenantIdAsync, signs the new admin in
+src/DotNetForge.Web/Services/AuthService.cs                          ValidateAsync, signs the new admin in
 src/DotNetForge.Web/Services/AuditService.cs                         cms.installed (via IAuditService)
 src/DotNetForge.Web/Middleware/InstallationMiddleware.cs             the gate that routes users here
 src/DotNetForge.Web/Startup/DependencyRegistration.cs                credentials rate-limit policy
@@ -84,17 +84,16 @@ The brand panel is the same as on [Sign in](login.md#page-layout); mechanics:
 3. **Service:** `IInstallationService.InstallAsync` → `IInstallationStore.InstallFirstAdminAsync`.
 4. **Data:** a `User` (trimmed email/names, PBKDF2 hash, `Enabled`, `EmailConfirmed = true`) + `UserRole`
    (`Super Admin`), `SystemState.Installed = true`, `InstalledAtUtc = now` - one transaction.
-5. **Then:** `InstallationStatusCache.MarkInstalled()`; `AuthService.GetDefaultTenantIdAsync` +
-   `AuthService.ValidateAsync` with the submitted credentials; cookie sign-in (and `HttpContext.User` set) when it
-   succeeds; audit `cms.installed` (entity `User`, id = new user's id, display = trimmed email), so the entry carries
-   the new Super Admin and the tenant.
+5. **Then:** `InstallationStatusCache.MarkInstalled()`; `AuthService.ValidateAsync` with the submitted credentials;
+   cookie sign-in (and `HttpContext.User` set) when it succeeds; audit `cms.installed` (entity `User`, id = new
+   user's id, display = trimmed email), so the entry carries the new Super Admin.
 6. **UI:** `302 /admin` → [Dashboard](dashboard.md).
 7. **Errors:** any failure re-renders the form with the message in `<form-errors />`; **both password fields are
    cleared**, other fields kept.
 
 ## Data used by the page
 
-`AppEnvironment.AppName` (`ViewData["AppName"]`), `SetupRequest`, the oldest `Tenant`, the seeded `Super Admin`
+`AppEnvironment.AppName` (`ViewData["AppName"]`), `SetupRequest`, the seeded `Super Admin`
 role, `SystemState`.
 
 ## State
@@ -121,7 +120,7 @@ columns and are checked before saving: email ≤ 256 (`A valid email address is 
 | Validation | message in `<form-errors />` above the fields, passwords cleared | correct and resubmit |
 | More than 10 POSTs per minute from one IP | `429` with an empty body | wait a minute |
 | Another setup committed first | "The CMS is already installed." | next request is redirected to `/admin`; sign in |
-| Seed missing (no tenant / role) | "The default tenant has not been seeded." / "The Super Admin role has not been seeded." | restart (seeding runs at startup) |
+| Seed missing (no `Super Admin` role) | "The Super Admin role has not been seeded." | restart (seeding runs at startup) |
 | Sign-in after install fails (should not happen) | redirected to `/admin` → login screen | sign in manually |
 
 ## Loading behaviour
@@ -148,7 +147,7 @@ SetupController
 │   ├── IInstallationStore → InstallationStore → DotNetForgeDbContext
 │   └── IPasswordHasher → Pbkdf2PasswordHasher
 ├── InstallationStatusCache
-├── AuthService (default tenant, sign-in)
+├── AuthService (sign-in)
 ├── IAuditService → AuditService
 └── AppEnvironment
 ```
@@ -176,7 +175,6 @@ flowchart TD
 ## Important implementation details
 
 - Installation is audited as `cms.installed` (shown on [Audit Logs](audit-logs.md)).
-- The new user belongs to the **oldest** tenant.
 - `.env` is not edited here; configuration must already be valid for the process to start. Outside Development
   that means an explicit `DATABASE_CONNECTION_STRING` (SQLite: absolute `Data Source`) and S3 storage
   (`STORAGE_S3_*`) - nothing may default to a path inside the read-only deployment directory, otherwise the process

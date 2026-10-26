@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lists the roles of the active tenant and lets holders of the **Roles** grants create, edit, duplicate and delete
+Lists the roles and lets holders of the **Roles** grants create, edit, duplicate and delete
 them. A role bundles `(area, action)` permissions; a user can do what any of their roles grants. Role semantics and
 evaluation: [authorization](../features/authorization.md).
 
@@ -47,7 +47,12 @@ Editor - <role name> or "Create role" (h1) · [Duplicate]
 
 ## Components
 
-List rows (`RoleListItem(Id, Name, Description, IsBuiltIn, Users, Permissions)`, built-in first, then by name):
+List rows (`RoleListItem(Id, Name, Description, IsBuiltIn, Users, Permissions)`, built-in first, then by name). The
+seven built-in roles (`Roles.BuiltIn`: `Super Admin`, `Admin`, `Developer`, `Editor`, `Author`, `Authenticated`,
+`Public`) are seeded by `DataSeeder` with the `PermissionMatrix` defaults - also into an existing database that lacks
+one, on the next start. `Developer` holds only the `API` area (the [API Tokens](api-tokens.md) screen); the
+[API Docs](api-docs.md) and [API Endpoints](api-endpoints.md) screens are opened by the role name (`Super Admin` or
+`Developer`), not by grants, so ticking `API` on a custom role does not open them.
 
 | Column | Rendering |
 | --- | --- |
@@ -75,7 +80,7 @@ the [Users](users.md) screen.
 
 ## Data used by the page
 
-Single-table queries combined in memory (every provider, including MongoDB): `Roles` of the tenant, `UserRoles` by
+Single-table queries combined in memory (every provider, including MongoDB): all `Roles`, `UserRoles` by
 role ids (counts and members), `RolePermissions` by role ids, `Users` by member ids.
 
 ## State
@@ -108,7 +113,7 @@ Errors are shown in `<form-errors />` above the form with the input kept; list a
 | Rule | Message |
 | --- | --- |
 | Name required, at most 100 characters | "Enter a role name (at most 100 characters)." |
-| Name unique in the tenant (case-insensitive) | "A role named '…' already exists." |
+| Name unique (case-insensitive) | "A role named '…' already exists." |
 | Description at most 500 characters | "The description is limited to 500 characters." |
 | Grants must be catalog pairs | "'…' is not a known permission." |
 | Changing grants of a held role (not Super Admin) | "You can't change the permissions of a role you hold. Ask a Super Admin." |
@@ -121,6 +126,7 @@ Errors are shown in `<form-errors />` above the form with the input kept; list a
 
 | Case | Text |
 | --- | --- |
+| No roles at all | "No roles yet." |
 | Filter matches nothing (JS) | "No role matches the filter." |
 | Role without members (editor) | "Nobody has this role yet. Assign it when you create or edit a user." |
 
@@ -186,7 +192,6 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 - **Role still has users:** deletion is blocked ✔; the delete flow may offer bulk reassignment.
 - **Concurrent edits** of the same role: optimistic concurrency, the second save gets a conflict notice and reloads.
-- **Multi-tenant:** a global Super Admin spanning tenants ([multi-tenancy](../features/multi-tenancy.md)).
 
 ### Acceptance criteria
 

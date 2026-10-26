@@ -71,7 +71,7 @@ public sealed class ReadOnlyDeploymentTests
         Assert.Equal(HttpStatusCode.Redirect, (await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/plugins",
             "/admin/plugins/dotnetforge.admin.audit-dashboard/enable", new Dictionary<string, string>())).StatusCode);
 
-        foreach (var path in new[] { "/admin", "/admin/content", "/admin/media", "/admin/plugins", "/", "/about/team",
+        foreach (var path in new[] { "/admin", "/admin/pages", "/admin/media", "/admin/plugins", "/", "/about/team",
                      "/admin/ext/dotnetforge.admin.audit-dashboard/raw" })
         {
             Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync(path)).StatusCode);

@@ -14,7 +14,7 @@ constants, a signer and a placeholder screen. Nothing creates, fires or delivers
 | Permission keys | `PermissionKeys.WebhooksRead` = `webhooks.read`, `WebhooksManage` = `webhooks.manage` | in `PermissionKeys.All`, so grantable to API tokens; no endpoint uses them |
 | Permission area | `PermissionAreas.Webhooks`; `PermissionMatrix` grants Admin every action | reference data, not consulted at request time ([authorization](authorization.md)) |
 | Audit | `AuditActions.WebhookCreated` = `webhook.created` | never written |
-| Dashboard | `DashboardController` counts `Webhooks` of the active tenant | always `0` ([Dashboard](../pages/dashboard.md)) |
+| Dashboard | `DashboardController` counts `Webhooks` | always `0` ([Dashboard](../pages/dashboard.md)) |
 | Screen | `GET /admin/webhooks` → `ModulesController.Webhooks`; sidebar **Settings → Global Settings → Webhooks** | [placeholder](../pages/module-placeholders.md), `AdminArea` policy (any admin-capable role) |
 
 ### `Webhook`
@@ -22,7 +22,6 @@ constants, a signer and a placeholder screen. Nothing creates, fires or delivers
 | Property | Type | Configuration (`DotNetForgeDbContext`) | Notes |
 | --- | --- | --- | --- |
 | `Id` | `Guid` | key | |
-| `TenantId` | `Guid` | no FK | tenant scope |
 | `Name` | `string` | required, max 200 | no unique index |
 | `Url` | `string` | required, max 2000 | |
 | `HeadersJson` | `string` | max 4000 | JSON object, default `"{}"` |
@@ -63,13 +62,12 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Requirements
 
-- Create, edit, enable, disable and delete webhooks, **per tenant**; a tenant's webhooks fire only for that tenant's
-  events ([multi-tenancy](multi-tenancy.md)).
+- Create, edit, enable, disable and delete webhooks.
 - Fields:
 
 | Field | Rules | Column |
 | --- | --- | --- |
-| Name | required; unique within the tenant (warn or reject) | `Name` ✔ |
+| Name | required; unique (warn or reject) | `Name` ✔ |
 | URL | required, absolute `https://` URL | `Url` ✔ |
 | Headers | list of `Key` (required) / `Value` (may be empty) pairs, sent with every request | `HeadersJson` ✔ |
 | Events | at least one of the eight event keys | `EventsCsv` ✔ |
@@ -81,7 +79,7 @@ Target behaviour from the original product specification. Nothing in this sectio
   [content pages and routing](content-pages-and-routing.md)) is created, updated, deleted, published or
   unpublished; `media.*` when a media file is created/uploaded, updated or deleted.
 - Delivery:
-  - HTTP `POST`, JSON body with event key, entity type, entity id, tenant (where applicable), timestamp and the
+  - HTTP `POST`, JSON body with event key, entity type, entity id, timestamp and the
     relevant payload data.
   - All custom headers on every request; system headers (signature, identity) win over a user header of the same
     name.
@@ -139,7 +137,7 @@ Delivery log (per webhook)
 | --- | --- |
 | URL required, absolute, `https://` only; relative, `http://` and malformed URLs rejected | ✘ |
 | At least one event; each in `WebhookEvents.All` | `IsValid` helper ✔, unused |
-| Name required; duplicate within the tenant warns or is rejected | required at DB level ✔; no unique index |
+| Name required; a duplicate warns or is rejected | required at DB level ✔; no unique index |
 | Every header row has a non-empty Key; empty Value allowed | ✘ (`HeadersJson` is an object, so duplicate keys collapse) |
 | Enabled defaults to on | entity default ✔ |
 | Secret system-generated, never from input, must exist before the webhook can fire | `Secret` required ✔ |
@@ -154,7 +152,6 @@ Delivery log (per webhook)
 
 - Default: only Super Admin and Admin manage webhooks; other roles through the **Webhooks** permission area.
   Enforced on every action in the admin UI and the API (`webhooks.read` / `webhooks.manage` for tokens).
-- Rules apply within the active tenant; Super Admins may act across tenants.
 - The secret is shown only at creation and rotation, and only to users with management permission.
 
 ### Edge cases
@@ -166,7 +163,6 @@ Delivery log (per webhook)
 | Receiver signature check | receiver recomputes the HMAC over the raw body with the shared secret and rejects mismatches; proxies or re-encoding that alter the body break verification |
 | Feedback loop | webhook-triggered changes must not cause unbounded deliveries |
 | Secret rotation | old-secret signatures stop verifying; cut over in a maintenance window or let the receiver accept both secrets temporarily; new secret shown once |
-| Multi-tenant | a webhook never receives another tenant's events; tenant admins manage only their tenants' webhooks |
 | Disabled with pending retries | retries cancelled; in-flight events dropped, not queued for re-enable |
 | Many events in quick succession | one delivery per event; at-least-once - receivers deduplicate on entity id + timestamp |
 
@@ -176,7 +172,7 @@ Delivery log (per webhook)
 - [ ] Saving with a non-HTTPS, relative or malformed URL is rejected with a clear validation error.
 - [ ] Saving with zero selected events is rejected.
 - [ ] A header row with an empty Key is rejected; an empty Value is accepted.
-- [ ] A name duplicating an existing webhook in the same tenant warns or is rejected.
+- [ ] A name duplicating an existing webhook warns or is rejected.
 - [ ] All eight events can be subscribed to and each fires a delivery when it occurs.
 - [ ] Each notification is an HTTP `POST` with a JSON body and all configured custom headers.
 - [ ] Each request carries a valid HMAC signature header over the request body using the webhook's secret,
@@ -193,7 +189,6 @@ Delivery log (per webhook)
 - [ ] Rotating the secret generates a new one, displays it once and signs subsequent deliveries with it.
 - [ ] Only Super Admin and Admin (or roles granted the Webhooks permission) can manage webhooks; others are denied
   in UI and API.
-- [ ] In multi-tenant deployments a webhook receives only its own tenant's events.
 - [ ] A webhook-triggered change cannot cause an unbounded delivery loop.
 - [ ] Webhook creation, enable/disable and deletion are recorded in the audit log.
 

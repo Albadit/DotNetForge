@@ -15,7 +15,7 @@
         <div class="btn-group">
             @if (Model.CanCreatePages)
             {
-                <form method="post" action="/admin/content/create" class="inline">
+                <form method="post" action="/admin/pages/create" class="inline">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-primary"><icon name="plus" /> New page</button>
                 </form>
@@ -32,8 +32,8 @@
     </section>
 
     <div class="grid grid-4">
-        <stat-card icon="pages" label="Pages" value="@Model.Pages.ToString()" href="/admin/content" />
-        <stat-card icon="image" label="Media files" value="@Model.Media.ToString()" href="/admin/media" />
+        <stat-card icon="pages" label="Pages" value="@Model.Pages.ToString()" href="@(nav.Allows("/admin/pages") ? "/admin/pages" : null)" />
+        <stat-card icon="image" label="Media files" value="@Model.Media.ToString()" href="@(nav.Allows("/admin/media") ? "/admin/media" : null)" />
         @if (nav.Allows("/admin/users"))
         {
             <stat-card icon="users" label="Users" value="@Model.Users.ToString()" href="/admin/users" />
@@ -57,7 +57,7 @@
             <div class="card-header">
                 <div>
                     <h2 class="card-title" id="activity-title">Recent activity</h2>
-                    <p class="card-description">The latest actions in this tenant.</p>
+                    <p class="card-description">The latest actions.</p>
                 </div>
                 @if (nav.Allows("/admin/audit-logs"))
                 {

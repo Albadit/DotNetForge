@@ -33,7 +33,7 @@ public sealed class PageBuilderTests
 
     private static async Task<HttpResponseMessage> PostJsonAsync(HttpClient client, string url, string json)
     {
-        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(client, "/admin/content");
+        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(client, "/admin/pages");
         using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         request.Headers.Add("X-CSRF-TOKEN", token);
         return await client.SendAsync(request);
@@ -49,7 +49,7 @@ public sealed class PageBuilderTests
         await factory.InstallAsync();
         var admin = await factory.SignInAsync();
         var id = await PageIdAsync(factory, "about");
-        var api = $"/admin/content/{id}/builder/";
+        var api = $"/admin/pages/{id}/builder/";
 
         Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync(api)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync(api + "canvas")).StatusCode);
@@ -109,20 +109,19 @@ public sealed class PageBuilderTests
         var author = await factory.SignInAsync("author@example.com", "Auth0rPass1");
 
         // A seeded page has no creator: an Author (update.own only) may not edit it.
-        Assert.Contains("/account/denied", (await author.GetAsync($"/admin/content/{id}/builder")).Headers.Location?.OriginalString);
+        Assert.Contains("/account/denied", (await author.GetAsync($"/admin/pages/{id}/builder")).Headers.Location?.OriginalString);
 
         // An edit grant on the page for the Author role opens it; publishing still needs the publish grant.
         Guid authorRole = default;
         await factory.WithDbAsync(async db =>
         {
             authorRole = await db.Roles.Where(r => r.Name == Roles.Author).Select(r => r.Id).SingleAsync();
-            var tenant = await db.Pages.Where(p => p.Id == id).Select(p => p.TenantId).SingleAsync();
-            db.PagePermissions.Add(new Shared.Entities.PagePermission { TenantId = tenant, PageId = id, RoleId = authorRole, Permission = "edit" });
+            db.PagePermissions.Add(new Shared.Entities.PagePermission { PageId = id, RoleId = authorRole, Permission = "edit" });
             await db.SaveChangesAsync();
         });
-        Assert.Equal(HttpStatusCode.OK, (await author.GetAsync($"/admin/content/{id}/builder")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await PostJsonAsync(author, $"/admin/content/{id}/builder/save", SaveBody(null))).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await PostJsonAsync(author, $"/admin/content/{id}/builder/publish", "{}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await author.GetAsync($"/admin/pages/{id}/builder")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await PostJsonAsync(author, $"/admin/pages/{id}/builder/save", SaveBody(null))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await PostJsonAsync(author, $"/admin/pages/{id}/builder/publish", "{}")).StatusCode);
     }
 
     [Fact]
@@ -141,8 +140,8 @@ public sealed class PageBuilderTests
             new("SortOrder", "1"), new("NoIndex", "true"), new("SocialImageUrl", "/media/x/share.png"),
             new("viewRoles", authenticated.ToString()), new("permissionsShown", "true"), new("tab", "permissions"),
         };
-        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, $"/admin/content?selected={id}");
-        var saved = await admin.PostAsync($"/admin/content/update/{id}", new FormUrlEncodedContent(fields.Append(new("__RequestVerificationToken", token))));
+        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, $"/admin/pages?selected={id}");
+        var saved = await admin.PostAsync($"/admin/pages/update/{id}", new FormUrlEncodedContent(fields.Append(new("__RequestVerificationToken", token))));
         Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
         Assert.EndsWith("#permissions", saved.Headers.Location?.OriginalString);
 
@@ -159,8 +158,8 @@ public sealed class PageBuilderTests
         // A theme that is not installed is refused.
         fields.RemoveAll(f => f.Key == "permissionsShown");
         fields.Add(new("ThemeId", "no-such-theme"));
-        token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, $"/admin/content?selected={id}");
-        var refused = await admin.PostAsync($"/admin/content/update/{id}", new FormUrlEncodedContent(fields.Append(new("__RequestVerificationToken", token))));
+        token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, $"/admin/pages?selected={id}");
+        var refused = await admin.PostAsync($"/admin/pages/update/{id}", new FormUrlEncodedContent(fields.Append(new("__RequestVerificationToken", token))));
         Assert.Equal(HttpStatusCode.OK, refused.StatusCode);
         Assert.Contains("That theme is not installed.", await refused.Content.ReadAsStringAsync());
     }
@@ -192,8 +191,8 @@ public sealed class PageBuilderTests
                 fields.Add(new($"userPermissions[{i}].Edit", rules[i].Edit));
             }
 
-            var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, $"/admin/content?selected={id}");
-            return await admin.PostAsync($"/admin/content/update/{id}", new FormUrlEncodedContent(fields.Append(new("__RequestVerificationToken", token))));
+            var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, $"/admin/pages?selected={id}");
+            return await admin.PostAsync($"/admin/pages/update/{id}", new FormUrlEncodedContent(fields.Append(new("__RequestVerificationToken", token))));
         }
 
         // Nobody blocks a Super Admin, or themselves.
@@ -204,10 +203,10 @@ public sealed class PageBuilderTests
         var editor = await factory.SignInAsync("blocked@example.com", "Edit0rPass1");
         var author = await factory.SignInAsync("allowed@example.com", "Auth0rPass1");
         Assert.Equal(HttpStatusCode.NotFound, (await editor.GetAsync("/about")).StatusCode);
-        Assert.Contains("/account/denied", (await editor.GetAsync($"/admin/content/{id}/builder")).Headers.Location?.OriginalString);
-        var delete = await DotNetForgeWebFactory.PostFormAsync(editor, "/admin/content", $"/admin/content/delete/{id}", new Dictionary<string, string>());
+        Assert.Contains("/account/denied", (await editor.GetAsync($"/admin/pages/{id}/builder")).Headers.Location?.OriginalString);
+        var delete = await DotNetForgeWebFactory.PostFormAsync(editor, "/admin/pages", $"/admin/pages/delete/{id}", new Dictionary<string, string>());
         Assert.Contains("/account/denied", delete.Headers.Location?.OriginalString);
-        Assert.Equal(HttpStatusCode.OK, (await author.GetAsync($"/admin/content/{id}/builder")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await author.GetAsync($"/admin/pages/{id}/builder")).StatusCode);
 
         // A block only on this page: others still see it, and it stays in the menu (no one is allowed explicitly).
         using var visitor = factory.CreateNoRedirectClient();

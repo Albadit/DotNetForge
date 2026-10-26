@@ -1,0 +1,199 @@
+@using DotNetForge.Core.Endpoints
+@using DotNetForge.Shared.Enums
+@model ApiEndpointEditViewModel
+@{
+    var input = Model.Input;
+    var isNew = Model.Id is null;
+    ViewData["Title"] = isNew ? "New API endpoint" : input.Name;
+    ViewData["Description"] = isNew
+        ? "Name the API, give it a path and add its operations: GET, POST, PUT, PATCH or DELETE, each with its own SQL."
+        : $"/api/custom/{input.Path} · {Model.Calls.Count} operation{(Model.Calls.Count == 1 ? "" : "s")}";
+    var action = isNew ? "/admin/api-endpoints/new" : $"/admin/api-endpoints/{Model.Id}";
+    var withToken = input.Access == EndpointAccess.Token;
+    var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    string Curl(string method, string template) =>
+        $"curl -X {method} \"{origin}/api/custom/{template}\""
+        + (withToken ? $" \\\n  -H \"Authorization: Bearer {Model.Token ?? "<token>"}\"" : "")
+        + (method is "POST" or "PUT" or "PATCH" ? " \\\n  -H \"Content-Type: application/json\" -d '{ ... }'" : "");
+    Tone MethodTone(string method) => method switch { "GET" => Tone.Info, "POST" => Tone.Success, "DELETE" => Tone.Danger, _ => Tone.Warning };
+}
+
+@section Actions {
+    <a class="btn btn-secondary" href="/admin/api-endpoints"><icon name="arrow-left" /> All endpoints</a>
+    <button type="submit" form="endpointForm" class="btn btn-primary"><icon name="save" /> Save endpoint</button>
+}
+
+<form id="endpointForm" method="post" action="@action" class="editor" novalidate data-endpoint-form
+      data-methods="@System.Text.Json.JsonSerializer.Serialize(EndpointRules.Methods)"
+      data-types="@System.Text.Json.JsonSerializer.Serialize(EndpointRules.Types)"
+      data-supported="@(Model.Supported ? "true" : "false")">
+    @Html.AntiForgeryToken()
+    <div class="editor-main">
+        <form-errors />
+        @if (!Model.Supported)
+        {
+            <alert tone="Warning" title="Needs a SQL database">This site runs on MongoDB, which has no SQL: you can save endpoints, but they answer 501 and can't be test-run.</alert>
+        }
+
+        <section class="card" aria-labelledby="path-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="path-title">Path</h2>
+                    <p class="card-description">Where the API lives. Each operation answers this path, or a sub-path of it such as <span class="text-mono">{id}</span>. Write <span class="text-mono">{name}</span> for a value taken from the URL.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="field">
+                    <label class="field-label" for="Path">Path<span class="field-required" aria-hidden="true">*</span></label>
+                    <div class="endpoint-path">
+                        <span class="endpoint-path-prefix text-mono" aria-hidden="true">/api/custom/</span>
+                        <input id="Path" name="Path" value="@input.Path" maxlength="200" class="text-mono" required
+                               placeholder="products" aria-describedby="path-hint" data-endpoint-path />
+                    </div>
+                    <span class="field-hint" id="path-hint">Lower-case letters, digits, '-', '_' and '.'; up to 10 segments together with an operation's sub-path.</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="stack" aria-labelledby="operations-title">
+            <div class="spread">
+                <div>
+                    <h2 class="card-title" id="operations-title">Operations</h2>
+                    <p class="text-sm text-muted">What the API answers: one per method and sub-path, each with its own SQL, parameters and test run.</p>
+                </div>
+                <div class="cluster">
+                    <button type="button" class="btn btn-ghost" data-op-toggle-all hidden><icon name="chevrons-up-down" /> <span data-op-toggle-all-label>Open all</span></button>
+                    <button type="button" class="btn btn-secondary" data-op-add data-js-only hidden><icon name="plus" /> Add operation</button>
+                </div>
+            </div>
+            <div class="stack" data-operations data-js-only hidden></div>
+            <details class="schema-json">
+                <summary>Operations as JSON <span class="text-subtle text-xs">(the cards keep it in sync)</span></summary>
+                <textarea id="OperationsJson" name="OperationsJson" rows="10" class="text-mono" spellcheck="false"
+                          aria-label="Operations as JSON" data-operations-source>@input.OperationsJson</textarea>
+            </details>
+        </section>
+    </div>
+
+    <aside class="editor-aside">
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Settings</h2></div>
+            <div class="card-body stack">
+                <div class="field">
+                    <label class="field-label" for="Name">Name<span class="field-required" aria-hidden="true">*</span></label>
+                    <input id="Name" name="Name" value="@input.Name" maxlength="100" required placeholder="Products" />
+                </div>
+                <div class="field">
+                    <label class="field-label" for="Description">Description<span class="field-optional">optional</span></label>
+                    <textarea id="Description" name="Description" rows="2" maxlength="500">@input.Description</textarea>
+                </div>
+                <fieldset class="fieldset">
+                    <legend>Who may call it</legend>
+                    <div class="choice-cards">
+                        <label class="choice-card">
+                            <input type="radio" name="Access" value="Token" checked="@(input.Access == EndpointAccess.Token ? "checked" : null)" />
+                            <span>Token</span>
+                        </label>
+                        <label class="choice-card">
+                            <input type="radio" name="Access" value="Public" checked="@(input.Access == EndpointAccess.Public ? "checked" : null)" />
+                            <span>Anyone</span>
+                        </label>
+                    </div>
+                </fieldset>
+                <label class="switch-row">
+                    <span class="check-text">
+                        <span>Enabled</span>
+                    </span>
+                    @* The checkbox first: a bound bool takes the first posted value. *@
+                    <input type="checkbox" class="switch" role="switch" name="Enabled" value="true" checked="@(input.Enabled ? "checked" : null)" />
+                    <input type="hidden" name="Enabled" value="false" />
+                </label>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary btn-block"><icon name="save" /> Save endpoint</button>
+            </div>
+        </div>
+
+        @if (!isNew)
+        {
+            <section class="card" aria-labelledby="call-title">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" id="call-title">Call it</h2>
+                        @if (!withToken)
+                        {
+                            <p class="card-description">Anyone can call it, no token needed.</p>
+                        }
+                    </div>
+                </div>
+                <div class="card-body stack-sm">
+                    @if (withToken)
+                    {
+                        <span class="field-label">Token</span>
+                        @if (Model.Token is null)
+                        {
+                            <p class="text-sm text-muted">This endpoint has no token yet. Generate one below.</p>
+                        }
+                        else
+                        {
+                            <div class="endpoint-call-row">
+                                <code class="endpoint-call-text" title="@Model.Token">@Model.Token</code>
+                                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-copy-text="@Model.Token" aria-label="Copy the token" data-tooltip="Copy token"><icon name="copy" size="sm" /></button>
+                            </div>
+                        }
+                    }
+                    @if (Model.Calls.Count > 0)
+                    {
+                        <span class="field-label">Operations <span class="field-optional">under /api/custom - copy a ready curl command</span></span>
+                        <ul class="endpoint-calls">
+                            @foreach (var (operation, template) in Model.Calls)
+                            {
+                                var route = $"/api/custom/{template}";
+                                <li class="endpoint-call-row">
+                                    <badge tone="@MethodTone(operation.Method)" class="method-badge">@operation.Method</badge>
+                                    <code class="endpoint-call-text" title="@(string.IsNullOrEmpty(operation.Name) ? route : $"{operation.Name}: {route}")">/@template</code>
+                                    <button type="button" class="btn btn-ghost btn-icon btn-sm" data-copy-text="@Curl(operation.Method, template)"
+                                            aria-label="Copy the curl command for @operation.Method @route" data-tooltip="Copy curl"><icon name="copy" size="sm" /></button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    <a class="btn btn-secondary btn-sm btn-block" href="/admin/api-docs"><icon name="book" size="sm" /> Try it in the API docs</a>
+                    @if (withToken)
+                    {
+                        <button type="submit" form="tokenForm" class="btn btn-ghost btn-sm btn-block"
+                                data-confirm="Create a new token for '@input.Name'? Apps using the current token get 401 until they switch."
+                                data-confirm-title="Regenerate token" data-confirm-action="Regenerate">
+                            <icon name="rotate-ccw" size="sm" /> @(Model.Token is null ? "Generate token" : "Regenerate token")
+                        </button>
+                    }
+                </div>
+            </section>
+
+            <section class="card card-danger" aria-labelledby="delete-title">
+                <div class="card-header"><h2 class="card-title" id="delete-title">Delete endpoint</h2></div>
+                <div class="card-body stack-sm">
+                    <button type="submit" form="deleteEndpointForm" class="btn btn-danger-soft btn-block"
+                            data-confirm="Delete '@input.Name' and its operations? Apps calling them get 404. This can't be undone."
+                            data-confirm-title="Delete endpoint" data-confirm-action="Delete">
+                        <icon name="trash" /> Delete endpoint
+                    </button>
+                </div>
+            </section>
+        }
+    </aside>
+</form>
+
+@if (!isNew)
+{
+    <form id="deleteEndpointForm" method="post" action="/admin/api-endpoints/@Model.Id/delete" hidden>
+        @Html.AntiForgeryToken()
+    </form>
+    <form id="tokenForm" method="post" action="/admin/api-endpoints/@Model.Id/token" hidden>
+        @Html.AntiForgeryToken()
+    </form>
+}
+
+@section Scripts {
+    <script src="~/js/forge/endpoints.js" asp-append-version="true" defer></script>
+}

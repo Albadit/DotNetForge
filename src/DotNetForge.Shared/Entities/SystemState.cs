@@ -15,14 +15,18 @@ public class SystemState
     public DateTime? InstalledAtUtc { get; set; }
 
     public string CmsVersion { get; set; } = "1.0.0";
+
+    /// <summary>
+    /// Which one-time data updates the seeder has applied to existing databases (<c>DataSeeder.Upgrade</c>); 0 on
+    /// databases created before the first one.
+    /// </summary>
+    public int SeedVersion { get; set; }
 }
 
-/// <summary>A global or per-tenant key/value setting (.docs/pages/settings.md).</summary>
+/// <summary>A key/value setting (.docs/pages/settings.md); keys are unique.</summary>
 public class Setting
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-
-    public Guid? TenantId { get; set; }
 
     public string Key { get; set; } = string.Empty;
 

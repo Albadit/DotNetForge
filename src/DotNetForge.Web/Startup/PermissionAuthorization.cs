@@ -8,7 +8,7 @@ namespace DotNetForge.Web.Startup;
 
 /// <summary>
 /// <c>[RequirePermission(PermissionAreas.Users, PermissionActions.Read)]</c> - the signed-in user's roles must grant
-/// the pair in their tenant (.docs/features/authorization.md#screen-access). Evaluated from the roles' stored grants,
+/// the pair (.docs/features/authorization.md#screen-access). Evaluated from the roles' stored grants,
 /// so custom roles work; combine with the admin area policy that <c>AdminControllerBase</c> already applies.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
@@ -49,7 +49,7 @@ public sealed class PermissionPolicyProvider : DefaultAuthorizationPolicyProvide
     }
 }
 
-/// <summary>Grants <see cref="PermissionRequirement"/> when any of the user's roles has the pair in the user's tenant.</summary>
+/// <summary>Grants <see cref="PermissionRequirement"/> when any of the user's roles has the pair.</summary>
 public sealed class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
 {
     private readonly IPermissionService _permissions;
@@ -61,9 +61,8 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
 
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
     {
-        var tenantId = Guid.TryParse(context.User.FindFirst(AuthService.TenantClaimType)?.Value, out var t) ? t : Guid.Empty;
         var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value);
-        if (_permissions.HasAny(tenantId, roles, requirement.Area, requirement.Action))
+        if (_permissions.IsGranted(roles, requirement.Area, requirement.Action))
         {
             context.Succeed(requirement);
         }

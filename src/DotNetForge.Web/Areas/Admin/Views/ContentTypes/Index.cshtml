@@ -1,0 +1,60 @@
+@using DotNetForge.Shared.Enums
+@model ContentTypesIndexViewModel
+@{
+    ViewData["Title"] = "Content types";
+    ViewData["Description"] = "Define the shape of your content: a type has fields, the Content Manager generates its forms, and pages show it with content lists.";
+}
+
+@section Actions {
+    <a class="btn btn-secondary" href="/admin/content"><icon name="database" /> Content Manager</a>
+    @if (Model.CanCreate)
+    {
+        <a class="btn btn-primary" href="/admin/content-types/new"><icon name="plus" /> New content type</a>
+    }
+}
+
+@if (Model.Types.Count == 0)
+{
+    <section class="card">
+        <div class="card-body">
+            <empty-state icon="database" title="No content types yet"
+                         text="A content type is a reusable shape for content - blog posts, products, events. Start from a template or build your own.">
+                @if (Model.CanCreate)
+                {
+                    <a class="btn btn-primary" href="/admin/content-types/new"><icon name="plus" /> New content type</a>
+                }
+            </empty-state>
+        </div>
+    </section>
+}
+else
+{
+    <section class="type-grid" aria-label="Content types">
+        @foreach (var type in Model.Types)
+        {
+            <article class="card type-card">
+                <div class="type-card-head">
+                    <span class="type-icon" aria-hidden="true"><icon name="@type.Icon" /></span>
+                    <div class="type-card-title">
+                        <h2 class="card-title"><a href="/admin/content-types/@type.Id">@type.Name</a></h2>
+                        <span class="text-xs text-mono text-subtle">@type.Slug</span>
+                    </div>
+                    <badge tone="@(type.Kind == ContentTypeKind.Single ? Tone.Info : Tone.Neutral)">@(type.Kind == ContentTypeKind.Single ? "Single" : "Collection")</badge>
+                </div>
+                @if (!string.IsNullOrEmpty(type.Description))
+                {
+                    <p class="text-sm text-muted">@type.Description</p>
+                }
+                <dl class="type-stats">
+                    <div><dt>Fields</dt><dd>@type.FieldCount</dd></div>
+                    <div><dt>Entries</dt><dd>@type.EntryCount</dd></div>
+                    <div><dt>Published</dt><dd>@type.PublishedCount</dd></div>
+                </dl>
+                <div class="type-card-actions">
+                    <a class="btn btn-secondary btn-sm" href="/admin/content-types/@type.Id"><icon name="@(Model.CanUpdate ? "pencil" : "eye")" size="sm" /> @(Model.CanUpdate ? "Edit fields" : "View fields")</a>
+                    <a class="btn btn-ghost btn-sm" href="/admin/content/@type.Slug">Entries <icon name="arrow-right" size="sm" /></a>
+                </div>
+            </article>
+        }
+    </section>
+}

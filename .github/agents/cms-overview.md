@@ -25,8 +25,6 @@ See [codebase.md](../../.docs/architecture/codebase.md) for every folder. Screen
 - Admin screens are gated by **roles** (`AdminArea` policy + `[Authorize(Roles = ...)]`); API actions by
   **permission keys** (`[RequireApiPermission]`). The `(area, action)` matrix is seeded but not enforced.
   See [authorization](../../.docs/features/authorization.md).
-- One tenant is seeded and used; queries filter by `TenantId` manually; there is no tenant resolution.
-  See [multi-tenancy](../../.docs/features/multi-tenancy.md).
 - Extensions live in `extensions/` (manifest + optional code compiled against `DotNetForge.Sdk` + views); they
   contribute only while enabled on the Plugins screen, and `ExtensionCatalog` decides. See
   [extension system](extension-system.md).

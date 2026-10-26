@@ -9,7 +9,7 @@ namespace DotNetForge.Web.Services;
 
 /// <summary>
 /// Writes append-only audit entries (.docs/features/audit-logging.md), capturing the acting user or API token, the
-/// tenant, client IP and user agent from the current request. Display snapshots keep entries meaningful after a
+/// client IP and user agent from the current request. Display snapshots keep entries meaningful after a
 /// user/entity is later deleted or renamed. Saved entries are then queued for extension handlers
 /// (<see cref="AuditEventDispatcher"/>).
 /// </summary>
@@ -43,7 +43,6 @@ public sealed class AuditService : IAuditService
         Guid? userId = tokenId is null && Guid.TryParse(user?.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id)
             ? id
             : null;
-        Guid? tenantId = Guid.TryParse(user?.FindFirst(AuthService.TenantClaimType)?.Value, out var t) ? t : null;
         var userAgent = ctx?.Request.Headers.UserAgent.ToString();
 
         var entry = new AuditLogEntry
@@ -60,7 +59,6 @@ public sealed class AuditService : IAuditService
             UserAgent = string.IsNullOrEmpty(userAgent) ? "unknown" : Truncate(userAgent, 512)!,
             Details = details,
             Success = success,
-            TenantId = tenantId,
             Timestamp = DateTime.UtcNow,
         };
 
@@ -68,7 +66,7 @@ public sealed class AuditService : IAuditService
         await _db.SaveChangesAsync(cancellationToken);
 
         _dispatcher.Publish(new AuditEvent(entry.Action, entry.EntityType, entry.EntityId, entry.EntityDisplaySnapshot,
-            entry.Details, entry.Success, entry.TenantId, entry.UserDisplaySnapshot, entry.IpAddress, entry.Timestamp));
+            entry.Details, entry.Success, entry.UserDisplaySnapshot, entry.IpAddress, entry.Timestamp));
     }
 
     /// <summary>

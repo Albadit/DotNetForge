@@ -20,6 +20,9 @@ public sealed class RequireApiPermissionAttribute : Attribute, IAuthorizationFil
         _permission = permission;
     }
 
+    /// <summary>The permission key the token needs (also shown in the API docs).</summary>
+    public string Permission => _permission;
+
     public void OnAuthorization(AuthorizationFilterContext context)
     {
         var user = context.HttpContext.User;

@@ -71,9 +71,8 @@ public sealed class PermissionTests
         Assert.False(_permissions.Has("Ghost", PermissionAreas.CollectionTypes, PermissionActions.Read));
 
     [Fact]
-    public void Tenant_checks_use_the_stored_grants_of_each_role()
+    public void Checks_use_the_stored_grants_of_each_role()
     {
-        var tenant = Guid.NewGuid();
         var service = new PermissionService(new FixedGrants(new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase)
         {
             ["Reviewer"] = new HashSet<string> { PermissionCatalog.Key(PermissionAreas.CollectionTypes, PermissionActions.Read) },
@@ -81,19 +80,19 @@ public sealed class PermissionTests
         }));
 
         // A custom role has exactly its grants; an edited built-in role loses what was removed.
-        Assert.True(service.HasAny(tenant, new[] { "Reviewer" }, PermissionAreas.CollectionTypes, PermissionActions.Read));
-        Assert.False(service.HasAny(tenant, new[] { "Reviewer" }, PermissionAreas.Settings, PermissionActions.Read));
-        Assert.False(service.HasAny(tenant, new[] { Roles.Editor }, PermissionAreas.CollectionTypes, PermissionActions.Read));
-        // Super Admin always has everything; a role the tenant doesn't have falls back to the matrix.
-        Assert.True(service.HasAny(tenant, new[] { Roles.SuperAdmin }, PermissionAreas.Updates, PermissionActions.Install));
-        Assert.True(service.HasAny(tenant, new[] { Roles.Author }, PermissionAreas.Media, PermissionActions.Create));
+        Assert.True(service.IsGranted(new[] { "Reviewer" }, PermissionAreas.CollectionTypes, PermissionActions.Read));
+        Assert.False(service.IsGranted(new[] { "Reviewer" }, PermissionAreas.Settings, PermissionActions.Read));
+        Assert.False(service.IsGranted(new[] { Roles.Editor }, PermissionAreas.CollectionTypes, PermissionActions.Read));
+        // Super Admin always has everything; a role without stored grants falls back to the matrix.
+        Assert.True(service.IsGranted(new[] { Roles.SuperAdmin }, PermissionAreas.Updates, PermissionActions.Install));
+        Assert.True(service.IsGranted(new[] { Roles.Author }, PermissionAreas.Media, PermissionActions.Create));
     }
 
     private sealed class FixedGrants(IReadOnlyDictionary<string, IReadOnlySet<string>> grants) : IRoleGrantStore
     {
-        public IReadOnlyDictionary<string, IReadOnlySet<string>> GetGrants(Guid tenantId) => grants;
+        public IReadOnlyDictionary<string, IReadOnlySet<string>> GetGrants() => grants;
 
-        public void Invalidate(Guid tenantId)
+        public void Invalidate()
         {
         }
     }

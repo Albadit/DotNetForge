@@ -19,13 +19,12 @@ without breaking customisations ([extensions](features/extensions.md)).
 | --- | --- | --- |
 | **Traditional** | visual admin like DNN, WordPress or Umbraco: content pages, menus, media uploads, themes | admin area + public site over the page tree ✔, media uploads ✔, a site-wide theme with a menu from `DisplayInMenu` pages through a theme extension ✔ ([content pages and routing](features/content-pages-and-routing.md), [themes](features/themes.md)) |
 | **Headless** | content, media, users, content pages and extensions managed entirely through the API with scoped [API tokens](pages/api-tokens.md) | read endpoints + create content page only ([headless API](features/headless-api.md)) |
-| **Hybrid** | admin and API at the same time over the same content | ✔ both run over the same database and tenant |
+| **Hybrid** | admin and API at the same time over the same content | ✔ both run over the same database |
 
 ## Target users
 
 - **Developers and agencies** building sites on an extensible ASP.NET Core MVC foundation.
-- **Multi-site operators** running many tenants from one application and database ([multi-tenancy](features/multi-tenancy.md)).
-- **Content and editorial teams** working in the admin area ([Content Manager](pages/content-manager.md),
+- **Content and editorial teams** working in the admin area ([Pages](pages/pages.md), [Content Manager](pages/content-manager.md),
   [Dashboard](pages/dashboard.md)).
 - **Integrators** consuming content through the headless API with scoped tokens ([headless API](features/headless-api.md)).
 
@@ -56,7 +55,7 @@ deliverables and the generated-solution deliverables of the specification.
 | Admin sidebar / shell | ✔ | full sidebar tree, hidden per role, collapsible Settings groups, breadcrumbs, light/dark ([design system](architecture/design-system.md)); unbuilt items are placeholders | [pages architecture](architecture/pages.md), [module placeholders](pages/module-placeholders.md) |
 | Authentication | ✔ | email/password, lockout, cookie, OAuth through authentication extensions (existing users); no sign-up or reset | [authentication](features/authentication.md) |
 | RBAC permissions | ✔ | partial: roles + seeded matrix; admin checks role names, API checks permission keys | [authorization](features/authorization.md) |
-| Content manager foundation | ✔ | page tree CRUD, SEO fields, schedules | [Content Manager](pages/content-manager.md) |
+| Content manager foundation | ✔ | page tree CRUD, SEO fields, schedules (**Pages**); content types with a field builder and generated entry forms (**Content Manager**) | [Pages](pages/pages.md), [structured content](features/structured-content.md) |
 | File Manager foundation | ✔ | upload, public/private files, library with search and filters, delete and bulk delete (**Media** screen); no folders or tags | [media storage](features/media-storage.md) |
 | API token foundation | ✔ | | [headless API](features/headless-api.md) |
 | Extension manifest system | ✔ | | [extensions](features/extensions.md) |
@@ -65,7 +64,7 @@ deliverables and the generated-solution deliverables of the specification.
 | Import/export foundation | ✘ | placeholder screen only | [transfer and updates](features/transfer-and-updates.md) |
 | Webhook foundation | ✘ | tables, event names and an unused signer; no CRUD or delivery | [webhooks](features/webhooks.md) |
 | Audit logging foundation | ✔ | | [audit logging](features/audit-logging.md) |
-| Theme foundation | ✔ | one site-wide active theme (views, layout, assets, menu); no per-page or per-tenant themes | [themes](features/themes.md) |
+| Theme foundation | ✔ | one site-wide active theme (views, layout, assets, menu) and an optional per-page theme | [themes](features/themes.md) |
 | Documentation (developer + extension development) | ✔ | `.docs/` | [README](README.md) |
 | Agents folder | ✔ | in `.github/agents/`, not a root `agents/` | [development → Planned](guides/development.md#planned-not-implemented) |
 | Unit test project | ✔ | | [testing](guides/testing.md) |
@@ -91,7 +90,6 @@ Product-level capability summary per role (full model in [authorization](feature
 | Capability | Super Admin | Admin | Editor | Author | Authenticated | Public |
 | --- | :-: | :-: | :-: | :-: | :-: | :-: |
 | Complete first-time setup (becomes the first admin) | created | | | | | |
-| Manage all tenants / switch tenant | global | assigned tenants | | | | |
 | Configure settings, security, providers, extensions | ✔ | ✔ | | | | |
 | Manage users, roles and permissions | ✔ | ✔ | | | | |
 | Create/publish any content | ✔ | ✔ | ✔ | own + assigned | | |
@@ -99,8 +97,8 @@ Product-level capability summary per role (full model in [authorization](feature
 | Public site / public content pages | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | Private (authenticated-only) content pages | ✔ | ✔ | ✔ | ✔ | ✔ | |
 
-Today the admin area admits the four admin-capable roles to every content page regardless of ownership, there is no
-tenant switching and no private content pages ([authorization](features/authorization.md)).
+Today the admin area admits the four admin-capable roles to every content page regardless of ownership and there are no
+private content pages ([authorization](features/authorization.md)).
 
 ### User flows
 
@@ -111,7 +109,7 @@ tenant switching and no private content pages ([authorization](features/authoriz
 | 1. Clone, copy `.env.example` to `.env`, set the database provider | ✔ (the admin's credentials are entered in the wizard, not in `.env`) |
 | 2. First start detects "not installed" and redirects to setup | ✔ |
 | 3. Setup creates the first user as Super Admin, marks the CMS installed, redirects to the dashboard | ✔ |
-| 4. An Editor or Author creates a content page in the Content Manager (slug, title, SEO) and places modules with the page builder | fields ✔; no page builder |
+| 4. An Editor or Author creates a content page on Pages (slug, title, SEO) and designs it with the page builder, showing entries from the Content Manager in content lists | ✔ |
 | 5. Save a draft and check it in preview mode | ✘ |
 | 6. An authorised user sets it **Published** (optionally scheduled); it goes live on the public site under the active theme | ✔ publish and schedule, rendered with the active theme |
 
@@ -121,8 +119,8 @@ tenant switching and no private content pages ([authorization](features/authoriz
 | --- | --- |
 | 1. An admin creates an API token scoped to permission keys (e.g. `content.read`, `media.read`) | ✔ |
 | 2. The token is shown once; only its hash is stored | ✔ |
-| 3. The integrator calls the API; tenant context resolves from domain, path, header or token, and the request is authorised against the token's keys | keys ✔; tenant from the token claim only |
-| 4. Read and, where granted, create/update/delete content, media and dynamic routes | read ✔, create content page ✔; no update/delete, media writes or dynamic-route endpoints |
+| 3. The integrator calls the API and the request is authorised against the token's keys | ✔ |
+| 4. Read and, where granted, create/update/delete content, media and dynamic routes | read ✔, create content page ✔, entries of content types read/create/update/publish/delete ✔ (`/api/entries`); no page update/delete, media writes or dynamic-route endpoints |
 | 5. Relevant actions emit [webhooks](features/webhooks.md) and are written as audit entries | ✘ (API actions are not audited) |
 
 ### Rules and validation
@@ -144,9 +142,6 @@ tenant switching and no private content pages ([authorization](features/authoriz
 
 - **Theme bleed:** a broken or misconfigured public theme must never alter or break the admin area; the admin shell
   renders independently of themes ([themes](features/themes.md)).
-- **Tenant resolution:** the tenant is resolved first (domain, subdomain or path prefix), then the content page or
-  dynamic route inside it; a request matching no tenant falls back to the default tenant or `404`
-  ([multi-tenancy](features/multi-tenancy.md)).
 - **Hybrid overlap:** the admin area and the API enforce the same permission and validation rules so neither can
   bypass the other. Today `ContentApiController` creates content pages with its own title/slug check instead of
   `PageService`, and the admin uses role checks while the API uses permission keys.

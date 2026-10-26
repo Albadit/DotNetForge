@@ -22,7 +22,6 @@ public sealed record AuditEvent(
     string? EntityDisplay,
     string? Details,
     bool Success,
-    Guid? TenantId,
     string? UserDisplay,
     string IpAddress,
     DateTime TimestampUtc);

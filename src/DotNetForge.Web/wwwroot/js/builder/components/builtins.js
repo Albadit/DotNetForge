@@ -206,6 +206,25 @@ const builtins = [
     description: "A horizontal line."
   },
   {
+    type: "collection",
+    schema: schema("collection"),
+    // The layout (grid, stack) arranges the item copies inside .pe-in (renderer/collection.js writes it).
+    layoutTarget: "inner",
+    tag: () => "div",
+    classes: (n) => choice(n, "view") === "table" ? ["pe-view-table"] : flag(n, "carousel") ? ["pe-carousel"] : [],
+    content: (_n, _c, children) => children,
+    icon: "database",
+    description: "Entries of a content type - cards, a list, a table or one entry - designed once and filled from your content."
+  },
+  {
+    type: "item",
+    schema: schema("item"),
+    tag: (n) => choice(n, "tag"),
+    content: (_n, _c, children) => children,
+    icon: "frame",
+    description: "The design of one entry in a content list; repeated for every entry."
+  },
+  {
     type: "module",
     schema: schema("module"),
     tag: () => "div",

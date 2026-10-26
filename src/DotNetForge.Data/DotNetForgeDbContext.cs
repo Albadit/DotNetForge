@@ -16,7 +16,6 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>For provider-specific subclasses that carry their own migration set (<see cref="PostgreSqlDbContext"/>).</summary>
     protected DotNetForgeDbContext(DbContextOptions options) : base(options) { }
 
-    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
@@ -33,6 +32,11 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<SystemState> SystemState => Set<SystemState>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<AuthProvider> AuthProviders => Set<AuthProvider>();
+    public DbSet<ContentType> ContentTypes => Set<ContentType>();
+    public DbSet<ContentEntry> ContentEntries => Set<ContentEntry>();
+    public DbSet<ContentEntryValue> ContentEntryValues => Set<ContentEntryValue>();
+    public DbSet<CustomEndpoint> CustomEndpoints => Set<CustomEndpoint>();
+    public DbSet<CustomEndpointOperation> CustomEndpointOperations => Set<CustomEndpointOperation>();
 
     /// <summary>ASP.NET Core Data Protection key ring (auth cookies, antiforgery), shared by all instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -41,16 +45,6 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     {
         base.OnModelCreating(b);
 
-        b.Entity<Tenant>(e =>
-        {
-            e.HasKey(t => t.Id);
-            e.Property(t => t.Name).IsRequired().HasMaxLength(200);
-            e.Property(t => t.Slug).IsRequired().HasMaxLength(100);
-            e.HasIndex(t => t.Slug).IsUnique();
-            e.Property(t => t.DefaultLocale).HasMaxLength(20);
-            e.Property(t => t.DefaultTheme).HasMaxLength(200);
-        });
-
         b.Entity<User>(e =>
         {
             e.HasKey(u => u.Id);
@@ -58,8 +52,8 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(u => u.FirstName).HasMaxLength(100);
             e.Property(u => u.LastName).HasMaxLength(100);
             e.Property(u => u.PasswordHash).IsRequired();
-            // Email is unique within a tenant (.docs/features/authorization.md).
-            e.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
+            // Email is unique (.docs/features/authorization.md).
+            e.HasIndex(u => u.Email).IsUnique();
             e.Ignore(u => u.DisplayName);
         });
 
@@ -68,7 +62,7 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.HasKey(r => r.Id);
             e.Property(r => r.Name).IsRequired().HasMaxLength(100);
             e.Property(r => r.Description).HasMaxLength(500);
-            e.HasIndex(r => new { r.TenantId, r.Name }).IsUnique();
+            e.HasIndex(r => r.Name).IsUnique();
             e.HasMany(r => r.Permissions).WithOne(p => p.Role!).HasForeignKey(p => p.RoleId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
@@ -103,7 +97,7 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(p => p.FileReference).HasMaxLength(2000);
             e.Property(p => p.ThemeId).HasMaxLength(100);
             e.Property(p => p.SocialImageUrl).HasMaxLength(2000);
-            e.HasIndex(p => new { p.TenantId, p.ParentPageId, p.Slug }).IsUnique();
+            e.HasIndex(p => new { p.ParentPageId, p.Slug }).IsUnique();
         });
 
         b.Entity<PagePermission>(e =>
@@ -111,7 +105,6 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.HasKey(p => p.Id);
             e.Property(p => p.Permission).IsRequired().HasMaxLength(20);
             e.HasIndex(p => new { p.PageId, p.RoleId, p.Permission }).IsUnique();
-            e.HasIndex(p => p.TenantId);
         });
 
         b.Entity<PageUserPermission>(e =>
@@ -119,7 +112,6 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.HasKey(p => p.Id);
             e.Property(p => p.Permission).IsRequired().HasMaxLength(20);
             e.HasIndex(p => new { p.PageId, p.UserId, p.Permission }).IsUnique();
-            e.HasIndex(p => p.TenantId);
         });
 
         b.Entity<MediaFile>(e =>
@@ -130,7 +122,6 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(m => m.ContentType).HasMaxLength(200);
             e.Property(m => m.RelativePath).IsRequired().HasMaxLength(1000);
             e.Property(m => m.FolderPath).HasMaxLength(1000);
-            e.HasIndex(m => m.TenantId);
         });
 
         b.Entity<ApiToken>(e =>
@@ -142,7 +133,7 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(t => t.TokenPrefix).IsRequired().HasMaxLength(64);
             e.Property(t => t.PermissionsCsv).HasMaxLength(2000);
             e.HasIndex(t => t.TokenPrefix);
-            e.HasIndex(t => new { t.TenantId, t.Name }).IsUnique();
+            e.HasIndex(t => t.Name).IsUnique();
             e.Ignore(t => t.Permissions);
         });
 
@@ -180,7 +171,7 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(a => a.IpAddress).HasMaxLength(64);
             e.Property(a => a.UserAgent).HasMaxLength(512);
             e.HasIndex(a => a.Timestamp);
-            e.HasIndex(a => new { a.TenantId, a.Action });
+            e.HasIndex(a => a.Action);
         });
 
         b.Entity<InstalledExtension>(e =>
@@ -200,12 +191,65 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(s => s.CmsVersion).HasMaxLength(50);
         });
 
+        // Structured content (.docs/features/structured-content.md): types, entries and the value index.
+        b.Entity<ContentType>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.Property(t => t.Name).IsRequired().HasMaxLength(100);
+            e.Property(t => t.Slug).IsRequired().HasMaxLength(64);
+            e.Property(t => t.Description).HasMaxLength(500);
+            e.Property(t => t.Icon).IsRequired().HasMaxLength(40);
+            e.Property(t => t.FieldsJson).IsRequired();
+            e.Property(t => t.TitleField).HasMaxLength(64);
+            e.HasIndex(t => t.Slug).IsUnique();
+        });
+
+        b.Entity<ContentEntry>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).IsRequired().HasMaxLength(300);
+            e.Property(x => x.SearchText).IsRequired().HasMaxLength(1000);
+            e.Property(x => x.DataJson).IsRequired();
+            e.HasIndex(x => new { x.ContentTypeId, x.SortOrder });
+        });
+
+        // Custom API endpoints (.docs/features/custom-endpoints.md).
+        b.Entity<CustomEndpoint>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(100);
+            e.Property(x => x.Path).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(500);
+            e.HasIndex(x => x.Path);
+        });
+
+        b.Entity<CustomEndpointOperation>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(100);
+            e.Property(x => x.Method).IsRequired().HasMaxLength(10);
+            e.Property(x => x.Path).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Sql).IsRequired();
+            e.Property(x => x.ParametersJson).IsRequired();
+            e.HasIndex(x => new { x.EndpointId, x.Method, x.Path }).IsUnique();
+        });
+
+        b.Entity<ContentEntryValue>(e =>
+        {
+            e.HasKey(v => v.Id);
+            e.Property(v => v.Field).IsRequired().HasMaxLength(100);
+            e.Property(v => v.Text).HasMaxLength(200);
+            e.HasIndex(v => new { v.ContentTypeId, v.Published, v.Field, v.Text });
+            e.HasIndex(v => new { v.ContentTypeId, v.Published, v.Field, v.Number });
+            e.HasIndex(v => v.EntryId);
+        });
+
         b.Entity<Setting>(e =>
         {
             e.HasKey(s => s.Id);
             e.Property(s => s.Key).IsRequired().HasMaxLength(200);
             e.Property(s => s.Value).HasMaxLength(4000);
-            e.HasIndex(s => new { s.TenantId, s.Key }).IsUnique();
+            e.HasIndex(s => s.Key).IsUnique();
         });
 
         b.Entity<AuthProvider>(e =>

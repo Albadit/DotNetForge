@@ -22,7 +22,7 @@
             @foreach (var group in navSection.Groups)
             {
                 <details class="nav-group" data-nav-group="@group.Label" open="@(group.ContainsActive ? "open" : null)"
-                         data-nav-active="@(group.ContainsActive ? "true" : null)">
+                         data-nav-active="@(group.ContainsActive ? "true" : "false")">
                     <summary class="nav-group-title">
                         <span>@group.Label</span>
                         <icon name="chevron-right" size="sm" class="nav-group-chevron" />

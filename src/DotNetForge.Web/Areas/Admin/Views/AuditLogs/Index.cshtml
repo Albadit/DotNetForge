@@ -1,7 +1,7 @@
 @model List<AuditLogEntry>
 @{
     ViewData["Title"] = "Audit Logs";
-    ViewData["Description"] = "The 100 most recent actions in this tenant. Entries are append-only: they can't be edited or deleted.";
+    ViewData["Description"] = "The 100 most recent actions. Entries are append-only: they can't be edited or deleted.";
     var areas = Model.Select(e => e.Action.Split('.')[0]).Distinct().Order().ToList();
 }
 

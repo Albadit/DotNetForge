@@ -2,10 +2,10 @@
 
 ## Purpose
 
-The media library of the active tenant: upload files, open or share their links, and delete them - one at a time or
+The media library: upload files, open or share their links, and delete them - one at a time or
 several at once. Files are stored in object storage through `IFileStorage` ([media storage](../features/media-storage.md))
-- never in the deployment directory. Used by every admin-capable role; what each role may do differs (see
-[Permissions](#permissions)).
+- never in the deployment directory. Used by every role with `Media` / `read` (by default all admin-capable roles
+except `Developer`); what each role may do differs (see [Permissions](#permissions)).
 
 ## Route / Navigation
 
@@ -14,7 +14,7 @@ several at once. Files are stored in object storage through `IFileStorage` ([med
 | Routes | `GET /admin/media`, `POST /admin/media/upload` (multipart), `POST /admin/media/visibility/{id:guid}` (form field `isPublic`), `POST /admin/media/delete/{id:guid}`, `POST /admin/media/delete-selected` (form field `ids`, repeated) |
 | Public file URLs | `GET /media/{id}/{fileName}` - served by `MediaFilesController` ([download flow](../features/media-storage.md#download-flow)) |
 | Navigation entry | Sidebar → **Main** → **Media** (`AdminNavigation.Tree`); breadcrumbs **Main / Media** |
-| Linked from | Dashboard: quick action **Upload media** (`/admin/media#upload`, shown when permitted) and the **Media files** KPI card |
+| Linked from | Dashboard: quick action **Upload media** (`/admin/media#upload`, shown when permitted) and the **Media files** KPI card (a link only for users who may open this screen) |
 | Parameters / children | none; every POST redirects back to `/admin/media` (a failed upload re-renders the screen) |
 
 ## Relevant source files
@@ -76,15 +76,15 @@ Component mechanics (cards, dropzone, collection, bulk bar, menu, toasts, confir
 1. **Trigger:** drop or choose up to 10 files, optionally untick **Public**, **Upload**.
 2. **Validation:** `Media/create` permission (else `Forbid` → [Access denied](access-denied.md)); 1-10 files; the
    request limit (25 MB × 10 + 1 MB); per file in `MediaService`: not empty, ≤ 25 MB, extension in `AllowedTypes`.
-3. **Service:** `MediaService.UploadAsync` per file: generated storage key, `IFileStorage.SaveAsync`, `MediaFile`
-   row, audit `media.uploaded` ([upload flow](../features/media-storage.md#upload-flow)).
+3. **Service:** `MediaService.UploadAsync` per file: generated storage key (`yyyy/MM/<random>.<ext>`),
+   `IFileStorage.SaveAsync`, `MediaFile` row, audit `media.uploaded` ([upload flow](../features/media-storage.md#upload-flow)).
 4. **Result:** all stored → redirect with the toast "Uploaded N files." ("Uploaded 1 file."); any rejected → the same
    screen with one message per rejected file in `<form-errors />` (accepted files are stored and listed).
 
 ### Delete a file
 
 1. **Trigger:** ⋯ menu → **Delete** → confirm dialog "Delete '<name>'? Links to it stop working." (**Delete file**).
-2. **Validation:** file exists in the tenant (else 404); `Media/delete`, or `Media/delete.own` when the user uploaded
+2. **Validation:** file exists (else 404); `Media/delete`, or `Media/delete.own` when the user uploaded
    it (else `Forbid`).
 3. **Service:** `MediaService.DeleteAsync`: row removed, then the stored object; audit `media.deleted`.
 4. **Result:** redirect with the toast "Deleted '<name>'."; the file's link returns 404 from then on.
@@ -95,8 +95,8 @@ Component mechanics (cards, dropzone, collection, bulk bar, menu, toasts, confir
    confirm dialog "Delete the selected files? Links to them stop working." (**Delete files**).
 2. **Validation:** distinct ids; none → error "Select at least one file."; more than `MediaController.MaxBulkDelete`
    (100) → error "Delete at most 100 files at a time." (nothing deleted). Then per file, exactly like
-   [Delete a file](#delete-a-file): only files of the active tenant are loaded (unknown or other-tenant ids are
-   skipped silently), and each needs `CanModify(Media, delete, delete.own, UploadedById)`.
+   [Delete a file](#delete-a-file): only existing files are loaded (unknown ids are skipped
+   silently), and each needs `CanModify(Media, delete, delete.own, UploadedById)`.
 3. **Service:** `MediaService.DeleteAsync` per permitted file - each deletion its own `media.deleted` audit entry.
 4. **Result:** redirect; toast "Deleted N files." ("Deleted 1 file.") when any were deleted, plus an error toast
    "N files were not deleted: your role may not delete them." ("1 file was not deleted: ...") for refused
@@ -112,7 +112,7 @@ sequenceDiagram
     V->>U: confirm dialog
     U->>C: POST /admin/media/delete-selected (ids[], antiforgery)
     C->>C: 1-100 distinct ids, else TempData Error
-    C->>C: load MediaFiles where id in ids and TenantId = tenant
+    C->>C: load MediaFiles where id in ids
     loop each file
         alt CanModify(Media, delete / delete.own)
             C->>M: DeleteAsync(file) → row, object, audit media.deleted
@@ -126,7 +126,7 @@ sequenceDiagram
 ### Open or share a file
 
 The name, thumbnail and **Open** open `/media/{id}/{name}` in a new tab: public files for anyone; private files only
-for admin-capable users of this tenant. With S3 storage the browser is redirected to a short-lived presigned URL; with
+for signed-in admin-capable users. With S3 storage the browser is redirected to a short-lived presigned URL; with
 local storage the app streams the file. **Copy link** copies the absolute URL (`scheme://host/media/...`).
 
 ### Make a file private or public
@@ -146,7 +146,7 @@ Without JavaScript the toolbar, view switch and pagination stay hidden and every
 
 ## Data used by the page
 
-`MediaFiles` of the active tenant (projected: id, name, type, size, public flag, upload date, uploader); the user's
+All `MediaFiles` (projected: id, name, type, size, public flag, upload date, uploader); the user's
 role claims for `CanUpload`/`CanDelete`; `MediaService` constants for the hint and `accept` list; the request scheme
 and host for **Copy link**.
 
@@ -162,14 +162,16 @@ and host for **Copy link**.
 
 ## Permissions
 
-`AdminArea` policy for the screen. Actions use the `Media` permission area ([authorization](../features/authorization.md)):
+`AdminArea` policy + `[RequirePermission(Media, read)]` on `MediaController`: a role without `Media` / `read` (e.g. the
+built-in `Developer`, or a custom role without it) gets [Access denied](access-denied.md) and no **Media** link in the
+sidebar. Actions use the `Media` permission area ([authorization](../features/authorization.md)):
 
-| Action | Super Admin | Admin | Editor | Author |
-| --- | :-: | :-: | :-: | :-: |
-| View list | ✔ | ✔ | ✔ | ✔ |
-| Upload | ✔ | ✔ | ✔ | ✔ |
-| Make private / public (`update`, or `update.own`) | ✔ | ✔ | ✔ | own uploads only |
-| Delete (single or selected) | ✔ | ✔ | ✔ | own uploads only |
+| Action | Super Admin | Admin | Editor | Author | Developer |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| View list | ✔ | ✔ | ✔ | ✔ | - |
+| Upload | ✔ | ✔ | ✔ | ✔ | - |
+| Make private / public (`update`, or `update.own`) | ✔ | ✔ | ✔ | own uploads only | - |
+| Delete (single or selected) | ✔ | ✔ | ✔ | own uploads only | - |
 
 Controls a user can't use are not rendered (Upload card, visibility and Delete menu items, checkboxes, bulk bar); the server
 re-checks on every POST, per file for bulk delete. Covered by
@@ -212,7 +214,7 @@ Server-rendered; the upload is a normal form post (the browser shows its own pro
 
 | When | Text |
 | --- | --- |
-| No files in the tenant | **No media yet** - "Uploaded files appear here, ready to use on your pages." |
+| No files yet | **No media yet** - "Uploaded files appear here, ready to use on your pages." |
 | Search/filter matches nothing | **No matching files** - "Try another search or filter." |
 
 ## User interactions
@@ -234,13 +236,13 @@ MediaController
 
 ```mermaid
 flowchart TD
-    A["GET /admin/media"] --> B[List tenant media]
+    A["GET /admin/media"] --> B[List media]
     B --> C{User action}
     C -- Upload --> D["POST /admin/media/upload"] --> E{"all files valid and stored?"}
     E -- yes --> F["302 + 'Uploaded N files.'"] --> A
     E -- no --> G[Same screen with per-file errors] --> C
     C -- "Delete + confirm" --> H["POST /admin/media/delete/{id}"] --> I["302 + 'Deleted ...'"] --> A
-    C -- "Select + Delete selected + confirm" --> K["POST /admin/media/delete-selected"] --> L["per file: tenant + CanModify → DeleteAsync"] --> M["302 + Success / Error toasts"] --> A
+    C -- "Select + Delete selected + confirm" --> K["POST /admin/media/delete-selected"] --> L["per file: CanModify → DeleteAsync"] --> M["302 + Success / Error toasts"] --> A
     C -- "open file" --> J["/media/{id}/{name} → presigned redirect or stream"]
 ```
 
@@ -270,7 +272,7 @@ flowchart TD
 - Bulk delete needs JavaScript (the bulk bar is hidden without it); single delete works without.
 - Allowed types and size limit are constants in `MediaService`, not settings.
 - No content sniffing or malware scanning (types are decided by extension; active formats are not allowed).
-- Private files are visible to every admin-capable user of the tenant (no per-file grants).
+- Private files are visible to every signed-in admin-capable user (no per-file grants).
 
 ## Planned (not implemented)
 
@@ -279,7 +281,7 @@ Data model, settings, roles and upload rules: [media storage → Planned](../fea
 
 ### Requirements
 
-- Renamed **File Manager** in the sidebar (still under *Main*); a folder/document library for the active tenant.
+- Renamed **File Manager** in the sidebar (still under *Main*); a folder/document library.
 - Layout (arrangement suggested here; the spec fixes the features, not the arrangement):
 
   ```text
@@ -319,7 +321,7 @@ Data model, settings, roles and upload rules: [media storage → Planned](../fea
 - The move dialog does not offer the folder itself or its descendants as targets.
 - Authors only see rename/move/delete on files and folders they created (delete ✔); Editors and Authors do not see
   *Access*; Authors do not see *Public/Private* ([roles](../features/media-storage.md#roles)).
-- All mutations are `POST` + antiforgery and audited ✔; the screen never shows another tenant's files ✔.
+- All mutations are `POST` + antiforgery and audited ✔.
 
 ### Edge cases
 
@@ -338,7 +340,7 @@ picker, folders, clickable breadcrumbs, search/filter/sort, public/private, acce
 
 See [media storage → Where to change things](../features/media-storage.md#where-to-change-things). A new per-file
 action goes into the ⋯ menu in `Index.cshtml` (a POST form with `data-confirm` when destructive) and a
-`MediaController` action that loads the file by id **and** `TenantId` and checks `Can`/`CanModify`; a new bulk action
+`MediaController` action that loads the file by id and checks `Can`/`CanModify`; a new bulk action
 reuses `form#bulkDelete`'s pattern (checkboxes post `ids`, cap the count, check each file). When the screen becomes
 the File Manager, update its label in `AdminNavigation.Tree`
 (`src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs`), [pages.md](../architecture/pages.md) and this

@@ -95,7 +95,14 @@ class InlineEditor {
   canEdit(id) {
     const node = this.session.store.doc.nodes[id];
     if (!node || node.locked || !this.session.caps.value.editContent) return false;
-    return !!getComponent(node.type)?.inlineEdit;
+    const edit = getComponent(node.type)?.inlineEdit;
+    if (!edit) return false;
+    // Text bound to a content field shows the entry's value: it is changed in the Content Manager, not here.
+    if (node.bind?.[edit.prop]) {
+      this.session.toast("This text comes from content. Edit the entry in the Content Manager, or unbind it in the Content tab.", "info");
+      return false;
+    }
+    return true;
   }
   start(id, at) {
     if (!this.canEdit(id)) return false;

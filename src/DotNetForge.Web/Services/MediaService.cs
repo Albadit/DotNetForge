@@ -57,10 +57,10 @@ public sealed class MediaService
         _logger = logger;
     }
 
-    /// <summary>Validates and stores one uploaded file for the tenant.</summary>
+    /// <summary>Validates and stores one uploaded file.</summary>
     /// <returns>The new row, or a user-facing error message.</returns>
     public async Task<(MediaFile? File, string? Error)> UploadAsync(
-        IFormFile upload, bool isPublic, Guid tenantId, Guid? userId, CancellationToken ct = default)
+        IFormFile upload, bool isPublic, Guid? userId, CancellationToken ct = default)
     {
         var originalName = Path.GetFileName(upload.FileName ?? string.Empty);
         var displayName = SanitizeFileName(originalName);
@@ -80,9 +80,9 @@ public sealed class MediaService
             return (null, $"'{displayName}' has a file type that is not allowed.");
         }
 
-        // The key never contains user input: tenant / year / month / random id + normalized extension.
+        // The key never contains user input: year / month / random id + normalized extension.
         var now = DateTime.UtcNow;
-        var key = $"{tenantId:N}/{now:yyyy}/{now:MM}/{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
+        var key = $"{now:yyyy}/{now:MM}/{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
 
         try
         {
@@ -100,7 +100,6 @@ public sealed class MediaService
 
         var file = new MediaFile
         {
-            TenantId = tenantId,
             FileName = displayName,
             OriginalName = Truncate(originalName, 400),
             ContentType = contentType,
@@ -130,7 +129,7 @@ public sealed class MediaService
     }
 
     /// <summary>
-    /// Makes a file public (anyone with the link) or private (signed-in admin users of its tenant). Only the row's flag
+    /// Makes a file public (anyone with the link) or private (signed-in admin users). Only the row's flag
     /// changes - the stored object stays where it is; <c>MediaFilesController</c> checks the flag on every download.
     /// </summary>
     public async Task SetVisibilityAsync(MediaFile file, bool isPublic, CancellationToken ct = default)
@@ -166,7 +165,7 @@ public sealed class MediaService
     /// <summary>The public URL path of a media file (authorization is applied when it is requested).</summary>
     public static string UrlFor(MediaFile file) => UrlFor(file.Id, file.FileName);
 
-    public static string UrlFor(Guid id, string fileName) => $"/media/{id}/{Uri.EscapeDataString(fileName)}";
+    public static string UrlFor(Guid id, string fileName) => DotNetForge.Shared.Media.MediaUrls.For(id, fileName);
 
     private async Task TryDeleteObjectAsync(string key)
     {

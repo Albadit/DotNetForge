@@ -6,7 +6,8 @@
  * schema. Values are edited for the current breakpoint; inherited values are
  * shown as placeholders.
  */
-import { jsx, useState } from "./vdom.js";
+import { jsx, useEffect, useState } from "./vdom.js";
+import { BindingRow, DataPanel } from "./data-panel.js";
 import { getComponent } from "../components/registry.js";
 import { componentDef } from "../core/schema.js";
 import { styleAt } from "../core/responsive.js";
@@ -24,12 +25,17 @@ export function Inspector() {
     const [tab, setTab] = useState('design');
     useSignal(session.docRevision);
     const first = useNode(selection[0]);
+    // A content list opens on its data (the Content tab, labelled Data): choosing what it shows comes first.
+    useEffect(() => {
+        if (first?.type === 'collection')
+            setTab('content');
+    }, [first?.id]);
     if (!first)
         return jsx(PagePanel, null);
     const hasContent = Object.keys(componentDef(first.type)?.props ?? {}).length > 0;
     const effectiveTab = !caps.editLayout && tab === 'design' ? (hasContent ? 'content' : 'advanced') : tab === 'content' && !hasContent ? 'design' : tab;
     return (jsx("div", { class: "pe-inspector" },
-        jsx("div", { class: "pe-tabs", role: "tablist" }, ['design', 'content', 'advanced'].map(t => (jsx("button", { key: t, type: "button", role: "tab", "aria-selected": effectiveTab === t, class: cls('pe-tab', effectiveTab === t && 'is-on'), disabled: (t === 'design' && !caps.editLayout) || (t === 'content' && !hasContent), onClick: () => setTab(t) }, t === 'design' ? 'Design' : t === 'content' ? 'Content' : 'Advanced')))),
+        jsx("div", { class: "pe-tabs", role: "tablist" }, ['design', 'content', 'advanced'].map(t => (jsx("button", { key: t, type: "button", role: "tab", "aria-selected": effectiveTab === t, class: cls('pe-tab', effectiveTab === t && 'is-on'), disabled: (t === 'design' && !caps.editLayout) || (t === 'content' && !hasContent), onClick: () => setTab(t) }, t === 'design' ? 'Design' : t === 'content' ? (first.type === 'collection' ? 'Data' : 'Content') : 'Advanced')))),
         jsx("div", { class: "pe-insp-body" },
             effectiveTab === 'design' && jsx(DesignTab, { ids: selection, node: first }),
             effectiveTab === 'content' && jsx(ContentTab, { node: first }),
@@ -43,10 +49,12 @@ function ContentTab({ node }) {
     const comp = getComponent(node.type);
     if (!def)
         return null;
+    if (node.type === 'collection')
+        return jsx(DataPanel, { node: node });
     const entries = Object.entries(def.props);
     const canEdit = (p) => !node.locked && (caps.editLayout || (caps.editContent && !!p.content));
     return (jsx("div", null,
-        comp?.inlineEdit && (jsx("div", { class: "pe-inline-hint" },
+        comp?.inlineEdit && !node.bind?.[comp.inlineEdit.prop] && (jsx("div", { class: "pe-inline-hint" },
             jsx("button", { type: "button", class: "pe-btn", disabled: !caps.editContent || !!node.locked, onClick: () => {
                     canvas.scrollIntoView(node.id);
                     inline.start(node.id);
@@ -54,7 +62,9 @@ function ContentTab({ node }) {
                 jsx(Icon, { name: "text", size: 16 }),
                 " Edit text on the page"),
             jsx("span", { class: "pe-hint" }, "or double-click it on the canvas"))),
-        jsx(Section, { id: 'content-' + node.type, title: def.label }, entries.map(([key, p]) => (jsx(PropEditor, { key: key, node: node, prop: key, def: p, disabled: !canEdit(p) }))))));
+        node.type === 'item' && jsx("div", { class: "pe-hint pe-item-hint" }, "The design of one entry: every entry of the list repeats it. Select an element inside it to show a field there."),
+        jsx(Section, { id: 'content-' + node.type, title: def.label }, entries.map(([key, p]) => (jsx(BindingRow, { key: key, node: node, prop: key, def: p },
+            jsx(PropEditor, { node: node, prop: key, def: p, disabled: !canEdit(p) })))))));
 }
 function PropEditor({ node, prop, def, disabled }) {
     const { session } = useEditor();
@@ -211,7 +221,7 @@ function AdvancedTab({ node }) {
             devices.length === 0 && jsx("div", { class: "pe-note" }, "Hidden on every device: visitors never receive it."),
             jsx(Row, { label: "Who" },
                 jsx(SelectField, { value: vis.audience ?? 'all', disabled: !canLayout, options: [{ value: 'all', label: 'Everyone' }, { value: 'authenticated', label: 'Signed-in users' }, { value: 'anonymous', label: 'Visitors who are not signed in' }], onChange: v => setVis({ audience: (v ?? 'all') }) })),
-            // Roles per element are not offered here: who may view or edit the page is set in the Content Manager.
+            // Roles per element are not offered here: who may view or edit the page is set on the Pages screen.
             jsx("div", { class: "pe-hint" }, "Checked on the server for every visit: hidden elements are not sent to the visitor at all.")),
         jsx(Section, { id: "advanced", title: "Advanced" },
             jsx(Row, { label: "Classes", wide: true },

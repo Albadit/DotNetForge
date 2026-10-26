@@ -43,7 +43,10 @@ public static class AdminNavigation
         new NavSection("Main", new[]
         {
             new NavLink("Dashboard", "/admin", "dashboard", typeof(DashboardController)),
-            new NavLink("Content Manager", "/admin/content", "pages", typeof(ContentController)),
+            // The pages, the structured content they present, and the types that shape it (.docs/features/structured-content.md).
+            new NavLink("Pages", "/admin/pages", "pages", typeof(PagesController)),
+            new NavLink("Content Manager", "/admin/content", "database", typeof(ContentController)),
+            new NavLink("Content types", "/admin/content-types", "layers", typeof(ContentTypesController)),
             new NavLink("Media", "/admin/media", "image", typeof(MediaController)),
             new NavLink("Marketplace", "/admin/marketplace", "store", typeof(ModulesController), Planned: true),
         }, Array.Empty<NavGroup>()),
@@ -53,6 +56,8 @@ public static class AdminNavigation
             {
                 new NavLink("Settings", "/admin/settings", "settings", typeof(SettingsController)),
                 new NavLink("API Tokens", "/admin/api-tokens", "key", typeof(ApiTokensController)),
+                new NavLink("API Endpoints", "/admin/api-endpoints", "code", typeof(ApiEndpointsController)),
+                new NavLink("API Docs", "/admin/api-docs", "book", typeof(ApiDocsController)),
                 new NavLink("Content History", "/admin/content-history", "history", typeof(ModulesController), Planned: true),
                 new NavLink("Internationalization", "/admin/internationalization", "globe", typeof(ModulesController), Planned: true),
                 new NavLink("Plugins", "/admin/plugins", "puzzle", typeof(PluginsController)),

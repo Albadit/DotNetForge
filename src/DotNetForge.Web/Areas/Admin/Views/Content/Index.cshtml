@@ -1,75 +1,72 @@
-@model ContentIndexViewModel
+@using DotNetForge.Shared.Enums
+@model ContentManagerViewModel
 @{
     ViewData["Title"] = "Content Manager";
-    ViewData["Description"] = "Build the page tree, then edit each page's details, SEO and publishing.";
-    ViewData["SelectedId"] = Model.SelectedId;
-    var pageCount = CountPages(Model.Tree);
-
-    static int CountPages(IReadOnlyList<PageTreeNode> nodes) => nodes.Sum(n => 1 + CountPages(n.Children));
+    ViewData["Description"] = "Your structured content - blog posts, products, events - kept apart from the pages that show it.";
 }
 
 @section Actions {
-    @* One shared form: the header button and every "add child" button in the tree submit it via formaction (POST + antiforgery). *@
-    <form id="treeActions" method="post" class="inline">
-        @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-primary" formaction="/admin/content/create"><icon name="plus" /> New page</button>
-    </form>
+    @if (Model.CanManageTypes)
+    {
+        <a class="btn btn-secondary" href="/admin/content-types"><icon name="layers" /> Content types</a>
+    }
 }
 
-<div class="content-manager">
-    <aside class="card tree-card" aria-labelledby="tree-title">
-        <div class="card-header">
-            <h2 class="card-title" id="tree-title">Pages</h2>
-            <div class="tree-header-actions">
-                @* Close / open every page with children at once (content.js). *@
-                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-tree-collapse-all data-js-only hidden
-                        aria-label="Close all pages" data-tooltip="Close all">
-                    <icon name="chevrons-down-up" size="sm" />
-                </button>
-                <badge>@pageCount</badge>
-            </div>
-        </div>
-        @if (pageCount > 0)
-        {
-            <div class="tree-search" data-js-only hidden>
-                <label class="sr-only" for="tree-filter">Filter pages</label>
-                <div class="input-icon">
-                    <icon name="search" size="sm" />
-                    <input id="tree-filter" type="search" class="input-sm" placeholder="Filter pages" autocomplete="off" data-tree-filter />
-                </div>
-            </div>
-        }
+@if (Model.Types.Count == 0)
+{
+    <section class="card">
         <div class="card-body">
-            @if (Model.Tree.Count == 0)
-            {
-                <empty-state icon="pages" title="No pages yet" text="Create the first page of your site." compact="true">
-                    <button type="submit" class="btn btn-primary btn-sm" form="treeActions" formaction="/admin/content/create"><icon name="plus" size="sm" /> New page</button>
-                </empty-state>
-            }
-            else
-            {
-                <partial name="_TreeNodes" model="Model.Tree" />
-                <p class="text-xs text-muted tree-empty" data-tree-empty hidden>No page matches the filter.</p>
-            }
+            <empty-state icon="database" title="Start with a content type"
+                         text="Describe what you publish - a product has a name, a price and pictures - and the Content Manager builds the forms. Then show it on any page with a content list.">
+                @if (Model.CanManageTypes)
+                {
+                    <a class="btn btn-primary" href="/admin/content-types/new"><icon name="plus" /> New content type</a>
+                }
+                else
+                {
+                    <p class="text-sm text-muted">Ask an administrator to create a content type.</p>
+                }
+            </empty-state>
         </div>
-    </aside>
+    </section>
 
-    <section aria-label="Page editor">
-        @if (Model.Selected is null)
+    <section class="card workflow-card" aria-labelledby="how-title">
+        <div class="card-header"><h2 class="card-title" id="how-title">How it fits together</h2></div>
+        <ol class="workflow">
+            <li><icon name="layers" /><strong>Content type</strong><span>Define the fields once.</span></li>
+            <li><icon name="database" /><strong>Entries</strong><span>Add content with the generated form.</span></li>
+            <li><icon name="pages" /><strong>Page builder</strong><span>Add a content list to a page.</span></li>
+            <li><icon name="link" /><strong>Map fields</strong><span>Bind heading, image, price to fields.</span></li>
+            <li><icon name="send" /><strong>Publish</strong><span>Edits to entries show everywhere at once.</span></li>
+        </ol>
+    </section>
+}
+else
+{
+    <section class="type-grid" aria-label="Content types">
+        @foreach (var type in Model.Types)
         {
-            <div class="card">
-                <empty-state icon="pencil" title="Select a page to edit" text="Choose a page in the tree, or create a new one. Drag pages to reorder or move them." />
-            </div>
-        }
-        else
-        {
-            ViewData["ParentOptions"] = Model.ParentOptions;
-            ViewData["Extras"] = Model.Extras;
-            <partial name="_PageForm" model="Model.Selected" />
+            var single = type.Kind == ContentTypeKind.Single;
+            <article class="card type-card">
+                <div class="type-card-head">
+                    <span class="type-icon" aria-hidden="true"><icon name="@type.Icon" /></span>
+                    <div class="type-card-title">
+                        <h2 class="card-title"><a href="/admin/content/@type.Slug">@type.Name</a></h2>
+                        <span class="text-xs text-subtle">@(single ? "Single entry" : $"{type.EntryCount} entr{(type.EntryCount == 1 ? "y" : "ies")} · {type.PublishedCount} published")</span>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(type.Description))
+                {
+                    <p class="text-sm text-muted">@type.Description</p>
+                }
+                <div class="type-card-actions">
+                    <a class="btn btn-secondary btn-sm" href="/admin/content/@type.Slug">@(single ? "Edit" : "Open")</a>
+                    @if (!single && Model.CanCreateEntries)
+                    {
+                        <a class="btn btn-ghost btn-sm" href="/admin/content/@type.Slug/new"><icon name="plus" size="sm" /> New entry</a>
+                    }
+                </div>
+            </article>
         }
     </section>
-</div>
-
-@section Scripts {
-    <script src="~/js/forge/content.js" asp-append-version="true" defer></script>
 }

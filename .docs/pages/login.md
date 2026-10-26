@@ -31,7 +31,7 @@ src/DotNetForge.Web/Views/Shared/_Feedback.cshtml           toast region (sign-i
 src/DotNetForge.Web/Ui/UiTagHelpers.cs                      <form-errors /> (model-state errors), <icon>
 src/DotNetForge.Web/wwwroot/css/forge/auth.css              .auth-shell, .auth-panel, .auth-card, .auth-heading, .auth-divider
 src/DotNetForge.Web/wwwroot/js/forge/ui.js                  data-reveal (show/hide password), data-js-only, theme menu
-src/DotNetForge.Web/Services/AuthService.cs                 ValidateAsync (credentials, lockout, principal), ValidateExternalAsync, GetDefaultTenantIdAsync, IsActiveAsync
+src/DotNetForge.Web/Services/AuthService.cs                 ValidateAsync (credentials, lockout, principal), ValidateExternalAsync, IsActiveAsync
 src/DotNetForge.Web/Services/AuditService.cs                user.login / user.login.failed / user.logout (via IAuditService)
 src/DotNetForge.Web/Startup/DependencyRegistration.cs       cookie options (paths, lifetime, flags), ValidateSessionAsync, AddRateLimits
 src/DotNetForge.Shared/Constants/RateLimitPolicies.cs   policy names (credentials, api)
@@ -81,12 +81,11 @@ Layout mechanics (panel, one column below 56rem, theme menu): [design system →
 1. **Trigger:** **Sign in**.
 2. **Validation:** rate limit (`[EnableRateLimiting(RateLimitPolicies.Credentials)]`, checked before the action);
    browser `required` + `type=email`; server: antiforgery, then `AuthService.ValidateAsync`.
-3. **Call:** `AccountController.Login` gets the tenant from `AuthService.GetDefaultTenantIdAsync` (the oldest
-   tenant), calls `AuthService.ValidateAsync(email, password, tenantId)`.
+3. **Call:** `AccountController.Login` calls `AuthService.ValidateAsync(email, password)`.
 4. **Backend:** lockout counters / `LastLoginDate` updated; on success the cookie `dnf.auth` is issued (persistent
    for 30 days with **Remember me** - see [State](#state)), the
-   request's `HttpContext.User` is set to the new principal and `user.login` is audited with that user's `UserId`
-   and `TenantId`; on failure `user.login.failed` (`success: false`, no user, typed email as entity display).
+   request's `HttpContext.User` is set to the new principal and `user.login` is audited with that user's `UserId`;
+   on failure `user.login.failed` (`success: false`, no user, typed email as entity display).
 5. **Result:** `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - an external or malformed
    `returnUrl` (e.g. `https://evil.example/`) falls back to `/admin`.
 6. **Errors:** an error toast (below); the email field is re-filled (`ViewData["Email"]`) and the password field
@@ -106,8 +105,7 @@ with a message. Full flow and rules: [authentication → external sign-in](../fe
 
 ## Data used by the page
 
-`AppEnvironment.AppName`, `ViewData["ReturnUrl"]`, `ViewData["LoginProviders"]`, `Users`, `UserRoles` ⨝ `Roles`,
-oldest `Tenant`.
+`AppEnvironment.AppName`, `ViewData["ReturnUrl"]`, `ViewData["LoginProviders"]`, `Users`, `UserRoles` ⨝ `Roles`.
 
 ## State
 
@@ -221,7 +219,6 @@ flowchart TD
 - Behind a TLS-terminating proxy, set `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`, otherwise every client shares the
   proxy's IP for the rate limit and the `Secure` cookie needs the original scheme - see
   [deployment → behind a reverse proxy](../guides/deployment.md#behind-a-reverse-proxy).
-- The tenant is always the oldest one; there is no tenant field.
 - Failed-login audit entries record the typed email in `EntityDisplaySnapshot`.
 - `_AuthLayout` is built in and never replaced by a public theme ([themes](../features/themes.md)). The screen has
   no inline script or style (CSP); `AdminUiTests.Every_screen_renders_without_inline_script_or_style` checks

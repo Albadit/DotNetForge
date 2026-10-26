@@ -25,10 +25,28 @@ public sealed class SecurityHeadersMiddleware
             : "Content-Security-Policy";
     }
 
+    /// <summary>
+    /// The policy of the Scalar API reference page (.docs/features/api-docs.md): its one inline script runs only with the
+    /// per-request nonce Scalar puts on it, and it injects its own styles at runtime, so styles may be inline there.
+    /// </summary>
+    public static string ApiReferencePolicy(string nonce) =>
+        ContentSecurityPolicy
+            .Replace("script-src 'self';", $"script-src 'self' 'nonce-{nonce}';", StringComparison.Ordinal)
+            .Replace("style-src 'self';", "style-src 'self' 'unsafe-inline';", StringComparison.Ordinal);
+
     public Task InvokeAsync(HttpContext context)
     {
         var headers = context.Response.Headers;
         headers[_cspHeaderName] = ContentSecurityPolicy;
+        context.Response.OnStarting(() =>
+        {
+            if (context.Items[Scalar.AspNetCore.ScalarOptions.NonceHttpContextItemKey] is string nonce)
+            {
+                context.Response.Headers[_cspHeaderName] = ApiReferencePolicy(nonce);
+            }
+
+            return Task.CompletedTask;
+        });
         headers.XContentTypeOptions = "nosniff";
         headers.XFrameOptions = "SAMEORIGIN"; // the admin embeds admin extensions in a same-origin iframe
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";

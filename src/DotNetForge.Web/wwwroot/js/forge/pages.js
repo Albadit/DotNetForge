@@ -1,4 +1,4 @@
-// Content Manager enhancements (.docs/pages/content-manager.md). Everything works without JS (full-page posts, the
+// Pages screen enhancements (.docs/pages/pages.md). Everything works without JS (full-page posts, the
 // Parent select re-parents, all fields visible); this adds the tree filter, drag-to-reorder and live field toggling.
 (function () {
     "use strict";
@@ -166,7 +166,7 @@
         });
 
         var token = document.querySelector('input[name="__RequestVerificationToken"]');
-        fetch("/admin/content/reorder", {
+        fetch("/admin/pages/reorder", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": token ? token.value : "" },
             credentials: "same-origin",

@@ -13,8 +13,8 @@ public interface IPermissionService
     bool HasAny(IEnumerable<string> roles, string area, string action);
 
     /// <summary>
-    /// Whether any of the supplied roles of <paramref name="tenantId"/> grants the action, evaluated from the roles'
-    /// stored grants - what custom roles and edited built-in roles need. <c>Super Admin</c> always has every grant.
+    /// Whether any of the supplied roles grants the action, evaluated from the roles' stored grants - what custom roles
+    /// and edited built-in roles need. <c>Super Admin</c> always has every grant.
     /// </summary>
-    bool HasAny(Guid tenantId, IEnumerable<string> roles, string area, string action);
+    bool IsGranted(IEnumerable<string> roles, string area, string action);
 }

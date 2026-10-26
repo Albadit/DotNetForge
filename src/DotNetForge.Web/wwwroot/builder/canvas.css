@@ -22,3 +22,5 @@ html::-webkit-scrollbar { display: none; }
 .pe-root .pe-module-missing::after { content: attr(data-pe-missing); }
 .pe-root [contenteditable=true] { outline: none; cursor: text; caret-color: auto; }
 .pe-root [contenteditable=true] * { pointer-events: auto; }
+/* Content lists: the editable item is the first copy; the other copies show more entries and select the list. */
+.pe-root .pe-t-collection > .pe-in > .pe-t-item:not([data-pe-id]) { cursor: default; }

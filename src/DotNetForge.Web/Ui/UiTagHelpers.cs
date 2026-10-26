@@ -194,7 +194,7 @@ public sealed class EmptyStateTagHelper : UiTagHelper
 }
 
 /// <summary>
-/// <c>&lt;stat-card icon="pages" label="Pages" value="12" href="/admin/content" /&gt;</c> - a KPI tile; a link when
+/// <c>&lt;stat-card icon="pages" label="Pages" value="12" href="/admin/pages" /&gt;</c> - a KPI tile; a link when
 /// <see cref="Href"/> is set.
 /// </summary>
 [HtmlTargetElement("stat-card", TagStructure = TagStructure.WithoutEndTag)]

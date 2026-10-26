@@ -32,7 +32,7 @@ One `###` per action: trigger → validation → service/method → data → bac
 update → errors. Sequence diagram for the most important one.
 
 ## Data used by the page
-Entities, view models, configuration, claims - and where each comes from (tenant-scoped or not).
+Entities, view models, configuration, claims - and where each comes from.
 
 ## State
 URL, TempData, ModelState, DOM/JS, cookie, database - and when each changes.
@@ -70,7 +70,7 @@ Mermaid flowchart specific to this screen (real routes and names).
 Navigates to / receives navigation from / shares functionality with (links).
 
 ## Important implementation details
-Non-obvious behaviour: derived values, hidden conditions, caching, ordering, cross-tenant reads.
+Non-obvious behaviour: derived values, hidden conditions, caching, ordering.
 
 ## Known limitations
 Only real ones, verified in code.

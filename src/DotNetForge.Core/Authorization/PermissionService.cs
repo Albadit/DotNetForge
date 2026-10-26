@@ -6,9 +6,9 @@ using DotNetForge.Shared.Stores;
 namespace DotNetForge.Core.Authorization;
 
 /// <summary>
-/// Default <see cref="IPermissionService"/>. Tenant checks read the roles' stored grants (<see cref="IRoleGrantStore"/>),
-/// so custom roles and edited built-in roles take effect; <c>Super Admin</c> always has every grant. A role name the
-/// tenant does not have falls back to the reference <see cref="PermissionMatrix"/> (which grants unknown names
+/// Default <see cref="IPermissionService"/>. <see cref="IsGranted"/> reads the roles' stored grants
+/// (<see cref="IRoleGrantStore"/>), so custom roles and edited built-in roles take effect; <c>Super Admin</c> always has
+/// every grant. A role name without stored grants falls back to the reference <see cref="PermissionMatrix"/> (which grants unknown names
 /// nothing). A user's effective permissions are the union over all assigned roles (most-permissive wins).
 /// </summary>
 public sealed class PermissionService : IPermissionService
@@ -41,7 +41,7 @@ public sealed class PermissionService : IPermissionService
         return roles.Any(role => Has(role, area, action));
     }
 
-    public bool HasAny(Guid tenantId, IEnumerable<string> roles, string area, string action)
+    public bool IsGranted(IEnumerable<string> roles, string area, string action)
     {
         ArgumentNullException.ThrowIfNull(roles);
         var names = roles.Where(r => !string.IsNullOrWhiteSpace(r)).ToList();
@@ -50,12 +50,12 @@ public sealed class PermissionService : IPermissionService
             return true;
         }
 
-        if (_grants is null || tenantId == Guid.Empty || string.IsNullOrWhiteSpace(area) || string.IsNullOrWhiteSpace(action))
+        if (_grants is null || string.IsNullOrWhiteSpace(area) || string.IsNullOrWhiteSpace(action))
         {
             return HasAny(names, area, action);
         }
 
-        var grants = _grants.GetGrants(tenantId);
+        var grants = _grants.GetGrants();
         var key = PermissionCatalog.Key(area, action);
         return names.Any(role => grants.TryGetValue(role, out var granted)
             ? granted.Contains(key)

@@ -1,7 +1,7 @@
 @model SettingsIndexViewModel
 @{
     ViewData["Title"] = "Settings";
-    ViewData["Description"] = $"Key/value settings for {Model.AppName}. Saving creates or updates a value for this tenant; global values (no tenant) stay as they are.";
+    ViewData["Description"] = $"Key/value settings for {Model.AppName}. Saving creates a key or updates its value.";
 }
 
 <div class="settings-layout">
@@ -54,7 +54,7 @@
         <div class="card-header">
             <div>
                 <h2 class="card-title" id="setting-form-title">Add or update</h2>
-                <p class="card-description">An existing key is overwritten for this tenant.</p>
+                <p class="card-description">An existing key is overwritten.</p>
             </div>
         </div>
         <form method="post" asp-area="Admin" asp-controller="Settings" asp-action="Save" class="card-body form" id="settingForm">

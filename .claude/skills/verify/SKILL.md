@@ -18,9 +18,9 @@ dotnet build          # the solution, DotNetForge.slnx
 dotnet test           # both test projects (or: dotnet test tests/DotNetForge.Tests, tests/DotNetForge.IntegrationTests)
 ```
 
-Baseline (October 2026): 0 errors, 0 warnings; 698 unit tests pass (+5 live-S3 tests skipped unless `DNF_TEST_S3_*`
-is set) and 91 integration tests pass (+3 credential tests skipped unless their database server is set).
-Page builder JavaScript: `node tests/js/page-builder-fixtures.mjs` → 77/77 fixtures match (run it after changing
+Baseline (October 2026): 0 errors, 0 warnings; 758 unit tests pass (+5 live-S3 tests skipped unless `DNF_TEST_S3_*`
+is set) and 98 integration tests pass (+3 credential tests skipped unless their database server is set).
+Page builder JavaScript: `node tests/js/page-builder-fixtures.mjs` → 84/84 fixtures match (run it after changing
 anything in `wwwroot/js/builder/core`, `renderer` or `components`, or the schema). Integration tests need no `.env` (the factory sets environment variables and
 uses a temp directory) and must not run in parallel.
 

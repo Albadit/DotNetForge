@@ -48,7 +48,7 @@ Any signed-in admin user (`AdminArea`); each user can only change their own acco
 
 | Rule | Message |
 | --- | --- |
-| Email valid, at most 256 characters, unique in the tenant (case-insensitive) | "Enter a valid email address (at most 256 characters)." / "Another user already uses …" |
+| Email valid, at most 256 characters, unique (case-insensitive) | "Enter a valid email address (at most 256 characters)." / "Another user already uses …" |
 | Names at most 100 characters | "First and last name are limited to 100 characters each." |
 | Current password correct | "Your current password is not correct." |
 | New password per `PasswordPolicy`, confirmed, different | policy message / "The new password and its confirmation do not match." / "Choose a password different from your current one." |

@@ -4,14 +4,17 @@
 
 | Project | References | Runs against | Count (Oct 2026) |
 | --- | --- | --- | --- |
-| `tests/DotNetForge.Tests` | `src/` libraries (not the host, not `Api`) | pure code, fakes, temp folders, closed ports; optionally a live S3 bucket | 699 tests: 694 run (465 of them page builder), 5 live-S3 tests skipped unless `DNF_TEST_S3_*` is set |
-| `tests/DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj`; build-only references to the fixture extension `tests/fixtures/extensions/test-kit` and the `markdown-kit`, `contact-form`, `seo-toolkit` samples ([extension fixtures](#extension-fixtures)) | the real host via `WebApplicationFactory<Program>`, a temp SQLite file (or a [database server](#databases)) and a temp media folder | 86 tests: 83 run on any database, 3 credential tests skipped unless their server is configured |
+| `tests/DotNetForge.Tests` | `src/` libraries (not the host, not `Api`) | pure code, fakes, temp folders, closed ports; optionally a live S3 bucket | 796 tests: 791 run, 5 live-S3 tests skipped unless `DNF_TEST_S3_*` is set |
+| `tests/DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj`; build-only references to the fixture extension `tests/fixtures/extensions/test-kit` and the `markdown-kit`, `contact-form`, `seo-toolkit` samples ([extension fixtures](#extension-fixtures)) | the real host via `WebApplicationFactory<Program>`, a temp SQLite file (or a [database server](#databases)) and a temp media folder | 107 tests: 103 run on SQLite, 4 skipped (3 credential tests unless their server is configured, 1 MongoDB-only test) |
 
 ```bash
-dotnet test tests/DotNetForge.Tests            # Passed: 694, Skipped: 5
-dotnet test tests/DotNetForge.IntegrationTests # Passed: 83, Skipped: 3
-node tests/js/page-builder-fixtures.mjs        # 77/77 page builder fixtures match
+dotnet test tests/DotNetForge.Tests            # Passed: 791, Skipped: 5
+dotnet test tests/DotNetForge.IntegrationTests # Passed: 103, Skipped: 4
+node tests/js/page-builder-fixtures.mjs        # 84/84 page builder fixtures match
 ```
+
+`node tests/js/content-list-fixtures.mjs` rewrites the seven content-list fixtures (`content-list-*.json`) from the
+browser modules; run it only after changing one of its cases, review the diff, then run the two commands above.
 
 Both are safe to run locally: no external services, no network, no `.env` required (the integration factory sets
 environment variables), nothing written inside the repository. The integration suite passes on SQLite (default)
@@ -21,6 +24,8 @@ and on PostgreSQL 17, SQL Server 2022, MySQL 8.4 and MongoDB 8.0 ([databases](#d
 
 | File | Classes (tests) | Covers |
 | --- | --- | --- |
+| `Content/ContentSchemaTests.cs` | `ContentSchemaTests` (32) | structured content rules in `DotNetForge.Core/Content`: field definitions checked and normalized, invalid definitions refused with a reason (12 cases), nesting at most three levels, form values converted and checked with the field path (11 cases), publishing needs required fields and minimum rows (a draft does not), values follow renamed fields, index values, `ItemData` formatting and flattening, bound props, every template valid ([structured content](../features/structured-content.md#field-types)) |
+| `Endpoints/EndpointRulesTests.cs` | `EndpointRulesTests` (33) | custom endpoint rules in `DotNetForge.Core/Endpoints`: paths normalized or refused (8 cases), an operation's sub-path may be empty and joins the endpoint's path (`Combine`; a repeated `{name}` or more than 10 segments refused), request paths matched with route values, route parameters tied to the path and required, bad parameter definitions explained, `@name` placeholders found (not `@@globals` or e-mail addresses), values converted per type or refused, binding from route, query and body with defaults ([custom endpoints](../features/custom-endpoints.md)) |
 | `DatabaseProviderTests.cs` | `DatabaseProviderTests` | provider names and aliases, detection from the connection string (and refusing ambiguous ones), per-provider validation (SQLite paths, PostgreSQL URLs, MongoDB database name), descriptions without credentials, several databases, registering and replacing providers |
 | `DatabaseTranslationTests.cs` | `DatabaseTranslationTests` | exact parameterized SQL from each SQL database's own builder, values never in SQL text (checked on all four builders), LIKE escaping, aggregates, model-checked names, identifier validation, value coercion; MongoDB filters with typed values (UUID, enum, date), values never operators, escaped regexes, composite keys under `_id` |
 | `DatabaseServiceTests.cs` | `DatabaseServiceTests` (mock provider) | routing to named databases, result shape, FindOne limit and default timeout, timeout vs caller cancellation, error translation with context and inner exception, bugs not translated, `Try*` results, invalid commands rejected before the provider, transactions bound to one database, streaming, connection tests, logs without values or secrets |
@@ -31,8 +36,8 @@ and on PostgreSQL 17, SQL Server 2022, MySQL 8.4 and MongoDB 8.0 ([databases](#d
 | `ExtensionRuntimeTests.cs` | `ExtensionRuntimeTests` (5) | `ExtensionRuntime` on temp folders: views-only extensions load no code, a missing assembly is reported with the build hint, a non-assembly file is reported, missing/failed/circular dependencies are reported, `ExtensionContext` typed settings and `GetEnvironmentValue` |
 | `InstallationServiceTests.cs` | `InstallationServiceTests` (5) | `InstallationService` with a `FakeInstallationStore`: success, mismatch, weak password, invalid email, already installed |
 | `ManifestValidationTests.cs` | `ManifestValidationTests` (31) | `ManifestValidator`: required fields, permissions, type, semver, all nine types, `assembly` must be a `.dll` inside the extension folder (11 cases: `..`, rooted, backslash, hidden segment, non-`.dll`, empty rejected) |
-| `PageBuilder/*.cs` | `GoldenFixtureTests`, `DocumentValidatorTests`, `ValuesTests`, `ContentComponentTests`, `ComponentRegistryTests`, `SecurityRegressionTests`, `SegmentsTests` (465 with all fixture cases) | the page builder's C# side, ported with the reference project's tests: every golden fixture in `tests/fixtures/page-builder/render` (76) normalizes and renders byte for byte; validator, value, URL and component rules ([page builder → Testing](../features/page-builder.md#testing)) |
-| `PermissionTests.cs` | `PermissionTests` (13) | `PermissionService` / `PermissionMatrix` defaults and union semantics; tenant checks from stored grants (custom role, edited built-in role, Super Admin, matrix fallback) with a fixed `IRoleGrantStore` |
+| `PageBuilder/*.cs` | `GoldenFixtureTests`, `DocumentValidatorTests`, `ValuesTests`, `ContentComponentTests`, `ComponentRegistryTests`, `SecurityRegressionTests`, `SegmentsTests` (with all fixture cases) | the page builder's C# side, ported with the reference project's tests: every golden fixture in `tests/fixtures/page-builder/render` (84, 7 of them content lists) normalizes and renders byte for byte; validator, value, URL and component rules ([page builder → Testing](../features/page-builder.md#testing)) |
+| `PermissionTests.cs` | `PermissionTests` (13) | `PermissionService` / `PermissionMatrix` defaults and union semantics; checks from stored grants (custom role, edited built-in role, Super Admin, matrix fallback) with a fixed `IRoleGrantStore` |
 | `SecurityPrimitiveTests.cs` | `PasswordHasherTests` (3), `ApiTokenFactoryTests` (2), `WebhookSignerTests` (3) | `Pbkdf2PasswordHasher`, `ApiTokenFactory`, `HmacWebhookSigner` |
 | `ValidationTests.cs` | `PasswordPolicyTests` (7), `EmailValidatorTests` (6) | `PasswordPolicy`, `EmailValidator` (the `SlugHelper` tests were removed with the class; slug rules are tested through `PageService`) |
 
@@ -93,7 +98,7 @@ absolute-path configuration rules), `new DotNetForgeWebFactory(extensionsPath: .
 | Helper | Does |
 | --- | --- |
 | `InstallAsync()` | installs programmatically (`admin@example.com` / `Sup3rSecret`) through `IInstallationStore` and marks `InstallationStatusCache` |
-| `CreateUserAsync(email, password, role)` | adds an enabled user with one built-in role to the default tenant, returns its id |
+| `CreateUserAsync(email, password, role)` | adds an enabled user with one built-in role, returns its id |
 | `WithDbAsync(db => ...)` | runs code against a fresh `DotNetForgeDbContext` scope (arrange or assert on rows) |
 | `CreateNoRedirectClient()` | cookie-keeping client that does not follow redirects, base address `https://localhost` (the auth cookie is `Secure` outside Development) |
 | `SignInAsync(email?, password?)` | a `CreateNoRedirectClient()` signed in through the real login form (throws unless the POST returns `302`) |
@@ -135,9 +140,11 @@ docker compose -f docker/compose.dev.yml --profile mongodb up -d
 DNF_TEST_MONGODB="mongodb://localhost:27017/?replicaSet=rs0&directConnection=true" dotnet test tests/DotNetForge.IntegrationTests
 ```
 
-All 72 database-independent tests must pass on every database. `DatabaseCredentialTests` additionally run for
-PostgreSQL, SQL Server and MySQL when their variable is set (`[DatabaseServerFact]`). `PageServiceTests` always use
-in-memory SQLite (they don't use the factory).
+Every test without a database condition must pass on every database. `DatabaseCredentialTests` additionally run for
+PostgreSQL, SQL Server and MySQL when their variable is set (`[DatabaseServerFact]`). The three SQL tests in
+`CustomEndpointTests` are skipped on MongoDB (`[SqlDatabaseFact]`) and its MongoDB test runs only there
+(`[MongoDbFact]`), both via `TestDatabaseServer.IsMongoDb`. `PageServiceTests` always use in-memory SQLite (they
+don't use the factory).
 
 ### Tests
 
@@ -160,12 +167,12 @@ in-memory SQLite (they don't use the factory).
 | `SecurityTests.cs` | `Responses_carry_security_headers` | `nosniff`, `SAMEORIGIN`, CSP `script-src 'self'` (Production) |
 | | `An_exception_during_a_post_renders_the_error_page` | regression: a failing form POST renders the error page (500), not an empty 500 (Production, throwing `IPageService`) |
 | | `Login_ignores_an_external_return_url` | `returnUrl=https://evil.example/` → 302 `/admin` |
-| | `Successful_login_is_audited_with_the_user` | `user.login` entry has `UserId` and `TenantId` |
+| | `Successful_login_is_audited_with_the_user` | `user.login` entry has a `UserId` |
 | | `Disabling_a_user_ends_their_session` | after disabling (session cache cleared), the next admin request → 302 `/account/login` |
 | | `Repeated_sign_in_attempts_are_rate_limited` | 12 login POSTs: first 200, last 429 |
 | | `Editors_can_no_longer_change_settings` | Editor `GET /admin/settings` → 302 `/account/denied` |
 | | `Authors_cannot_delete_or_publish_pages_they_did_not_create` | Author: delete of a seeded page → denied; own page: publishing → form error, saving with Disabled → 302 |
-| | `Reorder_rejects_a_cycle` | `POST /admin/content/reorder` making a page its child's child → 400 containing "cycle" |
+| | `Reorder_rejects_a_cycle` | `POST /admin/pages/reorder` making a page its child's child → 400 containing "cycle" |
 | | `Duplicate_api_token_name_is_a_validation_error_not_a_crash` | second token with the same name → 200 "already exists" |
 | | `Api_page_creation_applies_the_content_rules_and_is_audited` | API create slugifies (`our-pricing`), duplicate root slug → 400, `content.created` with `UserId = null` and `API token ...` |
 | `PageBuilderTests.cs` | `A_layout_is_drafted_published_and_rendered_on_the_site` | draft save (normalized), preview, stale save → 409 (force overwrites), invalid document → 400, publish → the public page renders the layout with `/page-css/{id}.css` (`text/css`, `immutable`), no `<style>`; unpublish keeps the draft; two `content.updated` layout entries |
@@ -173,13 +180,26 @@ in-memory SQLite (they don't use the factory).
 | | `Page_permissions_seo_and_theme_are_saved_from_the_page_editor` | the page form saves a view grant (Authenticated), `NoIndex`, social image, redirects to `#permissions`; anonymous → sign-in redirect; signed-in page has `noindex` and `og:image`; `permission.changed`; an uninstalled theme is refused |
 | | `Single_users_can_be_allowed_or_blocked_on_a_page` | blocking yourself is refused; an Editor blocked from view and edit gets 404 on the page and is denied the builder and delete; an Author allowed to edit opens the builder; visitors still see the page; clearing a user's rules removes them |
 | | `Users_edit_their_own_profile_and_password` | Profile details saved and shown; wrong current password refused; new password signs in |
-| `UserAndRoleManagementTests.cs` | `An_admin_creates_a_user_who_can_then_sign_in` | `POST /admin/users/create` → redirect to the edit screen; the new Editor signs in and opens the Content Manager; hashed password, `user.created`; the list links to the form; a case-different duplicate email is refused |
-| | `A_custom_role_grants_exactly_its_permissions_and_edits_apply_at_once` | a "Reviewer" role with `Collection types` / `read`: Content Manager 200, Settings denied and absent from the sidebar; adding `Settings` / `read` opens Settings for the signed-in reviewer; `permission.changed` |
+| `StructuredContentTests.cs` | `A_template_creates_the_type_and_the_types_it_links_to_and_renamed_fields_keep_their_values` | the Blog posts template also creates Categories and Authors; an empty slug is made from the title; renaming a field keeps its values (same field id); a type another type links to can't be deleted |
+| | `Entries_are_drafted_validated_published_listed_and_protected_from_stale_saves` | publishing needs the required fields (a draft does not); invalid and duplicate unique values refused; list status filter, search and sort on the server; an older `baseVersion` is refused and offered as an overwrite; duplicate makes an unpublished copy with unique values made unique; bulk delete removes entries and index rows |
+| | `Pages_show_content_lists_and_detail_pages_and_follow_entry_edits` | a content list shows published, filtered, sorted entries with field formatting; a `[slug]` detail page shows the entry its URL names (title after it), unknown or unpublished → 404; editing an entry changes the pages; pagination with `?pg-{node}=2` |
+| | `The_page_builder_lists_content_types_and_previews_entries` | the builder's `content/*` endpoints; a layout with a content list is saved, published and rendered |
+| | `The_api_reads_and_writes_entries_within_its_permissions` | `entries.read` reads only (POST and `status=draft` → 403); create validated (400) and published; published-only reads, relationships expanded, filters and slugs (draft slug → 404, unknown operator → 400); update with an older version → 409; delete without the key → 403 |
+| | `Roles_decide_who_defines_types_and_who_edits_and_publishes_entries` | only admins define content types; Authors write drafts, can't publish and edit only their own entries; Editors publish anyone's |
+| | `The_content_screens_render_cleanly_and_old_content_manager_links_lead_to_pages` | Content Manager, type builder, entry list, new and edit forms pass `AdminUiTests.AssertWellFormed`; a single type redirects to its entry; Pages forms post to `/admin/pages/...`; `/admin/content?selected=` and `/admin/content/{id}/builder` → 301 to `/admin/pages` |
+| `CustomEndpointTests.cs` (the first three `[SqlDatabaseFact]`: skipped on MongoDB) | `One_endpoint_answers_several_methods_with_typed_parameters_and_its_own_token` | an "Items" endpoint with four operations (GET, GET `{id}`, POST, DELETE `{id}`) and one token, plus a separate "Count" endpoint, created on the screen; the list shows the path and an operation badge (`DELETE /{id}`); each endpoint has its own distinct `dnfe_` token: no token, an API token (even with every key in `PermissionKeys.All`) or another endpoint's token → 401; rows, first row (404 when none), one value; query defaults; a value that looks like SQL is a 400 for an `int` and plain text in a body; POST and DELETE change rows and are audited; another method or path 404 |
+| | `Public_endpoints_need_no_token_and_disabled_ones_answer_404` | a public endpoint answers without a token and ignores a token that is sent; a failing public endpoint hides the database message, a caller with the endpoint's token sees it; a disabled endpoint 404 |
+| | `The_editor_validates_runs_tests_rotates_tokens_and_is_for_super_admins_and_developers` | form errors (name, "GET: write the SQL it runs", missing route parameter); "Add at least one operation"; two operations of one endpoint with the same method and path shape refused ("the endpoint already has GET /{id}"), an operation another endpoint already answers refused, and a second endpoint on the same base path refused ("already uses /api/custom/…"); the test run of one operation (`operation`, `testValues`, `rollback`) answers like the API and rolls back unless told not to; SQL errors shown to the admin; regenerating a token (`POST /admin/api-endpoints/{id}/token`) makes the old one 401 and the new one 200; Editors are refused and see no link, a Developer opens the editor; `endpoint.tested` and `endpoint.token.regenerated` audited |
+| | `On_mongodb_endpoints_can_be_kept_but_answer_501` (`[MongoDbFact]`: runs only with `DNF_TEST_MONGODB`) | the screen shows the "Needs a SQL database" warning; saving an endpoint still works; the API answers 501 |
+| `ApiDocsTests.cs` ([API docs](../features/api-docs.md)) | `Only_super_admins_and_developers_open_the_docs` | anonymous → `/account/login` and an Editor → `/account/denied` on `/admin/api-docs`, `/admin/api-docs/reference/` and the OpenAPI JSON; no API Docs link for the Editor; a Developer's sidebar has API Docs, API Tokens and API Endpoints but no Content Manager, Pages, Content types, Media, Users, Settings or Plugins; the screen frames the reference; the Developer opens `/admin/api-tokens/create` (200) and is denied `/admin/users` |
+| | `The_document_lists_the_api_and_the_custom_endpoints_with_their_tokens` | the OpenAPI document has `/api/entries/{type}` and `/api/content/pages`, no `/admin` or `{**path}` paths; the `ApiToken` scheme, required by `/api/entries/{type}` whose description names `entries.read`; a token custom endpoint has its own `Endpoint …` scheme, the same on its `GET` and its `DELETE /{id}` operation, which is under the tag "Items"; a public one no security; the endpoint's `dnfe_` token is in Scalar's HTML, whose CSP carries the page's nonce (`script-src 'self' 'nonce-…'`) while `/admin/api-docs` keeps `script-src 'self';` |
+| `UserAndRoleManagementTests.cs` | `An_admin_creates_a_user_who_can_then_sign_in` | `POST /admin/users/create` → redirect to the edit screen; the new Editor signs in and opens Pages; hashed password, `user.created`; the list links to the form; a case-different duplicate email is refused |
+| | `A_custom_role_grants_exactly_its_permissions_and_edits_apply_at_once` | a "Reviewer" role with `Collection types` / `read`: Pages 200 and its link in the sidebar, no Content Manager or Media link (no `Entries` / `Media` grant), Settings denied and absent from the sidebar; adding `Settings` / `read` opens Settings for the signed-in reviewer; `permission.changed` |
 | | `A_role_in_use_cannot_be_deleted_and_built_in_roles_never` | Duplicate copies every grant (`Editor (copy)`); delete refused while a user holds the copy, works after the user is deleted (grants removed too); a built-in role is never deleted |
 | | `Super_admins_and_your_own_account_are_protected` | the Super Admin can't disable or delete themselves; an Admin can't disable/delete the Super Admin, can't give the Super Admin role, can't change the grants of the Admin role but can save its description |
 | | `The_sidebar_lists_roles_once` | exactly one `href="/admin/roles"` in the admin shell |
-| `AdminUiTests.cs` ([design system](../architecture/design-system.md#accessibility-wcag-22-aa)) | `Every_screen_renders_without_inline_script_or_style` | every admin screen (incl. all placeholders, `/admin/api-tokens/create`, the Users and Roles create forms, every role's editor, a user's edit form, the Content Manager with a selected page), `/account/login`, `/` and `/about`: 200, exactly one `<h1>`, `<html lang="en">`, the skip link, no `style=`, `<style>`, inline `<script>` or `on…=` handler |
-| | `The_sidebar_shows_only_screens_the_role_may_open` | Editor: Content Manager and Media links present, Plugins/Users/Settings/API Tokens absent and still → `/account/denied` by URL; admin on `/admin/api-tokens/create`: **API Tokens** has `aria-current="page"`, breadcrumb ends with "Create API token" |
+| `AdminUiTests.cs` ([design system](../architecture/design-system.md#accessibility-wcag-22-aa)) | `Every_screen_renders_without_inline_script_or_style` | every admin screen except API Endpoints and API Docs (incl. all placeholders, `/admin/api-tokens/create`, the Users and Roles create forms, every role's editor, a user's edit form, Pages with a selected page, the Content Manager, Content types and New content type), `/account/login`, `/` and `/about`: 200, exactly one `<h1>`, `<html lang="en">`, the skip link, no `style=`, `<style>`, inline `<script>` or `on…=` handler |
+| | `The_sidebar_shows_only_screens_the_role_may_open` | Editor: Content Manager and Media links present, Plugins/Users/Settings/API Tokens/Content types absent and still → `/account/denied` by URL; admin on `/admin/api-tokens/create`: **API Tokens** has `aria-current="page"`, breadcrumb ends with "Create API token" |
 | | `Bulk_delete_removes_the_selected_files_the_user_may_delete` | `POST /admin/media/delete-selected`: an Author deletes none of the admin's files; the admin deletes 2 of 3, toast "Deleted 2 files.", two `media.deleted` entries |
 | | `The_dashboard_shows_recent_activity_and_offers_only_permitted_actions` | admin's dashboard shows "Signed in" (recent activity) and **New API token**; an Editor's does not offer **New API token** |
 | | `Every_icon_the_ui_uses_exists_in_the_sprite` | every icon named in host and extension views, `AdminNavigation.Tree`, `AuditPresentation` and `MediaPresentation` is a `<symbol>` in `wwwroot/img/icons.svg` |
@@ -199,13 +219,13 @@ in-memory SQLite (they don't use the factory).
 | `DatabaseServiceContractTests.cs` | `Crud_round_trip`, `Ef_core_and_the_service_read_each_others_data`, `Database_generated_keys_are_created_on_insert`, `Text_filters_match_literally`, `Aggregates_group_and_count`, `Unique_violations_are_conflicts`, `Transactions_commit_or_roll_back`, `Large_results_can_be_streamed`, `Seeded_cms_data_is_queryable_by_entity_name`, `Composite_keys_are_read_and_filtered_like_other_fields`, `Unknown_names_and_connection_status_are_reported` | `IDatabaseService` on the integration database: the provider contract ([providers](../database/providers.md#contract-and-testing)) |
 | | `AdditionalDatabaseTests.Commands_run_against_a_named_database_without_a_model` | a `DATABASES_REPORTS_*` SQLite database: unmapped names, `SELECT *`, aggregates, key-less `DeleteOne` refused, identifier validation |
 | `DatabaseCredentialTests.cs` | `PostgreSql_…`, `SqlServer_…`, `MySql_reports_wrong_credentials` | wrong password → `DatabaseAuthenticationException` (skipped unless the server variable is set) |
-| `PageServiceTests.cs` | `Slugifies_and_applies_valid_input`, `Rejects_duplicate_slug_under_the_same_parent_including_root`, `Rejects_a_parent_that_creates_a_cycle`, `Rejects_a_second_dynamic_segment_under_one_parent`, `Rejects_overlong_fields_before_saving`, `Reorder_rejects_moves_that_duplicate_a_slug`, `Reorder_rejects_pages_of_another_tenant`, `Delete_reparents_children_or_refuses_when_slugs_would_clash` | `PageService` rules against an in-memory SQLite `DotNetForgeDbContext` (`EnsureCreated`, no host) |
+| `PageServiceTests.cs` | `Slugifies_and_applies_valid_input`, `Rejects_duplicate_slug_under_the_same_parent_including_root`, `Rejects_a_parent_that_creates_a_cycle`, `Rejects_a_second_dynamic_segment_under_one_parent`, `Rejects_overlong_fields_before_saving`, `Reorder_rejects_moves_that_duplicate_a_slug`, `Reorder_rejects_pages_that_do_not_exist`, `Delete_reparents_children_or_refuses_when_slugs_would_clash` | `PageService` rules against an in-memory SQLite `DotNetForgeDbContext` (`EnsureCreated`, no host) |
 
 Not covered: the content of the Audit Logs and API Tokens lists (every admin screen is rendered by
 `AdminUiTests` for structure and CSP only; Plugins also by `ExtensionTests`), `/setup`, `/account/denied` and
-`/error` markup, client-side behaviour in `ui.js`/`content.js` (no browser tests), the weather, S3, Discord and SMS samples (they
-need network or credentials), Settings saves, API endpoints other than page creation, public dynamic
-routes, account lockout, the upload size limit.
+`/error` markup, client-side behaviour in `ui.js`, `pages.js`, `entries.js`, `content-types.js`, `endpoints.js`, Scalar and the builder's editor UI (no browser tests), the weather, S3, Discord and SMS samples (they
+need network or credentials), Settings saves, API endpoints other than page creation and `/api/entries`, public dynamic
+routes other than content-list detail pages, account lockout, the upload size limit.
 
 ### Writing a signed-in integration test
 
@@ -215,7 +235,7 @@ await factory.InstallAsync();
 await factory.CreateUserAsync("editor@example.com", "Edit0rPass1", Roles.Editor);
 var editor = await factory.SignInAsync("editor@example.com", "Edit0rPass1");
 
-var response = await DotNetForgeWebFactory.PostFormAsync(editor, "/admin/content", "/admin/content/create",
+var response = await DotNetForgeWebFactory.PostFormAsync(editor, "/admin/pages", "/admin/pages/create",
     new Dictionary<string, string>());
 
 Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
@@ -231,9 +251,10 @@ Never write into the repository from a test: use `factory.StoragePath`, the fact
 | --- | --- |
 | Pure rule (validator, policy, matrix, configuration) | unit test in `DotNetForge.Tests` |
 | `PageService` rule | test in `PageServiceTests` (in-memory SQLite) |
+| Structured content rule (field type, option, value check) | `ContentSchemaTests`; service, screen or API behaviour in `StructuredContentTests`; a content-list rendering change also as a case in `tests/js/content-list-fixtures.mjs` |
 | Storage provider | run `FileStorageContract` against it (unit test class like `LocalFileStorageTests`; live tests behind an `[S3Fact]`-style attribute) |
 | New screen / endpoint / auth rule | integration test with `CreateNoRedirectClient` / `SignInAsync` asserting status and redirect |
-| New API endpoint | 401 without token, 403 without the key, 200 with it, tenant isolation |
+| New API endpoint | 401 without token, 403 without the key, 200 with it |
 | Anything that touches files at runtime | keep `ReadOnlyDeploymentTests` green; extend its session if the new path isn't exercised |
 | Extension host, a slot, the SDK | `ExtensionTests` with a fixture under `tests/fixtures/extensions/` (code goes in `test-kit`); loading rules in `ExtensionRuntimeTests`; manifest rules in `ManifestValidationTests` |
 | A sample extension | a `SampleExtensionTests` case if it runs offline; add its `.csproj` as a build-only reference |
@@ -299,10 +320,8 @@ Target behaviour from the original product specification. Nothing in this sectio
 | --- | --- | --- |
 | Setup | not-installed detection, setup screen, first user created with `Super Admin`, CMS marked installed | gate and screen ✔; `ReadOnlyDeploymentTests` POSTs `/setup` (302) and signs in, but the `Super Admin` role and installed flag are not asserted |
 | Authentication | login, failed login, lockout, provider-based sign-in | login ✔ (`SignInAsync`, audit, external `returnUrl`), rate limit ✔, disabled-user session end ✔, provider-based sign-in ✔ (extension fixture); failed login only via the rate-limit test and the external unknown-email case; lockout ✘ |
-| API endpoints | token-authenticated requests, permission enforcement, tenant scoping | `401` without a token; one token-authenticated `POST /api/content/pages` with `content.create`; no 403 or tenant-scoping tests |
+| API endpoints | token-authenticated requests, permission enforcement | `401` without a token; one token-authenticated `POST /api/content/pages` with `content.create`; no 403 tests |
 
-- Multi-tenant assertions: tenant context is resolved **first** (domain, subdomain or path prefix), and an API token
-  cannot reach another tenant's data unless explicitly granted ([multi-tenancy](../features/multi-tenancy.md)).
 - Unit test files mirror the namespaces of the code under test (a folder per service or validator); today all files
   sit flat in the project root.
 - Integration tests may also run against a disposable PostgreSQL instance (✔ `DNF_TEST_POSTGRES`, CI job
@@ -351,9 +370,9 @@ Integration test coverage:
   `ReadOnlyDeploymentTests` completes setup through `POST /setup` but asserts neither the role nor the flag.
 - [ ] Integration tests cover authentication (login, failed login, lockout) - login ✔ (`SecurityTests`,
   `SignInAsync`); no explicit failed-login or lockout test.
-- [ ] Integration tests cover API endpoints (token auth, permission enforcement, tenant scoping) - token auth ✔
+- [ ] Integration tests cover API endpoints (token auth, permission enforcement) - token auth ✔
   (`SecurityTests.Api_page_creation_applies_the_content_rules_and_is_audited`,
-  `CmsIntegrationTests.Api_requires_a_token`); no permission-denied or tenant-scoping test.
+  `CmsIntegrationTests.Api_requires_a_token`); no permission-denied test.
 
 Structure, execution and quality:
 

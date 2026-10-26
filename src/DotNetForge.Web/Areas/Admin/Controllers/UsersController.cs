@@ -35,7 +35,6 @@ public sealed class UsersController : AdminControllerBase
         // Single-table queries combined in memory, so the list works on every provider (including MongoDB).
         var users = await _db.Users
             .AsNoTracking()
-            .Where(u => u.TenantId == TenantId)
             .OrderBy(u => u.Email)
             .Select(u => new { u.Id, u.Email, u.FirstName, u.LastName, u.Status, u.LastLoginDate })
             .ToListAsync();
@@ -80,7 +79,7 @@ public sealed class UsersController : AdminControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Edit(Guid id)
     {
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id && u.TenantId == TenantId);
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
         if (user is null)
         {
             return NotFound();
@@ -152,12 +151,11 @@ public sealed class UsersController : AdminControllerBase
     /// <summary>The list's row menu posts <c>returnTo=list</c> so the user lands back on the list.</summary>
     private bool FromList => Request.Form["returnTo"] == "list";
 
-    private ManagementActor Actor => new(CurrentUserId ?? Guid.Empty, TenantId, User.IsInRole(Roles.SuperAdmin));
+    private ManagementActor Actor => new(CurrentUserId ?? Guid.Empty, User.IsInRole(Roles.SuperAdmin));
 
     private async Task<UserFormModel> BuildFormAsync(Guid? id, UserInput input)
     {
         var roles = await _db.Roles.AsNoTracking()
-            .Where(r => r.TenantId == TenantId)
             .OrderByDescending(r => r.IsBuiltIn).ThenBy(r => r.Name)
             .Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn })
             .ToListAsync();
@@ -193,7 +191,7 @@ public sealed class UsersController : AdminControllerBase
     private IReadOnlyList<(PermissionAreaDefinition Area, IReadOnlyList<string> Actions)> EffectivePermissions(IReadOnlyList<string> roleNames)
     {
         var all = roleNames.Contains(Roles.SuperAdmin, StringComparer.OrdinalIgnoreCase);
-        var grants = _grants.GetGrants(TenantId);
+        var grants = _grants.GetGrants();
         var keys = roleNames
             .SelectMany(r => grants.TryGetValue(r, out var g) ? g : (IEnumerable<string>)Array.Empty<string>())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -212,12 +210,11 @@ public sealed class UsersController : AdminControllerBase
 
     private async Task<Dictionary<Guid, string>> RoleNamesAsync() =>
         await _db.Roles.AsNoTracking()
-            .Where(r => r.TenantId == TenantId)
             .Select(r => new { r.Id, r.Name })
             .ToDictionaryAsync(r => r.Id, r => r.Name);
 
     private async Task<string> EmailOfAsync(Guid id) =>
-        await _db.Users.AsNoTracking().Where(u => u.Id == id && u.TenantId == TenantId).Select(u => u.Email).FirstOrDefaultAsync() ?? "the user";
+        await _db.Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Email).FirstOrDefaultAsync() ?? "the user";
 
     public sealed record UserListItem(Guid Id, string Email, string Name, string Status, DateTime? LastLogin, List<string> Roles, bool IsSelf);
 

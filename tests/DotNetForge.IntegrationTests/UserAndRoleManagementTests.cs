@@ -73,7 +73,7 @@ public sealed class UserAndRoleManagementTests
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.StartsWith("/admin/users/", response.Headers.Location!.OriginalString);
         var editor = await factory.SignInAsync("ada@example.com", Password);
-        Assert.Equal(HttpStatusCode.OK, (await editor.GetAsync("/admin/content")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await editor.GetAsync("/admin/pages")).StatusCode);
         await factory.WithDbAsync(async db =>
         {
             var user = await db.Users.SingleAsync(u => u.Email == "ada@example.com");
@@ -125,10 +125,12 @@ public sealed class UserAndRoleManagementTests
         });
         var reviewer = await factory.SignInAsync("rev@example.com", Password);
 
-        Assert.Equal(HttpStatusCode.OK, (await reviewer.GetAsync("/admin/content")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await reviewer.GetAsync("/admin/pages")).StatusCode);
         Assert.Contains("/account/denied", (await reviewer.GetAsync("/admin/settings")).Headers.Location?.OriginalString);
         var sidebar = await reviewer.GetStringAsync("/admin");
-        Assert.Contains("href=\"/admin/content\"", sidebar);
+        Assert.Contains("href=\"/admin/pages\"", sidebar);
+        Assert.DoesNotContain("href=\"/admin/content\"", sidebar); // no Entries grant
+        Assert.DoesNotContain("href=\"/admin/media\"", sidebar); // no Media grant
         Assert.DoesNotContain("href=\"/admin/settings\"", sidebar);
 
         // Granting Settings read lets the signed-in reviewer open Settings without signing in again.

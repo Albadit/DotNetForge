@@ -79,7 +79,7 @@ flowchart LR
 ## Related pages
 
 [Implementation status](../implementation-status.md) lists what foundation exists for each module.
-[Dashboard](dashboard.md) (**Back to dashboard**). [Content Manager](content-manager.md#planned-not-implemented)
+[Dashboard](dashboard.md) (**Back to dashboard**). [Pages](pages.md#planned-not-implemented)
 (Content History).
 
 ## Important implementation details / known limitations

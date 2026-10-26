@@ -24,17 +24,17 @@ public sealed class UserInput
     // No status here: a new user is enabled, and SetStatusAsync (Disable / Enable user) is the only way to change it.
 }
 
-/// <summary>Who performs a change: their user id, tenant and whether they hold <c>Super Admin</c>.</summary>
-public sealed record ManagementActor(Guid UserId, Guid TenantId, bool IsSuperAdmin);
+/// <summary>Who performs a change: their user id and whether they hold <c>Super Admin</c>.</summary>
+public sealed record ManagementActor(Guid UserId, bool IsSuperAdmin);
 
 /// <summary>
 /// Creating, editing, enabling/disabling and deleting admin users (.docs/pages/users.md). The rules live here, not in
 /// the controller:
 /// <list type="bullet">
-/// <item>email valid and unique in the tenant (case-insensitive); password per <see cref="PasswordPolicy"/>, stored only
-/// as a hash; at least one role of the tenant;</item>
+/// <item>email valid and unique (case-insensitive); password per <see cref="PasswordPolicy"/>, stored only
+/// as a hash; at least one existing role;</item>
 /// <item>only a Super Admin may assign the <c>Super Admin</c> role or change a user who holds it;</item>
-/// <item>the tenant always keeps at least one enabled Super Admin;</item>
+/// <item>there is always at least one enabled Super Admin;</item>
 /// <item>nobody can disable or delete their own account.</item>
 /// </list>
 /// Every change is audited (<c>user.created/updated/deleted</c>, plus <c>role.changed</c> when roles change). Role
@@ -66,7 +66,6 @@ public sealed class UserManagementService
 
         var user = new User
         {
-            TenantId = actor.TenantId,
             FirstName = Clean(input.FirstName),
             LastName = Clean(input.LastName),
             Email = input.Email!.Trim(),
@@ -88,7 +87,7 @@ public sealed class UserManagementService
 
     public async Task<string?> UpdateAsync(Guid id, UserInput input, ManagementActor actor, CancellationToken ct = default)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == actor.TenantId, ct);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user is null)
         {
             return "This user no longer exists.";
@@ -135,7 +134,7 @@ public sealed class UserManagementService
 
     public async Task<string?> SetStatusAsync(Guid id, bool enabled, ManagementActor actor, CancellationToken ct = default)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == actor.TenantId, ct);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user is null)
         {
             return "This user no longer exists.";
@@ -159,7 +158,7 @@ public sealed class UserManagementService
 
     public async Task<string?> DeleteAsync(Guid id, ManagementActor actor, CancellationToken ct = default)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == actor.TenantId, ct);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user is null)
         {
             return "This user no longer exists.";
@@ -202,7 +201,7 @@ public sealed class UserManagementService
         // Case-insensitive, compared in memory so the check is the same on every database provider.
         var excludeId = existing?.Id ?? Guid.Empty;
         var emails = await _db.Users.AsNoTracking()
-            .Where(u => u.TenantId == actor.TenantId && u.Id != excludeId)
+            .Where(u => u.Id != excludeId)
             .Select(u => u.Email)
             .ToListAsync(ct);
         if (emails.Contains(email, StringComparer.OrdinalIgnoreCase))
@@ -216,16 +215,16 @@ public sealed class UserManagementService
             return "Choose at least one role.";
         }
 
-        var tenantRoles = await _db.Roles.AsNoTracking()
-            .Where(r => r.TenantId == actor.TenantId && roleIds.Contains(r.Id))
+        var chosen = await _db.Roles.AsNoTracking()
+            .Where(r => roleIds.Contains(r.Id))
             .Select(r => r.Name)
             .ToListAsync(ct);
-        if (tenantRoles.Count != roleIds.Count)
+        if (chosen.Count != roleIds.Count)
         {
             return "One of the chosen roles no longer exists. Reload the page and try again.";
         }
 
-        if (!actor.IsSuperAdmin && tenantRoles.Contains(Roles.SuperAdmin, StringComparer.OrdinalIgnoreCase))
+        if (!actor.IsSuperAdmin && chosen.Contains(Roles.SuperAdmin, StringComparer.OrdinalIgnoreCase))
         {
             return "Only a Super Admin can give the Super Admin role.";
         }
@@ -234,14 +233,14 @@ public sealed class UserManagementService
     }
 
     /// <summary>
-    /// Changes to a Super Admin need a Super Admin, and the tenant must keep at least one enabled Super Admin after
+    /// Changes to a Super Admin need a Super Admin, and at least one enabled Super Admin must remain after
     /// <paramref name="user"/> ends up with <paramref name="roleIds"/> and <paramref name="enabled"/>.
     /// </summary>
     private async Task<string?> GuardSuperAdminAsync(User user, IReadOnlyCollection<Guid> roleIds, bool enabled,
         ManagementActor actor, CancellationToken ct, bool deleting = false)
     {
         var superAdminRoleId = await _db.Roles.AsNoTracking()
-            .Where(r => r.TenantId == actor.TenantId && r.Name == Roles.SuperAdmin)
+            .Where(r => r.Name == Roles.SuperAdmin)
             .Select(r => (Guid?)r.Id)
             .FirstOrDefaultAsync(ct);
         if (superAdminRoleId is not { } saRole)
@@ -263,7 +262,7 @@ public sealed class UserManagementService
         }
 
         var otherEnabled = await _db.Users.AsNoTracking()
-            .Where(u => u.TenantId == actor.TenantId && u.Id != user.Id && holders.Contains(u.Id) && u.Status == UserStatus.Enabled)
+            .Where(u => u.Id != user.Id && holders.Contains(u.Id) && u.Status == UserStatus.Enabled)
             .AnyAsync(ct);
         return otherEnabled ? null : "This is the last enabled Super Admin. Give another user the Super Admin role first.";
     }

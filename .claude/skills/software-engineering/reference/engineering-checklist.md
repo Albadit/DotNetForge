@@ -44,7 +44,7 @@ and running several operations at once**:
   that go stale
 - ownership: application-owned vs external-system data; read-only data treated as read-only
 - destructive operations (drop, delete, truncate) limited to what the application owns, scoped to the right
-  server/tenant, and confirmed
+  server/database, and confirmed
 
 ## API design
 
@@ -137,6 +137,6 @@ For every timer, scheduled job, poller, watcher, worker and long-running task:
 
 ## Scalability
 
-Ask what happens at 100× today: 1 → 100 projects/tenants, 100 → millions of records, 1 → a team of developers,
+Ask what happens at 100× today: 1 → 100 projects, 100 → millions of records, 1 → a team of developers,
 1 → many concurrent users. Look for per-item work in loops, unbounded lists in memory, full scans, global locks,
 and designs that only work because the data is small.

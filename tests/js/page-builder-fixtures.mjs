@@ -43,7 +43,7 @@ for (const file of files) {
     const ctx = fixture.context ?? {};
     const hidden = new Set(ctx.hidden ?? []);
     const modules = ctx.modules ? new Set(ctx.modules) : null;
-    const html = renderDocument(normalized, { mode: ctx.mode, isVisible: (n) => !hidden.has(n.id), hasModule: (id) => (modules ? modules.has(id) : true) });
+    const html = renderDocument(normalized, { mode: ctx.mode, data: ctx.data, isVisible: (n) => !hidden.has(n.id), hasModule: (id) => (modules ? modules.has(id) : true) });
     if (html !== fixture.html) problems.push("HTML differs");
     if (documentCss(normalized) !== fixture.css) problems.push("CSS differs");
   }

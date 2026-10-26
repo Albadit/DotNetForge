@@ -4,7 +4,7 @@
 
 The admin landing screen: a welcome band with the quick actions the user may perform, key counts, the latest audit
 activity, basic system facts and the panels of enabled widget extensions. Every admin-capable user lands here after
-sign-in or setup. Read-only apart from the **New page** quick action (a POST to the Content Manager).
+sign-in or setup. Read-only apart from the **New page** quick action (a POST to Pages).
 
 ## Route / Navigation
 
@@ -42,7 +42,7 @@ Dashboard (_AdminLayout, h1 "Dashboard", no description, no breadcrumbs)
 │   └── quick actions (each only when permitted): [New page] (primary) · [Upload media] · [New API token]
 ├── .grid.grid-4 KPI cards (<stat-card>): Pages · Media files · Users · Enabled extensions
 ├── .dashboard-columns (2 : 1, one column below 64rem)
-│   ├── card "Recent activity" - "The latest actions in this tenant."  [View all →]
+│   ├── card "Recent activity" - "The latest actions."  [View all →]
 │   │   └── ul.list: icon · <action label> · <entity> / <user or "System"> · [Failed] · <relative time>
 │   └── stack
 │       ├── card "At a glance": Roles · Active API tokens · Webhooks · Audit entries
@@ -59,28 +59,29 @@ Greeting from `DashboardViewModel.Greeting`: the signed-in user's `FirstName`, e
 
 | Button | Shown when | Target |
 | --- | --- | --- |
-| **New page** | `CanCreatePages` = `Can("Collection types", "create")` | POST form (antiforgery) to `/admin/content/create` - creates an `Untitled page` and opens it ([Content Manager → Create a page](content-manager.md#create-a-page)) |
+| **New page** | `CanCreatePages` = `Can("Collection types", "create")` | POST form (antiforgery) to `/admin/pages/create` - creates an `Untitled page` and opens it ([Pages → Create a page](pages.md#create-a-page)) |
 | **Upload media** | `CanUpload` = `Can("Media", "create")` | link `/admin/media#upload` |
-| **New API token** | `AdminNavModel.Allows("/admin/api-tokens")` (the user's sidebar contains API Tokens: `Super Admin`, `Admin`) | link `/admin/api-tokens/create` |
+| **New API token** | `AdminNavModel.Allows("/admin/api-tokens")` (the user's sidebar contains API Tokens: `Super Admin`, `Admin`, `Developer`) | link `/admin/api-tokens/create` |
 
-By default every built-in admin-capable role has `create` in both content and media, so only **New API token** varies
-by role. The checks only decide visibility; each target enforces its own permission.
+By default `Admin`, `Editor` and `Author` have `create` in both content and media and `Developer` in neither, so a
+Developer sees only **New API token**, Editors and Authors everything but it. The checks only decide visibility; each
+target enforces its own permission.
 
 ### KPI cards (`<stat-card>`)
 
-| Card | Query | Link | Tenant-scoped |
-| --- | --- | --- | :-: |
-| Pages | `Pages.Count(TenantId)` (all, not just live) | `/admin/content` | ✔ |
-| Media files | `MediaFiles.Count(TenantId)` | `/admin/media` | ✔ |
-| Users | `Users.Count(TenantId)` | `/admin/users` when `Allows("/admin/users")`, else a plain card | ✔ |
-| Enabled extensions | `InstalledExtensions.Count(Status == Enabled)` (extensions are global) | `/admin/plugins` when `Allows("/admin/plugins")` (`Super Admin`), else a plain card | ✘ |
+| Card | Query | Link |
+| --- | --- | --- |
+| Pages | `Pages.Count()` (all, not just live) | `/admin/pages` when `Allows("/admin/pages")` (`Collection types` / `read`), else a plain card |
+| Media files | `MediaFiles.Count()` | `/admin/media` when `Allows("/admin/media")` (`Media` / `read`), else a plain card |
+| Users | `Users.Count()` | `/admin/users` when `Allows("/admin/users")`, else a plain card |
+| Enabled extensions | `InstalledExtensions.Count(Status == Enabled)` | `/admin/plugins` when `Allows("/admin/plugins")` (`Super Admin`), else a plain card |
 
 A card with `href` renders as an `<a>`, without as a `<div>` (`StatCardTagHelper`).
 
 ### Recent activity
 
-The last `DashboardController.RecentActivityCount` (8) `AuditLogs` rows where `TenantId` is the active tenant **or
-null** (system-wide entries such as failed sign-ins), newest first (`OrderByDescending(Id)`). Each row: an icon from
+The last `DashboardController.RecentActivityCount` (8) `AuditLogs` rows (including failed sign-ins), newest first
+(`OrderByDescending(Id)`). Each row: an icon from
 `AuditPresentation.Icon(action)` (danger style when the entry failed), the friendly label
 `AuditPresentation.Label(action)` (the raw key when unmapped), `· EntityDisplaySnapshot` when present,
 `UserDisplaySnapshot` or `System`, a **Failed** badge for unsuccessful entries and a `<timestamp>` (relative, exact
@@ -91,10 +92,10 @@ UTC in the tooltip). **View all** links to [Audit Logs](audit-logs.md) only when
 
 | Item | Source |
 | --- | --- |
-| Roles | `Roles.Count(TenantId)` |
-| Active API tokens | `ApiTokens.Count(TenantId && !Revoked && (ExpirationDate == null || ExpirationDate > now))` |
-| Webhooks | `Webhooks.Count(TenantId)` (always 0 today) |
-| Audit entries | `AuditLogs.Count(TenantId == active \|\| TenantId == null)` |
+| Roles | `Roles.Count()` |
+| Active API tokens | `ApiTokens.Count(!Revoked && (ExpirationDate == null || ExpirationDate > now))` |
+| Webhooks | `Webhooks.Count()` (always 0 today) |
+| Audit entries | `AuditLogs.Count()` |
 | CMS version | `SystemState.CmsVersion` (default `1.0.0`), as an accent badge `v1.0.0` |
 | Installed | `SystemState.InstalledAtUtc` as `<timestamp absolute="true">` (`d MMM yyyy, HH:mm UTC`) or `-` |
 | Modes | static text `Traditional · Headless · Hybrid` |
@@ -102,7 +103,7 @@ UTC in the tooltip). **View all** links to [Audit Logs](audit-logs.md) only when
 ## Functionality
 
 Display only, except **New page** (handled by `ContentController.Create`, see
-[Content Manager](content-manager.md#create-a-page)).
+[Pages](pages.md#create-a-page)).
 
 ### Widgets
 
@@ -132,8 +133,9 @@ the dashboard sets none.
 ## Permissions
 
 `AdminArea` policy: any admin-capable role. What differs by role is only what is linked or offered: quick actions
-(`Can` checks and `Allows`), the Users / Enabled extensions card links and **View all** (`Allows`, i.e. the target
-controller's `[Authorize]` data). Every role sees every count and the Recent activity list.
+(`Can` checks and `Allows`), the Pages / Media files / Users / Enabled extensions card links and **View all**
+(`Allows`, i.e. the target controller's `[Authorize]` data). Every role sees every count and the Recent activity list -
+also a `Developer`, whose only links are the API screens.
 
 ## Validation
 
@@ -162,7 +164,7 @@ Quick-action buttons, linked KPI cards and **View all**; nothing else besides th
 ## Dependencies
 
 ```text
-DashboardController → DotNetForgeDbContext, AppEnvironment, AdminControllerBase (TenantId, CurrentUserId, Can → IPermissionService)
+DashboardController → DotNetForgeDbContext, AppEnvironment, AdminControllerBase (CurrentUserId, Can → IPermissionService)
 Index.cshtml → AdminNavigationService (scoped; IAuthorizationService, IAuthorizationPolicyProvider, ExtensionCatalog)
 ExtensionWidgetsViewComponent → ExtensionCatalog, ExtensionViewRenderer
 ```
@@ -173,13 +175,13 @@ ExtensionWidgetsViewComponent → ExtensionCatalog, ExtensionViewRenderer
 flowchart LR
     A["GET /admin"] --> B["SystemState + 8 counts + greeting + 8 latest audit entries"] --> C["Welcome band (permitted actions), KPI cards"]
     C --> D["Recent activity, At a glance, System"] --> W["ExtensionWidgets: active widget views"]
-    C -- "New page" --> P["POST /admin/content/create → Content Manager"]
+    C -- "New page" --> P["POST /admin/pages/create → Pages"]
 ```
 
 ## Related pages
 
 Receives navigation from [Sign in](login.md), [Setup](setup.md), [Access denied](access-denied.md),
-[module placeholders](module-placeholders.md). Links to [Content Manager](content-manager.md), [Media](media.md),
+[module placeholders](module-placeholders.md). Links to [Pages](pages.md), [Media](media.md),
 [Users](users.md), [Plugins](plugins.md) (also enables widgets), [Audit Logs](audit-logs.md),
 [API Tokens](api-tokens.md). Counts also cover [Roles](roles.md) and webhooks ([placeholder](module-placeholders.md)).
 
@@ -194,9 +196,6 @@ Receives navigation from [Sign in](login.md), [Setup](setup.md), [Access denied]
 
 ## Known limitations
 
-- The Enabled extensions count is global (extensions are not per tenant). The Audit entries count and Recent activity
-  are tenant-scoped (same filter as [Audit Logs](audit-logs.md)) but include tenant-less entries (failed sign-ins),
-  which are shared by every tenant.
 - Recent activity (including user names and failed sign-ins) is shown to every admin-capable role, also to Editors
   and Authors, who cannot open Audit Logs; all counts are shown to every role.
 - Cards link to the owning screen without any pre-filter; Roles, API tokens, Webhooks and Audit entries are plain
@@ -210,18 +209,18 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Requirements
 
-The Dashboard becomes a configurable grid of independent widget cards for the active tenant, extensible by
+The Dashboard becomes a configurable grid of independent widget cards, extensible by
 extensions. It is read-only and part of the admin area (never themed, never reachable by `Public`).
 
 **Built-in widgets**
 
 | Widget | Summarizes | Drill-down target | Today |
 | --- | --- | --- | --- |
-| Project statistics | totals for the active tenant: pages, content entries, published vs. draft, media items, users, extensions | [Content Manager](content-manager.md), [Settings overview](settings.md#planned-not-implemented) | partly: Pages, Media files, Users, Enabled extensions cards (no published/draft split) |
+| Project statistics | totals: pages, content entries, published vs. draft, media items, users, extensions | [Content Manager](content-manager.md), [Settings overview](settings.md#planned-not-implemented) | partly: Pages, Media files, Users, Enabled extensions cards (no published/draft split) |
 | Content statistics | pages/entries by status (published, draft, scheduled, disabled), recently edited, awaiting review | Content Manager, pre-filtered | ✘ |
 | User statistics | total, active vs. disabled, new registrations over a period, users per role | [Users](users.md), [Roles](roles.md) | Users and Roles counts only |
 | Media statistics | total items, storage used, public vs. private, breakdown by file type | [Media](media.md) | Media files count only |
-| Recent activity | latest audit entries (sign-ins, content created/updated/deleted, media uploaded, extension installed, role changed) | [Audit Logs](audit-logs.md) | ✔ the 8 latest entries of the tenant (+ system-wide) with **View all**; not filtered by role |
+| Recent activity | latest audit entries (sign-ins, content created/updated/deleted, media uploaded, extension installed, role changed) | [Audit Logs](audit-logs.md) | ✔ the 8 latest entries with **View all**; not filtered by role |
 | Installed extensions | count + list with enabled/disabled status and available updates | [Plugins](plugins.md) | Enabled extensions count only |
 | System health | database connectivity and provider, environment, storage availability, background job/queue status, error indicators | [Settings overview](settings.md#planned-not-implemented) | ✘ |
 | Update status | current CMS version, available CMS update, extensions with pending updates | [Settings overview](settings.md#planned-not-implemented), [transfer and updates](../features/transfer-and-updates.md) | CMS version only (System card) |
@@ -237,7 +236,7 @@ extensions. It is read-only and part of the admin area (never themed, never reac
 
 **Layout and personalisation**
 
-- Layout stored per user **and** per tenant: chosen widgets, order, grid position and size. No layout store exists.
+- Layout stored per user: chosen widgets, order, grid position and size. No layout store exists.
 - Add from an "Add widget" picker, remove from the card menu, drag to rearrange, drag a handle to resize.
 - Changes persist immediately and are restored on the next visit.
 - **Reset to default** restores the default layout of the user's most-privileged role.
@@ -246,8 +245,8 @@ extensions. It is read-only and part of the admin area (never themed, never reac
 
 | Role | Sees Dashboard | Default widgets |
 | --- | --- | --- |
-| `Super Admin` | yes ✔ | all, including System health, Update status and all tenants |
-| `Admin` | yes ✔ | all, within permitted tenant(s); no cross-tenant view unless granted |
+| `Super Admin` | yes ✔ | all, including System health and Update status |
+| `Admin` | yes ✔ | all |
 | `Editor` | yes ✔ | Content, Media, Recent activity, Project statistics; no User statistics, System health, Update status unless granted |
 | `Author` | yes ✔ (limited) | Content statistics scoped to own content, Recent activity scoped to own actions |
 | `Authenticated` | no ✔ | none, unless explicitly granted admin permissions |
@@ -261,7 +260,7 @@ admin area (today every screen is server-rendered, see
 
 | Flow | Steps |
 | --- | --- |
-| View | resolve roles and active tenant → load saved layout (none → role default) → drop widgets the user may not see (silently) → each widget fetches its data independently with its own loading state → render data, empty state, or error state with **Retry** |
+| View | resolve roles → load saved layout (none → role default) → drop widgets the user may not see (silently) → each widget fetches its data independently with its own loading state → render data, empty state, or error state with **Retry** |
 | Add widget | open picker (built-ins + widgets of installed, enabled extensions the user is permitted to see) → select → added at default position/size, layout persisted, widget enters loading state |
 | Remove widget | card menu → **Remove** → layout persisted, grid reflows; affects only this user, never disables/uninstalls the extension |
 | Rearrange / resize | drag card or resize handle → order and grid coordinates persisted → restored on later visits |
@@ -282,9 +281,6 @@ admin area (today every screen is server-rendered, see
   save. Positions/sizes stay within grid bounds; overlaps and out-of-bounds coordinates are normalized before saving.
 - **Custom widget loading:** only from installed, enabled, manifest-valid extensions ✔; never from invalid ✔, unsafe
   or incompatible ones.
-- **Tenant scoping:** every widget query is scoped to the active tenant (today only the Enabled extensions count is
-  global; the audit count and Recent activity are scoped ✔ - see [Components](#components)); a widget never shows
-  data from a tenant the user cannot access.
 - **Read-only:** widgets perform no writes; any action navigates to the owning screen.
 - **Freshness:** widgets show when their data was last loaded where relevant; a slow widget never blocks the page.
 
@@ -297,11 +293,10 @@ admin area (today every screen is server-rendered, see
 | Widget of an uninstalled extension | Disappears from picker and all layouts; dangling references ignored at render, pruned on next save; no error shown. |
 | Slow widget | Own loading state, never blocks the Dashboard or admin shell; a timeout moves it to the failed state. |
 | Failed widget | Contained error state with **Retry**; sibling widgets unaffected. |
-| Misbehaving custom widget (throws, exceeds time budget, reads beyond declared `permissions`) | Isolated to its card and logged ([audit logging](../features/audit-logging.md)); cannot read outside its permitted scope or tenant. |
+| Misbehaving custom widget (throws, exceeds time budget, reads beyond declared `permissions`) | Isolated to its card and logged ([audit logging](../features/audit-logging.md)); cannot read outside its permitted scope. |
 | Permission revoked while viewing | Widget omitted on next load; layout reference kept inert in case access returns. |
 | Health / update check unreachable | Degraded/unknown state with retry - never implies healthy. |
 | Same user edits layout in two sessions | Last persisted write wins; saves are atomic (never partially saved). |
-| Tenant switch | Reload with that tenant's layout and data; no stale data from the previous tenant. |
 
 ### Acceptance criteria
 
@@ -328,15 +323,13 @@ admin area (today every screen is server-rendered, see
   (a throwing widget shows a contained notice and siblings are unaffected ✔; no Retry, no timeout).
 - [ ] A custom widget loads only from an installed, enabled, manifest-valid extension (✔) and cannot read beyond its
   declared permissions (✘).
-- [ ] Widget data is scoped to the active tenant, layouts are stored per user and tenant, and switching tenant
-  reloads the right layout and data.
 - [ ] A widget never shows data the user may not view; unauthorized widgets are omitted - today every count and the
   Recent activity list are shown to every admin-capable role (e.g. Authors see the Users count and the audit
   entries); only links and quick actions follow the role (✔ `AdminUiTests.The_dashboard_shows_recent_activity_and_offers_only_permitted_actions`).
 
 ## Extension points
 
-Add a count: property on `DashboardViewModel`, query in `DashboardController.Index` (scope by `TenantId`), a
+Add a count: property on `DashboardViewModel`, query in `DashboardController.Index`, a
 `<stat-card>` or an `.dl` row in the view; link it only when `nav.Allows(href)` is true. Add a quick action: a flag
 from `Can(...)` on the view model (or `nav.Allows`) and a button in the welcome band - the target keeps its own check.
 Add a widget without touching the core: a `widget` extension with `Views/Widget.cshtml`

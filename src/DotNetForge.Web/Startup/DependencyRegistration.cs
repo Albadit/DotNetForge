@@ -5,6 +5,7 @@ using DotNetForge.Abstractions.Security;
 using DotNetForge.Abstractions.Storage;
 using DotNetForge.Api.Authentication;
 using DotNetForge.Api.Controllers;
+using DotNetForge.Content;
 using DotNetForge.Core.Authorization;
 using DotNetForge.Core.Extensions;
 using DotNetForge.Core.Installation;
@@ -21,6 +22,7 @@ using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Enums;
 using DotNetForge.Shared.Stores;
+using DotNetForge.Web.ApiDocs;
 using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -84,7 +86,7 @@ public static class DependencyRegistration
         services.AddSingleton<IApiTokenFactory, ApiTokenFactory>();
 
         // Domain services.
-        // Authorization reads the roles' stored grants (cached per tenant), so custom roles and edits take effect.
+        // Authorization reads the roles' stored grants (cached), so custom roles and edits take effect.
         services.AddSingleton<IRoleGrantStore, RoleGrantStore>();
         services.AddSingleton<IPermissionService>(sp => new PermissionService(sp.GetRequiredService<IRoleGrantStore>()));
         services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, PermissionPolicyProvider>();
@@ -105,6 +107,24 @@ public static class DependencyRegistration
         services.AddScoped<ProfileService>();
         services.AddScoped<PagePermissionService>();
         services.AddScoped<PageBuilderService>();
+        // Structured content (.docs/features/structured-content.md).
+        services.AddScoped<ContentTypeService>();
+        services.AddScoped<ContentEntryService>();
+        services.AddScoped<ContentQueryService>();
+        services.AddScoped<ContentRenderService>();
+        services.AddScoped<ContentApiService>();
+        // Custom API endpoints (.docs/features/custom-endpoints.md).
+        services.AddScoped<DotNetForge.Content.Endpoints.CustomEndpointService>();
+        services.AddScoped<DotNetForge.Content.Endpoints.SqlEndpointRunner>();
+
+        // API docs (.docs/features/api-docs.md): the OpenAPI document of the headless API and the custom endpoints,
+        // rendered by Scalar at /admin/api-docs.
+        services.AddOpenApi(ApiDocsDocument.Name, options =>
+        {
+            options.ShouldInclude = description => ApiDocsDocument.Includes(description.RelativePath);
+            options.AddDocumentTransformer<ApiDocsDocumentTransformer>();
+            options.AddOperationTransformer<ApiDocsOperationTransformer>();
+        });
         services.AddScoped<DotNetForge.Web.Areas.Admin.Navigation.AdminNavigationService>();
 
         var extensions = AddExtensionHost(services, env);
@@ -147,6 +167,7 @@ public static class DependencyRegistration
             // each screen then checks its own permission (.docs/features/authorization.md#screen-access).
             options.AddPolicy(AuthorizationPolicies.AdminArea, policy => policy.RequireAuthenticatedUser().RequireAssertion(
                 context => Roles.CanEnterAdmin(context.User.FindAll(ClaimTypes.Role).Select(c => c.Value))));
+            options.AddPolicy(AuthorizationPolicies.ApiDocs, policy => policy.RequireAuthenticatedUser().RequireRole(Roles.SuperAdmin, Roles.Developer));
         });
 
         AddRateLimits(services);

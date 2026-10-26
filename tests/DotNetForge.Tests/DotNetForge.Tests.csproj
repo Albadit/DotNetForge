@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\DotNetForge.Infrastructure\DotNetForge.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\DotNetForge.Extensions\DotNetForge.Extensions.csproj" />
     <ProjectReference Include="..\..\src\DotNetForge.PageBuilder\DotNetForge.PageBuilder.csproj" />
+    <ProjectReference Include="..\..\src\DotNetForge.Content\DotNetForge.Content.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,588 +2,314 @@
 
 ## Purpose
 
-The Content Manager is where editors build the site's **page tree**: create content pages, arrange them in a
-hierarchy, and edit each page's slug, type, SEO metadata, publishing flags and schedule. It is the only admin screen
-that changes content. Every admin-capable role (`Super Admin`, `Admin`, `Editor`, `Author`) can open it; what each
-role may change differs (see [Permissions](#permissions)). Rules for content pages are documented once in
-[content pages and routing](../features/content-pages-and-routing.md); this document describes the screen.
+The Content Manager is where editors manage **structured content**: the entries of the content types (blog
+posts, products, events, a site-settings single type...). Each type gets an entry list and an entry form generated
+from its fields, so nothing about a type is hard-coded. Content is kept apart from presentation: entries are shown on
+pages by **content lists** in the [page builder](page-builder.md), and pages themselves are managed on
+[Pages](pages.md). Types and their fields are defined on [Content types](content-types.md).
+
+Every role with `Entries` / `read` can open it (by default every admin-capable role except `Developer`); who may
+create, edit, publish and delete entries is decided by the `Entries` grants (see [Permissions](#permissions)). The rules - field types, validation, drafts and publishing, querying - are
+documented once in [structured content](../features/structured-content.md); this document describes the screens.
 
 ## Route / Navigation
 
 | Item | Value |
 | --- | --- |
-| Route | `GET /admin/content` |
-| Query parameter | `selected` (`Guid`, optional) - the content page shown in the editor |
-| Mutations | `POST /admin/content/create?parent={guid?}`, `POST /admin/content/update/{id:guid}`, `POST /admin/content/duplicate/{id:guid}`, `POST /admin/content/delete/{id:guid}`, `POST /admin/content/reorder` (JSON) |
-| Navigation entry | Sidebar → **Main** → **Content Manager** (`AdminNavigation.Tree`; active for any `/admin/content...` path) |
-| Breadcrumbs | **Main** › **Content Manager** |
-| Parent | Admin area (no parent screen) |
-| Child screens / tabs | the page editor's tabs **Page settings**, **SEO**, **Theme**, **Permissions**, **Layout** ([page editor](#page-editor)); the [page builder](page-builder.md) opens from the Layout tab |
-| Deep link | `/admin/content?selected=<pageId>`, a tab with `#page`, `#seo`, `#theme`, `#permissions` or `#layout` |
-| Linked from | [Dashboard](dashboard.md) (**Pages** card, **New page** quick action posts to `create`); the [public content page](public-page.md) alert ("Manage it in the Content Manager"); the [public home](public-home.md) empty state (**Open the Content Manager**) |
+| Overview | `GET /admin/content` - the content types as cards |
+| Entry list | `GET /admin/content/{type}` (`type` = the type's API id), query `q`, `status` (`draft` / `published` / `changed`), `sort` (`title`, `createdAt`, `updatedAt`, `publishedAt` or a field key), `desc` (`true`), `page` |
+| Entry form | `GET /admin/content/{type}/new`, `GET /admin/content/{type}/{id:guid}` |
+| Mutations | `POST /admin/content/{type}/new` and `POST /admin/content/{type}/{id}` (save, `intent` = `save` or `publish`), `POST .../{id}/publish`, `.../{id}/unpublish`, `.../{id}/duplicate`, `.../{id}/delete`, `POST /admin/content/{type}/delete-selected` (`ids`), `POST /admin/content/{type}/reorder` (JSON `{ ids }`) |
+| JSON for the form | `GET /admin/content/api/entries?type={typeId}&q=`, `GET /admin/content/api/media?kind=image|file&q=`, `POST /admin/content/api/media/upload` (multipart `file`) |
+| Old addresses | `GET /admin/content?selected={pageId}` and `GET /admin/content/{pageId}/builder` answer **301** to [Pages](pages.md) and its builder (the page tree lived here before) |
+| Navigation entry | Sidebar → **Main** → **Content Manager** (`AdminNavigation.Tree`, icon `database`; active for any `/admin/content...` path) |
+| Breadcrumbs | **Main** › **Content Manager** › *the screen title* |
+| Linked from | [Content types](content-types.md) (**Entries**, header **Content Manager**); an entry list's **Fields** goes the other way; the page builder's Data tab (**Manage …**) |
 
 ## Relevant source files
 
 ```text
-src/DotNetForge.Web/Areas/Admin/Controllers/ContentController.cs     actions, permission checks, tree building, ViewData["CanReorder"]
-src/DotNetForge.Web/Areas/Admin/Controllers/AdminControllerBase.cs   TenantId, CurrentUserId, Can(area, action), CanModify(area, any, own, createdById)
-src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs            ContentIndexViewModel, PageTreeNode, ReorderRequest, ReorderItem
-src/DotNetForge.Shared/Content/IPageService.cs   IPageService, PagePosition, PageInput (form model, PageInput.From)
-src/DotNetForge.Web/Services/PageService.cs                          ApplyAsync, ReorderAsync, DeleteAsync, Slugify, ToUtc
-src/DotNetForge.Shared/Auditing/IAuditService.cs IAuditService (implemented by src/DotNetForge.Web/Services/AuditService.cs)
-src/DotNetForge.Shared/Authorization/PermissionMatrix.cs   role defaults for the "Collection types" area
-src/DotNetForge.Web/Areas/Admin/Views/Content/Index.cshtml           header action form#treeActions, tree card (filter, empty state), editor column
-src/DotNetForge.Web/Areas/Admin/Views/Content/_TreeNodes.cshtml      recursive tree partial (open/close toggle, status dot, add-child and delete buttons, draggable when allowed)
-src/DotNetForge.Web/Areas/Admin/Views/Content/_PageForm.cshtml       document editor (General, SEO, Publishing, Delete page) + hidden form#deletePageForm
-src/DotNetForge.Web/wwwroot/js/forge/content.js                      conditional fields, publishing options with Published, tree filter, drag-and-drop reorder
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                           confirm dialog (data-confirm), toasts, data-js-only (loaded by _AdminLayout)
-src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                    toast region (TempData["Success"]) + confirm <dialog>
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                      .content-manager, .tree-card, .page-tree, .tree-row, .tree-action, .tree-toggle, .editor, .editor-aside
-src/DotNetForge.Shared/Entities/Content.cs       Page entity
+src/DotNetForge.Web/Areas/Admin/Controllers/ContentController.cs     overview, list, form, actions, permission checks, JSON for the pickers
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs            ContentManagerViewModel, EntryListViewModel (+ Url()), EntryRow, EntryEditViewModel, EntryFieldView
+src/DotNetForge.Web/Areas/Admin/Views/Content/Index.cshtml           overview: type cards, empty state, "How it fits together"
+src/DotNetForge.Web/Areas/Admin/Views/Content/List.cshtml            entry list: status filter, search, table, bulk bar, pagination
+src/DotNetForge.Web/Areas/Admin/Views/Content/Edit.cshtml            entry form: fields card, Status / More / Use it cards, hidden action forms
+src/DotNetForge.Web/Areas/Admin/Views/Content/_Field.cshtml          one field's control (recursive for groups and repeaters)
+src/DotNetForge.Web/Services/EntryForm.cs                            the posted form → entry values (f.path names, __rows markers)
+src/DotNetForge.Content/ContentEntryService.cs                       save, publish, unpublish, duplicate, delete, reorder (rules + audit)
+src/DotNetForge.Content/ContentQueryService.cs                       search, status, filters, sort, paging
+src/DotNetForge.Web/Services/ContentRenderService.cs                 ItemsAsync: list column text (same formatting as the site)
+src/DotNetForge.Web/wwwroot/js/forge/entries.js                      rich text editor, media and relationship pickers, repeaters, slugs, row drag, unsaved-changes guard
+src/DotNetForge.Web/wwwroot/css/forge/admin.css                      .type-grid, .type-card, .entry-*, .repeater*, .rte*, .media-picker*, .media-dialog*, .relation-*
 ```
-
-Components, toasts and the confirm dialog: [design system](../architecture/design-system.md#components),
-[feedback](../architecture/design-system.md#feedback).
 
 ## Page layout
 
 ```text
-Content Manager (_AdminLayout, h1 "Content Manager")
-├── Description "Build the page tree, then edit each page's details, SEO and publishing."
-├── Header action: [New page] (primary)                 form#treeActions (POST, antiforgery)
-└── .content-manager (tree 16-20rem | editor; one column below 64rem)
-    ├── aside.card.tree-card (sticky)
-    │   ├── header "Pages" + [Close all / Open all] (JS only, when a page has children) + badge <page count>
-    │   ├── filter "Filter pages" (search input, JS only, when pages exist)
-    │   └── body: page tree (_TreeNodes, recursive)  or empty state "No pages yet" [New page]
-    │       └── li.tree-item (draggable only with "update")
-    │           ├── status dot (Published / Disabled) + title + /slug   link to ?selected={id}
-    │           ├── [›/⌄] open/close (only with child pages, JS only; closed pages remembered in localStorage
-    │           │         `dnf-tree-collapsed`; the selected page's parents always open; filtering shows every match)
-    │           ├── [⋯] row actions (<action-menu>, shown on hover/focus):
-    │           │     ├── View on site - the page's public URL in a new tab (`PageTreeNode.ViewUrl`, built like the
-    │           │     │     site resolves URLs); a page not on the site (disabled, a disabled parent, a dynamic
-    │           │     │     `[param]` URL, under the home page) shows the reason (menu note) instead
-    │           │     ├── Add child page                  POST /admin/content/create?parent={id}
-    │           │     ├── Duplicate                       POST /admin/content/duplicate/{id} (see below)
-    │           │     └── Delete (danger; when the user may delete it: `Pages` / `delete`, or `delete.own` on their
-    │           │           own pages) → confirmation dialog → POST /admin/content/delete/{id}
-    │           └── children (nested _TreeNodes)
-    │       └── "No page matches the filter." (hidden note)
-    └── section "Page editor"
-        ├── (nothing selected) card with empty state "Select a page to edit"
-        └── _PageForm: form#pageForm.editor (novalidate)
-            ├── .editor-main
-            │   ├── <form-errors />                     also shows a refused delete
-            │   ├── card <Title> + status badge (Published / Disabled)
-            │   │   └── Title*, Slug* (+ hint), Page type ▾, Parent page ▾,
-            │   │       Target URL (URL redirect) / File reference (File), Sort order (+ hint)
-            │   └── card "SEO": Meta title, Meta description, Keywords, Canonical URL (all optional)
-            └── aside.editor-aside (sticky; below the main column under 80rem)
-                ├── card "Publishing": switch Published (off = disabled),
-                │   #publishOpts: switch Show in menu, Publish at (UTC), Unpublish at (UTC), hint
-                │   └── footer [Save changes]
-                └── card.card-danger "Delete page" - "Its child pages move up a level; they are not deleted."
-                    └── [Delete page]                   submits form#deletePageForm, data-confirm
-```
+Overview - Content Manager (h1), "Your structured content - blog posts, products, events - kept apart from the pages that show it."
+├── header: [Content types] (with Content types / create)
+├── no types:  card <empty-state "Start with a content type"> [New content type]  +  card "How it fits together"
+│              (1. Content type · 2. Entries · 3. Page builder · 4. Map fields · 5. Publish)
+└── types:     .type-grid of cards: icon, name (link), "<n> entries · <m> published" (or "Single entry"),
+               description, [Open] / [Edit] (single), [New entry] (collection, with create)
 
-Shown to every role: **New page**, the add-child buttons, **Save changes**, the publishing switches and **Delete
-page**; the server decides on submit (see [Permissions](#permissions)). Only drag-and-drop follows the role.
+Entry list - <type name> (h1), the type's description
+├── header: [Fields] (with Content types / read) [New entry] (with create)
+└── card "Entries" "<n> entries"   segmented: All | Published | Changed | Draft
+    ├── toolbar (GET form): [select all] Search <type> [Search] [Clear]   "Drag rows to set the order…" (when reorderable)
+    ├── bulk bar (overlays the toolbar when rows are checked): "<n> selected" [Clear] [Delete selected]
+    ├── table: [✓] Title ↕ | <show-in-list fields> ↕ | Status | Updated ↕ | ⋯
+    │          row ⋯: Edit/View, Duplicate, Publish / Publish changes, Unpublish, Delete
+    └── pagination: "Page x of y" [Previous] 1 2 3 [Next]
+
+Entry form - "New entry" / the entry's title / the type name (single) (h1)
+├── header: [All <type>] (collection) [New entry] (existing entry, with create)
+└── .editor
+    ├── main: <form-errors/>, card with the generated fields (.form-grid; half-width fields side by side)
+    └── aside: card "Status" (badge Draft | Changes not published | Published; Published / Updated by / Created;
+               [Publish] or [Publish changes] + [Save draft] - or [Save] for a type without drafts)
+               card "More" ([Unpublish] [Duplicate] [Delete])
+               card "Use it" (content list hint, GET /api/entries/<type>/<id>)
+```
 
 ## Components
 
-### Tree card (`Index.cshtml` + `_TreeNodes.cshtml`)
+### Type cards (`Index.cshtml`)
 
-- **Purpose:** show the whole tree for the active tenant and select a page.
-- **Inputs:** `ContentIndexViewModel.Tree` (`IReadOnlyList<PageTreeNode>`), `ViewData["SelectedId"]`,
-  `ViewData["CanReorder"]` (`Can("Collection types", "update")`, set in `ContentController.OnActionExecuted`).
-- **Rendering:** nodes ordered by `SortOrder` then `Title` (order of the query; children keep that order). The
-  header badge counts all pages. The selected row gets `.active` and its link `aria-current="page"`. The status dot is
-  `dot-success` "Published" when `Published`, else `dot-danger` "Disabled" (with an `sr-only` label; a page
-  still carrying the legacy `Disabled` flag counts as not published) - stored flags only, so a published page with a future schedule shows Published
-  even though it isn't live. `draggable` is `true` only with `CanReorder`: then the whole row drags (grab cursor; no separate handle - the title
-  link is `draggable="false"` so dragging it moves the row, not the link).
-- **Events:** clicking a title navigates to `?selected={id}`; **+** submits `#treeActions` to
-  `/admin/content/create?parent={id}`; typing in the filter hides rows (JS); dragging calls the reorder flow.
-- **Appears:** always. Every role sees every page of the tenant.
+- **Inputs:** `ContentManagerViewModel.Types` (`ContentTypesController.CardsAsync`: types ordered by `SortOrder`,
+  `Name`; entry and published counts from one query of `(ContentTypeId, Published)`), `CanManageTypes`
+  (`Content types` / `create`), `CanCreateEntries` (`Entries` / `create`).
+- A single type's card says "Single entry" and opens its entry.
 
-### Tree filter (`[data-tree-filter]`, `content.js`)
+### Entry list (`List.cshtml`)
 
-Shown only when there are pages and scripts run (`data-js-only`). Case-insensitive substring match on each item's
-`data-search` (title + slug); an item stays visible when it or any descendant matches, so the tree keeps its shape.
-When nothing matches, `[data-tree-empty]` shows "No page matches the filter.". Client-side only; nothing is posted.
+- **Query:** `ContentQueryService.QueryAsync` with the working copies (`Published = false`), 25 rows per page. Search
+  matches `ContentEntry.SearchText` (lower-cased title and short text values). Status: `draft` = never published,
+  `published` = no pending changes, `changed` = published with a newer working copy. Sort keys other than the built-in
+  columns must be a field of the type (else manual order).
+- **Columns:** the title, then up to four fields marked **Show in entry list** (the title field excluded); the cell text
+  is the same formatted text content lists show (numbers with their decimals, dates as `Oct 26, 2026`, option labels,
+  linked entries' titles - [item data](../features/structured-content.md#data-binding)).
+- **Sorting:** column headers are links (`th-sort`, `aria-sort`); clicking the sorted column again reverses it.
+- **Selection / bulk delete:** `data-collection` + `data-select-*` (`ui.js`); checkboxes only on rows the user may
+  delete; the bulk form posts `ids` to `delete-selected` with a confirm dialog.
+- **Reorder:** offered (`CanReorder`) only with `Entries` / `update`, the manual order, no search and no status filter.
+  Rows drag by the grip (`entries.js`), and the new order of the page's rows is posted as JSON; the moved rows keep the
+  positions they had, so other pages of the list are untouched. Toast "Order saved." or the error.
 
-### "New page" form (`form#treeActions`)
+### Entry form (`Edit.cshtml` + `_Field.cshtml`)
 
-One shared POST form with an antiforgery token in the page header (`@section Actions`). Its button posts to
-`/admin/content/create`; the empty state's **New page** uses `form="treeActions"` and its own `formaction`. The row
-menu's items are `<menu-post>` forms with their own antiforgery token, so every create, duplicate and delete stays
-POST + antiforgery.
+Every input is named `f.` + its field path (`f.title`, `f.specs.width`, `f.variants.3.name`); `EntryForm.Read` turns
+the post back into values, guided by the type's fields. Controls per [field type](../features/structured-content.md#field-types):
 
-**Duplicate** (`ContentController.Duplicate`, needs `create`; a user blocked from editing the page can't copy it):
-copies the page's settings, SEO, theme, page type and layout (published and draft) and its view/edit grants, titles
-it "<title> (copy)" with a short free slug among the siblings (`about-copy`, `about-copy-2`, ...; the root page
-copies as `home-copy`), places it right below the original (later siblings move down) and leaves it switched off.
-Child pages are not copied. Audit `content.created` with details "Duplicate of '<title>'"; toast, then the copy is
-selected.
-
-### Page editor
-
-`_PageForm.cshtml`, `form#pageForm`: one form in five tabs (`data-tabs`, `ui.js`). The tab is kept in the URL hash and
-in a hidden `tab` field, so saving returns to the same tab (`/admin/content?selected={id}#seo`). Without JavaScript the
-five panels are shown one below the other.
-
-| Tab | Fields |
+| Field type | Control |
 | --- | --- |
-| **Page settings** | Title, Slug, Page type, Parent page, Target URL / File reference (by type), Sort order |
-| **SEO** | a search result preview; Meta title, Meta description, Keywords, Canonical URL, Social image (`og:image`), **Hide from search engines** (`noindex`, left out of sitemaps) |
-| **Theme** | Site theme (default) or one installed theme extension for this page; not enabled themes are marked and fall back to the site theme |
-| **Permissions** | a role table: **View** (no box = everyone; else only those roles - `Public` = everyone, `Authenticated` = any signed-in user) and **Edit** (extra roles that may edit this page; not for `Public` / `Authenticated`); a **Users** table: per user View and Edit = *Not set* / *Allow* / *Block* (a block wins over the user's roles), added with the last row's user picker, removed with the bin button (JS) or by setting both to *Not set*. Super Admins (the role and its users) are not listed - they always have full access. Read-only without `update` on every page. Rules: [page permissions](../features/content-pages-and-routing.md#page-permissions) |
-| **Layout** | the layout's status (none / draft / published, unpublished changes), **Open page builder** ([page builder](page-builder.md)), **Preview draft** |
+| Text, Email, URL, Slug | `input` (`maxlength` from the field); a slug with **Generate from** fills itself from that field while it is empty or still generated (`data-slug-from`) |
+| Long text | `textarea` |
+| Rich text | toolbar (Paragraph, Heading, Subheading, Bold, Italic, Underline, Link, lists, Quote, Clear formatting) over an editable area; the hidden textarea posts the blocks as JSON. Pasting inserts plain text. Without JavaScript: a plain textarea (blank lines separate paragraphs) |
+| Number | `input type=number` (`step` 1 for whole numbers, `min`/`max`) |
+| Yes / no | switch (checkbox before its hidden `false`) |
+| Date | `input type=date`, or `datetime-local` (UTC) with a time |
+| Select | `select` with **Choose…**; with **Allow several**: checkboxes |
+| Image, File | a native `select` of the newest 100 files (+ the chosen ones), turned into thumbnails with **Choose an image / Choose a file / Add images / Replace**: a dialog with search, **Upload** (with `Media` / `create`) and a grid (several: toggle and **Use selected**) |
+| Relationship | a native `select` of the first 100 entries of the linked type by title (+ the chosen ones; drafts marked "(draft)"), turned into chips and a search box (`api/entries`, 200 ms debounce, Enter picks the first) |
+| Array | `textarea`, one value per line |
+| Group | a `fieldset` with the nested fields |
+| Repeater | numbered rows with move up / down / remove, **Add <label> row** (from a `<template>` whose paths say `__index__`); `f.<path>.__rows` is always posted so removing every row clears the field |
 
-The publishing card (Published, Show in menu, schedule, **Save changes**) and the delete card stay beside
-every tab; **Save changes** saves all tabs at once.
-
-- **Purpose:** edit every editable field of the selected page.
-- **Inputs:** `PageInput` (model), `ViewData["Extras"]` (`PageEditorExtras`: roles and grants, installed themes,
-  layout status), `ViewData["SelectedId"]` (posted to `update/{id}`),
-  `ViewData["ParentOptions"]` (every page in the tenant except the selected one, labelled `Title (/slug)`; first option
-  "None (top level)").
-- **Output:** `POST /admin/content/update/{id}` bound to `PageInput`, plus `viewRoles` / `editRoles` (role ids),
-  `userPermissions[i].UserId` / `.View` / `.Edit` (`allow`, `block` or empty), `permissionsShown` (only when the
-  Permissions tab is editable) and `tab` (**Save changes**).
-- **Header:** the card title is the page title ("Untitled page" when empty) with a status badge (Published /
-  Disabled, same rule as the tree dot).
-- **Conditional UI (`content.js`):** fields with `data-when-type` show only when **Page type** matches
-  (`UrlRedirect` → Target URL, `File` → File reference); `#publishOpts` (Show in menu + schedule) shows only while
-  **Published** is on. Without JavaScript every field is visible.
-- **Appears:** only when `Model.Selected` is not null (a valid `selected` id, a failed save or a refused delete).
-
-### Delete page card + `form#deletePageForm`
-
-The **Delete page** button sits inside the editor but submits a separate, hidden POST form (`form="deletePageForm"`,
-`/admin/content/delete/{id}`, own antiforgery token), so deleting never posts the edited fields. The button carries
-`data-confirm="Delete this page? Its child pages move up a level."`, `data-confirm-title="Delete page"` and
-`data-confirm-action="Delete page"`: `ui.js` opens the shared confirm dialog (title **Delete page**, buttons **Cancel**
-/ **Delete page**) and submits only on confirm; without the dialog API it falls back to `window.confirm`, without JS the
-form submits directly ([feedback](../architecture/design-system.md#feedback)). No inline `onsubmit` (CSP).
+Errors are shown at the top (`<form-errors />`) and under each field whose path matches (`.has-error`). The form is
+`novalidate`; leaving it with changes asks first (`beforeunload`).
 
 ## Functionality
 
-### Select a page
-
-1. Click a title in the tree (`<a href="/admin/content?selected={id}">`).
-2. `Index(selected)` → `BuildIndexAsync(selected, form: null)` loads all tenant pages, maps the selected page with
-   `PageInput.From`. An unknown or foreign id simply shows the "Select a page to edit" state (no error). Any
-   admin-capable role can open any page's editor; the permission check happens on **Save changes** / **Delete page**.
-
-### Create a page
-
-1. **Trigger:** **New page** (header, empty state or the Dashboard quick action - root) or a row's **+** (child).
-2. **Permission:** `create` in `Collection types` (every built-in admin-capable role) - else `Forbid()` →
-   `/account/denied`.
-3. **Validation:** antiforgery; when `parent` is given it must be a page of the tenant, else `404`.
-4. **Call:** `ContentController.Create(Guid? parent)`.
-5. **Data:** new `Page { TenantId, CreatedById = current user, Title = "Untitled page", Slug = "new-page" (or "new-page-2", "-3", ... - the first free one among the siblings),
-   Published = false, PageType = Standard, ParentPageId = parent, SortOrder = <sibling count> }`.
-   The suffix is the first 8 hex characters of a new GUID.
-6. **Backend:** `SaveChangesAsync`, then audit `content.created`.
-7. **Result / UI:** redirect to `?selected={newId}`; the new page is selected in the editor (no toast).
-8. **Errors:** a slug collision with the random suffix is theoretically possible (unique index → global error page).
-
-### Save page settings
+### Save (and publish)
 
 ```mermaid
 sequenceDiagram
-    actor U as Editor or Author
-    participant F as _PageForm
-    participant C as ContentController.Update
-    participant P as IPageService.ApplyAsync
-    participant DB as DotNetForgeDbContext
-    participant A as IAuditService
-    U->>F: Save changes
-    F->>C: POST /admin/content/update/{id} (PageInput)
-    C->>DB: Page by id + TenantId
-    alt not found
-        C-->>U: 404
-    else no "update", and not own page with "update.own"
-        C-->>U: 302 /account/denied
-    else Published or schedule changed without "publish"
-        C-->>U: Index view + "You don't have permission to publish, unpublish or schedule pages."
-    else permitted
-        C->>P: ApplyAsync(page, form, TenantId)
-        alt error message
-            C-->>U: Index view re-rendered, error in <form-errors />, unsaved input kept
-        else ok
-            C->>DB: UpdatedDate = UtcNow, SaveChanges
-            C->>A: content.updated
-            C-->>U: 302 ?selected={id}, toast "Saved '<title>'."
-        end
+    actor U as Editor
+    participant F as Entry form
+    participant C as ContentController.Save
+    participant S as ContentEntryService.SaveAsync
+    participant DB as Database
+    U->>F: Save draft / Publish / Save
+    F->>C: POST /admin/content/{type}/{id|new} (f.*, intent, baseVersion)
+    C->>C: may create / update (own) / publish?
+    C->>S: EntryForm.Read → SaveAsync(type, entry, input, publish, baseVersion)
+    S->>DB: media + linked entries lookup, unique values in ContentEntryValues
+    alt stale version
+        S-->>C: Conflict
+        C-->>U: form with the posted values + "Someone else saved this entry…" (next save overwrites)
+    else invalid
+        S-->>C: errors by path
+        C-->>U: form with errors
+    else ok
+        S->>DB: DataJson (+ PublishedDataJson), title, search text, index rows; audit entry.created/updated (+ entry.published)
+        C-->>U: 302 /admin/content/{type}/{id}, toast "Published '…'." / "Saved a draft of '…'."
     end
 ```
 
-1. **Trigger:** **Save changes**.
-2. **Permission:** `update`, or `update.own` when `page.CreatedById` is the current user, else `Forbid()`. If the
-   posted `Published`, `ScheduledPublishDate` or `ScheduledUnpublishDate` differs from the stored value (dates
-   compared after `PageService.ToUtc`), `publish` is also required (`ContentController.ChangesPublishing`).
-3. **Validation:** all rules of [`ApplyAsync`](../features/content-pages-and-routing.md#applyasync---save-and-create)
-   (title, field lengths, slug, type, parent exists/no cycle, unique slug per parent, one dynamic segment per parent,
-   schedule order, redirect/file requirements). The form is `novalidate`, so the browser does not block a submit.
-4. **Service:** `IPageService.ApplyAsync` (implemented by `PageService`).
-5. **Data:** every `PageInput` field; slug normalized by `Slugify`; schedule dates treated as UTC.
-6. **Backend:** `UpdatedDate` set, one save; audit entry in a second save.
-7. **Result:** redirect with `TempData["Success"]` = `Saved '<title>'.`, shown as a success toast by the layout.
-8. **Errors:** validation or missing publish permission → same screen with the message in `<form-errors />` and the
-   posted input; missing page → 404; no edit permission → `/account/denied`; DB exceptions → global error page.
+1. **Trigger:** **Save draft** (`intent=save`), **Publish** / **Publish changes** (`intent=publish`), or **Save** for a
+   type without drafts (always publishes).
+2. **Permission:** new entry `create`; existing `update`, or `update.own` on an entry the user created; publishing
+   `publish` - without it a draft type shows "You don't have permission to publish entries. Save a draft instead."
+   and a no-drafts type answers 403.
+3. **Validation:** [entry validation](../features/structured-content.md#validation) - formats and limits always,
+   required fields, minimum lengths and row counts only when publishing; unique fields against every other entry.
+4. **Conflict:** the form posts the `baseVersion` it loaded; a newer save in between re-renders the posted values with
+   the message and a hidden `force=true`, so saving again overwrites.
 
-### Delete a page
+### Publish / Unpublish (row menu, **More** card)
 
-1. **Trigger:** **Delete page** → confirm dialog (`data-confirm` on the button, `ui.js`) → submits
-   `form#deletePageForm`.
-2. **Validation:** page must exist in the tenant (else 404); `delete`, or `delete.own` on an own page (else
-   `Forbid()` → `/account/denied`); `IPageService.DeleteAsync` refuses when re-parenting the children would put two
-   equal slugs or two `[...]` pages under the new parent.
-3. **Call:** `ContentController.Delete(id)` → `IPageService.DeleteAsync(page)`.
-4. **Backend:** all direct children get `ParentPageId = <deleted page's parent>` and a new `UpdatedDate`; the page
-   is removed; one save; audit `content.deleted`.
-5. **Result:** redirect to `/admin/content` (nothing selected), success toast `Deleted '<title>'.`.
-6. **Errors:** a clash re-renders the screen (status 200) with the page still selected and
-   `Can't delete: its child pages would move up a level and clash. <conflict>` in the editor's `<form-errors />`;
-   nothing is deleted. Rules: [`DeleteAsync`](../features/content-pages-and-routing.md#deleteasync---delete).
+`POST …/{id}/publish` validates the saved values as a publish (`TempData["Error"]` "Can't publish yet: …" lists up to
+three problems); `…/unpublish` (confirm, accent) clears the published values - the entry leaves the site and the API,
+its working copy stays. Both need `publish`; `returnTo=list` returns to the list. Audit `entry.published` /
+`entry.unpublished`.
 
-### Reorder / re-parent by drag and drop
+### Duplicate
 
-```mermaid
-flowchart LR
-    D["dragstart on li.tree-item[draggable=true]"] --> O["dragover: highlight .tree-row (not inside dragged)"]
-    O --> Drop["drop on a row: insert dragged li BEFORE target li (same list as target)"]
-    Drop --> W["persist(): walk every .tree-card ul.page-tree → {id, parentPageId, sortOrder=index}"]
-    W --> F["fetch POST /admin/content/reorder<br/>JSON {items}, header X-CSRF-TOKEN"]
-    F --> C["ContentController.Reorder: needs 'update'<br/>IPageService.ReorderAsync validates the tree"]
-    C -- "ok: SaveChanges + audit content.reordered" --> R["200 {ok: true} → window.location.reload()"]
-    C -- "rule violated" --> E["400 {error} → danger toast (error) → reload after 1.5 s"]
-    C -- "no 'update' permission" --> X["302 /account/denied (403) → toast 'Could not save the new order.' → reload"]
-    F -- "network failure" --> N["toast 'Could not save the new order.' → reload"]
-```
+Needs `create` (not for single types). An unpublished copy right below the original: title + " (copy)", slugs get
+`-copy` (`-copy-2`...), other unique values are emptied. Audit `entry.created` "Duplicate of '…'". Opens the copy.
 
-- Only users with `update` get draggable rows (`ViewData["CanReorder"]`); the POST checks again.
-- A drop always makes the dragged page the **previous sibling** of the target; you cannot drop *into* a page that
-  has no children, or after the last sibling. Use the **Parent page** dropdown / **Sort order** for those cases.
-- Drops on itself or inside its own subtree are ignored client-side.
-- The client posts the position of **every** page in the tree (also rows hidden by the filter). `ReorderAsync`
-  checks that every id and parent belongs to the tenant, that no move creates a cycle, and that no parent ends up with
-  duplicate slugs or a second `[...]` page ([rules](../features/content-pages-and-routing.md#reorderasync---drag-and-drop));
-  only pages whose parent or sort order changed get a new `UpdatedDate`.
-- Success writes one audit entry `content.reordered` (entity type `Page`, display `<n> page(s)` = number of posted
-  positions) and reloads without a toast.
-- On failure `content.js` calls `window.Forge.toast(message, "danger")` with the server's `error` text (e.g.
-  `That move would create a cycle in the page tree.`) or `Could not save the new order.`, then reloads after 1.5 s,
-  so the tree returns to its stored order. The reload keeps the URL, so the selected page stays open.
+### Delete / Delete selected
+
+`delete`, or `delete.own` on own entries; single-type entries can't be deleted. Confirm dialog, then the entry and its
+index rows are removed; audit `entry.deleted`. Bulk: every selected entry must be deletable by the user, otherwise 403
+and nothing is deleted. Pages that showed the entries simply stop showing them.
+
+### Single types
+
+`GET /admin/content/{type}` of a single type redirects to its one entry, or to `/new` when it has none yet (the first
+save creates it; a GET never writes). A second "new" form of a single type edits the existing entry instead.
 
 ## Data used by the page
 
 | Data | Origin |
 | --- | --- |
-| `Page` rows of the active tenant | `DotNetForgeDbContext.Pages` (`AsNoTracking`, ordered by `SortOrder`, `Title`) |
-| `ContentIndexViewModel { Tree, Selected, SelectedId, ParentOptions }` | built by `BuildIndexAsync` |
-| `PageInput` | `PageInput.From(page)` on GET and after a refused delete; the posted model after a failed save |
-| `ViewData["CanReorder"]` | `Can("Collection types", "update")` in `OnActionExecuted` |
-| Active tenant / user | `AdminControllerBase.TenantId`, `CurrentUserId` (claims) |
-| Permissions | `AdminControllerBase.Can` / `CanModify` → `IPermissionService.HasAny(role claims, "Collection types", action)` |
-| Antiforgery token | hidden fields from `@Html.AntiForgeryToken()`; `content.js` reads the first `__RequestVerificationToken` input |
+| Content types | all `ContentTypes` |
+| Entries | `ContentEntries` (working copy `DataJson`), filtered and ordered via `ContentEntryValues` |
+| Picker options | first 100 entries per linked type, newest 100 media files (private ones included - admins may use them) |
+| Updated by | `Users.Email` of `UpdatedById` |
 
 ## State
 
 | State | Kind | Changes when |
 | --- | --- | --- |
-| Selected page | URL `?selected=` | clicking a title, after create/update |
-| Unsaved form input | DOM; posted model on validation failure | typing; failed save re-renders it |
-| Conditional field visibility | DOM (`content.js`) | changing Page type / Published |
-| Tree filter | DOM (`hidden` on items), not persisted | typing in **Filter pages**; reset on reload |
-| Drag state | JS variable `dragged`, CSS `.dragging`, `.drop-target` | during a drag |
-| Toast | `TempData["Success"]` (layout) or `Forge.toast` (reorder failure) | after save/delete; on a failed reorder |
-| Error state | `ModelState` → `<form-errors />` | failed save, refused delete |
-| Persisted tree | database | create, save, delete, reorder; scheduler |
-
-No global client state.
+| Search, status, sort, page | URL query | toolbar, segmented filter, column headers, pagination |
+| Unsaved form input | DOM; posted values on a failed save | typing |
+| Rich text | DOM + hidden JSON textarea | editing |
+| Selection / bulk bar | DOM (`ui.js`) | checking rows |
+| Entries | database | save, publish, unpublish, duplicate, delete, reorder |
 
 ## Permissions
 
-Opening the screen needs the `AdminArea` policy (inherited from `AdminControllerBase`). Each mutation then checks the
-user's roles against the permission area **`Collection types`** through `IPermissionService` (the roles' stored
-grants). A role with a page **edit** grant may also save that page. Full rules:
-[content pages and routing → Permissions](../features/content-pages-and-routing.md#permissions).
+The screens need the `AdminArea` policy (`AdminControllerBase`) and `[RequirePermission(Entries, read)]` on
+`ContentController` - every route, the overview and the old `/admin/content?selected=` / `/admin/content/{id}/builder`
+redirects included. Without it (the built-in `Developer`, or a custom role without `Entries` / `read`) a user gets
+[Access denied](access-denied.md) and no **Content Manager** link in the sidebar. Then the area **`Entries`**
+("Content Manager" on the Roles screen; [authorization](../features/authorization.md)):
 
-| Action | Needs | `Super Admin`, `Admin`, `Editor` | `Author` | Refused with |
-| --- | --- | :-: | :-: | --- |
-| View tree and editor | `AdminArea` | ✔ | ✔ | sign-in / [denied](access-denied.md) |
-| Create a page | `create` | ✔ | ✔ | `Forbid()` → `/account/denied` |
-| Save a page | `update`, or `update.own` on a page with `CreatedById` = self, or a page edit grant; never when the user is blocked from editing the page | ✔ | own pages only | `Forbid()` → `/account/denied` |
-| Change the page's permissions | `update` (every page) | ✔ | ✘ (tab read-only) | ignored |
-| Change Published / schedule dates | additionally `publish` | ✔ | ✘ | form error `You don't have permission to publish, unpublish or schedule pages.` |
-| Delete a page | `delete`, or `delete.own` on an own page | ✔ | own pages only | `Forbid()` → `/account/denied` |
-| Reorder (drag-and-drop) | `update` | ✔ | ✘ (rows not draggable) | `Forbid()` → `/account/denied` (the script shows its generic toast) |
+| Action | Needs | Admin, Editor | Author |
+| --- | --- | :-: | :-: |
+| Overview | `read` | ✔ | ✔ |
+| List, open an entry | `read` | ✔ | ✔ |
+| New entry, duplicate | `create` | ✔ | ✔ |
+| Save | `update`, or `update.own` on own entries | ✔ | own |
+| Publish, unpublish, save a no-drafts type | `publish` | ✔ | ✘ |
+| Delete | `delete`, or `delete.own` on own entries | ✔ | own |
+| Reorder | `update` | ✔ | ✘ |
+| Upload from a picker | `Media` / `create` | ✔ | ✔ |
 
-Seeded pages have no `CreatedById`, so Authors cannot edit or delete them. Authors may save their own pages but not
-switch **Published**. Covered by
-`SecurityTests.Authors_cannot_delete_or_publish_pages_they_did_not_create`.
-See [authorization](../features/authorization.md).
+A user who may read but not save sees the form read-only ("View only"). Refusals are `Forbid()` → `/account/denied`.
 
 ## Validation
 
-- Server: `IPageService.ApplyAsync` on **Save changes** (including length limits - Title 300, Slug 200, Meta title
-  300, Meta description 1000, Keywords 500, Canonical URL / Target URL / File reference 2000 - checked before saving,
-  so PostgreSQL never rejects an over-long value); `IPageService.ReorderAsync` on reorder; `IPageService.DeleteAsync`
-  on delete; parent existence on create.
-- Browser: `form#pageForm` is `novalidate`, so `required` (Title), `type="url"` (Target URL, Canonical URL) and
-  `min="0"` (Sort order) do not block a submit; `maxlength="300"` on Title still limits typing; `type="number"` and
-  `datetime-local` shape the inputs.
-- Duplicate prevention: slug uniqueness per (tenant, parent) in `PageService` + the DB unique index.
+All on the server (`EntryData`, `ContentEntryService`); messages name the field ("Price: must be at least 0.",
+"Title is required.", "SKU: another entry already uses this value; it must be unique."). The browser only shapes inputs
+(`type`, `maxlength`, `step`).
 
 ## Error handling
 
-| Failure | Detection | User sees | Recovery |
-| --- | --- | --- | --- |
-| Rule violation on save | `ApplyAsync` returns message | message in `<form-errors />` (danger alert), input preserved | fix and save again |
-| Publishing change without `publish` | `ChangesPublishing` + `Can(..., "publish")` | `You don't have permission to publish, unpublish or schedule pages.` in `<form-errors />` | leave Published and the schedule unchanged, or ask an Editor |
-| No permission for the action | `Can` / `CanModify` false | `302 /account/denied` ([Access denied](access-denied.md), 403) | go back |
-| Delete would clash slugs | `DeleteAsync` returns message | `Can't delete: its child pages would move up a level and clash. ...` in `<form-errors />` | rename or move the children first |
-| Page or parent id not in tenant | `FirstOrDefaultAsync` / `AnyAsync` | empty 404 | go back |
-| Reorder rule violation | `ReorderAsync` returns message → `400 { error }` | danger toast with the server message, reload after 1.5 s | drop elsewhere, or use the Parent page dropdown |
-| Reorder forbidden (or another non-JSON failure) | `fetch` not ok, body not JSON | danger toast `Could not save the new order.`, reload | - |
-| Reorder network failure | `fetch` rejected | danger toast `Could not save the new order.`, reload | - |
-| Unique-index violation (random create slug, concurrent edits) | `DbUpdateException` | [error page](error.md) (prod) / exception page (dev) | reload |
+| Failure | What the user sees | Recovery |
+| --- | --- | --- |
+| Invalid values | form with `<form-errors />` and errors under the fields, input kept | fix, save again |
+| Saved by someone else meanwhile | "Someone else saved this entry while you were editing it…" | save again to overwrite, or reload |
+| Publish refused (row menu) | danger toast "Can't publish yet: …" | open the entry, fill in what is missing |
+| No permission | `/account/denied` (403) | - |
+| Unknown type or entry | 404 | - |
+| Upload or lookup failure | danger toast with the server's message | - |
 
 ## Loading behaviour
 
-Everything is rendered server-side in one response (tree + editor). The reorder POST runs asynchronously with no
-progress indicator, then reloads the whole page. No skeletons, no disabled buttons during submit.
+Server-rendered; the pickers and the media dialog load JSON on demand ("Loading…"); the reorder posts in the background.
 
 ## Empty states
 
-- No pages: tree card shows **No pages yet** - "Create the first page of your site." with a **New page** button (a
-  fresh install has six seeded pages).
-- No selection: editor column shows **Select a page to edit** - "Choose a page in the tree, or create a new one. Drag
-  pages to reorder or move them."
-- Filter without match: "No page matches the filter."
-- No parent options (only one page): the Parent page dropdown contains only "None (top level)".
+- No types: "Start with a content type" - "Describe what you publish - a product has a name, a price and pictures - and
+  the Content Manager builds the forms. Then show it on any page with a content list." (without the right: "Ask an
+  administrator to create a content type.")
+- No entries: "No entries yet. Create the first one"; no match: "No entry matches. Show all entries".
+- A type without fields: "This content type has no fields yet. Add fields first."
+- Relationship picker: "Nothing linked yet."; media dialog: "No files match. Upload one, or add files on the Media
+  screen."
 
 ## User interactions
 
-| Interaction | Effect |
-| --- | --- |
-| Click a page title | select (navigates) |
-| Click **New page** / row **+** (tooltip "Add child page") | create root/child page (POST) |
-| Type in **Filter pages** | hide non-matching rows (ancestors of matches stay) |
-| Drag a row by any part of the item (handle is visual; only with `update`) | reorder/re-parent, then reload |
-| Change **Page type** | show Target URL / File reference |
-| Toggle **Published** | on: published; off: disabled. Publishing options shown only when Published |
-| **Save changes** | validate + save |
-| **Delete page** | confirm dialog (Escape or **Cancel** aborts), then delete; without JavaScript the form submits without confirmation |
-
-Keyboard: native links, buttons, switches and the dialog; drag-and-drop has no keyboard equivalent (use **Parent
-page** / **Sort order**). The add-child and delete buttons appear on hover or focus (always on touch devices).
+Links and form posts; drag rows (list) and repeater rows' move buttons; confirm dialogs for delete and unpublish;
+keyboard: Enter in the relationship search picks the first match, Esc closes it and the media dialog.
 
 ## Dependencies
 
 ```text
 ContentController
-├── DotNetForgeDbContext
-├── IPageService → PageService
-│   └── DotNetForgeDbContext
-├── IAuditService → AuditService
-│   ├── DotNetForgeDbContext
-│   └── IHttpContextAccessor
-└── AdminControllerBase (TenantId, CurrentUserId, AdminArea policy, Can/CanModify → IPermissionService → PermissionMatrix)
-content.js (no server dependency besides /admin/content/reorder; window.Forge.toast from ui.js)
-ui.js (confirm dialog for data-confirm, toasts, data-js-only)
+├── ContentTypeService, ContentEntryService, ContentQueryService   (DotNetForge.Content)
+├── ContentRenderService.ItemsAsync                                 (list column text)
+├── MediaService                                                    (upload)
+├── EntryForm                                                       (form → values)
+└── AdminControllerBase (CurrentUserId, Can / CanModify)
+entries.js (api/entries, api/media, api/media/upload, {type}/reorder; window.Forge.toast / confirm from ui.js)
 ```
 
 ## Page flow
 
 ```mermaid
 flowchart TD
-    A[Open /admin/content] --> B[Load tenant pages, build tree]
-    B --> C{"selected id valid?"}
-    C -- no --> D["Tree + 'Select a page to edit'"]
-    C -- yes --> E[Tree + document editor]
-    D --> F{User action}
-    E --> F
-    F -- "click title" --> A
-    F -- "New page / +" --> G{"create permission, parent in tenant?"}
-    G -- yes --> H["POST create, 302 ?selected=new"] --> A
-    G -- no --> Z["/account/denied or 404"]
-    F -- "Save changes" --> I{"may edit this page?"}
-    I -- no --> Z
-    I -- yes --> J{"publish allowed and ApplyAsync ok?"}
-    J -- no --> E2["Editor with form-errors"] --> F
-    J -- yes --> K["302 ?selected=id + toast"] --> A
-    F -- "Delete page + confirm dialog" --> L{"may delete, DeleteAsync ok?"}
-    L -- "no permission" --> Z
-    L -- clash --> E2
-    L -- yes --> M["re-parent children, 302 /admin/content + toast"] --> A
-    F -- "drag/drop (update only)" --> N[fetch reorder] --> O{"200?"}
-    O -- yes --> P[reload] --> A
-    O -- "400 / denied / network" --> Q["danger toast (server message or generic), reload"] --> A
+    A["/admin/content"] -- type card --> B{"single type?"}
+    B -- yes --> E["/admin/content/{type}/{id}"]
+    B -- no --> L["/admin/content/{type}"]
+    L -- "New entry" --> N["/admin/content/{type}/new"]
+    L -- "row / Edit" --> E
+    N -- "Save draft / Publish" --> V{"valid, allowed?"}
+    E -- "Save draft / Publish" --> V
+    V -- no --> E2["same form + errors"]
+    V -- yes --> E
+    E -- "Duplicate" --> E
+    E -- "Delete" --> L
 ```
 
 ## Related pages
 
-- Navigates to: itself; [Access denied](access-denied.md) when a permission check fails.
-- Receives navigation from: sidebar; [Dashboard](dashboard.md); [public content page](public-page.md) alert link;
-  [public home](public-home.md) empty state.
-- Shares functionality with: [public home](public-home.md) and [public content page](public-page.md) (they render
-  what this screen edits); `POST /api/content/pages` ([headless API](../features/headless-api.md)) also creates pages
-  and applies the same `IPageService.ApplyAsync` rules; the [Dashboard](dashboard.md) counts pages and offers **New
-  page**; [Audit Logs](audit-logs.md) lists the `content.*` entries.
+[Content types](content-types.md) (fields), [Pages](pages.md) and the [page builder](page-builder.md) (where entries
+are shown), [Media](media.md) (files the pickers offer), [API Tokens](api-tokens.md) (reading entries over the
+[headless API](../features/headless-api.md)), [Audit Logs](audit-logs.md) (`entry.*`).
 
 ## Important implementation details
 
-- **Published ≠ live.** **Published** is the page's one switch (off = disabled); visibility is computed per request
-  (schedule window). New pages start disabled. A page saved with the old, removed **Disabled** switch stays hidden and
-  shows as disabled; saving it clears that flag (`PageService.ApplyAsync`).
-- `IPageService` methods validate and mutate tracked entities but never save; `ContentController` saves, then audits
-  through `IAuditService` (a second save).
-- `BuildIndexAsync` loads **all** pages of the tenant on every render (tree + parent options); fine for small trees.
-- On a failed save, `Selected` is the posted model but the tree is reloaded from the DB. On a refused delete the
-  editor shows the stored page.
-- The parent dropdown excludes only the page itself; choosing a descendant is caught by the cycle check on save.
-- Schedule inputs are formatted `yyyy-MM-ddTHH:mm`; seconds are dropped on the next save.
-- `ScheduledPublishingService` may clear schedule dates or uncheck Published between two views of this screen. For a
-  user without `publish`, the stale form then counts as a publishing change and the save is refused; reload first.
-- Antiforgery for the `fetch` uses the `X-CSRF-TOKEN` header name configured in `DependencyRegistration`.
-- `Create` uses `formaction` on buttons so one form (`#treeActions`, in the page header) serves every add button.
-- The delete button lives inside `form#pageForm` but belongs to `form#deletePageForm` (`form` attribute) - nested
-  forms are invalid HTML, and the delete must not carry the edited fields.
-- `ViewData["CanReorder"]` is set in `OnActionExecuted`, so it is present for every view the controller returns
-  (also the re-rendered Index after a failed save or delete).
-- The screen carries no inline script or style; behaviour comes from `content.js` (`@section Scripts`) and `ui.js`
-  (CSP `script-src 'self'`, see [security](../features/security.md)). `AdminUiTests` renders the screen with and
-  without `?selected=` and checks for inline script/style.
+- An entry has a working copy (`DataJson`) and published values (`PublishedDataJson`); the list and the form show the
+  working copy, the site and the API the published values.
+- New entries are created on their first save, not when **New entry** opens (no empty drafts).
+- Changing a type's fields rewrites every entry (renamed keys keep their values) - see
+  [Content types](content-types.md).
+- The bool `desc` binds only `true`/`false`, so links carry `desc=true`.
 
 ## Known limitations
 
-- No content history, review, tags or collection/single types (see [Planned](#planned-not-implemented)); the page
-  builder has no version history yet ([page builder → Planned](../features/page-builder.md#planned-not-implemented)).
-- Drag-and-drop can only insert before an existing sibling; no "drop into" or "drop at end"; no keyboard reordering.
-- Only drag-and-drop is hidden by permission: an Author still sees **Save changes**, **Delete page** and the
-  **Published** switch on every page and learns about a restriction only on submit.
-- Authors cannot edit seeded pages or pages created through the API (no `CreatedById`).
-- A forbidden reorder (possible only if the role changed after the page loaded) shows the generic toast, not a
-  permission message (the `fetch` follows the redirect to the 403 denied page).
-- The whole tree is always expanded (no collapse); the filter is client-side and not kept across reloads.
-- The status dot and badge reflect stored flags, not liveness.
-- `PageType` values other than `Standard` are stored but have no public effect.
-
-## Planned (not implemented)
-
-Target behaviour from the original product specification. Nothing in this section exists in the code unless marked ✔.
-
-The content model, rules, role defaults and the full acceptance criteria are in
-[content pages and routing → Planned](../features/content-pages-and-routing.md#planned-not-implemented); this
-section covers only the screen.
-
-### Requirements
-
-| Area | Target UI |
-| --- | --- |
-| Navigation | the screen lists the active tenant's collection types, single types and the page tree (✔ page tree only) |
-| Collection entries | per type: list with search and filters (status, tags); create, edit, duplicate, delete, reorder entries (✔ for pages: client-side title/slug filter of the tree, reorder) |
-| Single type | one form for its only entry |
-| Type schemas | Admins create/edit collection and single types and their fields |
-| Page form | adds a target-page picker (`ExistingPage`), a File Manager asset picker for `FileReference` ([media storage](../features/media-storage.md)), tags (create-on-type, autocomplete), view roles and view users, theme, layout and layout settings ([themes](../features/themes.md#planned-not-implemented)) |
-| Save actions | **Save draft**, **Publish** (when allowed), **Submit for review**, **Preview** |
-| Page builder | a builder mode for Standard pages: place built-in modules, the Razor module and extension modules, configure each |
-| History | per page/entry: version list with author and time, pick two to compare side by side, **Restore** |
-| Review Content | reviewer queue of assigned items with draft and diff; **Approve & publish**, **Reject with comments**, **Request revision** |
-| Tags | manage the vocabulary: rename, merge, delete |
-| Warnings | broken file/media reference, `ExistingPage` pointing at a deleted page, page slug shadowed by or shadowing a dynamic route, dynamic route with a missing target |
-| Actions per role | buttons follow the role defaults ([content role defaults](../features/content-pages-and-routing.md#role-defaults-for-content)) (✔ enforced on the server for create, save, publish, delete and reorder; ✔ drag-and-drop offered only with `update`; other buttons are not hidden) |
-
-The sidebar already has a **Content History** placeholder at `/admin/content-history` (✔ placeholder only,
-[module placeholders](module-placeholders.md)).
-
-### User flows
-
-**Create a page (target).** Today **New page** creates an `Untitled page` immediately; the target is a guided
-create:
-
-1. **Add page**, optionally on a parent node.
-2. Choose the page type (Standard, Existing page, URL redirect, File).
-3. Enter slug, title, SEO fields; slug format and uniqueness are validated.
-4. Set display in menu, sort order, schedule, theme/layout and per-page permissions.
-5. URL redirect → target URL; File → file reference; Existing page → target page.
-6. **Save draft**.
-
-**Create a collection entry.** Select a collection type → **Create entry** → the type's fields render → fill
-required fields, attach media, add tags → **Save draft** (validated, history version recorded) → optionally
-**Submit for review** or **Publish**.
-
-**Edit a single type.** Select the single type → edit its fields → **Save draft**; publishing updates the live entry
-and records a version.
-
-**Build and preview.** Open a Standard page → builder mode → place and configure modules → **Preview** renders the
-draft as a visitor sees it → each save records a draft version.
-
-**History, compare, restore.** **History** → versions with who and when → select two → side-by-side diff →
-**Restore** a version, which becomes a new version.
-
-**Submit for review.** On a draft → **Submit for review** → assign reviewers (or default pool) → status
-`In review`, reviewers notified, submission logged.
-
-**Review and decide.** **Review Content** → open an assigned item with its draft and diff → **Approve & publish**
-(draft goes live), **Reject with comments** (status `Rejected`) or **Request revision** (status
-`Revision requested`) → decision logged with reviewer, time and comments.
-
-**Delete a page that has children.**
-
-```mermaid
-flowchart TD
-    A["Delete on a page"] --> B{"has children?"}
-    B -- no --> X["confirm, delete, audit"]
-    B -- yes --> C["dialog: re-parent or cascade delete"]
-    C -- "re-parent" --> D["children move to the deleted page's parent or root"]
-    C -- "cascade" --> E["explicit confirmation of the whole subtree"]
-    D --> F["apply atomically, audit"]
-    E --> F
-```
-
-Today **Delete page** always re-parents children after the confirm dialog (`data-confirm`), and refuses when they
-would clash (see [Delete a page](#delete-a-page)).
-
-### Rules and validation
-
-- Reject and request-revision dialogs require a comment; submit is blocked without one.
-- **Publish** without direct-publish permission on a tenant with mandatory review submits for review instead.
-- A parent selection that would create a cycle is rejected and cleared (✔ rejected on save by `PageService`).
-- Client-side checks are advisory; every action validates on the server (✔ create, save, reorder and delete validate
-  in `ContentController` / `IPageService`).
-
-### Edge cases
-
-- **Version conflict:** saving over a newer version shows a conflict dialog with a diff and merge / overwrite /
-  discard options.
-- **Restore during an open review:** the item returns to draft and the review is closed in its history.
-- **Broken reference:** a File page or entry whose asset was deleted shows a warning and cannot be published.
-- **Tree drag-and-drop** must apply the same rules as **Save** (parent exists, no cycle, unique slug, one dynamic
-  segment per parent) - ✔ `IPageService.ReorderAsync`, `400 { error }` shown in a danger toast
-  (`SecurityTests.Reorder_rejects_a_cycle`, `PageServiceTests.Reorder_rejects_moves_that_duplicate_a_slug`).
-
-### Acceptance criteria
-
-Tracked once in [content pages and routing → Acceptance criteria](../features/content-pages-and-routing.md#acceptance-criteria).
+- No version history, review workflow, scheduling or tags for entries ([structured content → Planned](../features/structured-content.md#planned-not-implemented)).
+- Pickers list at most the first 100 entries / newest 100 files server-side; more are reached through the search (JS).
+- Adding repeater rows needs JavaScript.
 
 ## Extension points
 
-- New field: follow the checklist in [content pages and routing → Where to change things](../features/content-pages-and-routing.md#where-to-change-things);
-  put it in the matching editor card as a `.field` ([components](../architecture/design-system.md#components)).
-- New rule: add it to `PageService` (`ApplyAsync`, `ReorderAsync` or `DeleteAsync`), never to the controller or the
-  view.
-- New tree action (e.g. duplicate page): add a POST action to `ContentController` with a `Can` / `CanModify` check
-  in `PermissionAreas.CollectionTypes`, a `formaction` button using `form="treeActions"` in `_TreeNodes.cshtml`, and
-  an `IAuditService.LogAsync` call with a new `AuditActions` constant.
-- Hide actions the user cannot perform: compute flags with `Can` / `CanModify` (as `ViewData["CanReorder"]` does
-  here, or `MediaIndexViewModel.CanUpload` / `MediaRowViewModel.CanDelete` on [Media](media.md)) and keep the server
-  checks.
-- Client behaviour: `src/DotNetForge.Web/wwwroot/js/forge/content.js` (keep the screen working without JS; no inline
-  script or style; report failures with `window.Forge.toast`, confirmations with `data-confirm`).
+- A new field type: [structured content → Where to change things](../features/structured-content.md); its control goes
+  into `_Field.cshtml` (and `EntryForm.Read` when it posts something other than one string).
+- A new action: a POST in `ContentController` with `Can` / `CanModify` on `PermissionAreas.Entries`, the rule in
+  `ContentEntryService`, an `AuditActions` constant.

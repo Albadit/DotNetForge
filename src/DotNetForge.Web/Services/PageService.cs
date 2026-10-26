@@ -21,7 +21,7 @@ public sealed partial class PageService : IPageService
         _db = db;
     }
 
-    public async Task<string?> ApplyAsync(Page page, PageInput input, Guid tenantId, CancellationToken ct = default)
+    public async Task<string?> ApplyAsync(Page page, PageInput input, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(input.Title))
         {
@@ -45,13 +45,13 @@ public sealed partial class PageService : IPageService
             return "Invalid page type.";
         }
 
-        var tree = await LoadTreeAsync(tenantId, ct);
+        var tree = await LoadTreeAsync(ct);
 
         if (input.ParentPageId is Guid parentId)
         {
             if (!tree.ContainsKey(parentId))
             {
-                return "Parent page not found in this tenant.";
+                return "Parent page not found.";
             }
 
             if (CreatesCycle(page.Id, parentId, id => tree.TryGetValue(id, out var n) ? n.ParentPageId : null))
@@ -130,14 +130,14 @@ public sealed partial class PageService : IPageService
     [System.Text.RegularExpressions.GeneratedRegex("^[a-z0-9][a-z0-9._-]{0,99}$")]
     private static partial System.Text.RegularExpressions.Regex ThemeIdPattern();
 
-    public async Task<string?> ReorderAsync(IReadOnlyList<PagePosition> positions, Guid tenantId, CancellationToken ct = default)
+    public async Task<string?> ReorderAsync(IReadOnlyList<PagePosition> positions, CancellationToken ct = default)
     {
         if (positions.Count == 0)
         {
             return null;
         }
 
-        var pages = await _db.Pages.Where(p => p.TenantId == tenantId).ToListAsync(ct);
+        var pages = await _db.Pages.ToListAsync(ct);
         var byId = pages.ToDictionary(p => p.Id);
 
         // The tree after the move: current parents overlaid with the posted ones.
@@ -146,12 +146,12 @@ public sealed partial class PageService : IPageService
         {
             if (!byId.ContainsKey(position.Id))
             {
-                return "One of the moved pages does not exist in this tenant.";
+                return "One of the moved pages does not exist.";
             }
 
             if (position.ParentPageId is Guid parent && !byId.ContainsKey(parent))
             {
-                return "One of the target parents does not exist in this tenant.";
+                return "One of the target parents does not exist.";
             }
 
             parentOf[position.Id] = position.ParentPageId;
@@ -188,7 +188,7 @@ public sealed partial class PageService : IPageService
 
     public async Task<string?> DeleteAsync(Page page, CancellationToken ct = default)
     {
-        var pages = await _db.Pages.Where(p => p.TenantId == page.TenantId && p.Id != page.Id).ToListAsync(ct);
+        var pages = await _db.Pages.Where(p => p.Id != page.Id).ToListAsync(ct);
         var children = pages.Where(p => p.ParentPageId == page.Id).ToList();
 
         // Children move up to the deleted page's parent; that must not create duplicate slugs or a second
@@ -265,9 +265,8 @@ public sealed partial class PageService : IPageService
 
     public static bool IsDynamic(string slug) => slug.StartsWith('[') && slug.EndsWith(']');
 
-    private async Task<Dictionary<Guid, (Guid Id, Guid? ParentPageId, string Slug)>> LoadTreeAsync(Guid tenantId, CancellationToken ct) =>
+    private async Task<Dictionary<Guid, (Guid Id, Guid? ParentPageId, string Slug)>> LoadTreeAsync(CancellationToken ct) =>
         (await _db.Pages.AsNoTracking()
-            .Where(p => p.TenantId == tenantId)
             .Select(p => new { p.Id, p.ParentPageId, p.Slug })
             .ToListAsync(ct))
         .ToDictionary(p => p.Id, p => (p.Id, p.ParentPageId, p.Slug));

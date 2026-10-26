@@ -11,6 +11,7 @@
   <Folder Name="/src/">
     <Project Path="src/DotNetForge.Abstractions/DotNetForge.Abstractions.csproj" />
     <Project Path="src/DotNetForge.Api/DotNetForge.Api.csproj" />
+    <Project Path="src/DotNetForge.Content/DotNetForge.Content.csproj" />
     <Project Path="src/DotNetForge.Core/DotNetForge.Core.csproj" />
     <Project Path="src/DotNetForge.Data/DotNetForge.Data.csproj" />
     <Project Path="src/DotNetForge.Extensions/DotNetForge.Extensions.csproj" />

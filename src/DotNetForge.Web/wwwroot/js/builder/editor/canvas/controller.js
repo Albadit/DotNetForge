@@ -18,7 +18,14 @@ function insertSpec(session, spec, target) {
       return existing;
     }
   }
-  if (spec.nodes) return insertSubtree(store, spec.nodes, target, "Insert " + spec.label);
+  if (spec.nodes) {
+    const id = insertSubtree(store, spec.nodes, target, "Insert " + spec.label);
+    // A content list block: select the list, whose Data tab is where it is set up.
+    const root = id ? store.doc.nodes[id] : null;
+    const list = root?.type === "collection" ? root : (root?.children ?? []).map((c) => store.doc.nodes[c]).find((n) => n?.type === "collection");
+    if (list) store.select([list.id]);
+    return id;
+  }
   return insertComponent(store, spec.type, target, spec.moduleId !== void 0 ? { moduleId: spec.moduleId } : void 0);
 }
 class CanvasController {
@@ -56,7 +63,12 @@ class CanvasController {
       s.hover.subscribe(() => this.invalidate()),
       s.zoom.subscribe(() => this.invalidate()),
       s.docRevision.subscribe(() => this.resubscribeStore()),
-      s.canvasRevision.subscribe(() => this.load())
+      s.canvasRevision.subscribe(() => this.load()),
+      // New entries for the content lists: render again with them.
+      s.content.data.subscribe(() => {
+        this.frame?.renderAll();
+        this.invalidate();
+      })
     );
   }
   resubscribeStore() {
@@ -85,7 +97,7 @@ class CanvasController {
     const win = this.iframe?.contentWindow;
     if (!win) return;
     try {
-      this.frame = new CanvasFrame(win, () => this.session.store.doc);
+      this.frame = new CanvasFrame(win, () => this.session.store.doc, () => this.session.content.data.value);
       const err = this.frame.init();
       if (err) {
         this.error.set(err);

@@ -73,23 +73,22 @@ public sealed class PagePermissionService
     {
         var view = viewRoles.ToHashSet();
         var edit = editRoles.ToHashSet();
-        var tenantRoles = await _db.Roles.AsNoTracking()
-            .Where(r => r.TenantId == page.TenantId)
+        var allRoles = await _db.Roles.AsNoTracking()
             .Select(r => new { r.Id, r.Name })
             .ToListAsync(ct);
-        var known = tenantRoles.Select(r => r.Id).ToHashSet();
+        var known = allRoles.Select(r => r.Id).ToHashSet();
         if (!view.All(known.Contains) || !edit.All(known.Contains))
         {
             return "One of the chosen roles no longer exists. Reload the page and try again.";
         }
 
         // Super Admin always has full access: a grant to it would mean nothing (and a view grant would restrict the page).
-        var superAdmin = tenantRoles.Where(r => r.Name == Roles.SuperAdmin).Select(r => r.Id).ToList();
+        var superAdmin = allRoles.Where(r => r.Name == Roles.SuperAdmin).Select(r => r.Id).ToList();
         view.ExceptWith(superAdmin);
         edit.ExceptWith(superAdmin);
 
         // Editing in the admin needs an admin role; site-only roles can only be given view access.
-        var siteOnly = tenantRoles.Where(r => Roles.SiteOnly.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).Select(r => r.Id);
+        var siteOnly = allRoles.Where(r => Roles.SiteOnly.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).Select(r => r.Id);
         if (edit.Overlaps(siteOnly))
         {
             return "Public and Authenticated can't edit pages; choose admin roles for editing.";
@@ -97,7 +96,7 @@ public sealed class PagePermissionService
 
         var userList = users?.Where(u => u.View is not null || u.Edit is not null)
             .GroupBy(u => u.UserId).Select(g => g.Last()).ToList();
-        string? userError = userList is null ? null : await ValidateUsersAsync(page.TenantId, userList, actorId, tenantRoles.ToDictionary(r => r.Id, r => r.Name), ct);
+        string? userError = userList is null ? null : await ValidateUsersAsync(userList, actorId, allRoles.ToDictionary(r => r.Id, r => r.Name), ct);
         if (userError is not null)
         {
             return userError;
@@ -117,16 +116,16 @@ public sealed class PagePermissionService
         await _db.SaveChangesAsync(ct);
         var current = await GetAsync(page.Id, ct);
         await _audit.LogAsync(AuditActions.PermissionChanged, "Page", page.Id.ToString(), page.Title,
-            details: await DescribeAsync(current, tenantRoles.ToDictionary(r => r.Id, r => r.Name), ct), cancellationToken: ct);
+            details: await DescribeAsync(current, allRoles.ToDictionary(r => r.Id, r => r.Name), ct), cancellationToken: ct);
         return null;
     }
 
-    private async Task<string?> ValidateUsersAsync(Guid tenantId, IReadOnlyList<PageUserGrant> users, Guid? actorId,
+    private async Task<string?> ValidateUsersAsync(IReadOnlyList<PageUserGrant> users, Guid? actorId,
         IReadOnlyDictionary<Guid, string> roleNames, CancellationToken ct)
     {
         var ids = users.Select(u => u.UserId).ToList();
         var found = await _db.Users.AsNoTracking()
-            .Where(u => u.TenantId == tenantId && ids.Contains(u.Id))
+            .Where(u => ids.Contains(u.Id))
             .Select(u => new { u.Id, u.Email })
             .ToListAsync(ct);
         if (found.Count != ids.Count)
@@ -168,7 +167,7 @@ public sealed class PagePermissionService
         _db.PagePermissions.RemoveRange(current.Where(p => !wanted.Contains((p.RoleId, p.Permission))));
         foreach (var (roleId, permission) in wanted.Where(w => !have.Contains(w)))
         {
-            _db.PagePermissions.Add(new PagePermission { TenantId = page.TenantId, PageId = page.Id, RoleId = roleId, Permission = permission });
+            _db.PagePermissions.Add(new PagePermission { PageId = page.Id, RoleId = roleId, Permission = permission });
         }
 
         return true;
@@ -205,7 +204,7 @@ public sealed class PagePermissionService
 
         foreach (var ((userId, permission), allow) in wantedByKey)
         {
-            _db.PageUserPermissions.Add(new PageUserPermission { TenantId = page.TenantId, PageId = page.Id, UserId = userId, Permission = permission, Allow = allow });
+            _db.PageUserPermissions.Add(new PageUserPermission { PageId = page.Id, UserId = userId, Permission = permission, Allow = allow });
         }
 
         return true;
@@ -238,7 +237,7 @@ public sealed class PagePermissionService
     /// Whether <paramref name="user"/> may see the page on the site (see the class remarks). <paramref name="canEdit"/>:
     /// whether their roles let them edit pages, which also lets them see restricted ones.
     /// </summary>
-    public async Task<bool> CanViewAsync(Guid pageId, Guid tenantId, ClaimsPrincipal user, Func<bool> canEdit, CancellationToken ct = default)
+    public async Task<bool> CanViewAsync(Guid pageId, ClaimsPrincipal user, Func<bool> canEdit, CancellationToken ct = default)
     {
         if (user.IsInRole(Roles.SuperAdmin))
         {
@@ -258,7 +257,7 @@ public sealed class PagePermissionService
         }
 
         var names = await _db.Roles.AsNoTracking()
-            .Where(r => r.TenantId == tenantId && grants.View.Contains(r.Id))
+            .Where(r => grants.View.Contains(r.Id))
             .Select(r => r.Name)
             .ToListAsync(ct);
         if (names.Contains(Roles.Public, StringComparer.OrdinalIgnoreCase))
@@ -282,7 +281,7 @@ public sealed class PagePermissionService
     /// grant), <c>true</c> = allowed by a user or role edit grant, <c>null</c> = no page-level rule (the
     /// <c>Collection types</c> grants decide). Super Admins are never blocked.
     /// </summary>
-    public async Task<bool?> EditRuleAsync(Guid pageId, Guid tenantId, ClaimsPrincipal user, CancellationToken ct = default)
+    public async Task<bool?> EditRuleAsync(Guid pageId, ClaimsPrincipal user, CancellationToken ct = default)
     {
         if (user.IsInRole(Roles.SuperAdmin))
         {
@@ -302,7 +301,7 @@ public sealed class PagePermissionService
         }
 
         var names = await _db.Roles.AsNoTracking()
-            .Where(r => r.TenantId == tenantId && grants.Edit.Contains(r.Id))
+            .Where(r => grants.Edit.Contains(r.Id))
             .Select(r => r.Name)
             .ToListAsync(ct);
         return user.FindAll(ClaimTypes.Role).Any(c => names.Contains(c.Value, StringComparer.OrdinalIgnoreCase)) ? true : null;

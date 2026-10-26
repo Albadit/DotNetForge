@@ -5,6 +5,7 @@ import { normalizeDocument } from "../core/validate.js";
 import { insertComponent, moveGridItem, renameNode } from "../core/commands.js";
 import { gridPlacementAt, layoutAt } from "../core/responsive.js";
 import { Api, ApiError, antiForgeryToken } from "./api.js";
+import { ContentSource } from "./content.js";
 // The editor's light/dark theme is the admin's (the Light / Dark / System menu of the admin screens,
 // wwwroot/js/forge/ui.js): one setting in localStorage "dnf-theme" - "light" or "dark", absent for System.
 const THEME_KEY = "dnf-theme";
@@ -26,9 +27,12 @@ class Session {
   constructor(config) {
     this.config = config;
     this.api = new Api({ base: config.api, tabId: config.tabId, canUpload: config.canUpload, token: () => antiForgeryToken() });
+    this.content = new ContentSource(this);
   }
   config;
   api;
+  /** Content types and the entries content lists show (editor/content.js). */
+  content;
   store = new Store(createDocument());
   status = signal("loading");
   /** The editor's theme, remembered per browser. */
@@ -84,6 +88,7 @@ class Session {
       return;
     }
     this.applyState(state);
+    this.content.start();
     this.status.set("ready");
     if (!state.draft.document && !this.readOnly) this.dialog.set({ kind: "onboarding" });
     this.startHeartbeat();

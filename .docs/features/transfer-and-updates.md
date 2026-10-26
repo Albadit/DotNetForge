@@ -18,8 +18,7 @@ only reserved folders, a version column and a few flags exist.
 | Core / extensions / runtime split | `src/` (web host in `src/DotNetForge.Web`); `extensions/` at the repository root (outside every project, discovered by `ExtensionLoader` under `AppEnvironment.ExtensionsPath`); `storage/` | ✔ folders separated |
 | `.gitignore` | repository root | ignores `.env`/`.env.*` (keeps `.env.example`), `bin/`, `obj/`, `storage/{media,backups,logs,updates}/*`, `*.db*`, `node_modules/`, test output; **not** `out/`, `publish/`, `*.log`, `.cache/` |
 
-No audit actions exist for transfer, update or rollback. `InstalledExtension`, `SystemState` and `AuthProvider`
-have no `TenantId`, which matters for tenant-scoped exports.
+No audit actions exist for transfer, update or rollback.
 
 ## Planned (not implemented)
 
@@ -30,9 +29,8 @@ Target behaviour from the original product specification. Nothing in this sectio
 - **Transfer** screen (Settings → Global Settings): export and import the CMS dataset (content, media metadata,
   users, roles, settings, extensions registry, webhooks, ...), choose source and target database type (`sqlite`,
   `postgresql`), provider-aware migration (types, identity/sequence handling, constraints), import-file validation,
-  progress (percentage, records, stage), result log, tenant scope (one tenant or all tenants).
-- Export files are self-describing: source provider, CMS schema version, CMS application version, tenant scope and
-  a checksum. Exports never contain `.env` secrets.
+  progress (percentage, records, stage), result log.
+- Export files are self-describing: source provider, CMS schema version, CMS application version and a checksum. Exports never contain `.env` secrets.
 - **Updates**: check for core updates (manual and/or scheduled) with status on the Settings overview and the
   [Dashboard](../pages/dashboard.md); back up before every update; apply to core files only; roll back to the
   previous working version; restore automatically when an update fails.
@@ -65,7 +63,6 @@ Proposed `.gitignore` additions: `out/`, `publish/`, `*.log`, `.cache/`.
 | `id` | guid | yes | |
 | `operation` | enum | yes | `export` \| `import` |
 | `sourceProvider`, `targetProvider` | enum | yes | `sqlite` \| `postgresql` |
-| `tenantScope` | string | yes | tenant id or `all` |
 | `status` | enum | yes | `success` \| `failed` \| `incomplete` |
 | `recordCount` | int | yes | |
 | `startedAt` | datetime | yes | |
@@ -88,20 +85,18 @@ Proposed `.gitignore` additions: `out/`, `publish/`, `*.log`, `.cache/`.
 
 ### Roles
 
-Every transfer, update and rollback action (export one tenant or all tenants, import, choose providers, check,
-apply, roll back, view transfer/update logs) is **Super Admin only** - matching the `Updates` area of
-`PermissionMatrix`. A tenant Admin may export/import only their own tenant and only if explicitly granted; all-tenant
-transfers and core updates stay with the global Super Admin. Every action is audited
+Every transfer, update and rollback action (export, import, choose providers, check, apply, roll back, view
+transfer/update logs) is **Super Admin only** - matching the `Updates` area of `PermissionMatrix`. Every action is
+audited
 ([audit logging](audit-logging.md)).
 
 ### User flows
 
-1. **Export**: Transfer → Export → source type (defaults to the current provider) → tenant scope (a tenant or
-   *All tenants*) → confirm → stream the data with progress → write the self-describing file to
+1. **Export**: Transfer → Export → source type (defaults to the current provider) → confirm → stream the data with progress → write the self-describing file to
    `storage/backups/` → log the result (counts, duration, status) → offer the download.
 2. **Import**: Transfer → Import → upload or pick an export → source type read from the file, operator picks the
    target type (default: current provider) → validate (schema, checksum, version, provider compatibility) → if
-   source ≠ target run provider-aware migration → import with progress for the chosen scope → log the result. Any
+   source ≠ target run provider-aware migration → import with progress → log the result. Any
    validation or integrity failure aborts before data changes and is logged.
 3. **Update check**: Settings overview or Dashboard → *Check for updates* → query the update source → show the
    newer version and notes → enable *Apply update*.
@@ -121,7 +116,6 @@ transfers and core updates stay with the global Super Admin. Every action is aud
 | Integrity | embedded checksum must match; corrupt or partial files rejected |
 | Version compatibility | export schema version must be compatible with this instance |
 | Provider compatibility | when source ≠ target, every entity must be translatable, otherwise reject |
-| Tenant scope | required; the actor must be authorized for it |
 | Atomicity | validate fully before writing; a failed import leaves the target database unchanged |
 | Backup before update | created and verified first; no backup, no update |
 | Current version | recorded before the update so rollback has a target |
@@ -142,12 +136,12 @@ transfers and core updates stay with the global Super Admin. Every action is aud
   aborts cleanly, an interrupted export is logged `failed`/`incomplete`.
 - Concurrent operations: one update or one transfer of overlapping scope at a time; others blocked or queued.
 - An update writing to `extensions/` is a defect and must be impossible by design.
-- A tenant Admin attempting an all-tenant transfer or any core update is denied.
+- A non-Super-Admin attempting a transfer or a core update is denied.
 
 ### Acceptance criteria
 
 - [ ] The Transfer screen is Super Admin only and supports Export and Import (today a placeholder open to every admin-capable role).
-- [ ] Export writes a self-describing file (source provider, schema version, app version, tenant scope, checksum) to `storage/backups/`.
+- [ ] Export writes a self-describing file (source provider, schema version, app version, checksum) to `storage/backups/`.
 - [ ] Import requires a target database type and reads/confirms the source type from the file.
 - [ ] SQLite and PostgreSQL are supported as both source and target.
 - [ ] Export from one provider and import into the other succeeds via provider-aware migration.
@@ -155,7 +149,6 @@ transfers and core updates stay with the global Super Admin. Every action is aud
 - [ ] A corrupt or partial import file is rejected without changes and the failure is logged.
 - [ ] Long-running export/import shows progress.
 - [ ] Every export and import writes a transfer result log entry (status, counts, duration, errors).
-- [ ] Import/export can be scoped per tenant; *All tenants* is Super Admin only.
 - [x] Core files and custom extensions are in separate folders, with extensions in a dedicated `extensions/` folder (`ExtensionLoader` root `AppEnvironment.ExtensionsPath`; copied into the publish output by `src/DotNetForge.Web/DotNetForge.Web.csproj`).
 - [ ] Core update checks exist and update status is shown on the Settings overview / Dashboard (the Dashboard shows only `SystemState.CmsVersion`).
 - [ ] Applying an update creates and verifies a backup first; a failed backup aborts the update.

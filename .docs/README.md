@@ -77,9 +77,11 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Install gate + first Super Admin | [installation.md](features/installation.md) |
 | `.env` configuration | [configuration.md](features/configuration.md) |
 | Cookie sign-in, lockout, external sign-in extensions, API token authentication, hashing | [authentication.md](features/authentication.md) |
-| Roles, permission evaluation, screen access, permission catalog, API permission keys | [authorization.md](features/authorization.md) |
-| Tenants (current single-tenant behaviour) | [multi-tenancy.md](features/multi-tenancy.md) |
+| Roles (incl. Developer), permission evaluation, screen access, permission catalog, API permission keys | [authorization.md](features/authorization.md) |
 | Content pages, tree rules, liveness, page permissions, public URL resolution | [content-pages-and-routing.md](features/content-pages-and-routing.md) |
+| Structured content: content types and fields, entries, querying, content lists and data binding in layouts | [structured-content.md](features/structured-content.md) |
+| Custom API endpoints: your own API under `/api/custom/` - an endpoint with several operations (method + sub-path), each running SQL with parameters; one token per endpoint | [custom-endpoints.md](features/custom-endpoints.md) |
+| API docs: the OpenAPI document and the Scalar reference of the headless API and the custom endpoints | [api-docs.md](features/api-docs.md) |
 | Page builder: layout documents, editor, drafts and publishing, rendering | [page-builder.md](features/page-builder.md) |
 | Scheduled publish/unpublish job | [scheduled-publishing.md](features/scheduled-publishing.md) |
 | Headless API endpoints and tokens | [headless-api.md](features/headless-api.md) |
@@ -88,7 +90,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Media, object storage (`IFileStorage`), provider choice, storage connectors | [media-storage.md](features/media-storage.md) |
 | Security controls and known gaps | [security.md](features/security.md) |
 | Logging and error handling | [logging-and-error-handling.md](features/logging-and-error-handling.md) |
-| Themes (site-wide and per-page theme built; per-tenant planned) | [themes.md](features/themes.md) |
+| Themes (site-wide and per-page theme) | [themes.md](features/themes.md) |
 | Webhooks (planned) | [webhooks.md](features/webhooks.md) |
 | Email (planned) | [email.md](features/email.md) |
 | Internationalization (planned) | [internationalization.md](features/internationalization.md) |
@@ -105,12 +107,16 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Public | Content page | `/{slug}/...` (fallback) | [public-page.md](pages/public-page.md) |
 | Public | Error | `/error` | [error.md](pages/error.md) |
 | Admin | Dashboard | `/admin` | [dashboard.md](pages/dashboard.md) |
-| Admin | Content Manager | `/admin/content` | [content-manager.md](pages/content-manager.md) |
-| Admin | Page builder | `/admin/content/{id}/builder` | [page-builder.md](pages/page-builder.md) |
+| Admin | Content Manager (structured content) | `/admin/content`, `/admin/content/{type}` | [content-manager.md](pages/content-manager.md) |
+| Admin | Content types | `/admin/content-types` | [content-types.md](pages/content-types.md) |
+| Admin | Pages (page tree) | `/admin/pages` | [pages.md](pages/pages.md) |
+| Admin | Page builder | `/admin/pages/{id}/builder` | [page-builder.md](pages/page-builder.md) |
 | Admin | Profile | `/admin/profile` | [profile.md](pages/profile.md) |
 | Admin | Media | `/admin/media` | [media.md](pages/media.md) |
 | Admin | Settings | `/admin/settings` | [settings.md](pages/settings.md) |
 | Admin | API Tokens | `/admin/api-tokens` | [api-tokens.md](pages/api-tokens.md) |
+| Admin | API Endpoints | `/admin/api-endpoints` | [api-endpoints.md](pages/api-endpoints.md) |
+| Admin | API Docs (Scalar) | `/admin/api-docs` | [api-docs.md](features/api-docs.md) |
 | Admin | Roles | `/admin/roles` | [roles.md](pages/roles.md) |
 | Admin | Users | `/admin/users` | [users.md](pages/users.md) |
 | Admin | Audit Logs | `/admin/audit-logs` | [audit-logs.md](pages/audit-logs.md) |

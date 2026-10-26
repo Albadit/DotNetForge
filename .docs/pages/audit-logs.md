@@ -32,7 +32,7 @@ src/DotNetForge.Web/Services/AuditService.cs                          writer (IA
 
 ```text
 _AdminLayout - top bar: Settings › Administration Panel › Audit Logs
-Audit Logs (h1) - "The 100 most recent actions in this tenant. Entries are append-only: they can't be edited or deleted."
+Audit Logs (h1) - "The 100 most recent actions. Entries are append-only: they can't be edited or deleted."
 └── section.card[data-collection][data-page-size=25]
     ├── card-header: **Activity** · "N total" (data-collection-count)
     ├── .toolbar (JS only): search "Search user, action, entity or IP" · **All areas** ▾ · **Any result** ▾ (Succeeded, Failed)
@@ -51,7 +51,7 @@ Audit Logs (h1) - "The 100 most recent actions in this tenant. Entries are appen
 | **Result** | `<badge dot="true">` **Succeeded** (`Success` tone) or **Failed** (`Danger` tone) from `Success` |
 | **IP address** | `IpAddress` (monospace, muted) |
 
-`UserAgent`, `EntityId`, `Details` and `TenantId` are not shown.
+`UserAgent`, `EntityId` and `Details` are not shown.
 
 Toolbar ([design system → behaviours](../architecture/design-system.md#behaviours)), revealed only when scripts run:
 
@@ -70,11 +70,9 @@ They never query the server, so they only ever see these 100 entries.
 
 ## Data used by the page
 
-`AuditLogs` where `TenantId == active tenant || TenantId == null`, ordered by `Id` descending, `Take(100)`, as full
-entities. Entries without a tenant are those written by an anonymous request - failed sign-ins
-(`user.login.failed`), where no account was resolved, and anonymous extension actions such as the Contact Form's
-`contactform.submitted` - and stay visible; entries of other tenants never appear
-([audit logging → tenant scoping](../features/audit-logging.md#tenant-scoping-of-reads)).
+All `AuditLogs`, ordered by `Id` descending, `Take(100)`, as full entities - including the entries written by an
+anonymous request: failed sign-ins (`user.login.failed`), where no account was resolved, and anonymous extension
+actions such as the Contact Form's `contactform.submitted`.
 
 ## State
 
@@ -116,20 +114,17 @@ View → AuditPresentation; <timestamp>, <badge>, <icon> tag helpers; ui.js (dat
 flowchart LR
     A["GET /admin/audit-logs"] --> B{"Super Admin or Admin?"}
     B -- no --> D["/account/denied"]
-    B -- yes --> C["Top 100 by Id desc (tenant + tenant-less)"] --> E["Table (ui.js: search / filter / sort / page)"]
+    B -- yes --> C["Top 100 by Id desc"] --> E["Table (ui.js: search / filter / sort / page)"]
 ```
 
 ## Related pages
 
-[Dashboard](dashboard.md) ("Recent activity" shows the latest 8 entries with the same tenant scope and the same
+[Dashboard](dashboard.md) ("Recent activity" shows the latest 8 entries with the same
 `AuditPresentation` labels; "Audit entries" count under "At a glance"); the sample **Audit Dashboard** admin extension
-([extension host](extension-host.md)) shows the latest 50 plus a failed-login count - it queries `AuditLogs` itself and
-is **not** tenant-scoped.
+([extension host](extension-host.md)) shows the latest 50 plus a failed-login count - it queries `AuditLogs` itself.
 
 ## Important implementation details
 
-- Tenant-scoped: active tenant plus tenant-less entries (see [multi-tenancy](../features/multi-tenancy.md)). A Super
-  Admin also sees only the active tenant; there is no all-tenants view.
 - Actors: a signed-in user's entries carry `UserId` and the email in `UserDisplaySnapshot` - including `user.login`
   (the sign-in request sets `HttpContext.User` before auditing) and `cms.installed`. Actions done with an API token
   have `UserId = null` and **User** `API token <id>`. Anonymous entries (failed sign-ins, Contact Form submissions)
@@ -162,7 +157,6 @@ What is recorded, redaction, retention and permissions: [audit logging](../featu
 - Columns: User, Action, Entity type, Entity ID, IP address, Timestamp and a Details summary (today Entity ID and
   Details are not shown).
 - Detail view per entry with the full, redacted Details payload.
-- Entries scoped to the active tenant (✔ plus tenant-less entries); a Super Admin can view all tenants (✘).
 - Timestamps rendered in the viewer's configured timezone (today relative time, exact UTC in the tooltip).
 - Filters: **user**, **action**, **entity type** and/or **entity ID**, **date range** (from/to) - server-side (today
   only client-side **area** and **result** filters over the loaded 100).
@@ -175,10 +169,10 @@ What is recorded, redaction, retention and permissions: [audit logging](../featu
 
 | Flow | Steps |
 | --- | --- |
-| View | Open the screen → permission check (Super Admin, Admin; else [Access denied](access-denied.md)) ✔ → load entries of the active tenant, newest first → paginated list → select an entry for its full details. |
-| Filter | Open the filter controls → choose any of user / action / entity type / entity ID / date range → validate → apply combined with AND, tenant-scoped → list and pagination update; active filters stay visible and removable. |
-| Search | Enter a term → match across the indexed fields, tenant-scoped → paginated, newest first; combinable with filters. |
-| Export | Apply filters/search → **Export** → pick CSV or JSON → permission check → generate from the current result set, tenant-scoped, redacted → streamed download; may write `audit.exported`. |
+| View | Open the screen → permission check (Super Admin, Admin; else [Access denied](access-denied.md)) ✔ → load entries, newest first → paginated list → select an entry for its full details. |
+| Filter | Open the filter controls → choose any of user / action / entity type / entity ID / date range → validate → apply combined with AND → list and pagination update; active filters stay visible and removable. |
+| Search | Enter a term → match across the indexed fields → paginated, newest first; combinable with filters. |
+| Export | Apply filters/search → **Export** → pick CSV or JSON → permission check → generate from the current result set, redacted → streamed download; may write `audit.exported`. |
 
 ### Rules and validation
 
@@ -196,6 +190,6 @@ What is recorded, redaction, retention and permissions: [audit logging](../featu
 
 ## Extension points
 
-Add server-side filters and paging as query parameters on `AuditLogsController.Index` and keep the existing
-`TenantId` filter; keep the table read-only - never add edit/delete actions. A label for a new `AuditActions` constant
+Add server-side filters and paging as query parameters on `AuditLogsController.Index`; keep the table
+read-only - never add edit/delete actions. A label for a new `AuditActions` constant
 goes into `AuditPresentation.Labels` (and its icon prefix into `AuditPresentation.Icon`, using an icon the sprite has).

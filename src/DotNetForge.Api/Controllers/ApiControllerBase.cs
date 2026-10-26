@@ -7,8 +7,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace DotNetForge.Api.Controllers;
 
 /// <summary>
-/// Base for all headless API controllers. Requires an authenticated API token and exposes the
-/// token's tenant scope so every query stays tenant-isolated (.docs/features/multi-tenancy.md).
+/// Base for all headless API controllers. Requires an authenticated API token and applies the API rate limit
+/// (.docs/features/headless-api.md).
 /// </summary>
 [ApiController]
 [Authorize(AuthenticationSchemes = ApiTokenDefaults.Scheme)]
@@ -16,9 +16,4 @@ namespace DotNetForge.Api.Controllers;
 [EnableRateLimiting(RateLimitPolicies.Api)]
 public abstract class ApiControllerBase : ControllerBase
 {
-    /// <summary>The tenant the presented token is scoped to.</summary>
-    protected Guid TenantId =>
-        Guid.TryParse(User.FindFirst(ApiTokenDefaults.TenantClaimType)?.Value, out var id)
-            ? id
-            : Guid.Empty;
 }

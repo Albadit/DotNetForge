@@ -95,16 +95,15 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
         cache.MarkInstalled();
     }
 
-    /// <summary>Creates an enabled user with one role in the default tenant and returns its id.</summary>
+    /// <summary>Creates an enabled user with one role and returns its id.</summary>
     public async Task<Guid> CreateUserAsync(string email, string password, string role)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<DotNetForgeDbContext>();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-        var tenant = await db.Tenants.OrderBy(t => t.CreatedDate).FirstAsync();
-        var roleId = await db.Roles.Where(r => r.TenantId == tenant.Id && r.Name == role).Select(r => r.Id).FirstAsync();
+        var roleId = await db.Roles.Where(r => r.Name == role).Select(r => r.Id).FirstAsync();
 
-        var user = new User { Email = email, PasswordHash = hasher.Hash(password), TenantId = tenant.Id };
+        var user = new User { Email = email, PasswordHash = hasher.Hash(password) };
         db.Users.Add(user);
         db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = roleId });
         await db.SaveChangesAsync();

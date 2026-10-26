@@ -5,6 +5,7 @@ using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
+using DotNetForge.Web.Components;
 using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,10 +25,12 @@ public sealed class HomeController : Controller
     private readonly ExtensionViewRenderer _renderer;
     private readonly PagePermissionService _pagePermissions;
     private readonly IPermissionService _permissions;
+    private readonly ContentRenderService _content;
 
     public HomeController(AppEnvironment env, DotNetForgeDbContext db, ThemeResolver themes, IPublishedPages published,
-        ExtensionViewRenderer renderer, PagePermissionService pagePermissions, IPermissionService permissions)
+        ExtensionViewRenderer renderer, PagePermissionService pagePermissions, IPermissionService permissions, ContentRenderService content)
     {
+        _content = content;
         _env = env;
         _db = db;
         _themes = themes;
@@ -133,7 +136,7 @@ public sealed class HomeController : Controller
     /// </summary>
     private async Task<IActionResult> ViewPageAsync(Page page)
     {
-        var canView = await _pagePermissions.CanViewAsync(page.Id, page.TenantId, User, CanEditPages, HttpContext.RequestAborted);
+        var canView = await _pagePermissions.CanViewAsync(page.Id, User, CanEditPages, HttpContext.RequestAborted);
         if (!canView)
         {
             return User.Identity?.IsAuthenticated == true
@@ -141,13 +144,27 @@ public sealed class HomeController : Controller
                 : Redirect("/account/login?returnUrl=" + Uri.EscapeDataString(Request.Path + Request.QueryString));
         }
 
+        // Content lists (.docs/features/structured-content.md#content-lists): resolved here, not only in the view, so a
+        // detail page whose URL names no published entry (/products/[slug]) is a 404 like any unknown address.
+        if (page.LayoutJson is not null)
+        {
+            var content = await PageLayoutViewComponent.ResolveContentAsync(_content, page.LayoutJson, page,
+                ViewData["RouteValues"] as IReadOnlyDictionary<string, string>, HttpContext);
+            if (content.MissingEntry)
+            {
+                return NotFound();
+            }
+
+            HttpContext.Items[PageLayoutViewComponent.ContentItemKey] = content;
+            ViewData["ContentTitle"] = content.EntryTitle;
+        }
+
         return await ThemedViewAsync("Page", page, page.ThemeId);
     }
 
     /// <summary>Admins who may edit content pages always see restricted pages.</summary>
     private bool CanEditPages() =>
-        Guid.TryParse(User.FindFirst(AuthService.TenantClaimType)?.Value, out var tenant)
-        && _permissions.HasAny(tenant, User.FindAll(ClaimTypes.Role).Select(c => c.Value), PermissionAreas.CollectionTypes, PermissionActions.Update);
+        _permissions.IsGranted(User.FindAll(ClaimTypes.Role).Select(c => c.Value), PermissionAreas.CollectionTypes, PermissionActions.Update);
 
     /// <summary>
     /// The exception handler re-executes the failed request here with its original HTTP method, so this action

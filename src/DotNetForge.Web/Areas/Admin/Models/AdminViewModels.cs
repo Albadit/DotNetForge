@@ -24,7 +24,7 @@ public sealed class DashboardViewModel
     /// <summary>The signed-in user's first name (or display name) for the greeting.</summary>
     public string Greeting { get; init; } = string.Empty;
 
-    /// <summary>The latest audit entries of the tenant (and system-wide ones), newest first.</summary>
+    /// <summary>The latest audit entries, newest first.</summary>
     public IReadOnlyList<DotNetForge.Shared.Entities.AuditLogEntry> RecentActivity { get; init; } =
         Array.Empty<DotNetForge.Shared.Entities.AuditLogEntry>();
 }
@@ -78,7 +78,7 @@ public sealed class ModulePlaceholderViewModel
     public string Description { get; init; } = string.Empty;
 }
 
-/// <summary>The Content Manager screen: the page tree (left) and the selected page's form (right).</summary>
+/// <summary>The Pages screen: the page tree (left) and the selected page's form (right).</summary>
 public sealed class ContentIndexViewModel
 {
     public IReadOnlyList<PageTreeNode> Tree { get; init; } = Array.Empty<PageTreeNode>();
@@ -97,7 +97,7 @@ public sealed class PageEditorExtras
     public IReadOnlyList<PermissionRoleOption> Roles { get; init; } = Array.Empty<PermissionRoleOption>();
     public IReadOnlySet<Guid> ViewRoles { get; init; } = new HashSet<Guid>();
     public IReadOnlySet<Guid> EditRoles { get; init; } = new HashSet<Guid>();
-    /// <summary>Every user of the tenant (the "Add user" picker).</summary>
+    /// <summary>Every user (the "Add user" picker).</summary>
     public IReadOnlyList<PermissionUserOption> Users { get; init; } = Array.Empty<PermissionUserOption>();
     /// <summary>The users with an allow or block on this page.</summary>
     public IReadOnlyList<DotNetForge.Web.Services.PageUserGrant> UserGrants { get; init; } = Array.Empty<DotNetForge.Web.Services.PageUserGrant>();
@@ -152,7 +152,7 @@ public sealed class ReorderItem
     public int SortOrder { get; set; }
 }
 
-/// <summary>The Media screen: upload permission and the tenant's files (.docs/pages/media.md).</summary>
+/// <summary>The Media screen: upload permission and the files (.docs/pages/media.md).</summary>
 public sealed class MediaIndexViewModel
 {
     public bool CanUpload { get; init; }
@@ -180,4 +180,148 @@ public sealed class SettingsIndexViewModel
 {
     public string AppName { get; init; } = string.Empty;
     public IReadOnlyList<(string Key, string? Value)> Settings { get; init; } = Array.Empty<(string, string?)>();
+}
+
+/// <summary>One content type on the Content types and Content Manager screens (.docs/pages/content-types.md).</summary>
+public sealed record ContentTypeCard(
+    Guid Id, string Name, string Slug, string? Description, string Icon, DotNetForge.Shared.Enums.ContentTypeKind Kind,
+    int FieldCount, int EntryCount, int PublishedCount, DateTime UpdatedDate);
+
+/// <summary>The Content types screen: every type and the templates a new one can start from.</summary>
+public sealed class ContentTypesIndexViewModel
+{
+    public IReadOnlyList<ContentTypeCard> Types { get; init; } = Array.Empty<ContentTypeCard>();
+    public bool CanCreate { get; init; }
+    public bool CanUpdate { get; init; }
+}
+
+/// <summary>The content type builder: the type's settings and fields (edited by content-types.js) plus what the field
+/// settings need (the other types for relationships).</summary>
+public sealed class ContentTypeEditViewModel
+{
+    public Guid Id { get; init; }
+    public DotNetForge.Content.ContentTypeInput Input { get; init; } = new();
+    public int EntryCount { get; init; }
+    public IReadOnlyList<(Guid Id, string Name)> RelationTargets { get; init; } = Array.Empty<(Guid, string)>();
+    public bool CanSave { get; init; }
+    public bool CanDelete { get; init; }
+}
+
+/// <summary>The Content Manager overview: the types with their entry counts (.docs/pages/content-manager.md).</summary>
+public sealed class ContentManagerViewModel
+{
+    public IReadOnlyList<ContentTypeCard> Types { get; init; } = Array.Empty<ContentTypeCard>();
+    public bool CanManageTypes { get; init; }
+    public bool CanCreateEntries { get; init; }
+}
+
+/// <summary>One row of an entry list: the entry and the text of the type's list columns.</summary>
+public sealed record EntryRow(DotNetForge.Shared.Entities.ContentEntry Entry, IReadOnlyList<string> Columns, bool CanEdit, bool CanDelete);
+
+/// <summary>The entry list of one content type: the current query and one page of rows.</summary>
+public sealed class EntryListViewModel
+{
+    public DotNetForge.Shared.Entities.ContentType Type { get; init; } = new();
+    public IReadOnlyList<(string Key, string Label)> Columns { get; init; } = Array.Empty<(string, string)>();
+    public IReadOnlyList<EntryRow> Rows { get; init; } = Array.Empty<EntryRow>();
+    public int Total { get; init; }
+    public int Page { get; init; }
+    public int PageCount { get; init; }
+    public string? Search { get; init; }
+    public string? Status { get; init; }
+    public string Sort { get; init; } = "sortOrder";
+    public bool Descending { get; init; }
+    public bool CanCreate { get; init; }
+    public bool CanPublish { get; init; }
+    public bool CanDelete { get; init; }
+    public bool CanReorder { get; init; }
+    public bool CanEditType { get; init; }
+
+    /// <summary>A list URL with this query, changed by <paramref name="change"/> (page resets unless set).</summary>
+    public string Url(Action<Dictionary<string, string?>>? change = null)
+    {
+        var q = new Dictionary<string, string?>
+        {
+            ["q"] = Search,
+            ["status"] = Status,
+            ["sort"] = Sort == "sortOrder" ? null : Sort,
+            ["desc"] = Descending ? "true" : null,
+        };
+        change?.Invoke(q);
+        var query = string.Join("&", q.Where(kv => !string.IsNullOrEmpty(kv.Value)).Select(kv => kv.Key + "=" + Uri.EscapeDataString(kv.Value!)));
+        return $"/admin/content/{Type.Slug}" + (query.Length > 0 ? "?" + query : string.Empty);
+    }
+}
+
+/// <summary>A media file as the entry form's pickers show it.</summary>
+public sealed record MediaChoice(Guid Id, string Name, string Url, bool IsImage);
+
+/// <summary>An entry another entry can link to (relationship pickers).</summary>
+public sealed record EntryChoice(Guid Id, string Title, bool Published);
+
+/// <summary>
+/// The entry editor: the form generated from the type's fields, the values to show (stored or posted), errors by field
+/// path, and what the pickers offer.
+/// </summary>
+public sealed class EntryEditViewModel
+{
+    public DotNetForge.Shared.Entities.ContentType Type { get; init; } = new();
+    public IReadOnlyList<DotNetForge.Core.Content.FieldDefinition> Fields { get; init; } = Array.Empty<DotNetForge.Core.Content.FieldDefinition>();
+    public DotNetForge.Shared.Entities.ContentEntry? Entry { get; init; }
+    public Newtonsoft.Json.Linq.JObject Values { get; init; } = new();
+    public IReadOnlyDictionary<string, string> Errors { get; init; } = new Dictionary<string, string>();
+    public Guid? BaseVersion { get; init; }
+    public bool Conflict { get; init; }
+
+    /// <summary>Relationship options per related type id (the first ones and every selected one).</summary>
+    public IReadOnlyDictionary<Guid, IReadOnlyList<EntryChoice>> Relations { get; init; } = new Dictionary<Guid, IReadOnlyList<EntryChoice>>();
+    public IReadOnlyDictionary<Guid, string> RelationTypeNames { get; init; } = new Dictionary<Guid, string>();
+    public IReadOnlyList<MediaChoice> Media { get; init; } = Array.Empty<MediaChoice>();
+    public string? UpdatedBy { get; init; }
+    public bool CanSave { get; init; }
+    public bool CanPublish { get; init; }
+    public bool CanDelete { get; init; }
+    public bool CanCreate { get; init; }
+    public bool CanUpload { get; init; }
+    public bool IsNew => Entry is null;
+}
+
+/// <summary>One field of the entry form (the recursive <c>_Field</c> partial): its definition, value and form path.</summary>
+public sealed record EntryFieldView(DotNetForge.Core.Content.FieldDefinition Field, Newtonsoft.Json.Linq.JToken? Value, string Path, EntryEditViewModel Form)
+{
+    /// <summary>The form field name (<c>f.</c> + the dotted path).</summary>
+    public string Name => "f." + Path;
+
+    /// <summary>An element id for the path.</summary>
+    public string Id => "f-" + Path.Replace('.', '-');
+
+    public string? Error => Form.Errors.TryGetValue(Path, out var e) ? e : null;
+}
+
+/// <summary>The API Endpoints list (.docs/pages/api-endpoints.md).</summary>
+public sealed class ApiEndpointsIndexViewModel
+{
+    public IReadOnlyList<DotNetForge.Shared.Entities.CustomEndpoint> Endpoints { get; init; } = Array.Empty<DotNetForge.Shared.Entities.CustomEndpoint>();
+
+    /// <summary>Each endpoint's operations (by endpoint id).</summary>
+    public ILookup<Guid, DotNetForge.Shared.Entities.CustomEndpointOperation> Operations { get; init; } =
+        Array.Empty<DotNetForge.Shared.Entities.CustomEndpointOperation>().ToLookup(o => o.EndpointId);
+
+    /// <summary>False on MongoDB: endpoints can be kept but not run.</summary>
+    public bool Supported { get; init; }
+}
+
+/// <summary>The endpoint editor: the endpoint (new when <see cref="Id"/> is null) with its operations (edited by endpoints.js).</summary>
+public sealed class ApiEndpointEditViewModel
+{
+    public Guid? Id { get; init; }
+    public DotNetForge.Content.Endpoints.CustomEndpointInput Input { get; init; } = new();
+    public bool Supported { get; init; }
+
+    /// <summary>The saved operations with their full path templates - what "Call it" shows.</summary>
+    public IReadOnlyList<(DotNetForge.Shared.Entities.CustomEndpointOperation Operation, string Template)> Calls { get; init; } =
+        Array.Empty<(DotNetForge.Shared.Entities.CustomEndpointOperation, string)>();
+
+    /// <summary>The endpoint's own token (plain text), null for a new endpoint (created on its first save).</summary>
+    public string? Token { get; init; }
 }

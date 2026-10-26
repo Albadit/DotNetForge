@@ -50,13 +50,15 @@ flowchart LR
 
 MongoDB has no migrations. At every start the provider calls `Database.EnsureCreatedAsync()`, which:
 - creates missing collections;
-- creates the model's indexes, including the **unique** ones (`Users (TenantId, Email)`, `Settings (TenantId, Key)`,
-  page slugs, …). Uniqueness is therefore enforced by the database, as on SQL.
+- creates the model's indexes, including the **unique** ones (`Users.Email`, `Settings.Key`, page slugs, …).
+  Uniqueness is therefore enforced by the database, as on SQL.
 
 Limits:
 - **Existing indexes are matched by name and never changed or dropped.** Changing an index definition in the model
   needs a manual `dropIndex` (or a new index name).
 - **Renamed or removed properties stay in existing documents** until rewritten. Plan data changes as scripts.
+  Example: a database created before tenants were removed keeps the old `TenantId` fields and its old composite
+  indexes (e.g. `(TenantId, Email)`); both are harmless, and the new indexes are created next to them.
 
 ## Keys
 

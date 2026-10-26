@@ -44,20 +44,13 @@ public sealed class InstallationStore : IInstallationStore
             return Result.Fail("The CMS is already installed.");
         }
 
-        var tenant = await _db.Tenants.OrderBy(t => t.CreatedDate).FirstOrDefaultAsync(cancellationToken);
-        if (tenant is null)
-        {
-            return Result.Fail("The default tenant has not been seeded.");
-        }
-
         var superAdminRole = await _db.Roles
-            .FirstOrDefaultAsync(r => r.TenantId == tenant.Id && r.Name == Roles.SuperAdmin, cancellationToken);
+            .FirstOrDefaultAsync(r => r.Name == Roles.SuperAdmin, cancellationToken);
         if (superAdminRole is null)
         {
             return Result.Fail("The Super Admin role has not been seeded.");
         }
 
-        admin.TenantId = tenant.Id;
         _db.Users.Add(admin);
         _db.UserRoles.Add(new UserRole { UserId = admin.Id, RoleId = superAdminRole.Id });
 

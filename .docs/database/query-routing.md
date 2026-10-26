@@ -9,11 +9,10 @@ Inject `IDatabaseService` (`DotNetForge.Abstractions.Database`):
 ```csharp
 public sealed class ReportService(IDatabaseService db)
 {
-    public async Task<IReadOnlyList<DatabaseRecord>> RecentFailuresAsync(Guid tenantId, CancellationToken ct)
+    public async Task<IReadOnlyList<DatabaseRecord>> RecentFailuresAsync(CancellationToken ct)
     {
         var result = await db.QueryAsync(
-            DatabaseCommand.Find("AuditLogs",
-                    DatabaseFilter.Eq("TenantId", tenantId) & DatabaseFilter.Eq("Success", false))
+            DatabaseCommand.Find("AuditLogs", DatabaseFilter.Eq("Success", false))
                 .OrderByDescending("Timestamp")
                 .Page(0, 50)
                 .Select("Action", "Timestamp", "IpAddress"),

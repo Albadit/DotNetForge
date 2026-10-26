@@ -7,15 +7,15 @@
     var initialTab = ViewData["Tab"] as string ?? "page";
     var (tone, status) = Model.Published ? (Tone.Success, "Published") : (Tone.Danger, "Disabled");
     var tabs = new[] { ("page", "Page settings", "settings"), ("seo", "SEO", "search"), ("theme", "Theme", "palette"), ("permissions", "Permissions", "shield"), ("layout", "Layout", "layers") };
-    var builderUrl = $"/admin/content/{selectedId}/builder";
+    var builderUrl = $"/admin/pages/{selectedId}/builder";
 }
 
 @*
-    The page editor (.docs/pages/content-manager.md#page-editor): one form in tabs - Page settings, SEO, Theme,
+    The page editor (.docs/pages/pages.md#page-editor): one form in tabs - Page settings, SEO, Theme,
     Permissions and Layout - with publishing (and the Save button) in a sticky side column. Without JavaScript every
     tab's panel is shown one below the other; ui.js turns them into tabs (data-tabs) and remembers the tab in the URL.
 *@
-<form method="post" asp-area="Admin" asp-controller="Content" asp-action="Update" asp-route-id="@selectedId"
+<form method="post" asp-area="Admin" asp-controller="Pages" asp-action="Update" asp-route-id="@selectedId"
       class="editor" id="pageForm" novalidate>
     @Html.AntiForgeryToken()
     <input type="hidden" name="tab" value="@initialTab" data-tab-field />
@@ -395,6 +395,6 @@
     </aside>
 </form>
 
-<form method="post" asp-area="Admin" asp-controller="Content" asp-action="Delete" asp-route-id="@selectedId" id="deletePageForm" hidden>
+<form method="post" asp-area="Admin" asp-controller="Pages" asp-action="Delete" asp-route-id="@selectedId" id="deletePageForm" hidden>
     @Html.AntiForgeryToken()
 </form>

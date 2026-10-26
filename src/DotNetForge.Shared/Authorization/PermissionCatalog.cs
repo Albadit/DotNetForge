@@ -25,8 +25,10 @@ public static class PermissionCatalog
 
     public static readonly IReadOnlyList<PermissionAreaDefinition> Areas = new[]
     {
-        new PermissionAreaDefinition(PermissionAreas.CollectionTypes, "Content pages", "The page tree in the Content Manager.", ContentActions),
-        new PermissionAreaDefinition(PermissionAreas.SingleTypes, "Single types", "Single content entries.", ContentActions),
+        new PermissionAreaDefinition(PermissionAreas.CollectionTypes, "Pages", "The page tree and page layouts.", ContentActions),
+        new PermissionAreaDefinition(PermissionAreas.Entries, "Content Manager", "Entries of every content type in the Content Manager.", ContentActions),
+        new PermissionAreaDefinition(PermissionAreas.ContentTypes, "Content types", "Defining content types and their fields.", Crud),
+        new PermissionAreaDefinition(PermissionAreas.SingleTypes, "Single types", "Reserved (not checked yet).", ContentActions),
         new PermissionAreaDefinition(PermissionAreas.Media, "Media", "Uploaded files.", new[]
         {
             PermissionActions.Read, PermissionActions.Create, PermissionActions.Update, PermissionActions.Delete,

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Structured content over the database (.docs/features/structured-content.md): the rules for content types and
+    entries, and the queries that list them. Shared by the admin (DotNetForge.Web), the page renderer and the headless
+    API (DotNetForge.Api), so all three apply the same rules. Pure logic (field schema, validation, item data) is in
+    DotNetForge.Core/Content.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
+    <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
+    <ProjectReference Include="..\DotNetForge.Core\DotNetForge.Core.csproj" />
+    <ProjectReference Include="..\DotNetForge.Data\DotNetForge.Data.csproj" />
+  </ItemGroup>
+
+</Project>

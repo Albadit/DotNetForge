@@ -3,7 +3,7 @@ using DotNetForge.Shared.Constants;
 namespace DotNetForge.Shared.Authorization;
 
 /// <summary>
-/// The default permission baseline for the six built-in roles, encoding the canonical Permission
+/// The default permission baseline for the seven built-in roles, encoding the canonical Permission
 /// Matrix (.docs/features/authorization.md). This is the single source of truth that both the Core
 /// <c>PermissionService</c> and the Data seeder consume, so runtime checks and seeded grants always
 /// agree. It lives in Shared as declarative reference data (keeping Data independent of Core).
@@ -15,6 +15,7 @@ public static class PermissionMatrix
     {
         PermissionAreas.CollectionTypes,
         PermissionAreas.SingleTypes,
+        PermissionAreas.Entries,
         PermissionAreas.Media,
     };
 
@@ -35,6 +36,7 @@ public static class PermissionMatrix
     {
         PermissionAreas.Users, PermissionAreas.Roles, PermissionAreas.Settings,
         PermissionAreas.Api, PermissionAreas.Webhooks, PermissionAreas.Plugins,
+        PermissionAreas.ContentTypes,
     };
 
     /// <summary>Evaluates whether a built-in <paramref name="role"/> grants the action by default.</summary>
@@ -60,6 +62,12 @@ public static class PermissionMatrix
         if (Eq(role, Roles.Editor))
         {
             return ContentAndMedia.Contains(area) && EditorContentActions.Contains(action);
+        }
+
+        // Developer: API tokens only; the API docs and custom endpoints are opened by role (ApiEndpointsController).
+        if (Eq(role, Roles.Developer))
+        {
+            return Eq(area, PermissionAreas.Api);
         }
 
         if (Eq(role, Roles.Admin))

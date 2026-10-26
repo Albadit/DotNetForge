@@ -140,7 +140,7 @@ public sealed class PageBuilderService
     /// A layout (normally <see cref="Page.LayoutJson"/>; the draft for the editor's preview) as HTML for a viewer, or
     /// null when there is none (or it can't be read - the page then falls back to its default view instead of failing).
     /// </summary>
-    public static RenderedLayout? Render(string? json, bool signedIn)
+    public static RenderedLayout? Render(string? json, bool signedIn, JObject? content = null)
     {
         if (Load(json) is not { } loaded)
         {
@@ -149,6 +149,8 @@ public sealed class PageBuilderService
 
         var html = HtmlRenderer.Render(loaded.Doc, new RenderContext
         {
+            // The entries of the layout's content lists (ContentRenderService).
+            Data = content,
             Mode = RenderMode.View,
             IsVisible = node => node.Visibility.Audience switch
             {
@@ -160,6 +162,9 @@ public sealed class PageBuilderService
         });
         return new RenderedLayout(html, Hash(json!));
     }
+
+    /// <summary>A layout's parsed document (cached like its CSS), or null when there is none or it can't be read.</summary>
+    public static PageDocument? Document(string? json) => Load(json)?.Doc;
 
     /// <summary>A layout's stylesheet (the published one is served from <c>/page-css/{id}.css</c>), or null.</summary>
     public static string? Css(string? json) => Load(json)?.Css;

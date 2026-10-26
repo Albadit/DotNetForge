@@ -14,6 +14,8 @@
   <ItemGroup>
     <!-- Runtime Razor compilation so admin extensions can ship their own views under extensions/. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
 
   <!--
@@ -34,6 +36,7 @@
     <ProjectReference Include="../DotNetForge.Extensions/DotNetForge.Extensions.csproj" />
     <ProjectReference Include="../DotNetForge.Sdk/DotNetForge.Sdk.csproj" />
     <ProjectReference Include="../DotNetForge.Api/DotNetForge.Api.csproj" />
+    <ProjectReference Include="../DotNetForge.Content/DotNetForge.Content.csproj" />
     <ProjectReference Include="../DotNetForge.PageBuilder/DotNetForge.PageBuilder.csproj" />
   </ItemGroup>
 

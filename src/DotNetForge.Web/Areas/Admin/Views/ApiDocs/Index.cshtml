@@ -1,0 +1,22 @@
+@{
+    ViewData["Title"] = "API Docs";
+    ViewData["Description"] = "Try the API: the headless API with an API token, and your custom endpoints with their own tokens (filled in).";
+}
+
+@section Actions {
+    <a class="btn btn-secondary" href="/admin/api-tokens"><icon name="key" /> API tokens</a>
+    <a class="btn btn-secondary" href="/admin/api-endpoints"><icon name="code" /> API endpoints</a>
+    <a class="btn btn-secondary" href="/admin/api-docs/reference/" target="_blank" rel="noopener"><icon name="external-link" /> Open full screen</a>
+}
+
+@* Scalar renders a full HTML page of its own, so it is isolated in a frame like an admin extension tab
+   (.docs/pages/api-docs.md). A skeleton shows until the frame has loaded (ui.js). *@
+<div class="card ext-frame-card">
+    <div class="ext-frame-loading" aria-hidden="true" data-js-only hidden>
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line medium"></div>
+        <div class="skeleton skeleton-line short"></div>
+    </div>
+    <iframe class="ext-frame" src="/admin/api-docs/reference/" title="API reference" data-frame></iframe>
+</div>

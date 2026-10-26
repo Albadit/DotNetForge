@@ -377,7 +377,15 @@ const ICONS = {
   strokeLeft: S[179],
   strokeRight: S[180],
   strokeNone: S[181],
-  collapseLayers: S[182]
+  collapseLayers: S[182],
+  // Structured content (Lucide, ISC licence; drawn as 24px strokes): content lists and bound fields.
+  database: 'L<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+  bind: 'L<path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/>',
+  cards: 'L<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+  rows: 'L<rect width="18" height="7" x="3" y="3" rx="1"/><rect width="18" height="7" x="3" y="14" rx="1"/>',
+  carousel: 'L<rect width="12" height="14" x="6" y="5" rx="1"/><path d="M2 7v10"/><path d="M22 7v10"/>',
+  table: 'L<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
+  detail: 'L<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M7 13h10"/><path d="M7 17h6"/>'
 };
 export {
   ICONS

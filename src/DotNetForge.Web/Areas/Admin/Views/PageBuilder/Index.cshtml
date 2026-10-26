@@ -1,7 +1,7 @@
 @model PageBuilderController.BuilderViewModel
 @{
     Layout = null;
-    var api = $"/admin/content/{Model.PageId}/builder/";
+    var api = $"/admin/pages/{Model.PageId}/builder/";
 }
 @*
     The page builder (.docs/pages/page-builder.md): a full-screen editor outside the admin shell. Everything is built
@@ -30,9 +30,9 @@
          data-page-id="@Model.PageId"
          data-canvas-url="@(api)canvas"
          data-preview-url="@(api)preview"
-         data-back-url="/admin/content?selected=@Model.PageId#layout"
+         data-back-url="/admin/pages?selected=@Model.PageId#layout"
          data-can-upload="@(ViewData["CanUpload"] as bool? == true ? "true" : "false")">
-        <noscript>The page builder needs JavaScript. <a href="/admin/content?selected=@Model.PageId">Back to the Content Manager</a></noscript>
+        <noscript>The page builder needs JavaScript. <a href="/admin/pages?selected=@Model.PageId">Back to Pages</a></noscript>
     </div>
 </body>
 </html>

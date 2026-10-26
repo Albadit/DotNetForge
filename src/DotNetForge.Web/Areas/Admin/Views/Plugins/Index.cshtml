@@ -75,6 +75,20 @@
                             </div>
                             <div class="text-xs text-muted text-truncate" title="@ext.Id · extensions/@ext.Folder">@ext.Id</div>
                         </div>
+                        @if (ext.Problem is not null)
+                        {
+                            @* The problem stays out of the card: an icon in the header opens it (a popover, placed by ui.js). *@
+                            var problemId = "problem-" + System.Text.RegularExpressions.Regex.Replace(ext.Id, "[^A-Za-z0-9]", "-");
+                            var problemTitle = ext.ValidManifest ? "Not running" : "Invalid manifest";
+                            <button type="button" class="btn btn-ghost btn-icon btn-sm extension-problem-button @(ext.ValidManifest ? "is-warning" : "is-danger")"
+                                    popovertarget="@problemId" aria-haspopup="dialog" aria-expanded="false"
+                                    aria-label="@problemTitle - show why" data-tooltip="@problemTitle">
+                                <icon name="@(ext.ValidManifest ? "triangle-alert" : "circle-x")" />
+                            </button>
+                            <div class="menu-list extension-problem" id="@problemId" popover role="dialog" aria-label="@problemTitle" data-placement="bottom-end">
+                                <alert tone="@(ext.ValidManifest ? Tone.Warning : Tone.Danger)" title="@problemTitle">@ext.Problem</alert>
+                            </div>
+                        }
                         @if (ext.IsEnabled)
                         {
                             <badge tone="Success" dot="true">Enabled</badge>
@@ -87,10 +101,10 @@
 
                     @if (!string.IsNullOrEmpty(ext.Description))
                     {
-                        <p class="text-muted">@ext.Description</p>
+                        <p class="text-muted extension-description">@ext.Description</p>
                     }
 
-                    <div class="cluster">
+                    <div class="cluster extension-badges">
                         <badge tone="Accent">@ext.Type</badge>
                         @if (ext.HasCode)
                         {
@@ -101,11 +115,6 @@
                             <badge class="badge-outline" title="Needs @dependency"><icon name="link" size="sm" /> @dependency</badge>
                         }
                     </div>
-
-                    @if (ext.Problem is not null)
-                    {
-                        <alert tone="@(ext.ValidManifest ? Tone.Warning : Tone.Danger)" title="@(ext.ValidManifest ? "Not running" : "Invalid manifest")">@ext.Problem</alert>
-                    }
 
                     <div class="extension-foot">
                         <span class="text-xs text-muted">by @ext.Author</span>

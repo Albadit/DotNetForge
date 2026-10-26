@@ -41,6 +41,9 @@ public static class TestDatabaseServer
         return ("sqlite", $"Data Source={Path.Combine(workDir, "cms.db")}");
     }
 
+    /// <summary>Whether the tests run on MongoDB (no SQL: custom endpoints answer 501 there).</summary>
+    public static bool IsMongoDb => For(Path.GetTempPath(), "probe").Provider == "mongodb";
+
     private static string? Get(string name) =>
         Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : null;
 }

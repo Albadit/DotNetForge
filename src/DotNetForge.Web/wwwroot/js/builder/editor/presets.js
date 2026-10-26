@@ -16,7 +16,86 @@ function build(spec) {
   return out;
 }
 const text = (t) => [{ type: "p", runs: [{ text: t }] }];
+/**
+ * Content lists (.docs/features/structured-content.md#content-lists): a list and its item template, designed like
+ * any layout. The props are bound to fields when a content type is chosen (ui/data-panel.js autoBind).
+ */
+const card = { padding: [0, 0, 20, 0], background: "var(--dnn-color-surface, #ffffff)", radius: [14, 14, 14, 14], shadow: "md", overflow: "hidden" };
+// The list sits in its own section (a full-width band with a stack layout); inserting it selects the list itself.
+const listOf = (name, props, layout, item) => build(["section", { name: name + " section", layout: { base: { mode: "stack", direction: "column", gap: 24 } } }, [
+  ["collection", { name, props: { limit: 6, ...props }, layout }, [item]]
+]]);
+const CONTENT_PRESETS = [
+  {
+    id: "content-cards",
+    group: "Content lists",
+    label: "Card grid",
+    description: "Entries as cards in a responsive grid: picture, title, text and a link. 3 columns, 2 on tablets, 1 on phones.",
+    icon: "cards",
+    build: () => listOf("Card grid", {}, { base: { mode: "grid", columns: 3, colGap: 24, rowGap: 24, rowMode: "auto" }, tablet: { columns: 2 }, mobile: { columns: 1 } },
+      ["item", { name: "Card", layout: { base: { mode: "stack", direction: "column", gap: 12 } }, style: { base: card } }, [
+        ["image", { style: { base: { height: { mode: "fixed", value: 200 } } } }],
+        ["heading", { props: { text: [{ text: "Title" }], level: "3" }, style: { base: { padding: [0, 20, 0, 20], fontSize: 20 } } }],
+        ["text", { props: { content: text("A short description.") }, style: { base: { padding: [0, 20, 0, 20] } } }],
+        ["button", { props: { label: "Read more", href: "#", variant: "link" }, style: { base: { margin: [0, 20, 0, 20] } } }]
+      ]])
+  },
+  {
+    id: "content-list",
+    group: "Content lists",
+    label: "List",
+    description: "Entries one below the other, a picture beside the text. Stacks on phones.",
+    icon: "rows",
+    build: () => listOf("List", {}, { base: { mode: "stack", direction: "column", gap: 20 } },
+      ["item", { name: "Row", layout: { base: { mode: "stack", direction: "row", gap: 20, align: "center" }, mobile: { direction: "column", align: "stretch" } } }, [
+        ["image", { style: { base: { width: { mode: "fixed", value: 200 }, height: { mode: "fixed", value: 140 }, radius: [10, 10, 10, 10] }, mobile: { width: { mode: "fill" } } } }],
+        ["container", { name: "Text", layout: { base: { mode: "stack", direction: "column", gap: 8 } }, style: { base: { width: { mode: "fill" }, padding: [0, 0, 0, 0] } } }, [
+          ["heading", { props: { text: [{ text: "Title" }], level: "3" }, style: { base: { fontSize: 20 } } }],
+          ["text", { props: { content: text("A short description.") } }],
+          ["button", { props: { label: "Read more", href: "#", variant: "link" } }]
+        ]]
+      ]])
+  },
+  {
+    id: "content-carousel",
+    group: "Content lists",
+    label: "Carousel",
+    description: "Cards in one row that scrolls sideways; swipe on phones.",
+    icon: "carousel",
+    build: () => listOf("Carousel", { carousel: true }, { base: { mode: "stack", direction: "row", gap: 20, align: "stretch" } },
+      ["item", { name: "Slide", layout: { base: { mode: "stack", direction: "column", gap: 12 } }, style: { base: { ...card, width: { mode: "fixed", value: 300 } }, mobile: { width: { mode: "fixed", value: 260 } } } }, [
+        ["image", { style: { base: { height: { mode: "fixed", value: 180 } } } }],
+        ["heading", { props: { text: [{ text: "Title" }], level: "3" }, style: { base: { padding: [0, 20, 0, 20], fontSize: 18 } } }],
+        ["button", { props: { label: "View", href: "#", variant: "link" }, style: { base: { margin: [0, 20, 0, 20] } } }]
+      ]])
+  },
+  {
+    id: "content-table",
+    group: "Content lists",
+    label: "Table",
+    description: "Entries as table rows; choose the columns. The first column links to the entry.",
+    icon: "table",
+    build: () => listOf("Table", { view: "table", limit: 20, paginate: true }, { base: { mode: "stack", direction: "column", gap: 16 } },
+      ["item", { name: "Item", layout: { base: { mode: "stack", direction: "column", gap: 8 } } }, [
+        ["heading", { props: { text: [{ text: "Title" }], level: "3" } }]
+      ]])
+  },
+  {
+    id: "content-detail",
+    group: "Content lists",
+    label: "Detail",
+    description: "One entry in full - for a page like /products/[slug] that shows the entry its URL names.",
+    icon: "detail",
+    build: () => listOf("Detail", { mode: "single", limit: 1 }, { base: { mode: "stack", direction: "column", gap: 0 } },
+      ["item", { name: "Entry", layout: { base: { mode: "stack", direction: "column", gap: 20 } } }, [
+        ["heading", { props: { text: [{ text: "Title" }], level: "1" }, style: { base: { fontSize: 44 }, mobile: { fontSize: 32 } } }],
+        ["image", { style: { base: { height: { mode: "fixed", value: 420 }, radius: [16, 16, 16, 16] }, mobile: { height: { mode: "fixed", value: 240 } } } }],
+        ["text", { props: { content: text("The entry's text.") }, style: { base: { fontSize: 18, maxWidth: 760 } } }]
+      ]])
+  }
+];
 const PRESETS = [
+  ...CONTENT_PRESETS,
   {
     id: "hero",
     label: "Hero",
@@ -131,6 +210,7 @@ const PRESETS = [
   }
 ];
 export {
+  CONTENT_PRESETS,
   PRESETS,
   build
 };

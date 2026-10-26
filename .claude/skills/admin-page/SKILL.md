@@ -12,7 +12,7 @@ description: >-
 # Admin screen
 
 Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.docs/architecture/design-system.md`
-(components, tag helpers, behaviours) and the screen's doc in `.docs/pages/` if it exists. Model screens: `ContentController` (forms + service + audit), `SettingsController` (simple upsert),
+(components, tag helpers, behaviours) and the screen's doc in `.docs/pages/` if it exists. Model screens: `PagesController` (forms + service + audit), `ContentController` (forms generated from data, JSON for pickers), `SettingsController` (simple upsert),
 `UsersController` / `RolesController` (list + edit form + service with rules, `[RequirePermission]` per action).
 
 ## Steps
@@ -24,15 +24,15 @@ Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.doc
    public sealed class <Name>Controller : AdminControllerBase
    ```
    - Never inherit from `Controller` directly - `AdminControllerBase` carries `[Area("Admin")]`, the `AdminArea`
-     policy, `TenantId` and `CurrentUserId`.
+     policy, `CurrentUserId` and `Can`/`CanModify`.
    - Replacing a placeholder: delete its action from `ModulesController` and reuse the **same route** so the sidebar
      link keeps working.
-2. **Reads** - query `DotNetForgeDbContext` with `AsNoTracking()`, `Where(x => x.TenantId == TenantId)`, project with
-   `Select` into a view model. Put view models in `src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs`.
+2. **Reads** - query `DotNetForgeDbContext` with `AsNoTracking()`, project with `Select` into a
+   view model. Put view models in `src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs`.
 3. **Rules** - anything beyond a trivial check goes into a `src/DotNetForge.Web/Services/<Thing>Service.cs` (scoped, registered in
    `src/DotNetForge.Web/Startup/DependencyRegistration.cs`) returning an error message or `Result`, like `PageService.ApplyAsync`. The
    controller only maps errors to `ModelState`.
-4. **Mutations** - `[HttpPost("<verb>")]` + `[ValidateAntiForgeryToken]`; load the entity **by id and `TenantId`**
+4. **Mutations** - `[HttpPost("<verb>")]` + `[ValidateAntiForgeryToken]`; load the entity **by id**
    (else `NotFound()`); save; `await _audit.LogAsync(AuditActions.<X>, "<EntityType>", id, display)` (add a constant
    to `src/DotNetForge.Shared/Constants/AuditActions.cs` if needed); `TempData["Success"] = "..."`;
    `RedirectToAction(...)`. Inject `IAuditService`, not the concrete class. For actions governed by the permission
@@ -73,9 +73,9 @@ Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.doc
 
 ## Don't
 
-- Query without `TenantId`, take a tenant id from input, or return a view for a POST success (use PRG).
+- Return a view for a POST success (use PRG).
 - Put validation in the view or controller when a service owns the concept.
 - Add CSS/JS frameworks, web fonts or a client-side fetch layer; progressive enhancement only, like
-  `src/DotNetForge.Web/wwwroot/js/forge/content.js`.
+  `src/DotNetForge.Web/wwwroot/js/forge/pages.js`.
 - Hard-code sidebar links or role checks in a view; use `AdminNavigation.Tree` and `AdminNavModel.Allows(href)`.
 - Write files to disk: runtime files go through `IFileStorage` (the deployment directory is read-only).

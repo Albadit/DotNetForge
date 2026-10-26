@@ -33,5 +33,4 @@ public class AuditLogEntry
 
     public bool Success { get; set; } = true;
 
-    public Guid? TenantId { get; set; }
 }

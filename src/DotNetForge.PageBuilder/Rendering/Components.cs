@@ -311,6 +311,18 @@ namespace DotNetForge.PageBuilder.Rendering
                     return new ComponentCss(self: new[] { Attr("border-top", Format.Px(t) + " " + Choice(n, "lineStyle") + " currentColor") });
                 },
             };
+            yield return new BuiltIn("collection")
+            {
+                // The layout (grid, stack) arranges the item copies inside .pe-in (Collections.Inner writes it).
+                Target = LayoutTarget.Inner,
+                TagOf = n => "div",
+                ClassesOf = n => Choice(n, "view") == "table" ? new[] { "pe-view-table" } : Flag(n, "carousel") ? new[] { "pe-carousel" } : new string[0],
+                ContentOf = (n, c, children) => children,
+            };
+            yield return new BuiltIn("item")
+            {
+                TagOf = n => Choice(n, "tag"),
+            };
             yield return new BuiltIn("module")
             {
                 TagOf = n => "div",

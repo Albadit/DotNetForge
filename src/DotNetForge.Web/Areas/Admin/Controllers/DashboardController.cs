@@ -33,22 +33,21 @@ public sealed class DashboardController : AdminControllerBase
         var model = new DashboardViewModel
         {
             AppName = _env.AppName,
-            Users = await _db.Users.CountAsync(u => u.TenantId == TenantId),
-            Roles = await _db.Roles.CountAsync(r => r.TenantId == TenantId),
-            Pages = await _db.Pages.CountAsync(p => p.TenantId == TenantId),
-            Media = await _db.MediaFiles.CountAsync(m => m.TenantId == TenantId),
-            ApiTokens = await _db.ApiTokens.CountAsync(t => t.TenantId == TenantId && !t.Revoked &&
+            Users = await _db.Users.CountAsync(),
+            Roles = await _db.Roles.CountAsync(),
+            Pages = await _db.Pages.CountAsync(),
+            Media = await _db.MediaFiles.CountAsync(),
+            ApiTokens = await _db.ApiTokens.CountAsync(t => !t.Revoked &&
                 (t.ExpirationDate == null || t.ExpirationDate > now)),
-            Webhooks = await _db.Webhooks.CountAsync(w => w.TenantId == TenantId),
+            Webhooks = await _db.Webhooks.CountAsync(),
             Extensions = await _db.InstalledExtensions.CountAsync(x => x.Status == ExtensionStatus.Enabled),
-            AuditEntries = await _db.AuditLogs.CountAsync(a => a.TenantId == TenantId || a.TenantId == null),
+            AuditEntries = await _db.AuditLogs.CountAsync(),
             InstalledAtUtc = state?.InstalledAtUtc,
             CmsVersion = state?.CmsVersion ?? "1.0.0",
             Greeting = await GreetingAsync(),
             CanCreatePages = Can(PermissionAreas.CollectionTypes, PermissionActions.Create),
             CanUpload = Can(PermissionAreas.Media, PermissionActions.Create),
             RecentActivity = await _db.AuditLogs.AsNoTracking()
-                .Where(a => a.TenantId == TenantId || a.TenantId == null)
                 .OrderByDescending(a => a.Id)
                 .Take(RecentActivityCount)
                 .ToListAsync(),

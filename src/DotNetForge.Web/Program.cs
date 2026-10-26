@@ -3,6 +3,7 @@ using DotNetForge.Data;
 using DotNetForge.Data.Database;
 using DotNetForge.Infrastructure.Configuration;
 using DotNetForge.Shared.Configuration;
+using DotNetForge.Web.ApiDocs;
 using DotNetForge.Web.Middleware;
 using DotNetForge.Web.Startup;
 
@@ -61,6 +62,9 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", app = env.AppName }));
+
+// The API docs: the OpenAPI document and Scalar, for Super Admins and Developers (.docs/features/api-docs.md).
+app.MapApiDocs(env);
 
 // Each loaded extension's own endpoints (IExtension.MapEndpoints), e.g. /sitemap.xml from a plugin.
 await app.MapDotNetForgeExtensionsAsync();

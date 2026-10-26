@@ -55,9 +55,6 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                     b.Property<bool>("Revoked")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -69,10 +66,10 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TokenPrefix");
-
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("Name")
                         .IsUnique();
+
+                    b.HasIndex("TokenPrefix");
 
                     b.ToTable("ApiTokens");
                 });
@@ -111,9 +108,6 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                     b.Property<bool>("Success")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("TEXT");
 
@@ -131,9 +125,9 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Timestamp");
+                    b.HasIndex("Action");
 
-                    b.HasIndex("TenantId", "Action");
+                    b.HasIndex("Timestamp");
 
                     b.ToTable("AuditLogs");
                 });
@@ -166,6 +160,265 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("AuthProviders");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DataJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("HasDraft")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("PublishedById")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PublishedDataJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PublishedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SearchText")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Version")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentTypeId", "SortOrder");
+
+                    b.ToTable("ContentEntries");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentEntryValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("Number")
+                        .HasColumnType("REAL");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryId");
+
+                    b.HasIndex("ContentTypeId", "Published", "Field", "Number");
+
+                    b.HasIndex("ContentTypeId", "Published", "Field", "Text");
+
+                    b.ToTable("ContentEntryValues");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Drafts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FieldsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TitleField")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("ContentTypes");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.CustomEndpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Access")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenProtected")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Path");
+
+                    b.ToTable("CustomEndpoints");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.CustomEndpointOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EndpointId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxRows")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ParametersJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Result")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Sql")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndpointId", "Method", "Path")
+                        .IsUnique();
+
+                    b.ToTable("CustomEndpointOperations");
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.InstalledExtension", b =>
@@ -259,9 +512,6 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                     b.Property<long>("SizeBytes")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.Property<Guid?>("UploadedById")
                         .HasColumnType("TEXT");
 
@@ -269,8 +519,6 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.ToTable("MediaFiles");
                 });
@@ -365,9 +613,6 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("ThemeId")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
@@ -382,7 +627,7 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "ParentPageId", "Slug")
+                    b.HasIndex("ParentPageId", "Slug")
                         .IsUnique();
 
                     b.ToTable("Pages");
@@ -405,12 +650,7 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                     b.Property<Guid>("RoleId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.HasIndex("PageId", "RoleId", "Permission")
                         .IsUnique();
@@ -435,15 +675,10 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.HasIndex("PageId", "UserId", "Permission")
                         .IsUnique();
@@ -469,12 +704,9 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("Name")
                         .IsUnique();
 
                     b.ToTable("Roles");
@@ -518,16 +750,13 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Value")
                         .HasMaxLength(4000)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Key")
+                    b.HasIndex("Key")
                         .IsUnique();
 
                     b.ToTable("Settings");
@@ -550,61 +779,12 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                     b.Property<DateTime?>("InstalledAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("SeedVersion")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("SystemState");
-                });
-
-            modelBuilder.Entity("DotNetForge.Shared.Entities.Tenant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DefaultLocale")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DefaultTheme")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PathPrefix")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PrimaryDomain")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Subdomains")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Slug")
-                        .IsUnique();
-
-                    b.ToTable("Tenants");
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.User", b =>
@@ -648,12 +828,9 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Email")
+                    b.HasIndex("Email")
                         .IsUnique();
 
                     b.ToTable("Users");
@@ -706,9 +883,6 @@ namespace DotNetForge.Data.Database.Providers.Sqlite.Migrations
 
                     b.Property<string>("Secret")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("TenantId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Url")

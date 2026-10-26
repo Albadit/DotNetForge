@@ -1,5 +1,8 @@
 using System.Text.Json;
+using DotNetForge.Content;
+using DotNetForge.Core.Content;
 using DotNetForge.Data;
+using DotNetForge.PageBuilder;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Content;
@@ -18,7 +21,7 @@ namespace DotNetForge.Web.Areas.Admin.Controllers;
 /// whoever may edit the page (<c>Collection types</c> update, update.own on own pages, or a page edit grant);
 /// publishing needs <c>publish</c>. Drafts are saved continuously; visitors see only what is published.
 /// </summary>
-[Route("admin/content/{id:guid}/builder")]
+[Route("admin/pages/{id:guid}/builder")]
 public sealed class PageBuilderController : AdminControllerBase
 {
     private const long MaxRequestBytes = 6 * 1024 * 1024;
@@ -30,10 +33,17 @@ public sealed class PageBuilderController : AdminControllerBase
     private readonly ExtensionViewRenderer _renderer;
     private readonly IPublishedPages _published;
     private readonly AppEnvironment _env;
+    private readonly ContentTypeService _types;
+    private readonly ContentRenderService _content;
+    private readonly ContentQueryService _query;
 
     public PageBuilderController(DotNetForgeDbContext db, PageBuilderService builder, MediaService media, ThemeResolver themes,
-        ExtensionViewRenderer renderer, IPublishedPages published, AppEnvironment env)
+        ExtensionViewRenderer renderer, IPublishedPages published, AppEnvironment env, ContentTypeService types,
+        ContentRenderService content, ContentQueryService query)
     {
+        _types = types;
+        _content = content;
+        _query = query;
         _db = db;
         _builder = builder;
         _media = media;
@@ -278,7 +288,7 @@ public sealed class PageBuilderController : AdminControllerBase
         }
 
         var files = await _db.MediaFiles.AsNoTracking()
-            .Where(m => m.TenantId == TenantId && m.IsPublic && m.ContentType.StartsWith("image/"))
+            .Where(m => m.IsPublic && m.ContentType.StartsWith("image/"))
             .OrderByDescending(m => m.UploadedDate)
             .Take(200)
             .Select(m => new { m.Id, m.FileName, m.ContentType })
@@ -309,10 +319,167 @@ public sealed class PageBuilderController : AdminControllerBase
             return BadRequest(new { message = "Choose an image file." });
         }
 
-        var (saved, error) = await _media.UploadAsync(file, isPublic: true, TenantId, CurrentUserId, HttpContext.RequestAborted);
+        var (saved, error) = await _media.UploadAsync(file, isPublic: true, CurrentUserId, HttpContext.RequestAborted);
         return saved is null
             ? BadRequest(new { message = error ?? "The upload failed." })
             : Ok(new { url = MediaService.UrlFor(saved), name = saved.FileName, contentType = saved.ContentType });
+    }
+
+    // ---- Content lists (.docs/features/structured-content.md#content-lists) -----------------------------------------
+
+    /// <summary>
+    /// The content types a content list can show: per type the fields a layout element can be bound to
+    /// (<see cref="ItemData.Paths"/>), the fields a list can filter on and the ones it can sort by.
+    /// </summary>
+    [HttpGet("content/types")]
+    public async Task<IActionResult> ContentTypes(Guid id)
+    {
+        var (page, denied) = await LoadAsync(id);
+        if (page is null)
+        {
+            return denied!;
+        }
+
+        var types = await _types.ListAsync(HttpContext.RequestAborted);
+        var fieldsByType = types.ToDictionary(t => t.Id, t => (t.Name, Fields: ContentSchema.Parse(t.FieldsJson)));
+        var counts = (await _db.ContentEntries.AsNoTracking().Where(e => e.Published)
+                .Select(e => e.ContentTypeId).ToListAsync(HttpContext.RequestAborted))
+            .GroupBy(t => t).ToDictionary(g => g.Key, g => g.Count());
+        var output = new JArray();
+        foreach (var t in types)
+        {
+            var fields = fieldsByType[t.Id].Fields;
+            var bindable = ItemData.Paths(fields, target => fieldsByType.TryGetValue(target, out var rel) ? (rel.Name, (IReadOnlyList<FieldDefinition>)rel.Fields) : null);
+            var scalar = fields.Where(f => !FieldTypes.HasFields(f.Type) && f.Type != FieldTypes.RichText).ToList();
+            output.Add(new JObject
+            {
+                ["id"] = t.Id.ToString(),
+                ["name"] = t.Name,
+                ["slug"] = t.Slug,
+                ["kind"] = t.Kind.ToString().ToLowerInvariant(),
+                ["icon"] = t.Icon,
+                ["published"] = counts.GetValueOrDefault(t.Id),
+                ["fields"] = new JArray(bindable.Select(b => new JObject { ["path"] = b.Path, ["label"] = b.Label, ["kind"] = b.Kind })),
+                ["filters"] = new JArray(new[] { new JObject { ["key"] = ItemData.TitlePath, ["label"] = "Title", ["type"] = FieldTypes.Text } }
+                    .Concat(scalar.Select(f => new JObject
+                    {
+                        ["key"] = f.Key,
+                        ["label"] = f.Label,
+                        ["type"] = f.Type,
+                        ["choices"] = new JArray(f.Choices.Select(c => new JObject { ["value"] = c.Value, ["label"] = c.Label })),
+                    }))),
+                ["sorts"] = new JArray(new[]
+                    {
+                        new JObject { ["key"] = "", ["label"] = "Manual order" },
+                        new JObject { ["key"] = "title", ["label"] = "Title" },
+                        new JObject { ["key"] = "publishedAt", ["label"] = "Publish date" },
+                        new JObject { ["key"] = "updatedAt", ["label"] = "Last updated" },
+                    }
+                    .Concat(scalar.Where(f => f.Type is not (FieldTypes.Image or FieldTypes.File or FieldTypes.Relationship or FieldTypes.Array))
+                        .Select(f => new JObject { ["key"] = f.Key, ["label"] = f.Label }))),
+            });
+        }
+
+        return Content(output.ToString(Formatting.None), "application/json");
+    }
+
+    /// <summary>The pages with a [param] segment, as item link patterns (<c>/products/[slug]</c> → <c>/products/{slug}</c>).</summary>
+    [HttpGet("content/link-targets")]
+    public async Task<IActionResult> LinkTargets(Guid id)
+    {
+        var (page, denied) = await LoadAsync(id);
+        if (page is null)
+        {
+            return denied!;
+        }
+
+        var tree = await _db.Pages.AsNoTracking()
+            .Select(p => new { p.Id, p.ParentPageId, p.Slug, p.Title }).ToListAsync(HttpContext.RequestAborted);
+        var byId = tree.ToDictionary(p => p.Id);
+        var output = new JArray();
+        foreach (var p in tree.Where(p => p.Slug.StartsWith('[') && p.Slug.EndsWith(']')))
+        {
+            var segments = new List<string>();
+            Guid? current = p.Id;
+            for (var guard = 0; current is { } cid && byId.TryGetValue(cid, out var node) && guard < 64; guard++)
+            {
+                segments.Insert(0, node.Slug.StartsWith('[') && node.Slug.EndsWith(']') ? "{" + node.Slug.Trim('[', ']') + "}" : node.Slug.Trim('/'));
+                current = node.ParentPageId;
+            }
+
+            var pattern = "/" + string.Join('/', segments.Where(s => s.Length > 0 && s != "home"));
+            output.Add(new JObject { ["pattern"] = pattern, ["label"] = p.Title + " (" + pattern + ")", ["param"] = p.Slug.Trim('[', ']') });
+        }
+
+        return Content(output.ToString(Formatting.None), "application/json");
+    }
+
+    public sealed class PreviewRequest
+    {
+        public List<PreviewList> Lists { get; set; } = new();
+    }
+
+    public sealed class PreviewList
+    {
+        public string Id { get; set; } = string.Empty;
+        public JsonElement Props { get; set; }
+    }
+
+    /// <summary>
+    /// The entries the editor's content lists show: the same query visitors get (published entries), so the canvas
+    /// previews real content. Props are cleaned by the page builder's validator first.
+    /// </summary>
+    [HttpPost("content/preview")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ContentPreview(Guid id, [FromBody] PreviewRequest request)
+    {
+        var (page, denied) = await LoadAsync(id);
+        if (page is null)
+        {
+            return denied!;
+        }
+
+        var def = Schema.Component("collection")!;
+        var lists = new List<(string Id, JObject Props)>();
+        foreach (var list in request.Lists.Take(50))
+        {
+            if (Values.NodeId(new JValue(list.Id)) is not { } nodeId || list.Props.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var raw = (JObject)JToken.Parse(list.Props.GetRawText());
+            var props = new JObject();
+            foreach (var p in def.Props)
+            {
+                props[p.Key] = raw.Property(p.Key, StringComparison.Ordinal) is { } given ? DocumentValidator.NormalizeProp(p, given.Value) : p.CreateDefault();
+            }
+
+            lists.Add((nodeId, props));
+        }
+
+        var data = await _content.ResolveAsync(lists, null, _ => 1, preview: true, HttpContext.RequestAborted);
+        return Content(data.Data.ToString(Formatting.None), "application/json");
+    }
+
+    /// <summary>Entries of a type for the "show one entry" picker: <c>[{ id, title, published }]</c>.</summary>
+    [HttpGet("content/entries")]
+    public async Task<IActionResult> ContentEntries(Guid id, Guid type, string? q)
+    {
+        var (page, denied) = await LoadAsync(id);
+        if (page is null)
+        {
+            return denied!;
+        }
+
+        var contentType = await _types.FindAsync(type, HttpContext.RequestAborted);
+        if (contentType is null)
+        {
+            return NotFound();
+        }
+
+        var result = await _query.QueryAsync(new EntryQuery { Type = contentType, Search = q, Sort = "title", PageSize = 50 }, HttpContext.RequestAborted);
+        return Ok(result.Items.Select(e => new { id = e.Id, title = ContentEntryService.Display(e), published = e.Published }));
     }
 
     private bool CanPublish => Can(PermissionAreas.CollectionTypes, PermissionActions.Publish);
@@ -321,7 +488,7 @@ public sealed class PageBuilderController : AdminControllerBase
     private async Task<(Page? Page, IActionResult? Denied)> LoadAsync(Guid id, bool tracked = false)
     {
         var query = tracked ? _db.Pages : _db.Pages.AsNoTracking();
-        var page = await query.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == TenantId);
+        var page = await query.FirstOrDefaultAsync(p => p.Id == id);
         if (page is null)
         {
             return (null, NotFound());
@@ -334,7 +501,6 @@ public sealed class PageBuilderController : AdminControllerBase
     private async Task<string> PublicPathAsync(Page page)
     {
         var tree = await _db.Pages.AsNoTracking()
-            .Where(p => p.TenantId == TenantId)
             .Select(p => new { p.Id, p.ParentPageId, p.Slug })
             .ToDictionaryAsync(p => p.Id);
         var segments = new List<string>();

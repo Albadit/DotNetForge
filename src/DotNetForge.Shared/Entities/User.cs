@@ -3,7 +3,7 @@ using DotNetForge.Shared.Enums;
 namespace DotNetForge.Shared.Entities;
 
 /// <summary>
-/// A user account. Email is the login identifier and is unique within the tenant. The password is
+/// A user account. Email is the login identifier and is unique. The password is
 /// stored only as a secure hash (.docs/features/security.md). Effective permissions are the union of all roles.
 /// </summary>
 public class User
@@ -30,8 +30,6 @@ public class User
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     public DateTime? LastLoginDate { get; set; }
-
-    public Guid TenantId { get; set; }
 
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 

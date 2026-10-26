@@ -365,6 +365,25 @@ function setAdvanced(store, id, patch) {
     return next;
   }));
 }
+/**
+ * Binds props of nodes to content fields (.docs/features/structured-content.md#data-binding): `patches` maps a node id
+ * to { prop: template }, where a template like "{price}" or "/products/{slug}" is filled from each entry of the
+ * content list the node sits in; an empty template removes the binding. One undo step.
+ */
+function setBindings(store, patches, label = "Bind to content") {
+  store.transact(label, (tx) => {
+    for (const [id, patch] of Object.entries(patches)) {
+      tx.update(id, (n) => {
+        const bind = { ...n.bind ?? {} };
+        for (const [prop, template] of Object.entries(patch)) {
+          if (template) bind[prop] = template;
+          else delete bind[prop];
+        }
+        return withField(n, "bind", Object.keys(bind).length ? bind : void 0);
+      });
+    }
+  });
+}
 function wrapNodes(store, ids, type = "container") {
   const doc = store.doc;
   const targets = topLevel(doc, ids).filter((id2) => id2 !== doc.root);
@@ -425,6 +444,7 @@ export {
   replaceContent,
   resetBreakpoint,
   setAdvanced,
+  setBindings,
   setBreakpoints,
   setFlag,
   setPlacement,

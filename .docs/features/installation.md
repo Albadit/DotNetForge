@@ -56,12 +56,12 @@ sequenceDiagram
     IS->>IS: email (format, ≤ 256), names (≤ 100), PasswordPolicy, confirm match
     IS->>St: InstallFirstAdminAsync(user with hashed password)
     St->>DB: BEGIN TRANSACTION
-    St->>DB: re-check SystemState.Installed, load oldest Tenant, load "Super Admin" role
+    St->>DB: re-check SystemState.Installed, load "Super Admin" role
     St->>DB: add User + UserRole, Installed = true, InstalledAtUtc = now
     St->>DB: SaveChanges + COMMIT (DbUpdateException → rollback, "already installed")
     St-->>SC: Result.Ok
     SC->>Cache: MarkInstalled()
-    SC->>AS: GetDefaultTenantIdAsync, ValidateAsync(email, password, tenant)
+    SC->>AS: ValidateAsync(email, password)
     SC->>SC: SignInAsync (cookie) + HttpContext.User when Success
     SC->>DB: audit "cms.installed" (User, id, email)
     SC-->>Op: 302 /admin
@@ -71,7 +71,7 @@ Concurrency: two simultaneous submissions both pass the service's pre-check; the
 inside its transaction. On **SQLite** writes are serialized, so the second commit fails (`DbUpdateException` →
 "The CMS is already installed.") and the first writer wins. On **PostgreSQL** (default `READ COMMITTED`) both
 transactions can read `Installed = false` and both commit - two Super Admins - because `SystemState` has no
-concurrency token; only identical emails collide on the `(TenantId, Email)` index. See the edge case under
+concurrency token; only identical emails collide on the unique `Email` index. See the edge case under
 [Planned](#planned-not-implemented).
 
 ## Validation (in order)
@@ -87,11 +87,10 @@ concurrency token; only identical emails collide on the `(TenantId, Email)` inde
 | contains a digit | `Password must contain at least one number.` |
 | not in the common list (`password`, `password1`, `12345678`, ... 12 entries, case-insensitive) | `Password is too common. Choose a stronger password.` |
 | `Password == ConfirmPassword` (ordinal) | `Password and confirmation do not match.` |
-| Store: no tenant seeded | `The default tenant has not been seeded.` |
 | Store: no `Super Admin` role | `The Super Admin role has not been seeded.` |
 
 The created user: trimmed `Email`, optional trimmed `FirstName`/`LastName`, `Status = Enabled`,
-`EmailConfirmed = true`, `CreatedDate = UtcNow`, `TenantId` = the oldest tenant. The length limits match the `User`
+`EmailConfirmed = true`, `CreatedDate = UtcNow`. The length limits match the `User`
 columns, so an over-long value is a validation message instead of a database error on PostgreSQL.
 
 ## Audit and rate limiting
@@ -138,7 +137,7 @@ The `.env` part of the same specification is in [configuration → Planned](conf
 
 - The installed flag needs a **database-level guard**, not only the in-transaction re-check: a uniqueness or
   concurrency guard on `SystemState.Installed` (e.g. a concurrency token or a conditional `UPDATE ... WHERE
-  Installed = false`). The unique `(TenantId, Email)` index on `Users` already exists.
+  Installed = false`). The unique `Email` index on `Users` already exists.
 
 ### Edge cases
 

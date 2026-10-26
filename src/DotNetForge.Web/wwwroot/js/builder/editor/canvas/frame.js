@@ -2,7 +2,9 @@ import "../../components/builtins.js";
 import { getComponent } from "../../components/registry.js";
 import { removedModuleIds } from "../../core/doc.js";
 import { nodeCss, visibilityCss } from "../../renderer/css.js";
-import { classesOf, isSkipped, renderNode } from "../../renderer/html.js";
+import { classesOf, isSkipped, itemContext, renderNode } from "../../renderer/html.js";
+import { bindNode } from "../../renderer/binding.js";
+import { collectionInner } from "../../renderer/collection.js";
 import { escapeHtml } from "../../renderer/format.js";
 const CTX = { mode: "canvas" };
 const KIDS_MARKER = "<template data-pe-kids></template>";
@@ -11,12 +13,15 @@ const MODULE_CLASS = /\bDnnModule-(\d+)\b/;
 // document links (/builder/base.css, /builder/canvas.css). Node CSS is written into constructable stylesheets
 // (document.adoptedStyleSheets): no <style> elements, so the Content-Security-Policy needs no 'unsafe-inline'.
 class CanvasFrame {
-  constructor(win, getDoc) {
+  constructor(win, getDoc, getData = () => void 0) {
     this.win = win;
     this.getDoc = getDoc;
+    this.getData = getData;
   }
   win;
   getDoc;
+  /** The entries of the content lists (ctx.data), from editor/content.js. */
+  getData;
   elements = /* @__PURE__ */ new Map();
   modules = /* @__PURE__ */ new Map();
   origins = /* @__PURE__ */ new Map();
@@ -63,7 +68,7 @@ class CanvasFrame {
     this.releaseAllModules();
     this.elements.clear();
     this.primary = this.primarySlots();
-    this.mount.innerHTML = renderNode(doc, doc.root, CTX);
+    this.mount.innerHTML = renderNode(doc, doc.root, this.ctx());
     this.index(this.mount);
     this.attachModules(this.mount);
     this.styles.clear();
@@ -82,6 +87,11 @@ class CanvasFrame {
     const before = this.primary;
     this.primary = this.primarySlots();
     const nodes = new Set(change.nodes);
+    // A change inside a content list's item template also rebuilds the list: its repeated copies show the template.
+    for (const id of change.nodes) {
+      const list = listAncestor(doc, id);
+      if (list) nodes.add(list);
+    }
     for (const [mid, id] of this.primary) {
       const old = before.get(mid);
       if (old !== id) {
@@ -130,18 +140,47 @@ class CanvasFrame {
     if (!node.parent) return true;
     return this.elements.has(node.parent);
   }
+  /** The render context of the canvas: the content lists' entries, and inside an item template its first entry. */
+  ctx() {
+    return { mode: "canvas", data: this.getData() };
+  }
+  ctxFor(id) {
+    const base = this.ctx();
+    const doc = this.getDoc();
+    const list = listAncestor(doc, id);
+    if (!list) return base;
+    const data = base.data?.[list];
+    return itemContext(base, Array.isArray(data?.items) && data.items.length ? data.items[0] : null, false);
+  }
   /** The node's element with its existing child elements moved in (or rendered if new). */
-  createShallow(doc, node, done) {
+  createShallow(doc, raw, done) {
+    const ctx = this.ctxFor(raw.id);
+    const node = bindNode(raw, ctx.item);
     const comp = getComponent(node.type);
     const tag = comp.tag(node);
     let open = "<" + tag + ' class="' + escapeHtml(classesOf(doc, node)) + '"';
-    if (comp.attrs) for (const [name, value] of comp.attrs(node, CTX)) open += " " + name + '="' + escapeHtml(value) + '"';
+    if (comp.attrs) for (const [name, value] of comp.attrs(node, ctx)) open += " " + name + '="' + escapeHtml(value) + '"';
     open += ' data-pe-id="' + node.id + '">';
-    const html = comp.voidElement ? open : open + (comp.content ? comp.content(node, CTX, node.children ? KIDS_MARKER : "") : node.children ? KIDS_MARKER : "") + "</" + tag + ">";
+    // A content list: the editable template takes the first entry's place; the other entries are copies.
+    const kids = node.type === "collection"
+      ? collectionInner(node, ctx, (item, index) => {
+        if (index === 0) return KIDS_MARKER;
+        const copy = itemContext(ctx, item, true);
+        return (node.children ?? []).map((cid) => renderNode(doc, cid, copy)).join("");
+      })
+      : null;
+    const html = comp.voidElement ? open : open + (kids ?? (comp.content ? comp.content(node, ctx, node.children ? KIDS_MARKER : "") : node.children ? KIDS_MARKER : "")) + "</" + tag + ">";
     const tpl = this.document.createElement("template");
     tpl.innerHTML = html;
     const el = tpl.content.firstElementChild;
     const marker = el.querySelector("template[data-pe-kids]");
+    if (!marker && node.children) {
+      // Nothing shows the children (a content list as a table): their old elements leave.
+      for (const cid of node.children) {
+        const stale = this.elements.get(cid);
+        if (stale) this.detach(cid, stale);
+      }
+    }
     if (marker && node.children) {
       const frag = this.document.createDocumentFragment();
       for (const cid of node.children) {
@@ -153,7 +192,7 @@ class CanvasFrame {
         }
         let childEl = this.elements.get(cid);
         if (!childEl) {
-          childEl = this.fromHtml(renderNode(doc, cid, CTX));
+          childEl = this.fromHtml(renderNode(doc, cid, this.ctxFor(cid)));
           this.index(childEl);
           this.attachModules(childEl);
           done.add(cid);
@@ -339,6 +378,17 @@ class CanvasFrame {
 function layoutElement(el) {
   const inner = el.firstElementChild;
   return inner && inner.classList.contains("pe-in") ? inner : el;
+}
+/** The id of the content list whose item template holds the node, or undefined. */
+function listAncestor(doc, id) {
+  let cur = doc.nodes[id]?.parent;
+  for (let d = 0; cur && d < 64; d++) {
+    const n = doc.nodes[cur];
+    if (!n) return void 0;
+    if (n.type === "collection") return n.id;
+    cur = n.parent;
+  }
+  return void 0;
 }
 function depthOf(doc, id) {
   let d = 0;

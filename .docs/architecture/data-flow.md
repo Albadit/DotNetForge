@@ -130,12 +130,14 @@ Full screen route list: [pages.md → Route map](pages.md#route-map).
 ```mermaid
 flowchart TD
     U["GET /about/team"] --> FB["Fallback → HomeController.RenderPage"]
-    FB --> Load["Load (Id, ParentPageId, Slug) of ALL live pages (every tenant)"]
+    FB --> Load["Load (Id, ParentPageId, Slug) of ALL live pages"]
     Load --> Walk["For each URL segment: find child of current parent<br/>exact slug (case-insensitive) first, else a '[param]' slug"]
     Walk -- "no match" --> NF([404 NotFound])
     Walk -- "matched every segment" --> Full["Load the matched page in full"]
     Full --> RV["Capture dynamic values into ViewData['RouteValues']"]
-    RV --> View["ThemedViewAsync('Page', matched): active theme's Views/Page.cshtml, else built-in; modules via ExtensionModules"]
+    RV --> CL["Layout? resolve its content lists:<br/>PageLayoutViewComponent.ResolveContentAsync → ContentRenderService (published entries)"]
+    CL -- "detail page names no published entry" --> NF
+    CL --> View["ThemedViewAsync('Page', matched): active theme's Views/Page.cshtml, else built-in; modules via ExtensionModules"]
     Root["GET /"] --> Index["HomeController.Index"]
     Index -- "live page with slug '/' or 'home'" --> View
     Index -- "none" --> List["ThemedViewAsync('Index'): list of live pages"]
@@ -144,11 +146,18 @@ flowchart TD
 Rules and limitations are documented once in
 [content pages and routing](../features/content-pages-and-routing.md#public-resolution).
 
+Content lists are resolved per request in `HomeController` before the view renders, so a detail page
+(`/products/[slug]`) whose URL names no published entry is a 404 like an unknown address. The result is handed to
+`PageLayoutViewComponent` through `HttpContext.Items["dnf:layout-content"]` (not queried twice), and the entry's
+title becomes the page title (`ViewData["ContentTitle"]`). Details:
+[structured content → rendering flow](../features/structured-content.md#rendering-flow).
+
 ## Navigation flow (admin)
 
 All admin navigation is plain links in the sidebar (built from `AdminNavigation.Tree` by `AdminNavigationService`)
 and full-page loads. Mutations are form POSTs followed by
-`RedirectToAction` (Post/Redirect/Get), except the Content Manager tree reorder, which is a `fetch` POST. See
+`RedirectToAction` (Post/Redirect/Get), except the drag-to-reorder of the Pages tree and of an entry list, which are
+`fetch` POSTs (and the page builder's JSON API). See
 [pages.md → Navigation](pages.md#navigation).
 
 ## Authentication flow (admin sign-in)
@@ -167,9 +176,8 @@ sequenceDiagram
         RL-->>User: 429
     end
     RL->>AC: Login
-    AC->>AS: GetDefaultTenantIdAsync() (oldest tenant)
-    AC->>AS: ValidateAsync(email, password, tenantId)
-    AS->>DB: User by (TenantId, Email)
+    AC->>AS: ValidateAsync(email, password)
+    AS->>DB: User by Email
     alt not found
         AS-->>AC: InvalidCredentials
     else Disabled
@@ -194,8 +202,8 @@ sequenceDiagram
     end
 ```
 
-The cookie principal carries `NameIdentifier` (user id), `Name` (display name), `Email`, `dnf:tenant` and one
-`Role` claim per role. Roles are read **only at sign-in**; changing a user's roles takes effect after they sign in
+The cookie principal carries `NameIdentifier` (user id), `Name` (display name), `Email` and one `Role` claim
+per role. Roles are read **only at sign-in**; changing a user's roles takes effect after they sign in
 again. A non-local or missing `returnUrl` goes to `/admin`. `POST /setup` follows the same pattern (rate-limited,
 signs the new Super Admin in, audits `cms.installed`). Sign-in through an authentication extension
 (`POST /account/external/{scheme}` → provider → `GET /account/external/callback`) ends in the same
@@ -231,14 +239,14 @@ A disabled or deleted user therefore loses access within 30 seconds; their role 
 
 ```mermaid
 flowchart LR
-    Req["POST /admin/content/update/{id}"] --> Policy{"AdminArea policy:<br/>role in Super Admin, Admin, Editor, Author?"}
+    Req["POST /admin/pages/update/{id}"] --> Policy{"AdminArea policy:<br/>role in Super Admin, Admin, Editor, Author?"}
     Policy -- "no cookie" --> L([302 /account/login])
     Policy -- "no" --> D([302 /account/denied → 403 page])
     Policy -- yes --> Roles{"Controller [Authorize(Roles = ...)]?"}
     Roles -- "not in role" --> D
     Roles -- ok --> Perm{"Can / CanModify<br/>(IPermissionService)"}
     Perm -- "denied: Forbid()" --> D
-    Perm -- ok --> Action["ContentController.Update"]
+    Perm -- ok --> Action["PagesController.Update"]
 ```
 
 All `[Authorize]` attributes on a controller must pass (they are combined with AND). The `Can`/`CanModify` step exists
@@ -282,12 +290,12 @@ sequenceDiagram
     opt LastUsedDate missing or older than 5 min
         TH->>DB: LastUsedDate = now (failure logged, request continues)
     end
-    TH->>F: principal with dnf:permission claims + dnf:tenant
+    TH->>F: principal with dnf:permission claims
     alt permission claim missing
         F-->>Client: 403 { "error": "Missing required permission '...'" }
     end
     F->>C: execute
-    C->>DB: query filtered by TenantId (AsNoTracking, projected)
+    C->>DB: query (AsNoTracking, projected)
     C-->>Client: 200 JSON
 ```
 
@@ -300,17 +308,17 @@ violation) and audits `content.created` as `API token {id}`. See [headless API](
 ```mermaid
 sequenceDiagram
     actor Editor
-    participant CC as ContentController.Update
+    participant CC as PagesController.Update
     participant PS as IPageService (PageService)
     participant DB as DotNetForgeDbContext
     participant Aud as IAuditService
-    Editor->>CC: POST /admin/content/update/{id} (PageInput + antiforgery)
-    CC->>DB: Page where Id = id and TenantId = active tenant (tracked)
+    Editor->>CC: POST /admin/pages/update/{id} (PageInput + antiforgery)
+    CC->>DB: Page where Id = id (tracked)
     CC->>CC: CanModify(Collection types, update, update.own, CreatedById) else Forbid()
     alt Published or schedule changed and not Can(Collection types, publish)
         CC-->>Editor: 200 re-render with "You don't have permission to publish, unpublish or schedule pages."
     end
-    CC->>PS: ApplyAsync(page, form, tenantId)
+    CC->>PS: ApplyAsync(page, form)
     PS->>DB: AsNoTracking reads for parent/cycle, slug uniqueness, dynamic sibling
     alt rule violated (incl. length limits)
         PS-->>CC: error message
@@ -319,7 +327,7 @@ sequenceDiagram
         PS-->>CC: null (page mutated in memory, not saved)
         CC->>DB: UpdatedDate = now, SaveChangesAsync
         CC->>Aud: content.updated → separate SaveChangesAsync
-        CC-->>Editor: 302 /admin/content?selected={id} + TempData["Success"]
+        CC-->>Editor: 302 /admin/pages?selected={id} + TempData["Success"]
     end
 ```
 
@@ -328,10 +336,10 @@ content mutations follow the same shape:
 
 | Action | Permission | Service call | On rule violation | Audit |
 | --- | --- | --- | --- | --- |
-| `POST /admin/content/create` | `create`; parent must exist in the tenant (else 404) | none (new page `new-page-<8 hex>`) | - | `content.created` |
-| `POST /admin/content/update/{id}` | `update` or `update.own`; `publish` to change Published/schedule | `ApplyAsync` | re-render with error | `content.updated` |
-| `POST /admin/content/delete/{id}` | `delete` or `delete.own` | `DeleteAsync` (re-parents children; refuses if they would clash) | re-render with error | `content.deleted` |
-| `POST /admin/content/reorder` (`fetch`) | `update` | `ReorderAsync` (tenant ownership, no cycles, no duplicate slugs / second dynamic segment) | `400 { error }` → `alert(error)` | `content.reordered` |
+| `POST /admin/pages/create` | `create`; parent must exist (else 404) | none (new page `new-page-<8 hex>`) | - | `content.created` |
+| `POST /admin/pages/update/{id}` | `update` or `update.own`; `publish` to change Published/schedule | `ApplyAsync` | re-render with error | `content.updated` |
+| `POST /admin/pages/delete/{id}` | `delete` or `delete.own` | `DeleteAsync` (re-parents children; refuses if they would clash) | re-render with error | `content.deleted` |
+| `POST /admin/pages/reorder` (`fetch`) | `update` | `ReorderAsync` (known page ids, no cycles, no duplicate slugs / second dynamic segment) | `400 { error }` → `alert(error)` | `content.reordered` |
 | `POST /api/content/pages` | API key `content.create` | `ApplyAsync` | `400 { error }` | `content.created` |
 
 ## Media upload flow
@@ -348,9 +356,9 @@ sequenceDiagram
     Note over MC: RequestSizeLimit = 25 MB x 10 + 1 MB<br/>bodies over 64 KB are buffered in the OS temp dir
     MC->>MC: Can(Media, create) else Forbid(), then 1 to 10 files
     loop each file
-        MC->>MS: UploadAsync(file, isPublic, TenantId, CurrentUserId)
+        MC->>MS: UploadAsync(file, isPublic, CurrentUserId)
         MS->>MS: reject empty, over 25 MB, extension not in AllowedTypes
-        MS->>MS: key = {tenantId:N}/{yyyy}/{MM}/{guid:N}{ext}, content type from extension
+        MS->>MS: key = {yyyy}/{MM}/{guid:N}{ext}, content type from extension
         MS->>FS: SaveAsync(key, stream, contentType)
         alt storage throws
             MS->>FS: DeleteAsync(key) (best effort)
@@ -385,8 +393,8 @@ sequenceDiagram
     participant FS as IFileStorage
     participant OS as Object storage
     B->>MF: GET /media/{id}/{fileName?}
-    MF->>DB: MediaFile by Id (TenantId, FileName, ContentType, RelativePath, IsPublic)
-    alt no row, or private and caller is not an admin-capable user of the file's tenant
+    MF->>DB: MediaFile by Id (FileName, ContentType, RelativePath, IsPublic)
+    alt no row, or private and caller is not an admin-capable user
         MF-->>B: 404 (existence not revealed)
     end
     MF->>MF: Content-Disposition inline (image, video, audio, PDF) or attachment<br/>Cache-Control "public, max-age=300" or "private, no-store"
@@ -406,13 +414,13 @@ sequenceDiagram
 ```
 
 The trailing `fileName` is cosmetic; the id selects the file. The controller has no `[Authorize]`: the cookie (if
-any) is read by `UseAuthentication`, and private access is decided by role and `dnf:tenant` claim. Details:
+any) is read by `UseAuthentication`, and private access is decided by role claim (admin-capable roles). Details:
 [media storage → download flow](../features/media-storage.md#download-flow).
 
 ## Background operation
 
-`ScheduledPublishingService` (hosted) waits 5 s, then every 15 s opens a DI scope and finalizes due schedules across
-**all tenants**. It runs on every instance; the work is idempotent. It does not decide public visibility -
+`ScheduledPublishingService` (hosted) waits 5 s, then every 15 s opens a DI scope and finalizes due schedules.
+It runs on every instance; the work is idempotent. It does not decide public visibility -
 `PageVisibility.Live` already hides/shows pages by comparing the schedule to `DateTime.UtcNow` on each request. See
 [scheduled publishing](../features/scheduled-publishing.md).
 
@@ -449,10 +457,12 @@ See [configuration](../features/configuration.md) and
 | --- | --- | --- |
 | Invalid `.env`, or a relative/missing path outside Development | `EnvConfigurationLoader` at startup | Process exits with code 1; message on stderr |
 | Form validation failure (incl. length limits) | `PageService`, `MediaService`, `InstallationService`, controller checks (Settings, API Tokens) | Same screen re-rendered with the errors in `<form-errors />` |
-| Permission denied by `Can`/`CanModify` | `ContentController`, `MediaController` → `Forbid()` | 302 to `/account/denied` (renders with status 403) |
-| Content delete would make children clash | `PageService.DeleteAsync` | Content Manager re-rendered with the error |
-| Reorder rejected (cycle, clash, foreign id) | `PageService.ReorderAsync` | `400 { error }`; `content.js` shows it as a danger toast and reloads |
-| Entity not found in the active tenant | controller `FirstOrDefaultAsync` → `NotFound()` | Empty-body 404 |
+| Permission denied by `Can`/`CanModify` | `PagesController`, `ContentController`, `MediaController` → `Forbid()` | 302 to `/account/denied` (renders with status 403) |
+| Content delete would make children clash | `PageService.DeleteAsync` | Pages re-rendered with the error |
+| Entry invalid, not unique, or saved by someone else meanwhile | `ContentEntryService.SaveAsync` | entry form re-rendered with the errors (a conflict offers an overwrite) |
+| Detail page names an entry that doesn't exist or isn't published | `ContentRenderService.ResolveAsync` (`MissingEntry`) | 404, like an unknown URL |
+| Reorder rejected (cycle, clash, foreign id) | `PageService.ReorderAsync` | `400 { error }`; `pages.js` shows it as a danger toast and reloads |
+| Entity not found | controller `FirstOrDefaultAsync` → `NotFound()` | Empty-body 404 |
 | Public URL not resolving | `HomeController.RenderPage` | Empty-body 404 |
 | Private media requested without access, or missing object | `MediaFilesController` | Empty-body 404 (missing object also logged) |
 | Media storage unavailable during upload | `MediaService.UploadAsync` | Per-file message on the Media screen; error logged |

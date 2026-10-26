@@ -2,7 +2,8 @@
 
 DotNetForge CMS is a server-rendered **ASP.NET Core MVC** CMS (C#, EF Core, Razor) on **.NET 10**, with **SQLite**
 (default) or **PostgreSQL**, configured through `.env`. It serves a role-gated admin area, a public site resolved from
-a page tree, and a token-secured headless API over the same data, and keeps the core (`src/`) separate from
+a page tree, structured content (content types and their entries, shown on pages through the page builder's content
+lists), and a token-secured headless API over the same data, and keeps the core (`src/`) separate from
 user extensions (`extensions/`): a CMS user customizes the site only there - code, views and assets that plug into
 the host once enabled.
 
@@ -27,7 +28,9 @@ src/
                                Views/, wwwroot/ - composition root, admin area, public site, setup
   DotNetForge.Abstractions/    contracts only, no dependencies
   DotNetForge.Shared/          entities, enums, constants, DTOs, results, manifest model, store interfaces
-  DotNetForge.Core/            installation, permission matrix evaluation, validators (no EF Core)
+  DotNetForge.Core/            installation, permission matrix evaluation, validators, structured content rules (no EF Core)
+  DotNetForge.Content/         structured content over the database: content types, entries, queries (admin + API)
+  DotNetForge.PageBuilder/     page builder document model, validation and HTML/CSS renderer
   DotNetForge.Data/            EF Core contexts, migrations (SQLite + PostgreSQL), seeding, provider selection
   DotNetForge.Infrastructure/  BCL implementations: hashing, tokens, signing, .env, paths, file storage
   DotNetForge.Extensions/      manifest validation, discovery, code loading, ExtensionCatalog
@@ -54,8 +57,12 @@ flowchart BT
     Sdk --> Shared
     Extensions --> Core
     Extensions --> Sdk
+    Core --> PageBuilder
+    Content --> Core
+    Content --> Data
     Api --> Core
     Api --> Data
+    Api --> Content
     Web["Web"] --> Api & Extensions & Infrastructure
     UserExt["extensions/ (loaded at runtime)"] -. compile against .-> Sdk
 ```
@@ -63,6 +70,8 @@ flowchart BT
 - `Core` and `Data` are siblings; `Core` needs persistence only through interfaces in `Shared/Stores`
   (`IInstallationStore`).
 - `Api` queries `Data` directly - a documented shortcut.
+- `Content` holds the structured-content rules that need the database, so the admin and the API share one
+  implementation ([structured content](../features/structured-content.md)).
 - `PermissionMatrix` lives in `Shared` so the seeder and `PermissionService` share it.
 - All host DI is in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`; extensions add theirs through
   `IExtension.ConfigureServices`, called from there.
@@ -76,6 +85,10 @@ flowchart BT
 - **Role-based admin gating** (`AdminArea` policy + `[Authorize(Roles = ...)]`), plus `(area, action)` checks from the
   permission matrix for content and media actions; granular permission keys for API tokens.
 - **Install gate** middleware until the first Super Admin exists.
+- **Structured content is separate from pages:** content types define fields, entries hold values as JSON with a
+  single-table value index for filtering and sorting (MongoDB-compatible), and pages show entries through content
+  lists resolved per request - the layout stores bindings, never content
+  ([structured content](../features/structured-content.md)).
 - **Liveness of content pages is computed per request** from `Published`, `Disabled` and the schedule; a background
   job only tidies passed schedules.
 - **Extensions are discovered from disk, validated and loaded** (one load context each, at startup), and contribute

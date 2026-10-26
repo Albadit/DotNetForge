@@ -21,15 +21,13 @@ public sealed record SignInResult(SignInStatus Status, ClaimsPrincipal? Principa
 
 /// <summary>
 /// Validates email/password credentials with account lockout (.docs/features/security.md,
-/// .docs/features/authentication.md) and builds the cookie principal (roles + tenant claims) used by the admin
+/// .docs/features/authentication.md) and builds the cookie principal (user and role claims) used by the admin
 /// area.
 /// </summary>
 public sealed class AuthService
 {
     public const int MaxFailedAttempts = 5;
     public static readonly TimeSpan LockoutWindow = TimeSpan.FromMinutes(15);
-
-    public const string TenantClaimType = "dnf:tenant";
 
     private readonly DotNetForgeDbContext _db;
     private readonly IPasswordHasher _passwordHasher;
@@ -43,11 +41,11 @@ public sealed class AuthService
     }
 
     public async Task<SignInResult> ValidateAsync(
-        string email, string password, Guid tenantId, CancellationToken cancellationToken = default)
+        string email, string password, CancellationToken cancellationToken = default)
     {
         var normalized = (email ?? string.Empty).Trim();
         var user = await _db.Users
-            .FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Email == normalized, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
 
         // Neutral response to avoid account enumeration.
         if (user is null)
@@ -88,12 +86,12 @@ public sealed class AuthService
     /// (.docs/features/authentication.md#external-sign-in-extensions). No account is created; disabled and locked-out
     /// accounts are refused exactly as for a password sign-in.
     /// </summary>
-    public async Task<SignInResult> ValidateExternalAsync(string email, Guid tenantId, CancellationToken cancellationToken = default)
+    public async Task<SignInResult> ValidateExternalAsync(string email, CancellationToken cancellationToken = default)
     {
         var normalized = (email ?? string.Empty).Trim();
         var user = normalized.Length == 0
             ? null
-            : await _db.Users.FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Email == normalized, cancellationToken);
+            : await _db.Users.FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
 
         if (user is null)
         {
@@ -112,13 +110,6 @@ public sealed class AuthService
 
         return await CompleteSignInAsync(user, cancellationToken);
     }
-
-    /// <summary>
-    /// The tenant used for sign-in. There is no tenant resolution yet (.docs/features/multi-tenancy.md), so this is
-    /// the oldest tenant - the seeded default.
-    /// </summary>
-    public Task<Guid> GetDefaultTenantIdAsync(CancellationToken cancellationToken = default) =>
-        _db.Tenants.OrderBy(t => t.CreatedDate).Select(t => t.Id).FirstAsync(cancellationToken);
 
     /// <summary>
     /// Whether a signed-in user may keep their session: the account still exists and is enabled. Called for every
@@ -170,7 +161,6 @@ public sealed class AuthService
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.DisplayName),
             new(ClaimTypes.Email, user.Email),
-            new(TenantClaimType, user.TenantId.ToString()),
         };
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 

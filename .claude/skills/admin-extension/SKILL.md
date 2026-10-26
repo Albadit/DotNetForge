@@ -39,9 +39,8 @@ does, security model). Reference implementation: `extensions/admin/audit-dashboa
    `table.table`, `.btn`, ...) instead of restyling them. Model: `extensions/admin/audit-dashboard`.
 5. **Assets** - only under `Views/Resources/`; supported types css, js, json, svg, png, jpg/jpeg, gif, webp, ico,
    woff2 (others are served as `application/octet-stream`). No inline script or style (CSP).
-6. **Data access** - `@inject` gives full host access. If you query tenant data, filter by the user's `dnf:tenant`
-   claim (`User.FindFirst("dnf:tenant")`); read-only unless the task explicitly needs writes. Never expose hashes or
-   secrets.
+6. **Data access** - `@inject` gives full host access; read-only unless the task explicitly needs writes. Never
+   expose hashes or secrets.
 7. **Check** - run the app, sign in as Super Admin, confirm **Plugins** shows the extension's card without a problem alert,
    click **Enable** (every extension starts disabled; nothing shows before), then confirm the **Extensions** sidebar
    group shows the tab, the iframe renders, and `/admin/ext/<id>/resources/...` serves the assets. With code: build

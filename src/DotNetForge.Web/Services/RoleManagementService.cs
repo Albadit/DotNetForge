@@ -19,7 +19,7 @@ public sealed class RoleInput
 /// <summary>
 /// Creating, editing, duplicating and deleting roles and their grants (.docs/pages/roles.md). Rules:
 /// <list type="bullet">
-/// <item>name required (at most 100), unique in the tenant; description at most 500; grants only from
+/// <item>name required (at most 100), unique; description at most 500; grants only from
 /// <see cref="PermissionCatalog"/>;</item>
 /// <item>built-in roles keep their name and can't be deleted; <c>Super Admin</c> (always everything) and <c>Public</c>
 /// (site visitors) have fixed grants; only a Super Admin may change the <c>Super Admin</c> role;</item>
@@ -60,18 +60,18 @@ public sealed class RoleManagementService
             return (null, error);
         }
 
-        var role = new Role { TenantId = actor.TenantId, Name = name!, Description = Clean(input.Description), IsBuiltIn = false };
+        var role = new Role { Name = name!, Description = Clean(input.Description), IsBuiltIn = false };
         AddGrants(role.Id, input.Grants);
         _db.Roles.Add(role);
         await _db.SaveChangesAsync(ct);
-        _grants.Invalidate(actor.TenantId);
+        _grants.Invalidate();
         await _audit.LogAsync(AuditActions.RoleChanged, "Role", role.Id.ToString(), role.Name, details: "Created", cancellationToken: ct);
         return (role.Id, null);
     }
 
     public async Task<string?> UpdateAsync(Guid id, RoleInput input, ManagementActor actor, CancellationToken ct = default)
     {
-        var role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == actor.TenantId, ct);
+        var role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role is null)
         {
             return "This role no longer exists.";
@@ -121,7 +121,7 @@ public sealed class RoleManagementService
         role.Name = name!;
         role.Description = Clean(input.Description);
         await _db.SaveChangesAsync(ct);
-        _grants.Invalidate(actor.TenantId);
+        _grants.Invalidate();
 
         if (detailsChanged)
         {
@@ -138,13 +138,13 @@ public sealed class RoleManagementService
 
     public async Task<(Guid? Id, string? Error)> DuplicateAsync(Guid id, ManagementActor actor, CancellationToken ct = default)
     {
-        var source = await _db.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id && r.TenantId == actor.TenantId, ct);
+        var source = await _db.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
         if (source is null)
         {
             return (null, "This role no longer exists.");
         }
 
-        var names = (await _db.Roles.AsNoTracking().Where(r => r.TenantId == actor.TenantId).Select(r => r.Name).ToListAsync(ct))
+        var names = (await _db.Roles.AsNoTracking().Select(r => r.Name).ToListAsync(ct))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var name = $"{source.Name} (copy)";
         for (var n = 2; names.Contains(name); n++)
@@ -157,7 +157,7 @@ public sealed class RoleManagementService
             return (null, "The copy's name would be too long. Create the role instead.");
         }
 
-        var copy = new Role { TenantId = actor.TenantId, Name = name, Description = source.Description, IsBuiltIn = false };
+        var copy = new Role { Name = name, Description = source.Description, IsBuiltIn = false };
         if (IsSuperAdminRole(source))
         {
             // The original's grants are implicit; the copy gets every grant the catalog offers.
@@ -175,14 +175,14 @@ public sealed class RoleManagementService
 
         _db.Roles.Add(copy);
         await _db.SaveChangesAsync(ct);
-        _grants.Invalidate(actor.TenantId);
+        _grants.Invalidate();
         await _audit.LogAsync(AuditActions.RoleChanged, "Role", copy.Id.ToString(), copy.Name, details: $"Duplicated from {source.Name}", cancellationToken: ct);
         return (copy.Id, null);
     }
 
     public async Task<string?> DeleteAsync(Guid id, ManagementActor actor, CancellationToken ct = default)
     {
-        var role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == actor.TenantId, ct);
+        var role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role is null)
         {
             return "This role no longer exists.";
@@ -203,7 +203,7 @@ public sealed class RoleManagementService
         _db.RolePermissions.RemoveRange(await _db.RolePermissions.Where(p => p.RoleId == id).ToListAsync(ct));
         _db.Roles.Remove(role);
         await _db.SaveChangesAsync(ct);
-        _grants.Invalidate(actor.TenantId);
+        _grants.Invalidate();
         await _audit.LogAsync(AuditActions.RoleChanged, "Role", role.Id.ToString(), role.Name, details: "Deleted", cancellationToken: ct);
         return null;
     }
@@ -221,7 +221,7 @@ public sealed class RoleManagementService
         }
 
         var names = await _db.Roles.AsNoTracking()
-            .Where(r => r.TenantId == actor.TenantId && r.Id != excludeId)
+            .Where(r => r.Id != excludeId)
             .Select(r => r.Name)
             .ToListAsync(ct);
         return names.Contains(name, StringComparer.OrdinalIgnoreCase) ? $"A role named '{name}' already exists." : null;

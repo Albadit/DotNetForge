@@ -2,18 +2,20 @@ using DotNetForge.Data;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Web.Areas.Admin.Models;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Startup;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Media library for the active tenant (.docs/pages/media.md): list, upload, change visibility and delete. File bytes
+/// Media library (.docs/pages/media.md): list, upload, change visibility and delete. File bytes
 /// live in <c>IFileStorage</c>; rules are in <see cref="MediaService"/>. Upload needs <c>Media/create</c>; changing
 /// public/private needs <c>Media/update</c> (or <c>update.own</c>); delete needs <c>Media/delete</c> (or
 /// <c>delete.own</c>) - the "own" grants for files the user uploaded.
 /// </summary>
 [Route("admin/media")]
+[RequirePermission(PermissionAreas.Media, PermissionActions.Read)]
 public sealed class MediaController : AdminControllerBase
 {
     /// <summary>Request cap: the per-file limit times the file count, plus room for the multipart envelope.</summary>
@@ -59,7 +61,7 @@ public sealed class MediaController : AdminControllerBase
         var uploaded = 0;
         foreach (var file in files)
         {
-            var (saved, error) = await _media.UploadAsync(file, isPublic, TenantId, CurrentUserId, HttpContext.RequestAborted);
+            var (saved, error) = await _media.UploadAsync(file, isPublic, CurrentUserId, HttpContext.RequestAborted);
             if (error is not null)
             {
                 ModelState.AddModelError(string.Empty, error);
@@ -84,7 +86,7 @@ public sealed class MediaController : AdminControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Visibility(Guid id, bool isPublic)
     {
-        var file = await _db.MediaFiles.FirstOrDefaultAsync(m => m.Id == id && m.TenantId == TenantId);
+        var file = await _db.MediaFiles.FirstOrDefaultAsync(m => m.Id == id);
         if (file is null)
         {
             return NotFound();
@@ -106,7 +108,7 @@ public sealed class MediaController : AdminControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var file = await _db.MediaFiles.FirstOrDefaultAsync(m => m.Id == id && m.TenantId == TenantId);
+        var file = await _db.MediaFiles.FirstOrDefaultAsync(m => m.Id == id);
         if (file is null)
         {
             return NotFound();
@@ -126,7 +128,7 @@ public sealed class MediaController : AdminControllerBase
     public const int MaxBulkDelete = 100;
 
     /// <summary>
-    /// Deletes the selected files (the library's bulk action). Each file gets the same tenant and permission check as
+    /// Deletes the selected files (the library's bulk action). Each file gets the same permission check as
     /// <see cref="Delete"/> (and its own audit entry through <see cref="MediaService"/>); files the user may not
     /// delete are skipped and reported.
     /// </summary>
@@ -141,7 +143,7 @@ public sealed class MediaController : AdminControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        var files = await _db.MediaFiles.Where(m => ids.Contains(m.Id) && m.TenantId == TenantId).ToListAsync();
+        var files = await _db.MediaFiles.Where(m => ids.Contains(m.Id)).ToListAsync();
         var deleted = 0;
         var refused = 0;
         foreach (var file in files)
@@ -177,7 +179,6 @@ public sealed class MediaController : AdminControllerBase
     {
         var rows = await _db.MediaFiles
             .AsNoTracking()
-            .Where(m => m.TenantId == TenantId)
             .OrderByDescending(m => m.UploadedDate)
             .Select(m => new { m.Id, m.FileName, m.ContentType, m.SizeBytes, m.IsPublic, m.UploadedDate, m.UploadedById })
             .ToListAsync();

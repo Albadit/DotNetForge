@@ -19,6 +19,8 @@
     <ProjectReference Include="..\DotNetForge.Core\DotNetForge.Core.csproj" />
     <!-- The headless API queries persistence directly; full repository abstraction is future work. -->
     <ProjectReference Include="..\DotNetForge.Data\DotNetForge.Data.csproj" />
+    <!-- Content types and entries: the same rules as the Content Manager. -->
+    <ProjectReference Include="..\DotNetForge.Content\DotNetForge.Content.csproj" />
   </ItemGroup>
 
 </Project>

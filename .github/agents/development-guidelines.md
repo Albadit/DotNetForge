@@ -20,7 +20,7 @@ Full guide: [development.md](../../.docs/guides/development.md). Testing: [testi
 - All DI in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`.
 - Admin controllers derive from `AdminControllerBase`; API controllers from `ApiControllerBase` and carry
   `[RequireApiPermission]` on every action.
-- Filter tenant-scoped queries by `TenantId`; content-page rules only in `PageService` (via `IPageService`).
+- Content-page rules only in `PageService` (via `IPageService`).
 - Never write runtime files under the content root (read-only in production): use `IFileStorage` or the database.
 - Check `(area, action)` permissions with `Can`/`CanModify` for content and media actions; audit via `IAuditService`.
 - No inline script/style in views (Content-Security-Policy).

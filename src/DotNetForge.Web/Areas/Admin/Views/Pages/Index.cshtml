@@ -1,0 +1,75 @@
+@model ContentIndexViewModel
+@{
+    ViewData["Title"] = "Pages";
+    ViewData["Description"] = "Build the site's page tree, then edit each page's URL, SEO, publishing and layout. Structured content lives in the Content Manager.";
+    ViewData["SelectedId"] = Model.SelectedId;
+    var pageCount = CountPages(Model.Tree);
+
+    static int CountPages(IReadOnlyList<PageTreeNode> nodes) => nodes.Sum(n => 1 + CountPages(n.Children));
+}
+
+@section Actions {
+    @* One shared form: the header button and every "add child" button in the tree submit it via formaction (POST + antiforgery). *@
+    <form id="treeActions" method="post" class="inline">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-primary" formaction="/admin/pages/create"><icon name="plus" /> New page</button>
+    </form>
+}
+
+<div class="content-manager">
+    <aside class="card tree-card" aria-labelledby="tree-title">
+        <div class="card-header">
+            <h2 class="card-title" id="tree-title">Pages</h2>
+            <div class="tree-header-actions">
+                @* Close / open every page with children at once (pages.js). *@
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-tree-collapse-all data-js-only hidden
+                        aria-label="Close all pages" data-tooltip="Close all">
+                    <icon name="chevrons-down-up" size="sm" />
+                </button>
+                <badge>@pageCount</badge>
+            </div>
+        </div>
+        @if (pageCount > 0)
+        {
+            <div class="tree-search" data-js-only hidden>
+                <label class="sr-only" for="tree-filter">Filter pages</label>
+                <div class="input-icon">
+                    <icon name="search" size="sm" />
+                    <input id="tree-filter" type="search" class="input-sm" placeholder="Filter pages" autocomplete="off" data-tree-filter />
+                </div>
+            </div>
+        }
+        <div class="card-body">
+            @if (Model.Tree.Count == 0)
+            {
+                <empty-state icon="pages" title="No pages yet" text="Create the first page of your site." compact="true">
+                    <button type="submit" class="btn btn-primary btn-sm" form="treeActions" formaction="/admin/pages/create"><icon name="plus" size="sm" /> New page</button>
+                </empty-state>
+            }
+            else
+            {
+                <partial name="_TreeNodes" model="Model.Tree" />
+                <p class="text-xs text-muted tree-empty" data-tree-empty hidden>No page matches the filter.</p>
+            }
+        </div>
+    </aside>
+
+    <section aria-label="Page editor">
+        @if (Model.Selected is null)
+        {
+            <div class="card">
+                <empty-state icon="pencil" title="Select a page to edit" text="Choose a page in the tree, or create a new one. Drag pages to reorder or move them." />
+            </div>
+        }
+        else
+        {
+            ViewData["ParentOptions"] = Model.ParentOptions;
+            ViewData["Extras"] = Model.Extras;
+            <partial name="_PageForm" model="Model.Selected" />
+        }
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/forge/pages.js" asp-append-version="true" defer></script>
+}

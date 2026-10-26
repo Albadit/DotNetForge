@@ -49,8 +49,7 @@ public sealed class AccountController : Controller
         ViewData["Email"] = email;
         ViewData["RememberMe"] = rememberMe;
 
-        var tenantId = await _authService.GetDefaultTenantIdAsync(HttpContext.RequestAborted);
-        var result = await _authService.ValidateAsync(email, password, tenantId, HttpContext.RequestAborted);
+        var result = await _authService.ValidateAsync(email, password, HttpContext.RequestAborted);
 
         switch (result.Status)
         {

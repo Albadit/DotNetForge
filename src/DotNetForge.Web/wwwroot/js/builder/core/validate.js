@@ -8,6 +8,12 @@ const DEVICES = ["desktop", "tablet", "mobile"];
 const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 const own = (table, key) => Object.prototype.hasOwnProperty.call(table, key) ? table[key] : void 0;
 const cloneDefault = (v) => v === void 0 ? null : JSON.parse(JSON.stringify(v));
+/** The conditions a content list filter may use (FilterOperators in DocumentValidator.cs). */
+const FILTER_OPS = ["eq", "neq", "contains", "gt", "gte", "lt", "lte", "empty", "notEmpty"];
+/** Prop types a node inside a content list can take from an entry (PropDef.BindableTypes). */
+const BINDABLE_TYPES = /* @__PURE__ */ new Set(["text", "inline", "rich", "url", "image", "video"]);
+/** Longest binding template of one prop (DocumentValidator.MaxBinding). */
+const MAX_BINDING = 300;
 function normalizeProp(def, value) {
   switch (def.type) {
     case "text": {
@@ -53,6 +59,18 @@ function normalizeProp(def, value) {
     }
     case "icon":
       return V.iconName(value) ?? def.default;
+    case "ref":
+      return typeof value === "string" && (value === "" || V.reference(value)) ? value === "" ? "" : V.reference(value) : def.default;
+    case "field":
+      return V.fieldPath(value) ?? def.default;
+    case "filters": {
+      if (!Array.isArray(value)) return def.default;
+      return value.slice(0, def.maxItems ?? 10).filter(isObj).map((f) => ({ field: V.fieldPath(f.field), op: FILTER_OPS.includes(f.op) ? f.op : "eq", value: V.text(f.value, 200) ?? "" })).filter((f) => f.field);
+    }
+    case "columns": {
+      if (!Array.isArray(value)) return def.default;
+      return value.slice(0, def.maxItems ?? 12).filter(isObj).map((c) => ({ field: V.fieldPath(c.field), label: V.text(c.label, 100) ?? "" })).filter((c) => c.field);
+    }
     case "comments": {
       if (!Array.isArray(value)) return def.default;
       return value.slice(0, def.maxItems ?? 100).filter(isObj).map((c) => ({
@@ -138,6 +156,10 @@ function normalizePlaceValue(key, value) {
   const def = own(PLACE, key);
   return def ? V.int(value, def.min, def.max) ?? void 0 : void 0;
 }
+/** A content list's item template is repeated, so it is never pinned to a cell or position. */
+function normalizeItemPlaceValue(key, value) {
+  return key === "colSpan" || key === "rowSpan" || key === "w" || key === "h" ? normalizePlaceValue(key, value) : void 0;
+}
 function normalizeResponsive(value, fn) {
   if (!isObj(value)) return void 0;
   const out = {};
@@ -186,7 +208,7 @@ function normalizeNode(raw, id) {
     const layout = normalizeResponsive(raw.layout, normalizeLayoutValue);
     if (layout) node.layout = layout;
   }
-  const place = normalizeResponsive(raw.place, normalizePlaceValue);
+  const place = normalizeResponsive(raw.place, type === "item" ? normalizeItemPlaceValue : normalizePlaceValue);
   if (place) node.place = place;
   const style = normalizeResponsive(raw.style, normalizeStyleValue);
   if (style) node.style = style;
@@ -212,6 +234,16 @@ function normalizeNode(raw, id) {
       if (name && value) vars[name] = value;
     }
     if (Object.keys(vars).length) node.vars = vars;
+  }
+  if (isObj(raw.bind)) {
+    // In schema prop order, as DocumentValidator writes them.
+    const bind = {};
+    for (const [key, pdef] of Object.entries(def.props)) {
+      if (!BINDABLE_TYPES.has(pdef.type) || !Object.prototype.hasOwnProperty.call(raw.bind, key)) continue;
+      const template = V.text(raw.bind[key], MAX_BINDING);
+      if (template && template.includes("{")) bind[key] = template;
+    }
+    if (Object.keys(bind).length) node.bind = bind;
   }
   if (isObj(raw.permissions)) {
     const roles = intList(raw.permissions.editRoles, 50);
@@ -281,7 +313,9 @@ function removedModulesOf(settings, nodes) {
   return [...ids].sort((a, b) => a - b);
 }
 export {
+  BINDABLE_TYPES,
   DocumentError,
+  FILTER_OPS,
   normalizeDocument,
   normalizeProp
 };

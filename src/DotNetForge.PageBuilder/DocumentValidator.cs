@@ -213,6 +213,41 @@ namespace DotNetForge.PageBuilder
                     }
                 case "icon":
                     return Str(Values.IconName(value)) ?? def.CreateDefault();
+                case "ref":
+                    return Js.TryString(value, out var reference) && (reference.Length == 0 || Values.Reference(reference) != null)
+                        ? new JValue(reference.Length == 0 ? string.Empty : Values.Reference(reference))
+                        : def.CreateDefault();
+                case "field":
+                    return Str(Values.FieldPath(value)) ?? def.CreateDefault();
+                case "filters":
+                    {
+                        if (!(value is JArray items)) return def.CreateDefault();
+                        var output = new JArray();
+                        foreach (var item in items.Take((int)Math.Min(def.MaxItems ?? 10, int.MaxValue)).OfType<JObject>())
+                        {
+                            var field = Values.FieldPath(item["field"]);
+                            if (string.IsNullOrEmpty(field)) continue;
+                            output.Add(new JObject
+                            {
+                                ["field"] = field,
+                                ["op"] = Js.TryString(item["op"], out var op) && FilterOperators.Contains(op) ? op : "eq",
+                                ["value"] = Values.Text(item["value"], 200) ?? string.Empty,
+                            });
+                        }
+                        return output;
+                    }
+                case "columns":
+                    {
+                        if (!(value is JArray items)) return def.CreateDefault();
+                        var output = new JArray();
+                        foreach (var item in items.Take((int)Math.Min(def.MaxItems ?? 12, int.MaxValue)).OfType<JObject>())
+                        {
+                            var field = Values.FieldPath(item["field"]);
+                            if (string.IsNullOrEmpty(field)) continue;
+                            output.Add(new JObject { ["field"] = field, ["label"] = Values.Text(item["label"], 100) ?? string.Empty });
+                        }
+                        return output;
+                    }
                 case "comments":
                     {
                         if (!(value is JArray items)) return def.CreateDefault();
@@ -233,6 +268,12 @@ namespace DotNetForge.PageBuilder
                     return def.CreateDefault();
             }
         }
+
+        /// <summary>The conditions a content list filter may use (mirrors FILTER_OPS in core/validate.js).</summary>
+        public static readonly IReadOnlyList<string> FilterOperators = new[] { "eq", "neq", "contains", "gt", "gte", "lt", "lte", "empty", "notEmpty" };
+
+        /// <summary>Longest binding template of one prop.</summary>
+        public const int MaxBinding = 300;
 
         private static int MaxOf(PropDef def, int fallback)
         {
@@ -355,6 +396,11 @@ namespace DotNetForge.PageBuilder
             }
         }
 
+        private static JToken NormalizeItemPlaceValue(string key, JToken value)
+        {
+            return key == "colSpan" || key == "rowSpan" || key == "w" || key == "h" ? NormalizePlaceValue(key, value) : null;
+        }
+
         private static JToken NormalizePlaceValue(string key, JToken value)
         {
             var def = Schema.Place(key);
@@ -440,7 +486,8 @@ namespace DotNetForge.PageBuilder
                 if (!string.IsNullOrEmpty(name)) node.Name = name;
             }
             if (def.Container) node.Layout = NormalizeResponsive(raw["layout"], NormalizeLayoutValue);
-            node.Place = NormalizeResponsive(raw["place"], NormalizePlaceValue);
+            // A content list's item template is repeated, so it is never pinned to a cell or position.
+            node.Place = NormalizeResponsive(raw["place"], type == "item" ? (Func<string, JToken, JToken>)NormalizeItemPlaceValue : NormalizePlaceValue);
             node.Style = NormalizeResponsive(raw["style"], NormalizeStyleValue);
             node.Hidden = Js.IsTrue(raw["hidden"]);
             node.Locked = Js.IsTrue(raw["locked"]);
@@ -472,6 +519,18 @@ namespace DotNetForge.PageBuilder
                     if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(value)) vars.Add(new KeyValuePair<string, string>(name, value));
                 }
                 if (vars.Count > 0) node.Vars = vars;
+            }
+            if (raw["bind"] is JObject bind)
+            {
+                // Bindings in schema prop order: the order JSON.stringify writes them in the editor.
+                var bindings = new List<KeyValuePair<string, string>>();
+                foreach (var pdef in def.Props)
+                {
+                    if (!PropDef.BindableTypes.Contains(pdef.Type)) continue;
+                    var template = Values.Text(bind.Property(pdef.Key, StringComparison.Ordinal)?.Value, MaxBinding);
+                    if (!string.IsNullOrEmpty(template) && template.Contains('{')) bindings.Add(new KeyValuePair<string, string>(pdef.Key, template));
+                }
+                if (bindings.Count > 0) node.Bind = bindings;
             }
             if (raw["permissions"] is JObject permissions)
             {

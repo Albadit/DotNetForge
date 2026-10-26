@@ -1,0 +1,172 @@
+@using DotNetForge.Shared.Enums
+@using DotNetForge.Content
+@using DotNetForge.Web.Services
+@model EntryEditViewModel
+@{
+    var type = Model.Type;
+    var entry = Model.Entry;
+    var single = type.Kind == ContentTypeKind.Single;
+    var title = entry is null ? "New entry" : single ? type.Name : ContentEntryService.Display(entry);
+    ViewData["Title"] = title;
+    ViewData["Description"] = single ? "A single entry: one set of values used across the site." : type.Name;
+    ViewData["PageWidth"] = "medium";
+    var action = entry is null ? $"/admin/content/{type.Slug}/new" : $"/admin/content/{type.Slug}/{entry.Id}";
+    var readOnly = !Model.CanSave;
+}
+
+@section Actions {
+    @if (!single)
+    {
+        <a class="btn btn-secondary" href="/admin/content/@type.Slug"><icon name="arrow-left" /> All @type.Name.ToLowerInvariant()</a>
+    }
+    @if (Model.CanCreate && entry is not null)
+    {
+        <a class="btn btn-secondary" href="/admin/content/@type.Slug/new"><icon name="plus" /> New entry</a>
+    }
+}
+
+<form id="entryForm" method="post" action="@action" class="editor" novalidate data-entry-form>
+    @Html.AntiForgeryToken()
+    @if (Model.BaseVersion is { } version)
+    {
+        <input type="hidden" name="baseVersion" value="@version" />
+    }
+    @if (Model.Conflict)
+    {
+        <input type="hidden" name="force" value="true" />
+    }
+
+    <div class="editor-main">
+        <form-errors />
+        @if (readOnly)
+        {
+            <alert tone="Info" title="View only">You can see this entry but not change it.</alert>
+        }
+        <section class="card" aria-label="Fields">
+            <div class="card-body form-grid entry-fields">
+                @foreach (var field in Model.Fields)
+                {
+                    <partial name="_Field" model="new EntryFieldView(field, Model.Values[field.Key], field.Key, Model)" />
+                }
+                @if (Model.Fields.Count == 0)
+                {
+                    <p class="span-2 text-muted">This content type has no fields yet. <a href="/admin/content-types/@type.Id">Add fields</a> first.</p>
+                }
+            </div>
+        </section>
+    </div>
+
+    <aside class="editor-aside">
+        <section class="card" aria-labelledby="status-title">
+            <div class="card-header">
+                <h2 class="card-title" id="status-title">Status</h2>
+                @if (entry is null || !entry.Published)
+                {
+                    <badge tone="Neutral" dot="true">Draft</badge>
+                }
+                else if (entry.HasDraft)
+                {
+                    <badge tone="Warning" dot="true">Changes not published</badge>
+                }
+                else
+                {
+                    <badge tone="Success" dot="true">Published</badge>
+                }
+            </div>
+            <div class="card-body stack-sm text-sm">
+                @if (entry is null)
+                {
+                    <p class="text-muted">@(type.Drafts ? "Save a draft to keep working on it, or publish to show it on the site." : "Saving publishes it at once.")</p>
+                }
+                else
+                {
+                    <dl class="dl dl-compact">
+                        @if (entry.PublishedDate is { } published)
+                        {
+                            <dt>Published</dt>
+                            <dd><timestamp value="@published" /></dd>
+                        }
+                        <dt>Updated</dt>
+                        <dd><timestamp value="@entry.UpdatedDate" />@(Model.UpdatedBy is null ? "" : " by " + Model.UpdatedBy)</dd>
+                        <dt>Created</dt>
+                        <dd><timestamp value="@entry.CreatedDate" /></dd>
+                    </dl>
+                    @if (entry.Published && entry.HasDraft)
+                    {
+                        <p class="text-muted">The site shows the published version until you publish these changes.</p>
+                    }
+                }
+            </div>
+            @if (!readOnly)
+            {
+                <div class="card-footer stack-sm">
+                    @if (type.Drafts)
+                    {
+                        @if (Model.CanPublish)
+                        {
+                            <button type="submit" name="intent" value="publish" class="btn btn-primary btn-block"><icon name="send" /> @(entry is { Published: true, HasDraft: true } ? "Publish changes" : "Publish")</button>
+                        }
+                        <button type="submit" name="intent" value="save" class="btn btn-secondary btn-block"><icon name="save" /> Save draft</button>
+                    }
+                    else if (Model.CanPublish)
+                    {
+                        <button type="submit" name="intent" value="publish" class="btn btn-primary btn-block"><icon name="save" /> Save</button>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-muted">Saving this type publishes it, which needs the publish permission.</p>
+                    }
+                </div>
+            }
+        </section>
+
+        @if (entry is not null && (Model.CanPublish && entry.Published || Model.CanCreate || Model.CanDelete))
+        {
+            <section class="card" aria-labelledby="more-title">
+                <div class="card-header"><h2 class="card-title" id="more-title">More</h2></div>
+                <div class="card-body stack-sm">
+                    @if (Model.CanPublish && entry.Published)
+                    {
+                        <button type="submit" form="unpublishForm" class="btn btn-secondary btn-block"
+                                data-confirm="Take '@title' off the site and out of the API? Its values are kept." data-confirm-title="Unpublish" data-confirm-action="Unpublish" data-confirm-tone="accent">
+                            <icon name="eye-off" /> Unpublish
+                        </button>
+                    }
+                    @if (Model.CanCreate)
+                    {
+                        <button type="submit" form="duplicateForm" class="btn btn-secondary btn-block"><icon name="copy" /> Duplicate</button>
+                    }
+                    @if (Model.CanDelete)
+                    {
+                        <button type="submit" form="deleteForm" class="btn btn-danger-soft btn-block"
+                                data-confirm="Delete '@title'? Pages that show it stop showing it. This can't be undone." data-confirm-title="Delete entry" data-confirm-action="Delete">
+                            <icon name="trash" /> Delete
+                        </button>
+                    }
+                </div>
+            </section>
+        }
+
+        @if (entry is not null)
+        {
+            <section class="card" aria-labelledby="api-title">
+                <div class="card-header"><h2 class="card-title" id="api-title">Use it</h2></div>
+                <div class="card-body stack-sm text-sm">
+                    <p class="text-muted">Show it on a page with a <strong>content list</strong> in the page builder, or read it from the API:</p>
+                    <code class="text-mono text-xs entry-api">GET /api/entries/@type.Slug/@entry.Id</code>
+                </div>
+            </section>
+        }
+    </aside>
+</form>
+
+@if (entry is not null)
+{
+    <form id="unpublishForm" method="post" action="/admin/content/@type.Slug/@entry.Id/unpublish" hidden>@Html.AntiForgeryToken()</form>
+    <form id="duplicateForm" method="post" action="/admin/content/@type.Slug/@entry.Id/duplicate" hidden>@Html.AntiForgeryToken()</form>
+    <form id="deleteForm" method="post" action="/admin/content/@type.Slug/@entry.Id/delete" hidden>@Html.AntiForgeryToken()</form>
+}
+
+@section Scripts {
+    <script src="~/js/forge/entries.js" asp-append-version="true" defer></script>
+}

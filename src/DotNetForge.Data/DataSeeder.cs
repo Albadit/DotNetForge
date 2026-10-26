@@ -6,19 +6,18 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Data;
 
 /// <summary>
-/// Seeds the baseline data every fresh database needs: the default tenant, the six built-in roles
+/// Seeds the baseline data every fresh database needs: the seven built-in roles
 /// with their default permission grants, the default authentication providers, and the single
 /// system-state row. Seeding is idempotent and runs after migrations, before install detection.
 /// </summary>
 public static class DataSeeder
 {
-    public const string DefaultTenantSlug = "default";
-
     private static readonly (string Name, string Description)[] RoleDefinitions =
     {
-        (Roles.SuperAdmin, "Full, unrestricted access to every permission area, tenant, and system function."),
-        (Roles.Admin, "Manages content, media, users, roles, settings, API tokens, and webhooks within their tenant."),
-        (Roles.Editor, "Creates, edits, and publishes all content and media within their tenant."),
+        (Roles.SuperAdmin, "Full, unrestricted access to every permission area and system function."),
+        (Roles.Admin, "Manages content, media, users, roles, settings, API tokens, and webhooks."),
+        (Roles.Developer, "Builds against the API: the API docs, API tokens and custom API endpoints."),
+        (Roles.Editor, "Creates, edits, and publishes all content and media."),
         (Roles.Author, "Can manage the content they have created."),
         (Roles.Authenticated, "Default role for any signed-in end user."),
         (Roles.Public, "The implicit role for unauthenticated visitors. Read-only public content."),
@@ -33,53 +32,87 @@ public static class DataSeeder
 
     public static async Task SeedAsync(DotNetForgeDbContext db, CancellationToken cancellationToken = default)
     {
-        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Slug == DefaultTenantSlug, cancellationToken);
-        if (tenant is null)
-        {
-            tenant = new Tenant
-            {
-                Name = "Default",
-                Slug = DefaultTenantSlug,
-                DefaultLocale = "en",
-                DefaultTheme = "dotnetforge.theme.default",
-            };
-            db.Tenants.Add(tenant);
-            await db.SaveChangesAsync(cancellationToken);
-        }
-
-        await SeedRolesAsync(db, tenant.Id, cancellationToken);
-        await SeedPagesAsync(db, tenant.Id, cancellationToken);
+        await SeedRolesAsync(db, cancellationToken);
+        await SeedPagesAsync(db, cancellationToken);
         await SeedAuthProvidersAsync(db, cancellationToken);
         await EnsureSystemStateAsync(db, cancellationToken);
+        await UpgradeAsync(db, cancellationToken);
     }
 
-    /// <summary>Seeds a small starter page tree so the Content Manager has something to show on a fresh
-    /// install.</summary>
-    private static async Task SeedPagesAsync(DotNetForgeDbContext db, Guid tenantId, CancellationToken ct)
+    /// <summary>The newest one-time data update (<see cref="SystemState.SeedVersion"/>).</summary>
+    public const int CurrentSeedVersion = 1;
+
+    /// <summary>
+    /// One-time updates of data that existing databases were seeded without, each applied once (recorded in
+    /// <see cref="SystemState.SeedVersion"/>), so a grant an administrator later removes is not put back.
+    /// </summary>
+    private static async Task UpgradeAsync(DotNetForgeDbContext db, CancellationToken ct)
     {
-        if (await db.Pages.AnyAsync(p => p.TenantId == tenantId, ct))
+        var state = await db.SystemState.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
+        if (state is null || state.SeedVersion >= CurrentSeedVersion)
         {
             return;
         }
 
-        var home = new Page { TenantId = tenantId, Slug = "/", Title = "Home", Published = true, DisplayInMenu = true, SortOrder = 0 };
-        var about = new Page { TenantId = tenantId, Slug = "about", Title = "About", Published = true, DisplayInMenu = true, SortOrder = 1 };
-        var news = new Page { TenantId = tenantId, Slug = "news", Title = "News", Published = true, DisplayInMenu = true, SortOrder = 2 };
-        var contact = new Page { TenantId = tenantId, Slug = "contact", Title = "Contact", DisplayInMenu = true, SortOrder = 3 };
+        if (state.SeedVersion < 1)
+        {
+            // 1: structured content - the default grants of the new areas for the built-in roles.
+            await AddDefaultGrantsAsync(db, new[] { PermissionAreas.ContentTypes, PermissionAreas.Entries }, ct);
+        }
+
+        state.SeedVersion = CurrentSeedVersion;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Gives every built-in role that has no grant in an area the matrix defaults of that area.</summary>
+    private static async Task AddDefaultGrantsAsync(DotNetForgeDbContext db, IReadOnlyCollection<string> areas, CancellationToken ct)
+    {
+        var roles = await db.Roles.Where(r => r.IsBuiltIn).Select(r => new { r.Id, r.Name }).ToListAsync(ct);
+        var roleIds = roles.Select(r => r.Id).ToList();
+        var existing = (await db.RolePermissions
+                .Where(p => roleIds.Contains(p.RoleId) && areas.Contains(p.Area))
+                .Select(p => new { p.RoleId, p.Area })
+                .ToListAsync(ct))
+            .Select(p => (p.RoleId, p.Area.ToLowerInvariant()))
+            .ToHashSet();
+        foreach (var role in roles)
+        {
+            foreach (var (area, action) in PermissionMatrix.GrantsFor(role.Name).Where(g => areas.Contains(g.Area)))
+            {
+                if (!existing.Contains((role.Id, area.ToLowerInvariant())))
+                {
+                    db.RolePermissions.Add(new RolePermission { RoleId = role.Id, Area = area, Action = action });
+                }
+            }
+        }
+    }
+
+    /// <summary>Seeds a small starter page tree so the Content Manager has something to show on a fresh
+    /// install.</summary>
+    private static async Task SeedPagesAsync(DotNetForgeDbContext db, CancellationToken ct)
+    {
+        if (await db.Pages.AnyAsync(ct))
+        {
+            return;
+        }
+
+        var home = new Page { Slug = "/", Title = "Home", Published = true, DisplayInMenu = true, SortOrder = 0 };
+        var about = new Page { Slug = "about", Title = "About", Published = true, DisplayInMenu = true, SortOrder = 1 };
+        var news = new Page { Slug = "news", Title = "News", Published = true, DisplayInMenu = true, SortOrder = 2 };
+        var contact = new Page { Slug = "contact", Title = "Contact", DisplayInMenu = true, SortOrder = 3 };
         db.Pages.AddRange(home, about, news, contact);
 
         // Children of About.
         db.Pages.AddRange(
-            new Page { TenantId = tenantId, Slug = "team", Title = "Team", Published = true, SortOrder = 0, ParentPageId = about.Id },
-            new Page { TenantId = tenantId, Slug = "history", Title = "History", SortOrder = 1, ParentPageId = about.Id });
+            new Page { Slug = "team", Title = "Team", Published = true, SortOrder = 0, ParentPageId = about.Id },
+            new Page { Slug = "history", Title = "History", SortOrder = 1, ParentPageId = about.Id });
 
         await db.SaveChangesAsync(ct);
     }
 
-    private static async Task SeedRolesAsync(DotNetForgeDbContext db, Guid tenantId, CancellationToken ct)
+    private static async Task SeedRolesAsync(DotNetForgeDbContext db, CancellationToken ct)
     {
         var existing = await db.Roles
-            .Where(r => r.TenantId == tenantId)
             .Select(r => r.Name)
             .ToListAsync(ct);
 
@@ -97,7 +130,6 @@ public static class DataSeeder
                 Name = name,
                 Description = description,
                 IsBuiltIn = true,
-                TenantId = tenantId,
             };
 
             foreach (var (area, action) in PermissionMatrix.GrantsFor(name))

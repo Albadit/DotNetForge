@@ -21,7 +21,7 @@
     },
     "container": {
       "label": "Container", "category": "structure", "container": true,
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "layout": { "base": { "mode": "free", "height": 200 } },
       "style": { "base": { "padding": [16, 16, 16, 16] } },
       "place": { "colSpan": 4, "rowSpan": 3 },
@@ -32,7 +32,7 @@
     },
     "heading": {
       "label": "Heading", "category": "content",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 12, "rowSpan": 1 },
       "props": {
         "text":  { "type": "inline", "label": "Text", "max": 500, "default": [{ "text": "Heading" }], "content": true },
@@ -41,7 +41,7 @@
     },
     "text": {
       "label": "Text", "category": "content",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 6, "rowSpan": 2 },
       "props": {
         "content": { "type": "rich", "label": "Text", "max": 20000, "default": [{ "type": "p", "runs": [{ "text": "Write something here." }] }], "content": true }
@@ -49,7 +49,7 @@
     },
     "image": {
       "label": "Image", "category": "media",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 4, "rowSpan": 4 },
       "props": {
         "src":     { "type": "image", "label": "Image", "default": "", "content": true },
@@ -62,7 +62,7 @@
     },
     "button": {
       "label": "Button", "category": "content",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 3, "rowSpan": 1 },
       "style": { "base": { "width": { "mode": "hug" } } },
       "props": {
@@ -76,7 +76,7 @@
     },
     "links": {
       "label": "Link list", "category": "content",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 3, "rowSpan": 3 },
       "props": {
         "items":     { "type": "links", "label": "Links", "maxItems": 50, "default": [{ "label": "First link", "href": "#", "newTab": false }, { "label": "Second link", "href": "#", "newTab": false }], "content": true },
@@ -86,7 +86,7 @@
     },
     "icon": {
       "label": "Icon", "category": "content",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 1, "rowSpan": 1 },
       "props": {
         "name":  { "type": "icon", "label": "Icon", "default": "star" },
@@ -96,7 +96,7 @@
     },
     "post": {
       "label": "Post", "category": "content",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 6, "rowSpan": 10 },
       "props": {
         "author":        { "type": "text",     "label": "Author", "max": 120, "default": "Author", "content": true },
@@ -114,7 +114,7 @@
     },
     "video": {
       "label": "Video", "category": "media",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 6, "rowSpan": 6 },
       "props": {
         "url":    { "type": "video", "label": "YouTube or Vimeo URL", "default": "", "content": true },
@@ -124,23 +124,57 @@
     },
     "spacer": {
       "label": "Spacer", "category": "structure",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 12, "rowSpan": 1 },
       "style": { "base": { "height": { "mode": "fixed", "value": 32 } } },
       "props": {}
     },
     "divider": {
       "label": "Divider", "category": "structure",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 12, "rowSpan": 1 },
       "props": {
         "thickness": { "type": "int",  "label": "Thickness", "min": 1, "max": 20, "default": 1 },
         "lineStyle": { "type": "enum", "label": "Line", "options": ["solid", "dashed", "dotted"], "default": "solid" }
       }
     },
+    "collection": {
+      "label": "Content list", "category": "data", "container": true, "insertable": false,
+      "parents": ["page", "section", "container"],
+      "layout": { "base": { "mode": "grid", "columns": 3, "colGap": 24, "rowGap": 24, "rowMode": "auto" }, "tablet": { "columns": 2 }, "mobile": { "columns": 1 } },
+      "place": { "colSpan": 12, "rowSpan": 6 },
+      "props": {
+        "source":     { "type": "ref",     "label": "Content type", "default": "" },
+        "mode":       { "type": "enum",    "label": "Show", "options": ["list", "single"], "default": "list" },
+        "entry":      { "type": "ref",     "label": "Entry", "default": "" },
+        "routeParam": { "type": "slug",    "label": "URL parameter", "max": 40, "default": "" },
+        "routeField": { "type": "field",   "label": "Matches field", "default": "slug" },
+        "filters":    { "type": "filters", "label": "Filters", "maxItems": 10, "default": [] },
+        "sortField":  { "type": "field",   "label": "Sort by", "default": "" },
+        "sortDir":    { "type": "enum",    "label": "Order", "options": ["asc", "desc"], "default": "asc" },
+        "limit":      { "type": "int",     "label": "Items per page", "min": 1, "max": 100, "default": 6 },
+        "paginate":   { "type": "bool",    "label": "Pagination", "default": false },
+        "view":       { "type": "enum",    "label": "View", "options": ["items", "table"], "default": "items" },
+        "columns":    { "type": "columns", "label": "Table columns", "maxItems": 12, "default": [] },
+        "carousel":   { "type": "bool",    "label": "Scroll sideways (carousel)", "default": false },
+        "itemUrl":    { "type": "text",    "label": "Item link", "max": 300, "default": "" },
+        "emptyText":  { "type": "text",    "label": "Text when empty", "max": 300, "default": "Nothing to show yet.", "content": true },
+        "prevLabel":  { "type": "text",    "label": "Previous label", "max": 60, "default": "Previous", "content": true },
+        "nextLabel":  { "type": "text",    "label": "Next label", "max": 60, "default": "Next", "content": true }
+      }
+    },
+    "item": {
+      "label": "Item", "category": "data", "container": true, "insertable": false,
+      "parents": ["collection"],
+      "layout": { "base": { "mode": "stack", "direction": "column", "gap": 12 } },
+      "place": { "colSpan": 1, "rowSpan": 1 },
+      "props": {
+        "tag": { "type": "enum", "label": "Element", "options": ["article", "div"], "default": "article" }
+      }
+    },
     "module": {
       "label": "DNN module", "category": "dnn",
-      "parents": ["page", "section", "container"],
+      "parents": ["page", "section", "container", "item"],
       "place": { "colSpan": 6, "rowSpan": 4 },
       "props": {
         "moduleId": { "type": "module", "label": "Module", "default": 0 }

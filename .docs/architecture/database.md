@@ -49,13 +49,6 @@ EF Core binds a migration set to a context type, so each provider has its own ty
 
 ```mermaid
 erDiagram
-    Tenant ||--o{ User : "TenantId (no FK)"
-    Tenant ||--o{ Role : "TenantId (no FK)"
-    Tenant ||--o{ Page : "TenantId (no FK)"
-    Tenant ||--o{ MediaFile : "TenantId (no FK)"
-    Tenant ||--o{ ApiToken : "TenantId (no FK)"
-    Tenant ||--o{ Webhook : "TenantId (no FK)"
-    Tenant |o--o{ Setting : "TenantId null = global"
     User ||--o{ UserRole : "cascade"
     Role ||--o{ UserRole : "cascade"
     Role ||--o{ RolePermission : "cascade"
@@ -65,66 +58,82 @@ erDiagram
     Page ||--o{ PageUserPermission : "PageId (no FK)"
     User ||--o{ PageUserPermission : "UserId (no FK)"
     Webhook ||--o{ WebhookDelivery : "cascade"
+    ContentType ||--o{ ContentEntry : "ContentTypeId (no FK)"
+    ContentEntry ||--o{ ContentEntryValue : "EntryId (no FK)"
+    CustomEndpoint ||--o{ CustomEndpointOperation : "EndpointId (no FK)"
 ```
 
-Only the four "cascade" relationships are real foreign keys. `TenantId` and `ParentPageId` are plain columns with
-no FK constraint - integrity is maintained by application code (e.g. `PageService.DeleteAsync` re-parents children).
-`PagePermission.PageId` / `RoleId` are plain columns too (`ContentController.Delete` removes a page's grants;
-`PagePermissionService` ignores grants of roles that no longer exist). `AuditLogEntry`, `InstalledExtension`,
-`SystemState`, `AuthProvider` and `DataProtectionKey` are standalone tables.
+Only the four "cascade" relationships are real foreign keys. `ParentPageId` is a plain column with no FK constraint - integrity is maintained by application code (e.g. `PageService.DeleteAsync` re-parents children).
+`PagePermission.PageId` / `RoleId` are plain columns too (`PagesController.Delete` removes a page's grants;
+`PagePermissionService` ignores grants of roles that no longer exist). `ContentEntry.ContentTypeId` and
+`ContentEntryValue.EntryId` are plain columns as well: `ContentEntryService` and `ContentTypeService` remove an entry's
+index rows and a type's entries in the same save, and `CustomEndpointOperation.EndpointId` is one too
+(`CustomEndpointService` saves and deletes an endpoint's operations with it). References *inside* entry JSON (media ids, linked entry ids) are not
+constrained at all: they are checked on save and a missing one is skipped when rendering
+([structured content](../features/structured-content.md)). `AuditLogEntry`, `InstalledExtension`, `SystemState`,
+`AuthProvider`, `MediaFile`, `ApiToken`, `Setting` and `DataProtectionKey` are standalone tables. There is one site per
+installation: no table is scoped by a tenant or site id (the former `Tenants` table and `TenantId` columns were
+removed by the `RemoveTenants` migrations).
 
 ## Tables
 
 | Table (`DbSet`) | Key | Important columns | Unique indexes / constraints | Written by |
 | --- | --- | --- | --- | --- |
-| `Tenants` | `Guid Id` | `Name`(200), `Slug`(100), `PrimaryDomain`, `Subdomains`, `PathPrefix`, `DefaultLocale`, `DefaultTheme`, `Status`, dates | `Slug` unique | `DataSeeder` only |
-| `Users` | `Guid Id` | `Email`(256), `FirstName`(100), `LastName`(100), `PasswordHash`, `Status`, `EmailConfirmed`, `FailedLoginCount`, `LockoutEndUtc`, `LastLoginDate`, `TenantId` | (`TenantId`, `Email`) unique; `DisplayName` is computed, not stored | `InstallationStore`, `AuthService` (counters, last login), `UserManagementService`, `ProfileService` |
-| `Roles` | `Guid Id` | `Name`(100), `Description`(500), `IsBuiltIn`, `TenantId` | (`TenantId`, `Name`) unique | `DataSeeder`, `RoleManagementService` |
+| `Users` | `Guid Id` | `Email`(256), `FirstName`(100), `LastName`(100), `PasswordHash`, `Status`, `EmailConfirmed`, `FailedLoginCount`, `LockoutEndUtc`, `LastLoginDate` | `Email` unique; `DisplayName` is computed, not stored | `InstallationStore`, `AuthService` (counters, last login), `UserManagementService`, `ProfileService` |
+| `Roles` | `Guid Id` | `Name`(100), `Description`(500), `IsBuiltIn` | `Name` unique | `DataSeeder`, `RoleManagementService` |
 | `RolePermissions` | `Guid Id` | `RoleId`, `Area`(100), `Action`(100) | (`RoleId`, `Area`, `Action`) unique | `DataSeeder`, `RoleManagementService`; read by `RoleGrantStore` |
 | `UserRoles` | (`UserId`, `RoleId`) | - | composite PK | `InstallationStore`, `UserManagementService` |
-| `Pages` | `Guid Id` | `Slug`(200), `Title`(300), `MetaTitle`, `MetaDescription`, `SeoKeywords`, `CanonicalUrl`, `Published`, `Disabled`, `DisplayInMenu`, `ParentPageId`, `SortOrder`, `PageType`, `TargetUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate`, `NoIndex`, `SocialImageUrl`(2000), `ThemeId`(100), `LayoutJson` / `DraftLayoutJson` (unbounded text: `text` / `nvarchar(max)` / `longtext`), `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`, `CreatedById`, dates | (`TenantId`, `ParentPageId`, `Slug`) unique | `ContentController` and `ContentApiController` through `IPageService`, `PageBuilderService` (layout columns), `ScheduledPublishingService`, `DataSeeder` |
-| `PagePermissions` | `Guid Id` | `TenantId`, `PageId`, `RoleId`, `Permission`(20: `view` / `edit`) | (`PageId`, `RoleId`, `Permission`) unique; index on `TenantId` | `PagePermissionService` ([page permissions](../features/content-pages-and-routing.md#page-permissions)) |
-| `PageUserPermissions` | `Guid Id` | `TenantId`, `PageId`, `UserId`, `Permission`(20), `Allow` (false = blocked) | (`PageId`, `UserId`, `Permission`) unique; index on `TenantId` | `PagePermissionService`; removed by `UserManagementService.DeleteAsync` with the user |
-| `MediaFiles` | `Guid Id` | `FileName`(400, sanitized display name ≤ 200), `OriginalName`(400), `ContentType`(200, from the extension), `SizeBytes`, `RelativePath`(1000, the `IFileStorage` key `{tenantId:N}/{yyyy}/{MM}/{guid:N}{ext}`), `FolderPath` (always `/`), `IsPublic`, `UploadedById`, `UploadedDate`, `TenantId` | index on `TenantId` | `MediaService` (upload adds, delete removes) |
-| `ApiTokens` | `Guid Id` | `Name`(200), `Description`(1000), `Duration`, `ExpirationDate`, `PermissionsCsv`, `CreatedById`, `CreatedDate`, `LastUsedDate`, `Revoked`, `TokenHash`, `TokenPrefix`(64) | (`TenantId`, `Name`) unique; index on `TokenPrefix`; `Permissions` computed from CSV | `ApiTokensController`, `ApiTokenAuthenticationHandler` (`LastUsedDate`, at most every 5 min) |
+| `Pages` | `Guid Id` | `Slug`(200), `Title`(300), `MetaTitle`, `MetaDescription`, `SeoKeywords`, `CanonicalUrl`, `Published`, `Disabled`, `DisplayInMenu`, `ParentPageId`, `SortOrder`, `PageType`, `TargetUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate`, `NoIndex`, `SocialImageUrl`(2000), `ThemeId`(100), `LayoutJson` / `DraftLayoutJson` (unbounded text: `text` / `nvarchar(max)` / `longtext`), `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`, `CreatedById`, dates | (`ParentPageId`, `Slug`) unique | `PagesController` and `ContentApiController` through `IPageService`, `PageBuilderService` (layout columns), `ScheduledPublishingService`, `DataSeeder` |
+| `PagePermissions` | `Guid Id` | `PageId`, `RoleId`, `Permission`(20: `view` / `edit`) | (`PageId`, `RoleId`, `Permission`) unique | `PagePermissionService` ([page permissions](../features/content-pages-and-routing.md#page-permissions)) |
+| `PageUserPermissions` | `Guid Id` | `PageId`, `UserId`, `Permission`(20), `Allow` (false = blocked) | (`PageId`, `UserId`, `Permission`) unique | `PagePermissionService`; removed by `UserManagementService.DeleteAsync` with the user |
+| `MediaFiles` | `Guid Id` | `FileName`(400, sanitized display name ≤ 200), `OriginalName`(400), `ContentType`(200, from the extension), `SizeBytes`, `RelativePath`(1000, the `IFileStorage` key `{yyyy}/{MM}/{guid:N}{ext}`; older uploads keep their earlier keys), `FolderPath` (always `/`), `IsPublic`, `UploadedById`, `UploadedDate` | - | `MediaService` (upload adds, delete removes) |
+| `ApiTokens` | `Guid Id` | `Name`(200), `Description`(1000), `Duration`, `ExpirationDate`, `PermissionsCsv`, `CreatedById`, `CreatedDate`, `LastUsedDate`, `Revoked`, `TokenHash`, `TokenPrefix`(64) | `Name` unique; index on `TokenPrefix`; `Permissions` computed from CSV | `ApiTokensController`, `ApiTokenAuthenticationHandler` (`LastUsedDate`, at most every 5 min) |
 | `Webhooks` | `Guid Id` | `Name`, `Url`, `HeadersJson`, `EventsCsv`, `Enabled`, `Secret`, `LastDelivery` | - | **nothing** |
 | `WebhookDeliveries` | `Guid Id` | `WebhookId`, `TargetUrl`, `Event`, `ResponseStatusCode`, `ResponseTimeMs`, `AttemptNumber`, `Outcome`, `Detail` | index on `WebhookId` | **nothing** |
-| `AuditLogs` | `long Id` (auto-increment) | `UserId` (null for API-token actions), `UserDisplaySnapshot`(256), `Action`(100), `EntityType`, `EntityId`(100), `EntityDisplaySnapshot`(400), `IpAddress`, `UserAgent`(512), `Timestamp`, `Details`, `Success`, `TenantId` | indexes on `Timestamp` and (`TenantId`, `Action`) | `AuditService` (`IAuditService`) only (append-only; snapshots truncated to the column lengths) |
+| `AuditLogs` | `long Id` (auto-increment) | `UserId` (null for API-token actions), `UserDisplaySnapshot`(256), `Action`(100), `EntityType`, `EntityId`(100), `EntityDisplaySnapshot`(400), `IpAddress`, `UserAgent`(512), `Timestamp`, `Details`, `Success` | indexes on `Timestamp` and `Action` | `AuditService` (`IAuditService`) only (append-only; snapshots truncated to the column lengths) |
 | `InstalledExtensions` | `string Id` (manifest id, 200) | `Name`, `Description`, `Version`, `Type`, `Author`, `Status`, `InstalledDate`, `UpdateAvailable`, `PermissionsCsv`, `Website`, `License` | - | `ExtensionLifecycleService` (upsert on enable from the manifest, `InstalledDate` on first enable; `Status` on disable; `UpdateAvailable` never); read by `ExtensionState` (enabled ids, cached 30 s), `PluginsController`, `DashboardController`, `GET /api/extensions` |
-| `SystemState` | `int Id` (always 1) | `Installed`, `InstalledAtUtc`, `CmsVersion` (default `"1.0.0"`) | single row | `DataSeeder`, `InstallationStore` |
-| `Settings` | `Guid Id` | `TenantId` (nullable), `Key`(200), `Value`(4000) | (`TenantId`, `Key`) unique | `SettingsController` |
+| `SystemState` | `int Id` (always 1) | `Installed`, `InstalledAtUtc`, `CmsVersion` (default `"1.0.0"`), `SeedVersion` (one-time data updates applied, [Seeding](#seeding)) | single row | `DataSeeder`, `InstallationStore` |
+| `ContentTypes` | `Guid Id` | `Name`(100), `Slug`(64, the API id), `Description`(500), `Icon`(40), `Kind` (`ContentTypeKind`), `FieldsJson` (unbounded, the field definitions), `TitleField`(64), `Drafts`, `SortOrder`, `CreatedById`, dates | `Slug` unique | `ContentTypeService` |
+| `ContentEntries` | `Guid Id` | `ContentTypeId`, `Title`(300), `SearchText`(1000, lower-cased), `DataJson` (working copy) / `PublishedDataJson` (published values, null = not published) - unbounded, `Published`, `HasDraft`, `PublishedDate`, `PublishedById`, `SortOrder`, `Version`, `CreatedById`, `UpdatedById`, dates | index (`ContentTypeId`, `SortOrder`) | `ContentEntryService` |
+| `ContentEntryValues` | `Guid Id` | `ContentTypeId`, `EntryId`, `Published` (which version), `Field`(100), `Text`(200, lower-cased), `Number` (double), `Date` | indexes (`ContentTypeId`, `Published`, `Field`, `Text`), (`ContentTypeId`, `Published`, `Field`, `Number`), (`EntryId`) | `ContentEntryService` (rewritten on every save, publish and type change); read by `ContentQueryService` ([querying](../features/structured-content.md#querying)) |
+| `CustomEndpoints` | `Guid Id` | `Name`(100), `Path`(200, the base path), `Description`(500), `Access` (`EndpointAccess`), `TokenProtected` (unbounded, nullable: the endpoint's own token encrypted with Data Protection), `Enabled`, `CreatedById`, dates | index on `Path` (not unique: `CustomEndpointService` refuses a second endpoint with the same base path) | `CustomEndpointService` ([custom endpoints](../features/custom-endpoints.md)) |
+| `CustomEndpointOperations` | `Guid Id` | `EndpointId`, `Name`(100, nullable), `Method`(10), `Path`(200, the sub-path; empty = the endpoint's path), `Sql` and `ParametersJson` (unbounded), `Result` (`EndpointResultShape`), `TimeoutSeconds`, `MaxRows`, `SortOrder` | (`EndpointId`, `Method`, `Path`) unique; one method + path shape across all endpoints is checked by `CustomEndpointService` | `CustomEndpointService` (saved and deleted with the endpoint); run by `SqlEndpointRunner` |
+| `Settings` | `Guid Id` | `Key`(200), `Value`(4000) | `Key` unique (one value per key) | `SettingsController` |
 | `AuthProviders` | `Guid Id` | `Name`(100), `Enabled`, `IsBuiltIn`, `SettingsJson` | `Name` unique | `DataSeeder` |
 | `DataProtectionKeys` | `int Id` (auto-increment) | `FriendlyName`, `Xml` | - | ASP.NET Core Data Protection (`PersistKeysToDbContext<DotNetForgeDbContext>`) |
 
-Enums are stored as integers (`UserStatus`, `TenantStatus`, `PageType`, `TokenDuration`, `ExtensionType`,
-`ExtensionStatus`, `WebhookOutcome` - values in `src/DotNetForge.Shared/Enums/Enums.cs`). CSV columns (`PermissionsCsv`,
+Enums are stored as integers (`UserStatus`, `PageType`, `TokenDuration`, `ExtensionType`, `ExtensionStatus`,
+ `WebhookOutcome`, `ContentTypeKind` - values in `src/DotNetForge.Shared/Enums/Enums.cs`). CSV columns (`PermissionsCsv`,
 `EventsCsv`) are split by computed properties ignored by EF (`ApiToken.Permissions`, `Webhook.Events`).
 
-`DataProtectionKeys` holds the key ring for the auth cookie, antiforgery tokens and TempData, so every instance
-shares it and sessions survive restarts on a read-only filesystem. The key XML is stored **unencrypted**: anyone who
-can read this table can forge cookies. Deleting the rows signs everyone out.
+`DataProtectionKeys` holds the key ring for the auth cookie, antiforgery tokens, TempData and the custom endpoint
+tokens (`CustomEndpoints.TokenProtected`), so every instance shares it and sessions survive restarts on a read-only
+filesystem. The key XML is stored **unencrypted**: anyone who can read this table can forge cookies and decrypt the
+endpoint tokens. Deleting the rows signs everyone out and makes every endpoint token unreadable (callers get `401`
+until each endpoint gets a new token with **Generate token**).
 
 ### Column lengths
 
 PostgreSQL, SQL Server and MySQL enforce `HasMaxLength` (`varchar(n)`/`nvarchar(n)`); SQLite and MongoDB do not. Input is therefore checked before
 saving so an oversized value is a validation message, not a 500: `PageService` (Title 300, Slug 200, Meta title 300,
 Meta description 1000, Keywords 500, Canonical/Target URL/File reference 2000), `SettingsController` (key 200, value
-4000), `ApiTokensController` (name 200, description 1000), `InstallationService` (email 256, names 100), and
-`AuditService` truncates its snapshots.
+4000), `ApiTokensController` (name 200, description 1000), `InstallationService` (email 256, names 100),
+`ContentTypeService` (name 100, API id 64, description 500), `CustomEndpointService` (endpoint name 100, path 200,
+description 500; operation name 100, full path 200); `EntryData` cuts entry titles (300), search text (1000)
+and index text (200); and `AuditService` truncates its snapshots.
 
 ### Unique indexes and NULL
 
-The unique indexes (`TenantId`, `ParentPageId`, `Slug`) on `Pages` and (`TenantId`, `Key`) on `Settings` include
-nullable columns, and databases disagree about NULLs:
+The unique index (`ParentPageId`, `Slug`) on `Pages` includes a nullable column, and databases disagree about NULLs:
 
-| Database | Two root pages (`ParentPageId` NULL) with the same slug / two global settings with the same key |
+| Database | Two root pages (`ParentPageId` NULL) with the same slug |
 | --- | --- |
 | SQLite, PostgreSQL, MySQL | allowed by the index (NULLs are distinct) |
-| SQL Server | allowed: EF Core creates these indexes filtered (`WHERE [ParentPageId] IS NOT NULL`, `WHERE [TenantId] IS NOT NULL`) |
+| SQL Server | allowed: EF Core creates the index filtered (`WHERE [ParentPageId] IS NOT NULL`) |
 | MongoDB | rejected by the index (null equals null) |
 
 So `PageService` checks slug uniqueness in code, including the root level, in:
-- `ApplyAsync` (Content Manager edits and `POST /api/content/pages`);
+- `ApplyAsync` (Pages screen edits and `POST /api/content/pages`);
 - `ReorderAsync`;
 - `DeleteAsync` (children moving up a level).
 
@@ -140,6 +149,11 @@ So `PageService` checks slug uniqueness in code, including the root level, in:
 | `20261005211842_InitialCreate` | `MySqlDbContext`, `Database/Providers/MySql/Migrations/` | the current model in one step |
 | `20261023140154_AddPageBuilderAndPermissions` (SQLite), `20261023140202_…` (PostgreSQL), `20261023140210_…` (SQL Server), `20261023140217_…` (MySQL) | all four SQL contexts | `Pages.ThemeId`, `NoIndex`, `SocialImageUrl`, `LayoutJson`, `DraftLayoutJson`, `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`; table `PagePermissions` |
 | `20261023144952_AddPageUserPermissions` (SQLite), `20261023144957_…` (PostgreSQL), `20261023145002_…` (SQL Server), `20261023145008_…` (MySQL) | all four SQL contexts | table `PageUserPermissions` |
+| `20261026110542_AddStructuredContent` (SQLite), `20261026110549_…` (PostgreSQL), `20261026110556_…` (SQL Server), `20261026110603_…` (MySQL) | all four SQL contexts | tables `ContentTypes`, `ContentEntries`, `ContentEntryValues`; `SystemState.SeedVersion` |
+| `20261026130440_AddCustomEndpoints` (SQLite), `20261026130447_…` (PostgreSQL), `20261026130455_…` (SQL Server), `20261026130502_…` (MySQL) | all four SQL contexts | table `CustomEndpoints` |
+| `20261026145758_RemoveTenants` (SQLite), `20261026145804_…` (PostgreSQL), `20261026145859_…` (SQL Server), `20261026145905_…` (MySQL) | all four SQL contexts | removes table `Tenants` and every `TenantId` column; unique indexes without `TenantId` (`Users.Email`, `Roles.Name`, `Pages` (`ParentPageId`, `Slug`), `ApiTokens.Name`, `ContentTypes.Slug`, `CustomEndpoints` (`Method`, `Path`), `Settings.Key`), `AuditLogs` index on `Action`. Before `Settings.Key` becomes unique it deletes a global setting (no tenant) whose key a tenant setting also has - the tenant's value wins |
+| `20261026152309_AddEndpointTokens` (SQLite), `20261026152316_…` (PostgreSQL), `20261026152322_…` (SQL Server), `20261026152329_…` (MySQL) | all four SQL contexts | `CustomEndpoints.TokenProtected` (existing endpoints get a token on their next save or with **Generate token**) |
+| `20261026155546_AddEndpointOperations` (SQLite), `20261026155553_…` (PostgreSQL), `20261026155603_…` (SQL Server), `20261026155610_…` (MySQL) | all four SQL contexts | table `CustomEndpointOperations`; copies every endpoint into one operation (`INSERT … SELECT`: the endpoint's id as both `Id` and `EndpointId`, `Path` `''`, `Name` NULL, its `Method`, `Sql`, `ParametersJson`, `Result`, `TimeoutSeconds`, `MaxRows`, `SortOrder` 0), then drops those columns and the unique index (`Method`, `Path`) from `CustomEndpoints`; new indexes `CustomEndpoints.Path` and (`EndpointId`, `Method`, `Path`) unique. `Down` restores the columns empty - the operations are not copied back |
 
 Paths are relative to `src/DotNetForge.Data/`. All sets are applied automatically at startup by the configured
 provider. **Every schema change needs a migration
@@ -177,15 +191,16 @@ After generating:
 
 | Step | Condition to run | Creates |
 | --- | --- | --- |
-| Default tenant | no tenant with slug `default` | `Tenant { Name = "Default", Slug = "default", DefaultLocale = "en", DefaultTheme = "dotnetforge.theme.default" }` |
-| Built-in roles | per role name missing in the tenant | the six roles (`IsBuiltIn = true`) with `RolePermission` rows from `PermissionMatrix.GrantsFor(role)` |
-| Starter pages | the tenant has no pages | `Home` (`/`, published), `About` (`about`, published), `News` (`news`, published), `Contact` (`contact`, not published), and under About: `Team` (`team`, published), `History` (`history`, not published) |
+| Built-in roles | per role name missing | the seven roles (`IsBuiltIn = true`; a database seeded before `Developer` existed gets it on the next start) with `RolePermission` rows from `PermissionMatrix.GrantsFor(role)` |
+| Starter pages | no pages | `Home` (`/`, published), `About` (`about`, published), `News` (`news`, published), `Contact` (`contact`, not published), and under About: `Team` (`team`, published), `History` (`history`, not published) |
 | Auth providers | table empty | `Email` (enabled, built-in) + 16 disabled OAuth entries: Auth0, CAS, Cognito, Discord, Facebook, GitHub, Google, Instagram, Keycloak, LinkedIn, Microsoft, Patreon, Reddit, Twitch, Twitter/X, VK |
 | System state | no row | `SystemState { Id = 1, Installed = false }` |
+| One-time updates (`UpgradeAsync`) | `SystemState.SeedVersion < DataSeeder.CurrentSeedVersion` | each missing step once, then `SeedVersion = CurrentSeedVersion`. Step 1: built-in roles with no grant in `Content types` / `Entries` get the matrix defaults of those areas ([authorization](../features/authorization.md#permission-matrix-default-grants)) |
 
 Deleting all pages therefore re-creates the starter tree on the next restart. Seeded pages have no `CreatedById`, so
 Authors (who may only edit their own pages) cannot edit them. Nothing seeds `Settings`, `MediaFiles`, `Webhooks`,
-`ApiTokens`, `InstalledExtensions` or `DataProtectionKeys`.
+`ApiTokens`, `InstalledExtensions`, `DataProtectionKeys` or the content tables (content types come from templates on
+the [Content types](../pages/content-types.md) screen).
 
 ## Delete behaviour
 
@@ -194,7 +209,10 @@ Authors (who may only edit their own pages) cannot edit them. Nothing seeds `Set
 | Delete a content page (`PageService.DeleteAsync`) | children are re-parented to the deleted page's parent, then the page is removed; refused when that would create a duplicate slug or a second dynamic segment under the parent |
 | Delete a media file (`MediaService.DeleteAsync`) | the `MediaFiles` row is removed first, then the stored object; a failed object delete leaves an orphaned object (logged as a warning) |
 | Delete a role / user | `RoleManagementService` / `UserManagementService` remove `RolePermissions` / `UserRoles` first (MongoDB has no cascades); a role still held by users can't be deleted |
-| Delete a content page | `ContentController.Delete` removes its `PagePermissions` and `PageUserPermissions` before `PageService.DeleteAsync` |
+| Delete a content page | `PagesController.Delete` removes its `PagePermissions` and `PageUserPermissions` before `PageService.DeleteAsync` |
+| Delete an entry / several | `ContentEntryService.DeleteAsync` / `DeleteManyAsync` remove the entries' `ContentEntryValues` with them; entries that linked to it keep the id (skipped when rendering) |
+| Delete a custom endpoint | `CustomEndpointService.DeleteAsync` removes its `CustomEndpointOperations` in the same save |
+| Delete a content type | `ContentTypeService.DeleteAsync`: refused while another type links to it; its entries and index rows go in the same save (a collection with entries only with explicit confirmation) |
 | Revoke an API token | soft: `Revoked = true`, row kept |
 | Audit entries | never updated or deleted by the application |
 
@@ -204,7 +222,6 @@ Authors (who may only edit their own pages) cannot edit them. Nothing seeds `Set
 - **One table per query.** No joins, and no navigation properties across tables inside a query: combine small
   single-table queries in memory. Every provider runs that, including MongoDB
   ([MongoDB → Query rules](../database/mongodb.md#query-rules)).
-- Filter tenant-scoped tables by `TenantId` in every query (no global query filters exist).
 - Use `AsNoTracking()` + `Select` projection for reads that render a screen or API response.
 - Validate lengths before saving (PostgreSQL, SQL Server and MySQL enforce them).
 - Schema changes: change the entity + `OnModelCreating`, add a migration **for each of the four SQL contexts**, and

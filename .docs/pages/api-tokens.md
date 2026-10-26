@@ -2,9 +2,10 @@
 
 ## Purpose
 
-Lets a Super Admin or Admin issue and revoke bearer tokens for the [headless API](../features/headless-api.md).
-Each token is scoped to the creator's tenant and to a chosen set of permission keys. The secret is shown once on
-creation and only a hash is kept.
+Lets a Super Admin, Admin or Developer issue and revoke bearer tokens for the
+[headless API](../features/headless-api.md). Each token is limited to a chosen set of permission keys. The secret is
+shown once on creation and only a hash is kept. API tokens do not open [custom endpoints](api-endpoints.md) - each of
+those has its own token. To try a token, paste it into the `ApiToken` authentication of the [API Docs](api-docs.md).
 
 ## Route / Navigation
 
@@ -20,7 +21,7 @@ creation and only a hash is kept.
 | Sidebar entry | **Settings → Global Settings → API Tokens** (`AdminNavigation.Tree`); stays active on the child routes (longest matching href) |
 | Breadcrumbs | list: Settings › Global Settings › **API Tokens**; create: Settings › Global Settings › API Tokens › **Create API token**; after creating: … › API Tokens › **Token created** |
 | Child flow | list → **Create token** → create form → created view → **Done** → list |
-| Linked from | the sidebar; **New API token** quick action on the [Dashboard](dashboard.md) (→ `/admin/api-tokens/create`, shown only to users who may open this screen) |
+| Linked from | the sidebar; **New API token** quick action on the [Dashboard](dashboard.md) (→ `/admin/api-tokens/create`, shown only to users who may open this screen); **API tokens** button on the [API Docs](api-docs.md) screen |
 
 ## Relevant source files
 
@@ -58,8 +59,9 @@ Create API token (h1) - "Give the token a name you'll recognise, choose how long
     ├── card **Details**: Name* (placeholder "Marketing website") · Description (optional, "What uses this token?")
     │   └── fieldset **Expires after**: .choice-cards  7 days · 30 days (default) · 90 days · No expiry
     └── card **Permissions*** - "Grant only what the app needs. Requests outside these scopes are refused."
-        ├── .permission-groups: one fieldset per key prefix (core, content, media, users, roles, settings,
-        │   extensions, webhooks): "All <group>" (JS only) + one checkbox per key (<code>key</code>)
+        ├── .permission-groups: one fieldset per key prefix, in `PermissionKeys.All` order (Core, Pages, Content types,
+        │   Content Manager, Media, Users, Roles, Settings, Extensions, Webhooks): "All of <group>" (JS only) + one
+        │   checkbox per key (<code>key</code>)
         └── card-footer: [Cancel] [Generate token]
 
 Token created (h1) - "'<name>' is ready to use."
@@ -75,10 +77,10 @@ Token created (h1) - "'<name>' is ready to use."
 
 | Component | Inputs | Behaviour |
 | --- | --- | --- |
-| Token table | `List<ApiToken>` of the tenant, newest first | Status badge: **Revoked** (`Danger`) when `Revoked`; else **Expired** (`Warning`) when `ExpirationDate` < now; else **Active** (`Success`). **Scopes** = `ApiToken.Permissions.Count`. **Token** = `TokenPrefix` + "…". **Created** is shown under the name, not as a column |
+| Token table | `List<ApiToken>` (all tokens), newest first | Status badge: **Revoked** (`Danger`) when `Revoked`; else **Expired** (`Warning`) when `ExpirationDate` < now; else **Active** (`Success`). **Scopes** = `ApiToken.Permissions.Count`. **Token** = `TokenPrefix` + "…". **Created** is shown under the name, not as a column |
 | State filter | rows' `data-state` | **Active** = neither revoked nor expired; **Expired** = past `ExpirationDate`, not revoked; **Revoked** = revoked. Client-side, [design system → behaviours](../architecture/design-system.md#behaviours) |
 | Revoke form | token id | inline POST with antiforgery and `data-confirm`; shown for active tokens only (an expired token is already refused by the API) |
-| Create form | `ViewBag.Permissions` = `PermissionKeys.All`; after a failed POST the posted `name`, `description`, `duration`, `permissions` (read from `Request.Form`) | posts `name`, `description`, `duration` (`7` / `30` / `90` / `unlimited`), `permissions[]`; keys are grouped by the part before the first `.` |
+| Create form | `ViewBag.Permissions` = `PermissionKeys.All`; after a failed POST the posted `name`, `description`, `duration`, `permissions` (read from `Request.Form`) | posts `name`, `description`, `duration` (`7` / `30` / `90` / `unlimited`), `permissions[]`; keys are grouped by the part before the first `.`, each group named by `PermissionKeys.GroupLabel` (`content.*` → "Pages", `entries.*` → "Content Manager", `schema.*` → "Content types"; the stored keys keep their names). 31 keys (`PermissionKeys.All`); there is no key for custom endpoints |
 | Select-all per group | `data-check-group` / `data-check-member` | ticks or clears the group's keys; shows checked / indeterminate from its members |
 | Created view | `CreatedTokenViewModel { Name, Plaintext, Prefix }`; request scheme/host | shows the secret once; builds the API URL and example from the current request origin; **Copy** buttons copy `#token-text` / `#curl-text` (hidden spans) and confirm with a toast |
 
@@ -89,11 +91,11 @@ Token created (h1) - "'<name>' is ready to use."
 1. **Trigger:** **Generate token**.
 2. **Validation (in this order, first failure wins):** name not blank (`Name is required.`); trimmed name ≤ 200 and
    trimmed description ≤ 1000 characters (`Name is limited to 200 characters and description to 1000.`); name not
-   already used in the tenant, revoked tokens included (`A token named '<name>' already exists. Choose another
+   already used by another token, revoked tokens included (`A token named '<name>' already exists. Choose another
    name.`); at least one *known* permission key (`Select at least one permission.`) - unknown keys are silently
    dropped, duplicates removed.
 3. **Service:** `IApiTokenFactory.Generate()`.
-4. **Data:** `ApiToken { TenantId, Name (trimmed), Description (trimmed, blank → null), Duration, ExpirationDate,
+4. **Data:** `ApiToken { Name (trimmed), Description (trimmed, blank → null), Duration, ExpirationDate,
    PermissionsCsv, CreatedById, CreatedDate, TokenHash, TokenPrefix }`. Duration mapping: `"7"` → 7 days, `"30"` → 30,
    `"90"` → 90, `"unlimited"` → no expiry, anything else → 30 days.
 5. **Backend:** save, audit `apitoken.created`.
@@ -109,7 +111,7 @@ Token created (h1) - "'<name>' is ready to use."
    title "Revoke token", text "Revoke '<name>'? Apps using it lose access immediately. This can't be undone.",
    button **Revoke token**. Without the dialog API it falls back to `window.confirm`; without JS the form submits
    directly.
-2. **Backend:** token found in tenant and not already revoked → `Revoked = true`, save, audit `apitoken.revoked`.
+2. **Backend:** token found and not already revoked → `Revoked = true`, save, audit `apitoken.revoked`.
    Otherwise nothing happens (no error).
 3. **UI:** redirect to the list with the toast "Revoked '<name>'."; the row now shows **Revoked** without a Revoke button. Effect is immediate
    for the API: `ApiTokenAuthenticationHandler` caches only the successful hash verification (10 min) and re-reads
@@ -125,7 +127,7 @@ sequenceDiagram
     UI->>A: confirm dialog "Revoke token"
     A->>UI: Revoke token
     UI->>C: POST /admin/api-tokens/revoke/{id} (antiforgery)
-    C->>DB: token where Id and TenantId
+    C->>DB: token where Id
     C->>DB: Revoked = true, SaveChanges
     C->>C: audit apitoken.revoked
     C-->>A: 302 /admin/api-tokens
@@ -139,7 +141,7 @@ it manually." on failure.
 
 ## Data used by the page
 
-`ApiTokens` of the active tenant; `PermissionKeys.All`; `IDateTimeProvider.UtcNow` (creation and expiry);
+All `ApiTokens`; `PermissionKeys.All`; `IDateTimeProvider.UtcNow` (creation and expiry);
 `DateTime.UtcNow` in the list view (Expired badge); current user id (`CreatedById`, `Guid.Empty` if missing); request
 origin for the example.
 
@@ -151,8 +153,9 @@ failures. Persisted token rows. DOM only: the list's filter, sort and page.
 ## Permissions
 
 `AdminArea` (on `AdminControllerBase`) + `[RequirePermission(API, read)]`; creating needs `API` / `create`, revoking
-`API` / `delete` ([authorization → screen access](../features/authorization.md#screen-access)). With the default grants
-Editors/Authors get [Access denied](access-denied.md); the sidebar link and the dashboard quick action are hidden from them
+`API` / `delete` ([authorization → screen access](../features/authorization.md#screen-access)). The default grants give
+the `API` area to `Super Admin`, `Admin` and `Developer`; Editors/Authors get [Access denied](access-denied.md); the
+sidebar link and the dashboard quick action are hidden from them
 (`AdminNavigationService`; hiding is not the gate). A creator can grant **any** permission key, regardless of their
 own role.
 
@@ -163,7 +166,7 @@ own role.
 | Name required | browser (`required`) + server |
 | Name length | browser `maxlength="200"`; server ≤ 200 after trimming |
 | Description ≤ 1000 characters (after trimming) | server only |
-| Unique name per tenant (revoked tokens included) | server message + DB unique index |
+| Unique name (revoked tokens included) | server message + DB unique index |
 | ≥ 1 known permission | server only (no browser rule on the checkboxes) |
 
 ## Error handling
@@ -172,7 +175,7 @@ own role.
 | --- | --- | --- | --- |
 | Validation error | `ApiTokensController.Create` | danger alert from `<form-errors />`, form with posted values | fix and resubmit |
 | Two simultaneous creates with the same name | DB unique index | global [error page](error.md) | retry with another name |
-| Revoke of an unknown / other-tenant / revoked id | lookup returns nothing to change | redirect to the list, no message | none needed |
+| Revoke of an unknown / revoked id | lookup returns nothing to change | redirect to the list, no message | none needed |
 | Copy fails | `ui.js` | danger toast | select the text manually |
 | Other DB errors | global handling | [error page](error.md) | retry |
 
@@ -185,13 +188,13 @@ unnoticeable.
 
 | Case | Text |
 | --- | --- |
-| No tokens in the tenant | `<empty-state icon="key">` "No API tokens yet" - "Create a token to let an app or website read your content through the API." + **Create token** (the filter is not shown) |
+| No tokens yet | `<empty-state icon="key">` "No API tokens yet" - "Create a token to let an app or website read your content through the API." + **Create token** (the filter is not shown) |
 | Filter matches nothing (JS) | "No token matches the filter." (`[data-collection-empty]`) |
 
 ## User interactions
 
 **Create token** (header and empty state), **All / Active / Expired / Revoked** filter, sortable headers, pagination,
-**Revoke** with confirm dialog, expiry radio cards, "All <group>" checkboxes, **Generate token**, **Cancel**,
+**Revoke** with confirm dialog, expiry radio cards, "All of <group>" checkboxes, **Generate token**, **Cancel**,
 **Copy** (token, curl example), **Done**.
 
 ## Dependencies
@@ -221,7 +224,9 @@ flowchart TD
 ## Related pages
 
 [Dashboard](dashboard.md) (**New API token** quick action; "Active API tokens" under "At a glance"),
-[Audit Logs](audit-logs.md) (create/revoke entries); consumers use the [headless API](../features/headless-api.md).
+[Audit Logs](audit-logs.md) (create/revoke entries), [API Docs](api-docs.md) (try the API with a token; it names the
+key each operation needs), [API Endpoints](api-endpoints.md) (custom endpoints, with their own tokens); consumers use
+the [headless API](../features/headless-api.md).
 
 ## Important implementation details
 
@@ -248,18 +253,18 @@ flowchart TD
 ## Planned (not implemented)
 
 Target behaviour from the original product specification. Nothing in this section exists in the code unless marked ✔.
-Token fields, permission model, role table, tenant rules and the full acceptance list:
+Token fields, permission model, role table and the full acceptance list:
 [headless API → Planned](../features/headless-api.md#planned-not-implemented).
 
 ### Requirements
 
-- **Access:** any user holding the `API` permission area, not a fixed role list; Admins act within their tenant(s),
-  Editors/Authors (when granted) only on their own tokens, Super Admins across all tenants.
+- **Access:** any user holding the `API` permission area, not a fixed role list; Editors/Authors (when granted) act
+  only on their own tokens, Super Admins and Admins on all tokens.
 - **List:** Name ✔, prefix ✔, permissions summary ✔, Created ✔, Last used ✔, expiration ✔ and a status that
   distinguishes **Active**, **Revoked** and **Expired** ✔ (the list filter still groups Expired under Revoked).
 - **Review flags:** mark **orphaned** tokens (creator disabled or deleted) and tokens whose keys exceed their
   creator's current permissions.
-- **Details view** per token: Created by, Description, full permission set, tenant scope.
+- **Details view** per token: Created by, Description, full permission set.
 - **Created view:** plaintext once ✔ with a **copy** action ✔ and the cannot-be-retrieved-again warning ✔.
 
 ### User flows
@@ -268,14 +273,13 @@ Token fields, permission model, role table, tenant rules and the full acceptance
 | --- | --- |
 | Create (delta) | Form adds `Custom` to **Duration** with an **Expiration date** input (required for `Custom`); the permission picker offers only keys the creator holds, plus custom keys of installed extensions (a duplicate name is already a validation message ✔). |
 | Inspect usage | List → select token → details; use **Last used** and [Audit Logs](audit-logs.md) to judge whether it is stale, then revoke or rotate. |
-| Rotate | Select token → **Rotate** → new secret for an equivalent token (same name, description, permissions, duration, tenant) shown **once** → old token revoked immediately → both events audited. |
+| Rotate | Select token → **Rotate** → new secret for an equivalent token (same name, description, permissions, duration) shown **once** → old token revoked immediately → both events audited. |
 
 ### Rules and validation
 
 - Validation as listed in [headless API → Rules and validation](../features/headless-api.md#rules-and-validation).
-- Rotation vs the `(TenantId, Name)` unique index: the index also covers revoked rows, so rotation must either
+- Rotation vs the `Name` unique index: the index also covers revoked rows, so rotation must either
   re-key the existing row or the index must exclude revoked tokens.
-- A non-Super Admin sees, revokes and rotates only tokens of tenants they are assigned to.
 
 ### Acceptance criteria
 
@@ -283,7 +287,7 @@ Token fields, permission model, role table, tenant rules and the full acceptance
   and Permissions.
 - [x] The plaintext token is displayed exactly once at creation (`Created.cshtml`) and never again.
 - [ ] Creating a token whose permissions are not a subset of the creator's permissions is rejected.
-- [x] A missing or non-unique Name within the tenant is rejected with a validation message
+- [x] A missing or non-unique Name is rejected with a validation message
   (`ApiTokensController.Create`: `Name is required.`, `A token named '<name>' already exists. ...`).
 - [ ] `Custom` duration without a future Expiration date is rejected.
 - [ ] The permission picker lists built-in keys plus custom keys declared by installed extension manifests.

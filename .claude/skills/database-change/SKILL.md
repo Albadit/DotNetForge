@@ -17,11 +17,10 @@ Read first: `.docs/architecture/database.md`.
 ## Steps
 
 1. **Entity** - add/change the class in `src/DotNetForge.Shared/Entities/` (plain POCO, `Guid Id = Guid.NewGuid()`,
-   `TenantId` for tenant-scoped data, UTC `DateTime`s). Enums go in `src/DotNetForge.Shared/Enums/Enums.cs` (stored as
-   int - append values, never renumber).
+   UTC `DateTime`s). Enums go in `src/DotNetForge.Shared/Enums/Enums.cs` (stored as int - append values, never
+   renumber).
 2. **Mapping** - in `DotNetForgeDbContext.OnModelCreating`: key, `IsRequired()`, `HasMaxLength(...)` for every string,
-   indexes (unique ones include `TenantId` for tenant-scoped data), relationships + delete behaviour, `Ignore(...)` for
-   computed properties. New table → add a `DbSet<T>` property.
+   indexes, relationships + delete behaviour, `Ignore(...)` for computed properties. New table → add a `DbSet<T>` property.
 3. **Migrations - one per SQL provider** (from the repository root; generating never connects to a database):
    ```bash
    dotnet tool restore

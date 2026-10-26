@@ -18,14 +18,13 @@ public static class ApiTokenDefaults
 {
     public const string Scheme = "ApiToken";
     public const string PermissionClaimType = "dnf:permission";
-    public const string TenantClaimType = "dnf:tenant";
     public const string TokenIdClaimType = "dnf:token";
 }
 
 /// <summary>
 /// Authenticates headless/Hybrid API requests presenting <c>Authorization: Bearer &lt;token&gt;</c>.
 /// Tokens are matched by their non-secret prefix, then verified against the stored salted hash. The
-/// token's granted permissions and tenant scope become claims for downstream authorization
+/// token's granted permissions become claims for downstream authorization
 /// (.docs/features/headless-api.md, .docs/features/security.md). Expired or revoked tokens yield 401.
 /// </summary>
 public sealed class ApiTokenAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
@@ -100,7 +99,6 @@ public sealed class ApiTokenAuthenticationHandler : AuthenticationHandler<Authen
         {
             new(ClaimTypes.NameIdentifier, token.Id.ToString()),
             new(ApiTokenDefaults.TokenIdClaimType, token.Id.ToString()),
-            new(ApiTokenDefaults.TenantClaimType, token.TenantId.ToString()),
         };
         claims.AddRange(token.Permissions.Select(p => new Claim(ApiTokenDefaults.PermissionClaimType, p)));
 

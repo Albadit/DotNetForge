@@ -121,7 +121,7 @@ public sealed class StorageKeyTests
     [Theory]
     [InlineData("a.png", true)]
     [InlineData("0f3c/2026/10/9b1e.png", true)]
-    [InlineData("tenant_1/file-name.v2.pdf", true)]
+    [InlineData("folder_1/file-name.v2.pdf", true)]
     [InlineData("", false)]
     [InlineData("/leading", false)]
     [InlineData("trailing/", false)]

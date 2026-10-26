@@ -25,7 +25,7 @@ DotNetForge CMS is a server-rendered ASP.NET Core MVC content-management system 
 - runs from a **read-only deployment directory**: database rows, uploaded files and the Data Protection key ring all
   live outside it ([deployment](../guides/deployment.md#read-only-deployment-requirements)).
 
-Much of the target product ([product overview](../product.md): webhook delivery, email, i18n, tenant resolution,
+Much of the target product ([product overview](../product.md): webhook delivery, email, i18n,
 per-page themes, page builder) has data models or contracts in place but no behaviour. Each feature document lists its target
 behaviour under **Planned (not implemented)**; the gap is tracked in
 [implementation-status.md](../implementation-status.md). The target architecture is in
@@ -43,9 +43,10 @@ behaviour under **Planned (not implemented)**; the gap is tracked in
 | Auth | ASP.NET Core cookie authentication + a custom `ApiToken` bearer scheme; Data Protection key ring persisted to the database | `DependencyRegistration`, `ApiTokenAuthenticationHandler` |
 | File storage | `IFileStorage`: local directory or any S3-compatible service (`AWSSDK.S3`) | `src/DotNetForge.Infrastructure/Storage` |
 | Request hardening | `SecurityHeadersMiddleware` (CSP and friends), built-in rate limiter (`AddRateLimiter`) | `src/DotNetForge.Web/Middleware/`, `DependencyRegistration` |
+| API docs | `Microsoft.AspNetCore.OpenApi` builds the OpenAPI document of `/api/*` and the custom endpoints; `Scalar.AspNetCore` renders it at `/admin/api-docs/reference/` ([API docs](../features/api-docs.md)) | `src/DotNetForge.Web/ApiDocs/`, `DependencyRegistration` (`AddOpenApi`) |
 | Crypto | BCL only: PBKDF2-SHA256 (`Rfc2898DeriveBytes.Pbkdf2`), HMAC-SHA256, SHA-256, `RandomNumberGenerator` | `src/DotNetForge.Infrastructure/Security`, `ApiTokenAuthenticationHandler` |
 | Configuration | In-house `.env` parser + environment variables, typed as `AppEnvironment` | `src/DotNetForge.Infrastructure/Configuration` |
-| Frontend | The Forge design system ([design-system.md](design-system.md)): hand-written CSS (`wwwroot/css/forge/`), Razor tag helpers (`src/DotNetForge.Web/Ui/`), an SVG icon sprite and three vanilla JS files (`wwwroot/js/forge/theme.js`, `ui.js`, `content.js`). Light and dark themes. No inline script or style. No bundler, no Node build, no front-end packages. | `src/DotNetForge.Web/wwwroot/`, `src/DotNetForge.Web/Ui/` |
+| Frontend | The Forge design system ([design-system.md](design-system.md)): hand-written CSS (`wwwroot/css/forge/`), Razor tag helpers (`src/DotNetForge.Web/Ui/`), an SVG icon sprite and vanilla JS files (`wwwroot/js/forge/theme.js`, `ui.js`, and one script per screen that needs one: `pages.js`, `entries.js`, `content-types.js`). Light and dark themes. No inline script or style. No bundler, no Node build, no front-end packages. | `src/DotNetForge.Web/wwwroot/`, `src/DotNetForge.Web/Ui/` |
 | Page builder | Layout documents, validation and HTML/CSS rendering in `DotNetForge.PageBuilder`; the editor as plain ES modules (`wwwroot/js/builder/`) with its own styles (`wwwroot/builder/`). Ported from the Dnn.Libraries.PageEditor project ([page builder](../features/page-builder.md)). | `src/DotNetForge.PageBuilder`, `src/DotNetForge.Web/wwwroot/{js/,}builder` |
 | Container | `docker/Dockerfile` (`sdk:10.0` build → `aspnet:10.0`, non-root `$APP_UID`, port 8080); `docker/compose.dev.yml` for local PostgreSQL + S3 | `docker/` |
 | Tests | xUnit 2.9, `Microsoft.AspNetCore.Mvc.Testing` (`WebApplicationFactory<Program>`) | `tests/` |
@@ -69,18 +70,20 @@ flowchart TB
     ExtCode["extensions/**/*.csproj (loaded at runtime, not referenced)"]
     Infra["DotNetForge.Infrastructure"]
     PB["DotNetForge.PageBuilder"]
+    Cnt["DotNetForge.Content"]
     Core["DotNetForge.Core"]
     Data["DotNetForge.Data"]
     Shared["DotNetForge.Shared"]
     Abs["DotNetForge.Abstractions"]
 
-    Host --> Api & Ext & Sdk & Infra & Core & Data & Shared & Abs & PB
-    Api --> Core & Data & Shared & Abs
+    Host --> Api & Ext & Sdk & Infra & Core & Data & Shared & Abs & PB & Cnt
+    Api --> Cnt & Core & Data & Shared & Abs
+    Cnt --> Core & Data & Shared & Abs
     Ext --> Sdk & Core & Shared & Abs
     Sdk --> Shared & Abs
     ExtCode -. compiles against .-> Sdk
     Infra --> Core & Shared & Abs
-    Core --> Shared & Abs
+    Core --> Shared & Abs & PB
     Data --> Shared & Abs
     Shared --> Abs
 ```
@@ -89,7 +92,10 @@ Arrows are `ProjectReference`s. `Core` and `Data` are deliberate siblings: neith
 logic needs persistence, the contract goes in `Shared` and `Data` implements it (the `IInstallationStore` pattern).
 When the API needs a web-host service, the contract also goes in `Shared` and the host implements it
 (`IPageService`, `IAuditService`): `Api` resolves them from DI without referencing the host. `Api` → `Data` is a
-documented shortcut: API controllers query `DotNetForgeDbContext` directly. Extension projects reference only
+documented shortcut: API controllers query `DotNetForgeDbContext` directly. Structured content needs the same database
+rules in the admin and the API, more than a contract would carry, so they are a library of their own:
+`DotNetForge.Content` (above `Core` and `Data`, referenced by the host and `Api`). `Core` references `PageBuilder`
+because entries store rich text in the page builder's format. Extension projects reference only
 `Sdk`, `Shared` and `Abstractions` (without copying them, `extensions/Directory.Build.props`) and are loaded by the
 host at runtime; the host shares its own copies of those assemblies with them.
 
@@ -119,8 +125,11 @@ DotNetForge/                         repository root
 │   │   ├── Startup/
 │   │   │   ├── DependencyRegistration.cs  every DI registration, extension host (AddExtensionHost), auth schemes, session validation, policies, rate limits
 │   │   │   └── ExtensionHosting.cs   extension endpoint gate middleware, controller convention, MapDotNetForgeExtensionsAsync
+│   │   ├── ApiDocs/
+│   │   │   ├── ApiDocsEndpoints.cs   MapApiDocs: the OpenAPI document and the Scalar reference under /admin/api-docs (ApiDocs policy)
+│   │   │   └── ApiDocsTransformers.cs  the OpenAPI document: /api/* with the ApiToken scheme and permission keys, the custom endpoints with their own schemes
 │   │   ├── Middleware/
-│   │   │   ├── SecurityHeadersMiddleware.cs  CSP, nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
+│   │   │   ├── SecurityHeadersMiddleware.cs  CSP (a nonce'd script-src for the Scalar page only), nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
 │   │   │   └── InstallationMiddleware.cs     redirects to /setup until installed; blocks /setup after
 │   │   ├── Services/                web-host application services (need HttpContext or the DbContext)
 │   │   ├── Controllers/             non-area controllers: public site, media files, account, external sign-in, setup, extension views/resources
@@ -138,7 +147,8 @@ DotNetForge/                         repository root
 │   │   └── appsettings*.json        logging levels and AllowedHosts
 │   ├── DotNetForge.Abstractions/    contracts only (no implementation, no dependencies)
 │   ├── DotNetForge.Shared/          entities, enums, constants, DTOs, results, manifest model, store/service contracts
-│   ├── DotNetForge.Core/            pure domain logic: installation, permission evaluation, validators
+│   ├── DotNetForge.Core/            pure domain logic: installation, permission evaluation, validators, structured content rules (Content/)
+│   ├── DotNetForge.Content/         structured content over the database: content types, entries, queries, API shapes
 │   ├── DotNetForge.Data/            EF Core contexts per provider, four migration sets, database layer (Database/), seeding, stores
 │   ├── DotNetForge.Infrastructure/  hashing, tokens, signing, .env loading, AppPaths, file storage (local, S3)
 │   ├── DotNetForge.PageBuilder/     page builder documents: schema, validator, HTML/CSS renderer (no other references)
@@ -215,12 +225,14 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 
 | Class | Registered as | Lifetime | Responsibility | Used by |
 | --- | --- | --- | --- | --- |
-| `AuthService` | self | scoped | Email/password validation with lockout; builds the cookie `ClaimsPrincipal` (roles + `dnf:tenant`); `GetDefaultTenantIdAsync` (oldest tenant); `IsActiveAsync` (user exists and is `Enabled`). Defines `SignInStatus`, `SignInResult`, `TenantClaimType`. | `AccountController`, `SetupController`, `DependencyRegistration.ValidateSessionAsync` |
-| `AuditService` | `IAuditService` | scoped | Appends an `AuditLogEntry` with the acting user (or `API token {id}` with `UserId = null`), tenant, IP and user agent; truncates snapshots to the column lengths. | `AccountController`, `SetupController`, `ContentController`, `SettingsController`, `ApiTokensController`, `MediaService`, `ContentApiController` |
-| `PageService` | `IPageService` | scoped | Every content-page rule: `ApplyAsync`, `ReorderAsync`, `DeleteAsync` (validate and mutate, **never save**); static `Slugify`, `ToUtc`, `IsDynamic`. | `ContentController`, `ContentApiController` |
+| `AuthService` | self | scoped | Email/password validation with lockout; builds the cookie `ClaimsPrincipal` (user id, name, email, roles); `IsActiveAsync` (user exists and is `Enabled`). Defines `SignInStatus`, `SignInResult`. | `AccountController`, `SetupController`, `DependencyRegistration.ValidateSessionAsync` |
+| `AuditService` | `IAuditService` | scoped | Appends an `AuditLogEntry` with the acting user (or `API token {id}` with `UserId = null`), IP and user agent; truncates snapshots to the column lengths. | `AccountController`, `SetupController`, `PagesController`, `SettingsController`, `ApiTokensController`, `MediaService`, `ContentApiController`, the `DotNetForge.Content` services |
+| `PageService` | `IPageService` | scoped | Every content-page rule: `ApplyAsync`, `ReorderAsync`, `DeleteAsync` (validate and mutate, **never save**); static `Slugify`, `ToUtc`, `IsDynamic`. | `PagesController`, `ContentApiController` |
 | `MediaService` | self | scoped | Upload rules (`AllowedTypes`, `MaxUploadBytes` 25 MB, `MaxFilesPerUpload` 10), generated storage keys, `MediaFile` rows, delete, audit; static `IsInline`, `UrlFor`. | `MediaController`; statics also by `MediaFilesController` and `Media/Index.cshtml` |
 | `InstallationStatusCache` | self | singleton | Caches the one-way "installed" flag so the middleware stops querying the DB after install. | `InstallationMiddleware`, `SetupController`, integration tests |
 | `ScheduledPublishingService` | hosted | singleton | Every 15 s finalizes due publish/unpublish schedules. | host |
+| `ContentRenderService` | self | scoped | The entries every content list of a layout shows (queries, media, linked entries → item data); flags a missing detail entry | `HomeController`, `PageLayoutViewComponent`, `PageBuilderController` (preview), `ContentController` (list columns) |
+| `EntryForm` | static | - | Reads the Content Manager's entry form (`f.` + field path) into entry values | `ContentController` |
 
 - **Belongs here:** logic shared by several admin/public controllers that touches EF, storage or HTTP.
 - **Does not belong:** pure rules with no I/O (put them in `Core/Validation` or similar), contracts for extensions
@@ -235,7 +247,7 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 | Controller | Routes | Purpose |
 | --- | --- | --- |
 | `HomeController` | `GET /`, fallback `{*path:nonfile}` → `RenderPage`, `/error` (any HTTP method) | Public site and the error screen |
-| `MediaFilesController` | `GET /media/{id:guid}/{fileName?}` | Media downloads: redirect to a presigned URL (S3) or stream (local). Private files only for admin-capable users of the file's tenant, else 404. |
+| `MediaFilesController` | `GET /media/{id:guid}/{fileName?}` | Media downloads: redirect to a presigned URL (S3) or stream (local). Private files only for admin-capable users, else 404. |
 | `AccountController` | `/account/login` (GET/POST, POST rate-limited), `/account/logout` (POST), `/account/denied` | Cookie sign-in/out |
 | `SetupController` | `/setup` (GET/POST, POST rate-limited) | Setup wizard; writes `cms.installed` |
 | `ExtensionViewController` | `/admin/ext/{id}/raw`, `/admin/ext/{id}/resources/{**path}` | Renders an admin extension's own Razor document and assets. Lives outside the area so its views resolve from `extensions/` with no admin layout. Protected by the `AdminArea` policy. |
@@ -243,12 +255,12 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 #### `src/DotNetForge.Web/Areas/Admin/`
 
 The admin UI. Every controller derives from `AdminControllerBase` (`[Area("Admin")]`,
-`[Authorize(Policy = "AdminArea")]`), which exposes `TenantId` and `CurrentUserId` from claims and the permission
+`[Authorize(Policy = "AdminArea")]`), which exposes `CurrentUserId` from claims and the permission
 checks `Can(area, action)` and `CanModify(area, anyAction, ownAction, createdById)` (via `IPermissionService`). Each
 controller declares an attribute `[Route("admin/...")]`. Views use `_AdminLayout` via
 `src/DotNetForge.Web/Areas/Admin/Views/_ViewStart.cshtml`. All view models are in one file, `src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs`,
-except `RoleListItem` and `UserListItem`, which are nested records inside their controllers; the Content Manager
-form binds `PageInput` from `Shared/Content`. See [pages.md](pages.md) for the screen architecture.
+except `RoleListItem` and `UserListItem`, which are nested records inside their controllers; the Pages form binds
+`PageInput` from `Shared/Content`. See [pages.md](pages.md) for the screen architecture.
 
 - **Belongs here:** admin screens, their view models, admin-only view components, the navigation tree
   (`Navigation/AdminNavigation.cs` - add a screen's sidebar link there).
@@ -269,7 +281,9 @@ presentation helpers. How these fit together, and how to add a component, token 
 | `wwwroot/css/forge/admin.css` / `auth.css` / `public.css` | `_AdminLayout` / `_AuthLayout` / `_Layout` |
 | `wwwroot/js/forge/theme.js` | every built-in layout, synchronously in `<head>` (applies the saved light/dark choice) |
 | `wwwroot/js/forge/ui.js` | `_AdminLayout`, `_AuthLayout` (`defer`) - `data-confirm`, toasts, menus, drawer, list search/filter/sort/paging, copy, theme switch |
-| `wwwroot/js/forge/content.js` | Content Manager only (`@section Scripts`) |
+| `wwwroot/js/forge/pages.js` | Pages only (`@section Scripts`) |
+| `wwwroot/js/forge/entries.js` | Content Manager entry list and entry form |
+| `wwwroot/js/forge/content-types.js` | Content types builder (`/admin/content-types/{id}`) |
 | `wwwroot/img/` | `icons.svg` (icon sprite for `<icon>`), `favicon.svg`, `logo-dark.svg` (dark sidebar, auth panel), `logo-mark.svg` (public header, auth on phones), `logo.svg` (light sidebar, README) |
 | `Ui/UiTagHelpers.cs` | `@addTagHelper *, DotNetForge.Web` in both `_ViewImports.cshtml` |
 
@@ -282,7 +296,7 @@ Interfaces with no implementation and no project references - the surface extens
 
 | File | Contents |
 | --- | --- |
-| `Authorization/IPermissionService.cs` | `Has(role, area, action)`, `HasAny(roles, area, action)` |
+| `Authorization/IPermissionService.cs` | `Has(role, area, action)`, `HasAny(roles, area, action)` (reference matrix), `IsGranted(roles, area, action)` (stored grants) |
 | `Security/ISecurityContracts.cs` | `IDateTimeProvider`, `IPasswordHasher`, `IApiTokenFactory` + `GeneratedApiToken`, `IWebhookSigner` |
 | `Messaging/IMessagingContracts.cs` | `EmailMessage`, `IEmailSender` (no implementation exists) |
 | `Storage/IFileStorage.cs` | `IFileStorage` (`SaveAsync`, `OpenReadAsync` → `StoredFile?`, `DeleteAsync`, `GetDownloadUrlAsync` → `Uri?`), `StoredFile`, `StorageKey` (key validation) |
@@ -298,8 +312,9 @@ The shared kernel referenced by everything above `Abstractions`.
 
 | Folder | Contents |
 | --- | --- |
-| `Entities/` | `Tenant`, `User`, `Role`, `RolePermission`, `UserRole`, `Page`, `MediaFile`, `ApiToken`, `Webhook`, `WebhookDelivery`, `AuditLogEntry`, `InstalledExtension`, `SystemState`, `Setting`, `AuthProvider` |
-| `Enums/Enums.cs` | `DatabaseProvider`, `StorageProvider`, `UserStatus`, `TenantStatus`, `ExtensionType`, `ExtensionStatus`, `TokenDuration`, `PageType`, `WebhookOutcome` |
+| `Entities/` | `User`, `Role`, `RolePermission`, `UserRole`, `Page`, `MediaFile`, `ApiToken`, `Webhook`, `WebhookDelivery`, `AuditLogEntry`, `InstalledExtension`, `SystemState`, `Setting`, `AuthProvider`, `ContentType`, `ContentEntry`, `ContentEntryValue` (`StructuredContent.cs`) |
+| `Enums/Enums.cs` | `DatabaseProvider`, `StorageProvider`, `UserStatus`, `ExtensionType`, `ExtensionStatus`, `TokenDuration`, `PageType`, `WebhookOutcome`, `ContentTypeKind` |
+| `Media/MediaUrls.cs` | `MediaUrls.For(id, fileName)` - the `/media/{id}/{name}` path (admin, renderer and API) |
 | `Constants/` | `Roles`, `PermissionAreas`, `PermissionActions`, `PermissionKeys`, `AuditActions`, `WebhookEvents`, `RateLimitPolicies`, `AuthorizationPolicies` |
 | `Authorization/PermissionMatrix.cs` | Default `(role, area, action)` grants - consumed by `PermissionService` and `DataSeeder` |
 | `Configuration/AppEnvironment.cs` | Typed `.env` values, `StorageSettings`, `ResolveConnectionString()`, `Lookup` (any key: environment, then `.env` - for extension settings) |
@@ -321,22 +336,40 @@ Pure domain logic with no EF Core.
 | File | Contents | Called from |
 | --- | --- | --- |
 | `Installation/InstallationService.cs` | Validates `SetupRequest` (email ≤ 256, names ≤ 100, `PasswordPolicy`, confirm match), hashes the password, delegates to `IInstallationStore` | `SetupController` |
-| `Authorization/PermissionService.cs` | Evaluates the built-in `PermissionMatrix` (not stored `RolePermission` rows) | `AdminControllerBase.Can` / `CanModify` |
+| `Authorization/PermissionService.cs` | `IsGranted` evaluates the roles' stored grants (`IRoleGrantStore`; `Super Admin` always, a role without stored grants falls back to `PermissionMatrix`); `Has`/`HasAny` evaluate the matrix only | `AdminControllerBase.Can` / `CanModify` |
 | `Validation/InputValidation.cs` | `EmailValidator` | `InstallationService` |
 | `Validation/PasswordPolicy.cs` | Min 8 chars, ≥1 letter, ≥1 digit, not in a 12-entry common list | `InstallationService` |
 | `Extensions/IExtensionContracts.cs` | `IManifestValidator`, `IExtensionLoader` (`Discover()`), `DiscoveredExtension` | `DotNetForge.Extensions`, `PluginsController` |
+| `Content/ContentSchema.cs` | Field types (`FieldTypes`), `FieldDefinition`, `ContentSchema.Validate`/`Parse` (field definitions of a content type) | `DotNetForge.Content` services, admin views |
+| `Content/EntryData.cs` | Entry value validation (draft vs publish), migration after field changes, title, search text, index values | `ContentEntryService` |
+| `Content/ItemData.cs` | Entry → item data a content list binds to; bindable paths | `ContentRenderService`, `PageBuilderController` |
+| `Content/ContentTypeTemplates.cs` | Starter content types | `ContentTypeService`, the new-type screen |
+
+#### `src/DotNetForge.Content`
+
+Structured content over the database ([structured content](../features/structured-content.md)), shared by the admin
+screens and the headless API so both apply the same rules. References `Abstractions`, `Shared`, `Core`, `Data`.
+
+| Class | Responsibility |
+| --- | --- |
+| `ContentTypeService` | create (from templates, with linked types), update (validated schema, entries migrated in the same save), delete, reorder; saves and audits |
+| `ContentEntryService` | save (draft / publish), publish, unpublish, duplicate, delete, bulk delete, reorder, uniqueness, conflicts (`Version`), value index rows; saves and audits |
+| `ContentQueryService` | search, filters, sorting and paging over the value index with single-table queries |
+| `ContentApiService` | the API's JSON for types and entries (media and relationships resolved) |
+
+All four are scoped, registered in `DependencyRegistration`.
 
 #### `src/DotNetForge.Data`
 
 | File | Responsibility |
 | --- | --- |
-| `DotNetForgeDbContext.cs` | The EF Core model: 16 `DbSet`s (incl. `DataProtectionKeys`) and all fluent configuration. Implements `IDataProtectionKeyContext`. Owns the SQLite migrations. Not sealed. |
+| `DotNetForgeDbContext.cs` | The EF Core model: 21 `DbSet`s (incl. `DataProtectionKeys`) and all fluent configuration. Implements `IDataProtectionKeyContext`. Owns the SQLite migrations. Not sealed. |
 | `Database/` | The database layer ([architecture](../database/architecture.md)): `IDatabaseProvider`, registry, catalog, `QueryRouter`, `DatabaseService`, schema mapping, value coercion. `Providers/<Database>/` holds everything specific to one database, with no code shared between databases: provider, context type and migrations; for SQL databases also the dialect, SQL builder and executor; for MongoDB the executor and key generators. |
 | `DatabaseInitializer.cs` | Startup: the main provider's `InitializeSchemaAsync` (migrations, or MongoDB collections and indexes), then `DataSeeder.SeedAsync`. |
-| `DataSeeder.cs` | Idempotent seed: default tenant, six built-in roles + grants, starter page tree, auth-provider catalog, `SystemState` row. |
+| `DataSeeder.cs` | Idempotent seed: six built-in roles + grants, starter page tree, auth-provider catalog, `SystemState` row; one-time updates by `SystemState.SeedVersion` (`UpgradeAsync`). |
 | `InstallationStore.cs` | Transactional create-first-admin + installed flag. |
 | `DesignTimeDbContextFactory.cs` | One design-time factory per SQL context (SQLite, PostgreSQL, SQL Server, MySQL) for `dotnet ef`; read `DATABASE_CONNECTION_STRING` from the process environment only. |
-| `Database/Providers/<Database>/Migrations/` | One migration set per SQL database. SQLite: `InitialCreate`, `AddPageSeoAndScheduling`, `AddDataProtectionKeys`; PostgreSQL, SQL Server, MySQL: `InitialCreate`. |
+| `Database/Providers/<Database>/Migrations/` | One migration set per SQL database; the list per database is in [database.md → Migrations](database.md#migrations) (latest: `AddStructuredContent` in all four). |
 
 Details: [database.md](database.md).
 
@@ -384,8 +417,12 @@ extension ([extensions → Extension SDK](../features/extensions.md#extension-sd
 #### `src/DotNetForge.Api`
 
 `ApiControllerBase` (`[ApiController]`, `[Authorize(AuthenticationSchemes = "ApiToken")]`,
-`[EnableRateLimiting("api")]`, `TenantId` from the token), `ContentApiController` (creates pages through
-`IPageService`, audits through `IAuditService`), five resource controllers in `ResourceApiControllers.cs`,
+`[EnableRateLimiting("api")]`), `ContentApiController` (creates pages through
+`IPageService`, audits through `IAuditService`), `EntriesApiController` (content types and entries through the
+`DotNetForge.Content` services), five resource controllers in `ResourceApiControllers.cs`,
+`CustomEndpointsApiController` (`/api/custom/{**path}`; a plain `ControllerBase` with `[ApiController]`, `[Produces]`
+and the `api` rate limit - not an `ApiControllerBase`, because each custom endpoint has its own token instead of an
+API token, [custom endpoints](../features/custom-endpoints.md)),
 `ApiTokenAuthenticationHandler` + `ApiTokenDefaults`, and `RequireApiPermissionAttribute`. Mounted into the host with
 `AddApplicationPart(typeof(ContentApiController).Assembly)`. See [headless API](../features/headless-api.md).
 
@@ -418,14 +455,14 @@ required - see [deployment](../guides/deployment.md#environment-variables).
 | --- | --- | --- | --- |
 | Installation | `SystemState` | `InstallationService`, `InstallationStore`, `InstallationMiddleware`, `InstallationStatusCache` | [Setup](../pages/setup.md) |
 | Identity & access | `User`, `Role`, `RolePermission`, `UserRole`, `AuthProvider` | `AuthService`, `AccountController`, `PermissionMatrix`, `PermissionService`, `AdminControllerBase.Can`/`CanModify` | [Login](../pages/login.md), [Users](../pages/users.md), [Roles](../pages/roles.md) |
-| Content | `Page` | `IPageService`/`PageService`, `ContentController`, `ContentApiController`, `HomeController`, `ScheduledPublishingService` | [Content Manager](../pages/content-manager.md), [public site](../pages/public-home.md) |
+| Pages | `Page` | `IPageService`/`PageService`, `PagesController`, `ContentApiController`, `HomeController`, `ScheduledPublishingService` | [Pages](../pages/pages.md), [public site](../pages/public-home.md) |
+| Structured content | `ContentType`, `ContentEntry`, `ContentEntryValue` | `Core/Content`, `DotNetForge.Content`, `ContentController`, `ContentTypesController`, `ContentRenderService`, `EntriesApiController` | [Content Manager](../pages/content-manager.md), [Content types](../pages/content-types.md), `/api/entries` |
 | Media | `MediaFile` (+ objects in `IFileStorage`) | `MediaService`, `MediaController`, `MediaFilesController`, `MediaApiController` (read-only) | [Media](../pages/media.md), `/media/{id}/{fileName}` |
 | Configuration | `Setting` | `SettingsController` | [Settings](../pages/settings.md) |
-| Headless API | `ApiToken` | `ApiTokensController`, `src/DotNetForge.Api` | [API Tokens](../pages/api-tokens.md) |
+| Headless API | `ApiToken`, `CustomEndpoint`, `CustomEndpointOperation` | `ApiTokensController`, `ApiEndpointsController`, `ApiDocsController`, `src/DotNetForge.Api`, `DotNetForge.Content/Endpoints`, `src/DotNetForge.Web/ApiDocs` | [API Tokens](../pages/api-tokens.md), [API Endpoints](../pages/api-endpoints.md), [API Docs](../pages/api-docs.md) |
 | Audit | `AuditLogEntry` | `IAuditService`/`AuditService`, `AuditLogsController` | [Audit Logs](../pages/audit-logs.md) |
 | Extensions | `InstalledExtension` (enabled state) | `ExtensionLoader`, `ManifestValidator`, `ExtensionRuntime`, `ExtensionCatalog`, `ExtensionState`, `ExtensionLifecycleService`, `PluginsController`, slot code ([extensions → Where to change things](../features/extensions.md#where-to-change-things)) | [Plugins](../pages/plugins.md), [Extension host](../pages/extension-host.md), [Dashboard](../pages/dashboard.md#widgets) |
 | Webhooks | `Webhook`, `WebhookDelivery` | `HmacWebhookSigner` (not registered) | placeholder only |
-| Tenancy | `Tenant` | `DataSeeder`; claim helpers in base controllers | none |
 | Platform | `DataProtectionKey` | `AddDataProtection().PersistKeysToDbContext<DotNetForgeDbContext>()` | none |
 
 ## Layer-by-layer reference
@@ -452,8 +489,7 @@ persistence of this kind: they go through `IFileStorage`, and the `MediaFile` ro
 ### Database access
 
 EF Core LINQ only - no raw SQL anywhere. Read queries use `AsNoTracking()` and project to view models with
-`Select`. Writes load the tracked entity, mutate, `SaveChangesAsync()`. Tenant scoping is a manual
-`Where(x => x.TenantId == TenantId)` in each query; there are no global query filters. Input is length-checked
+`Select`. Writes load the tracked entity, mutate, `SaveChangesAsync()`. There are no global query filters. Input is length-checked
 before saving because PostgreSQL enforces column lengths. See [database.md](database.md).
 
 ### Models and DTOs
@@ -461,7 +497,7 @@ before saving because PostgreSQL enforces column lengths. See [database.md](data
 | Kind | Location |
 | --- | --- |
 | Entities | `src/DotNetForge.Shared/Entities` |
-| Content-page input (Content Manager form, API create) | `src/DotNetForge.Shared/Content/IPageService.cs` (`PageInput`, `PagePosition`) |
+| Content-page input (Pages form, API create) | `src/DotNetForge.Shared/Content/IPageService.cs` (`PageInput`, `PagePosition`) |
 | Admin view models | `src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs` (+ nested records in `UsersController.cs` and `RolesController.cs`) |
 | Setup DTO | `src/DotNetForge.Shared/Dtos/SetupRequest.cs` |
 | API request models | nested in the controller (`ContentApiController.CreatePageRequest`) |
@@ -498,7 +534,8 @@ All registrations are in `src/DotNetForge.Web/Startup/DependencyRegistration.Add
 ### Authentication
 
 Two schemes: the default **cookie** scheme (`dnf.auth`, 8 h sliding, `Secure` always outside Development) for the
-admin, and **`ApiToken`** (bearer) selected only by `ApiControllerBase`; plus the 10-minute `dnf.external` cookie that
+admin, and **`ApiToken`** (bearer) selected only by `ApiControllerBase` (custom endpoints compare their own token in
+`CustomEndpointsApiController` instead); plus the 10-minute `dnf.external` cookie that
 carries a sign-in extension's result to `ExternalLoginController`. Every cookie request is re-validated
 (`OnValidatePrincipal` → `AuthService.IsActiveAsync`, cached 30 s), so disabled or deleted users are signed out.
 The Data Protection key ring that protects cookies, antiforgery tokens and TempData is stored in the
@@ -509,9 +546,12 @@ The Data Protection key ring that protects cookies, antiforgery tokens and TempD
 
 The `AdminArea` policy (`Roles.CanEnterAdmin`: any role except Authenticated/Public) on every admin controller, plus
 `[RequirePermission(area, action)]` - evaluated from the roles' stored grants (`IRoleGrantStore`) - on Users, Roles,
-Audit Logs, API Tokens and Settings and their mutating actions; Plugins keeps `[Authorize(Roles = "Super Admin")]`.
-Content Manager and Media actions add record-level `(area, action)` checks through `AdminControllerBase.Can`/`CanModify`
-(areas `Collection types` and `Media`), returning `Forbid()`. User and role rules live in `UserManagementService` /
+Audit Logs, API Tokens, Settings, Content types, Pages (`Collection types` / `read`), the Content Manager (`Entries` /
+`read`) and Media (`Media` / `read`) and their mutating actions; Plugins keeps `[Authorize(Roles = "Super Admin")]`,
+API Endpoints `[Authorize(Roles = "Super Admin,Developer")]` and API Docs the `ApiDocs` policy (Super Admin or
+Developer). Pages, Content Manager and Media actions add record-level `(area, action)` checks through
+`AdminControllerBase.Can`/`CanModify` (areas `Collection types`, `Entries` and `Media`), returning `Forbid()`; Content
+types uses `[RequirePermission]` on `Content types`. User and role rules live in `UserManagementService` /
 `RoleManagementService`. The API uses per-endpoint permission keys via
 `[RequireApiPermission]`. See [authorization](../features/authorization.md).
 
@@ -572,7 +612,7 @@ Server-rendered Razor with progressive enhancement and no inline script or style
 
 ### API architecture
 
-Separate class library mounted as an application part, token-only, rate-limited per IP, tenant-scoped by claim,
+Separate class library mounted as an application part, token-only, rate-limited per IP,
 anonymous-object JSON. See [headless API](../features/headless-api.md).
 
 ### Persistence architecture
@@ -673,27 +713,24 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
 | `DotNetForge.Infrastructure` | SMTP email, webhook delivery, background jobs, logging, external connectors (today: file storage providers ✔ used; `HmacWebhookSigner` unregistered) |
 | `DotNetForge.Extensions` | lifecycle install / update / remove (✔ dependency resolution, code loading and DI registration of each extension's services; enable/disable ✔ in `ExtensionLifecycleService` in the web host) |
 | `DotNetForge.Api` | full surface: content, media, users, roles, settings, extensions, dynamic routes, custom extension permissions; no direct `Data` reference |
-| `DotNetForge.Web` | page builder, tenant resolution, per-page themes (✔ site-wide theme slot) |
+| `DotNetForge.Web` | page builder, per-page themes (✔ site-wide theme slot) |
 
 **Composition and subsystems:**
 
-- **Tenant first:** resolve the tenant early in the pipeline (domain, subdomain or path prefix), then the content page
-  or dynamic route inside that tenant ([multi-tenancy](../features/multi-tenancy.md)).
 - **Extension points:** ✔ extensions implement `DotNetForge.Sdk.IExtension` and register services through DI; slots are
   fixed per type ([extensions → Slots](../features/extensions.md#slots)); marketplace installation through an external
   API ✘ ([extensions](../features/extensions.md)).
 - **Database:** every schema change is an EF Core migration for each SQL provider ✔
-  (`Database/Providers/<Database>/Migrations/`, [database](database.md)); data scoped per tenant where applicable; provider-aware
+  (`Database/Providers/<Database>/Migrations/`, [database](database.md)); provider-aware
   import/export ([transfer and updates](../features/transfer-and-updates.md)).
 - **Authentication:** pluggable providers registered through DI and supplied by `authentication` extensions in
   `extensions/authentication/` (✔ `AddLoginProvider`, [external sign-in](../features/authentication.md#external-sign-in-extensions));
   built-in Email provider ✔; external providers (Auth0, GitHub, Google, Microsoft, ...) with Name, Status and a
   Settings action; rate limiting ✔ (`credentials` policy on sign-in and setup); advanced user
   settings ([authentication](../features/authentication.md)).
-- **Authorization:** a permission check on every admin and API action (✔ API keys; ✔ Content Manager and Media
+- **Authorization:** a permission check on every admin and API action (✔ API keys; ✔ Pages, Content Manager and Media
   `(area, action)` checks; other admin screens use role checks); roles created, edited, duplicated, deleted and
-  assigned; global Super Admins manage all tenants, tenant admins only their assigned tenants
-  ([authorization](../features/authorization.md)).
+  assigned ([authorization](../features/authorization.md)).
 - **Content:** page types (Standard, Existing page, URL redirect, File), per-page and per-role/user permissions,
   theme/layout selection, page builder with built-in and extension modules, preview, draft/published versions,
   history with rollback; dynamic routes resolve content, modules, controllers or extension handlers
@@ -704,9 +741,9 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
   optional small/medium/large variants, optimisation, EXIF auto-orientation
   ([media storage](../features/media-storage.md)).
 - **Themes:** `theme` extensions in `extensions/themes/` with layouts, page templates, assets, settings and preview;
-  per-page theme, default site theme, tenant-specific themes (✔ one site-wide theme with views, assets and read-only
+  per-page theme, default site theme (✔ one site-wide theme with views, assets and read-only
   settings - [themes](../features/themes.md)).
-- **API:** tenant context from domain, path, header or token (token ✔); rate limiting ✔ (`api` policy) and input
+- **API:** rate limiting ✔ (`api` policy) and input
   validation on every endpoint ([headless API](../features/headless-api.md)).
 - **Update and rollback:** owned by [transfer and updates](../features/transfer-and-updates.md).
 - **Security:** full control set in [security](../features/security.md).
@@ -744,13 +781,12 @@ Update/rollback and import/export criteria are tracked in [transfer and updates]
 - [ ] Authentication providers are pluggable via DI and extensions, with Email built in (✔ extensions via
   `AddLoginProvider`, existing users only; no provider management).
 - [ ] RBAC enforces a permission check on every admin and API action with the six default roles (roles ✔ seeded;
-  API ✔; Content Manager and Media ✔ via `Can`/`CanModify`; other admin screens use role checks).
+  API ✔; Pages, Content Manager and Media ✔ via `Can`/`CanModify`; other admin screens use role checks).
 - [x] Permission areas cover Collection types, Single types, Plugins, Settings, Extensions, Media, Users, Roles, API,
   Webhooks (`PermissionAreas.Canonical`).
 - [ ] Content, media, theme and API systems are implemented in their specified layers.
 - [x] The admin area is never affected by public frontend themes (only `HomeController.ThemedViewAsync` renders theme
   views; no test asserts the admin side).
-- [ ] Tenant resolution happens first, then content-page/dynamic-route resolution inside that tenant.
 - [ ] The security model is implemented per [security](../features/security.md) (partial).
 - [x] Secrets live in `.env` and are never committed; `storage/`, build output, logs (`*.log`) and uploads are
   git-ignored (`.gitignore`); the Docker image takes configuration from environment variables only.
@@ -780,40 +816,49 @@ update this document in the same change).
    `DeleteAsync`, then save and audit. The public "live" rule is `PageVisibility.Live`
    (`src/DotNetForge.Shared/Content/PublishedPages.cs`); call it, never copy it.
 5. **Every admin controller derives from `AdminControllerBase`** and every API controller from `ApiControllerBase`.
-   Never bypass them - they carry the auth attributes, the tenant id, the permission checks (admin) and the `api`
-   rate limit (API).
-6. **Every tenant-scoped query filters by `TenantId`** (`AdminControllerBase.TenantId` / `ApiControllerBase.TenantId`).
-   There is no global filter to fall back on.
-7. **Every mutating admin action is `[HttpPost]` + `[ValidateAntiForgeryToken]`** and writes an audit entry through
+   Never bypass them - they carry the auth attributes, the current user id and permission checks (admin) and the
+   `api` rate limit (API). The only exception is `CustomEndpointsApiController`: custom endpoints are opened by their
+   own token (or none), never by an API token, so it is a plain `ControllerBase` that sets `[ApiController]`,
+   `[Produces("application/json")]` and `[EnableRateLimiting(RateLimitPolicies.Api)]` itself.
+6. **Every mutating admin action is `[HttpPost]` + `[ValidateAntiForgeryToken]`** and writes an audit entry through
    `IAuditService` with a constant from `AuditActions`.
-8. **Inject interfaces for shared services:** `IAuditService` and `IPageService`, never `AuditService` or
-   `PageService`. (`MediaService` and `AuthService` have no interface and are injected directly.)
-9. **Permission checks use `Can(area, action)` / `CanModify(area, any, own, createdById)`** with `PermissionAreas` /
+7. **Inject interfaces for shared services:** `IAuditService` and `IPageService`, never `AuditService` or
+   `PageService`. (`MediaService`, `AuthService` and the `DotNetForge.Content` services have no interface and are injected directly.)
+8. **Permission checks use `Can(area, action)` / `CanModify(area, any, own, createdById)`** with `PermissionAreas` /
    `PermissionActions` constants and return `Forbid()`; the view model exposes the same result (`CanUpload`,
    `CanDelete`) so the screen hides what the user cannot do. Hiding is never the gate.
-10. **Every API action carries `[RequireApiPermission(PermissionKeys.X)]`.** Add new keys to `PermissionKeys.All`
-    so they appear on the token-create screen.
-11. **Use the constants** in `Shared/Constants` for role names, permission keys, audit actions, webhook events and
+9. **Every API action carries `[RequireApiPermission(PermissionKeys.X)]`.** Add new keys to `PermissionKeys.All`
+   so they appear on the token-create screen; the [API docs](../features/api-docs.md) name the key on each operation.
+   The only exception is `CustomEndpointsApiController.Call`, which takes no API token at all: it checks the
+   endpoint's own token (`CustomEndpointService.VerifyToken`) or none for a public endpoint
+   ([custom endpoints](../features/custom-endpoints.md)).
+10. **Use the constants** in `Shared/Constants` for role names, permission keys, audit actions, webhook events and
     rate-limit policies.
-12. **No runtime writes under the content root.** Files the app creates go through `IFileStorage` (never `System.IO`
+11. **No runtime writes under the content root.** Files the app creates go through `IFileStorage` (never `System.IO`
     on `ContentRootPath`/`WebRootPath`), state goes in the database. Storage keys are generated, never built from
     user input (`StorageKey` validates them). New configuration must not default to a path inside the deployment
     directory outside Development.
-13. **No inline script or style in views** (the CSP forbids it). Build screens from the
+12. **No inline script or style in views** (the CSP forbids it). Build screens from the
     [design system](design-system.md): behaviour as a data attribute handled in `wwwroot/js/forge/ui.js` (e.g.
     `data-confirm`) or a page script, styles in `wwwroot/css/forge/` using the tokens, validation errors with
     `<form-errors />` (never `asp-validation-summary`, whose empty state carries an inline style).
-14. **Extension discovery goes through `IExtensionLoader`** (`Discover()`), and "may this extension contribute now?"
+13. **Extension discovery goes through `IExtensionLoader`** (`Discover()`), and "may this extension contribute now?"
     through `ExtensionCatalog` (`GetActiveAsync`, `FindActiveAsync`, `IsActiveAsync`); never combine discovery, code
     and enabled state in a caller, never scan `extensions/` directly, and never build file paths from request input
     (see `ExtensionResources.Serve` for the traversal guard). A new slot follows the pattern in
     [extensions → Where to change things](../features/extensions.md#where-to-change-things).
-15. **Schema changes go through migrations for EVERY SQL provider** - `DotNetForgeDbContext` (SQLite),
+14. **Schema changes go through migrations for EVERY SQL provider** - `DotNetForgeDbContext` (SQLite),
     `PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext`, each into `Database/Providers/<Database>/Migrations/`; MongoDB needs none. Strip
     the UTF-8 BOM EF writes into generated files (`.editorconfig` `charset = utf-8`) and check each snapshot landed in
     its folder ([database → migrations](database.md#migrations), the
     [database change skill](../../.claude/skills/database-change/SKILL.md)). Seed data goes in `DataSeeder` and must
     be idempotent.
-16. **No new dependencies for things the platform does** (the hasher, token factory, signer and `.env` parser are
+15. **No new dependencies for things the platform does** (the hasher, token factory, signer and `.env` parser are
     deliberately in-house; rate limiting and Data Protection are ASP.NET Core's). `AWSSDK.S3` is the one exception,
     for S3 request signing.
+16. **Content-type and entry rules live in the `DotNetForge.Content` services** (`ContentTypeService`,
+    `ContentEntryService`, `ContentQueryService`), pure rules (field definitions, value validation, item data) in
+    `src/DotNetForge.Core/Content/`. Controllers - admin and API - call them; they never validate entry values or
+    write `ContentEntryValues` themselves. A content list renders identically in C# and JavaScript: change
+    `Rendering/Collections.cs` / `Binding.cs` and `renderer/collection.js` / `binding.js` together, with the golden
+    fixtures ([structured content](../features/structured-content.md#where-to-change-things)).

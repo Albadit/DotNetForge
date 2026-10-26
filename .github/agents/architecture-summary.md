@@ -7,8 +7,9 @@ Layered solution (`DotNetForge.slnx`); the web host is `src/DotNetForge.Web`, Do
 | --- | --- |
 | `DotNetForge.Abstractions` | Contracts (`IFileStorage`, `IDatabaseService`, security, messaging). No dependencies, no entities. |
 | `DotNetForge.Shared` | Entities, enums, constants (incl. `AuthorizationPolicies`), DTOs, `Result`, manifest model, `AppEnvironment`, `PermissionMatrix`, store interfaces, `PageVisibility.Live` / `IPublishedPages`. |
-| `DotNetForge.Core` | `InstallationService`, `PermissionService` (content/media permission checks), validators. No EF Core. |
+| `DotNetForge.Core` | `InstallationService`, `PermissionService` (content/media permission checks), validators, structured content rules (`Content/`). No EF Core. |
 | `DotNetForge.Data` | `DotNetForgeDbContext` (SQLite migrations, Data Protection keys) and one context per other provider (PostgreSQL, SQL Server, MySQL migrations; MongoDB), the database layer in `Database/` (provider registry, `IDatabaseService`), `DataSeeder`, `InstallationStore`. |
+| `DotNetForge.Content` | Structured content over the database: `ContentTypeService`, `ContentEntryService`, `ContentQueryService`, `ContentApiService` - shared by admin and API. Pure rules (`ContentSchema`, `EntryData`, `ItemData`) are in `DotNetForge.Core/Content`. |
 | `DotNetForge.Infrastructure` | PBKDF2 hasher, clock, API token factory, HMAC signer, `.env` loader, `LocalFileStorage` and `S3FileStorage`. |
 | `DotNetForge.Extensions` | `ManifestValidator`, `ExtensionLoader` (discovery), `ExtensionRuntime` + `ExtensionLoadContext` (code loading), `ExtensionCatalog` (is it active?). |
 | `DotNetForge.Sdk` | What extensions compile against: `IExtension`, `ExtensionContext`, `AddMediaStorage` / `AddLoginProvider` / `AddAuditEventHandler`, `IExtensionState`. |

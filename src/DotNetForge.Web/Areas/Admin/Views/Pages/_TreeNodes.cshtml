@@ -12,7 +12,7 @@
         <li class="tree-item" draggable="@(canReorder ? "true" : "false")" data-id="@node.Id" data-tree-item
             data-search="@node.Title @node.Slug">
             <div class="tree-row @(isSelected ? "active" : null)">
-                @* Open/close the child pages (content.js, remembered per browser); the slot keeps rows aligned. *@
+                @* Open/close the child pages (pages.js, remembered per browser); the slot keeps rows aligned. *@
                 <span class="tree-toggle-slot">
                     @if (hasChildren)
                     {
@@ -23,7 +23,7 @@
                     }
                 </span>
                 @* draggable=false: dragging the title moves the whole row (the item), not the link. *@
-                <a class="tree-link" href="/admin/content?selected=@node.Id" draggable="false" aria-current="@(isSelected ? "page" : null)">
+                <a class="tree-link" href="/admin/pages?selected=@node.Id" draggable="false" aria-current="@(isSelected ? "page" : null)">
                     <span class="dot @dot" aria-hidden="true" title="@status"></span>
                     <span class="sr-only">@status:</span>
                     <span class="tree-title">@node.Title</span>
@@ -40,12 +40,12 @@
                         <menu-note>@node.NotOnSite</menu-note>
                     }
                     <menu-separator />
-                    <menu-post action="/admin/content/create?parent=@node.Id" icon="plus">Add child page</menu-post>
-                    <menu-post action="/admin/content/duplicate/@node.Id" icon="copy">Duplicate</menu-post>
+                    <menu-post action="/admin/pages/create?parent=@node.Id" icon="plus">Add child page</menu-post>
+                    <menu-post action="/admin/pages/duplicate/@node.Id" icon="copy">Duplicate</menu-post>
                     @if (node.CanDelete)
                     {
                         <menu-separator />
-                        <menu-post action="/admin/content/delete/@node.Id" icon="trash" danger="true"
+                        <menu-post action="/admin/pages/delete/@node.Id" icon="trash" danger="true"
                                    confirm="Delete '@node.Title'?@(hasChildren ? " Its child pages move up a level." : "")"
                                    confirm-title="Delete page" confirm-action="Delete page">Delete</menu-post>
                     }

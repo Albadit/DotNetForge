@@ -1,4 +1,4 @@
-// The page builder's server API (.docs/features/page-builder.md#api): JSON under /admin/content/{pageId}/builder/,
+// The page builder's server API (.docs/features/page-builder.md#api): JSON under /admin/pages/{pageId}/builder/,
 // every POST with the antiforgery token in the X-CSRF-TOKEN header. Errors become ApiError with the server's message.
 class ApiError extends Error {
   constructor(status, message, body) {
@@ -69,6 +69,14 @@ class Api {
     const files = await this.media();
     return { folder: "", parent: null, folders: [], files, canUpload: this.config.canUpload === true };
   }
+  /** Content types with their bindable, filterable and sortable fields (content lists). */
+  contentTypes() { return this.call("GET", "content/types"); }
+  /** Pages with a [param] segment, as item link patterns: [{ pattern, label }]. */
+  linkTargets() { return this.call("GET", "content/link-targets"); }
+  /** The entries content lists show: lists = [{ id, props }] -> { [id]: { items, total, page, pageCount } }. */
+  contentPreview(lists) { return this.call("POST", "content/preview", { lists }); }
+  /** Entries of a type for the "one entry" picker: [{ id, title, published }]. */
+  contentEntries(type, q) { return this.call("GET", "content/entries?type=" + encodeURIComponent(type) + "&q=" + encodeURIComponent(q ?? "")); }
   /** Uploads an image to the media library (public). The folder argument of the reference API is not used. */
   upload(_folder, file) {
     const form = new FormData();

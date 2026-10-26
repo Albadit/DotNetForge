@@ -147,7 +147,7 @@ MVC controllers in your assembly work too (attribute routes) and are switched of
 | Protect an endpoint | `.RequireAuthorization(AuthorizationPolicies.AdminArea)` (`DotNetForge.Shared.Constants`) |
 | Rate-limit a public form | `.RequireRateLimiting(RateLimitPolicies.Forms)` |
 | Validate a form post | inject `IAntiforgery`, `await antiforgery.ValidateRequestAsync(http)`; render `@Html.AntiForgeryToken()` |
-| Anything else the CMS registers | constructor injection, e.g. `DotNetForgeDbContext` - this couples you to host internals and bypasses tenant scoping; filter by `TenantId` yourself |
+| Anything else the CMS registers | constructor injection, e.g. `DotNetForgeDbContext` - this couples you to host internals |
 
 ## Slots by type
 
@@ -178,7 +178,7 @@ Replaces the public site's views: `Views/Page.cshtml` (model `DotNetForge.Shared
 and `Views/Index.cshtml` (model `List<(string Title, string Slug)>`) for the root when no root page is published. A
 missing one falls back to the built-in view. Extra ViewData: `AppName`, `Menu` (`IReadOnlyList<PublishedPage>`),
 `RouteValues` (dynamic routes). Call `@await Component.InvokeAsync("ExtensionModules", new { page = Model })` where
-modules should appear. The active theme is the tenant's default theme (`dotnetforge.theme.default` unless changed)
+modules should appear. The active theme is the default theme (`dotnetforge.theme.default` unless changed)
 when enabled, otherwise the first enabled theme by name ([themes](../features/themes.md)). Sample:
 `extensions/themes/default-theme`.
 
@@ -261,7 +261,6 @@ your extension's name. Document them in your extension's readme.
 - **`@page` is a Razor directive**: don't name a variable `page` in a view (`@foreach (var page in ...)` fails to
   compile) - use `item`.
 - **Public endpoints are public.** Add authorization, antiforgery and rate limiting yourself.
-- **Tenant data**: filter by tenant when you query host tables directly.
 - **Don't throw from views**: a failing widget or module shows "could not be displayed" and logs the error, but an
   admin tab or theme view error is a server error page.
 

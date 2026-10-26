@@ -60,9 +60,6 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<bool>("Revoked")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("text");
@@ -74,10 +71,10 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TokenPrefix");
-
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("Name")
                         .IsUnique();
+
+                    b.HasIndex("TokenPrefix");
 
                     b.ToTable("ApiTokens");
                 });
@@ -118,9 +115,6 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<bool>("Success")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone");
 
@@ -138,9 +132,9 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Timestamp");
+                    b.HasIndex("Action");
 
-                    b.HasIndex("TenantId", "Action");
+                    b.HasIndex("Timestamp");
 
                     b.ToTable("AuditLogs");
                 });
@@ -173,6 +167,265 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .IsUnique();
 
                     b.ToTable("AuthProviders");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("HasDraft")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("PublishedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PublishedDataJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PublishedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SearchText")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Version")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentTypeId", "SortOrder");
+
+                    b.ToTable("ContentEntries");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentEntryValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<double?>("Number")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryId");
+
+                    b.HasIndex("ContentTypeId", "Published", "Field", "Number");
+
+                    b.HasIndex("ContentTypeId", "Published", "Field", "Text");
+
+                    b.ToTable("ContentEntryValues");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("Drafts")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("FieldsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TitleField")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("ContentTypes");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.CustomEndpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Access")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TokenProtected")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Path");
+
+                    b.ToTable("CustomEndpoints");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.CustomEndpointOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EndpointId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("MaxRows")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ParametersJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Result")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Sql")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndpointId", "Method", "Path")
+                        .IsUnique();
+
+                    b.ToTable("CustomEndpointOperations");
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.InstalledExtension", b =>
@@ -266,9 +519,6 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid?>("UploadedById")
                         .HasColumnType("uuid");
 
@@ -276,8 +526,6 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.ToTable("MediaFiles");
                 });
@@ -372,9 +620,6 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("ThemeId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -389,7 +634,7 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "ParentPageId", "Slug")
+                    b.HasIndex("ParentPageId", "Slug")
                         .IsUnique();
 
                     b.ToTable("Pages");
@@ -412,12 +657,7 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.HasIndex("PageId", "RoleId", "Permission")
                         .IsUnique();
@@ -442,15 +682,10 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.HasIndex("PageId", "UserId", "Permission")
                         .IsUnique();
@@ -476,12 +711,9 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("Name")
                         .IsUnique();
 
                     b.ToTable("Roles");
@@ -525,16 +757,13 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Value")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Key")
+                    b.HasIndex("Key")
                         .IsUnique();
 
                     b.ToTable("Settings");
@@ -559,61 +788,12 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<DateTime?>("InstalledAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("SeedVersion")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.ToTable("SystemState");
-                });
-
-            modelBuilder.Entity("DotNetForge.Shared.Entities.Tenant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DefaultLocale")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("DefaultTheme")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("PathPrefix")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PrimaryDomain")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Subdomains")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Slug")
-                        .IsUnique();
-
-                    b.ToTable("Tenants");
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.User", b =>
@@ -657,12 +837,9 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Email")
+                    b.HasIndex("Email")
                         .IsUnique();
 
                     b.ToTable("Users");
@@ -716,9 +893,6 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<string>("Secret")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Url")
                         .IsRequired()

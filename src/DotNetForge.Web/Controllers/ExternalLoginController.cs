@@ -67,8 +67,7 @@ public sealed class ExternalLoginController : Controller
             return await FailedAsync("External sign-in did not complete. Try again or sign in with your password.", provider, email);
         }
 
-        var tenantId = await _authService.GetDefaultTenantIdAsync(HttpContext.RequestAborted);
-        var result = await _authService.ValidateExternalAsync(email, tenantId, HttpContext.RequestAborted);
+        var result = await _authService.ValidateExternalAsync(email, HttpContext.RequestAborted);
         if (result.Status != SignInStatus.Success || result.Principal is null)
         {
             return await FailedAsync(result.Status switch

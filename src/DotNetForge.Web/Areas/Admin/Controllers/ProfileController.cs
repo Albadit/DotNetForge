@@ -36,7 +36,7 @@ public sealed class ProfileController : AdminControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Details(ProfileInput input)
     {
-        var error = await _profile.UpdateDetailsAsync(CurrentUserId ?? Guid.Empty, TenantId, input, HttpContext.RequestAborted);
+        var error = await _profile.UpdateDetailsAsync(CurrentUserId ?? Guid.Empty, input, HttpContext.RequestAborted);
         if (error is not null)
         {
             ModelState.AddModelError(string.Empty, error);
@@ -59,7 +59,7 @@ public sealed class ProfileController : AdminControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Password(PasswordChangeInput input)
     {
-        var error = await _profile.ChangePasswordAsync(CurrentUserId ?? Guid.Empty, TenantId, input, HttpContext.RequestAborted);
+        var error = await _profile.ChangePasswordAsync(CurrentUserId ?? Guid.Empty, input, HttpContext.RequestAborted);
         if (error is not null)
         {
             ModelState.AddModelError(string.Empty, error);
@@ -74,7 +74,7 @@ public sealed class ProfileController : AdminControllerBase
     private async Task<ProfileViewModel?> BuildAsync(ProfileInput? details)
     {
         var id = CurrentUserId ?? Guid.Empty;
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id && u.TenantId == TenantId);
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
         if (user is null)
         {
             return null;

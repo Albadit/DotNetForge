@@ -1,13 +1,17 @@
 namespace DotNetForge.Shared.Constants;
 
 /// <summary>
-/// The six canonical built-in roles, most-privileged to least. These names are canonical
+/// The seven canonical built-in roles, most-privileged to least. These names are canonical
 /// and defined once here (owned by .docs/features/authorization.md).
 /// </summary>
 public static class Roles
 {
     public const string SuperAdmin = "Super Admin";
     public const string Admin = "Admin";
+
+    /// <summary>Builds against the API: the API docs (Scalar), API tokens and custom API endpoints - nothing else.</summary>
+    public const string Developer = "Developer";
+
     public const string Editor = "Editor";
     public const string Author = "Author";
     public const string Authenticated = "Authenticated";
@@ -16,13 +20,13 @@ public static class Roles
     /// <summary>All built-in roles, ordered most-privileged to least.</summary>
     public static readonly IReadOnlyList<string> BuiltIn = new[]
     {
-        SuperAdmin, Admin, Editor, Author, Authenticated, Public,
+        SuperAdmin, Admin, Developer, Editor, Author, Authenticated, Public,
     };
 
     /// <summary>The built-in roles that may enter the admin area (admin-capable roles).</summary>
     public static readonly IReadOnlyList<string> AdminCapable = new[]
     {
-        SuperAdmin, Admin, Editor, Author,
+        SuperAdmin, Admin, Developer, Editor, Author,
     };
 
     /// <summary>Roles that never give access to the admin area: site visitors and signed-in end users.</summary>

@@ -106,6 +106,7 @@ namespace DotNetForge.PageBuilder
     {
         private static readonly IReadOnlyList<KeyValuePair<string, string>> NoVars = new KeyValuePair<string, string>[0];
         private static readonly IReadOnlyList<int> NoRoles = new int[0];
+        private static readonly IReadOnlyList<KeyValuePair<string, string>> NoBindings = new KeyValuePair<string, string>[0];
 
         internal PageNode(string id, string type, string parent)
         {
@@ -116,6 +117,28 @@ namespace DotNetForge.PageBuilder
             Vars = NoVars;
             EditRoles = NoRoles;
             Visibility = Visibility.Everyone;
+            Bind = NoBindings;
+        }
+
+        /// <summary>A copy with other props (a bound node inside a content list item); everything else is shared.</summary>
+        internal PageNode(PageNode source, JObject props)
+        {
+            Id = source.Id;
+            Type = source.Type;
+            Parent = source.Parent;
+            Props = props;
+            Name = source.Name;
+            Children = source.Children;
+            Layout = source.Layout;
+            Place = source.Place;
+            Style = source.Style;
+            Hidden = source.Hidden;
+            Locked = source.Locked;
+            ClassName = source.ClassName;
+            Vars = source.Vars;
+            Visibility = source.Visibility;
+            EditRoles = source.EditRoles;
+            Bind = source.Bind;
         }
 
         public string Id { get; }
@@ -158,6 +181,12 @@ namespace DotNetForge.PageBuilder
         /// <summary>Roles that may edit this node besides page editors; empty when none.</summary>
         public IReadOnlyList<int> EditRoles { get; internal set; }
 
+        /// <summary>
+        /// Props taken from the entry a content list item shows: prop key to a template such as <c>{price}</c> or
+        /// <c>/products/{slug}</c>, in schema prop order; empty when none (.docs/features/structured-content.md#data-binding).
+        /// </summary>
+        public IReadOnlyList<KeyValuePair<string, string>> Bind { get; internal set; }
+
         public JObject ToJson()
         {
             var o = new JObject
@@ -181,6 +210,12 @@ namespace DotNetForge.PageBuilder
                 var vars = new JObject();
                 foreach (var v in Vars) vars[v.Key] = v.Value;
                 o["vars"] = vars;
+            }
+            if (Bind.Count > 0)
+            {
+                var bind = new JObject();
+                foreach (var b in Bind) bind[b.Key] = b.Value;
+                o["bind"] = bind;
             }
             if (EditRoles.Count > 0) o["permissions"] = new JObject { ["editRoles"] = new JArray(EditRoles) };
             return o;

@@ -41,9 +41,9 @@ public sealed class ProfileService
         _audit = audit;
     }
 
-    public async Task<string?> UpdateDetailsAsync(Guid userId, Guid tenantId, ProfileInput input, CancellationToken ct = default)
+    public async Task<string?> UpdateDetailsAsync(Guid userId, ProfileInput input, CancellationToken ct = default)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId, ct);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user is null)
         {
             return "Your account no longer exists.";
@@ -64,7 +64,7 @@ public sealed class ProfileService
 
         // Case-insensitive, compared in memory so the check is the same on every database provider.
         var others = await _db.Users.AsNoTracking()
-            .Where(u => u.TenantId == tenantId && u.Id != userId)
+            .Where(u => u.Id != userId)
             .Select(u => u.Email)
             .ToListAsync(ct);
         if (others.Contains(email, StringComparer.OrdinalIgnoreCase))
@@ -81,9 +81,9 @@ public sealed class ProfileService
         return null;
     }
 
-    public async Task<string?> ChangePasswordAsync(Guid userId, Guid tenantId, PasswordChangeInput input, CancellationToken ct = default)
+    public async Task<string?> ChangePasswordAsync(Guid userId, PasswordChangeInput input, CancellationToken ct = default)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId, ct);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user is null)
         {
             return "Your account no longer exists.";

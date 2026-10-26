@@ -53,7 +53,7 @@ window.addEventListener("beforeunload", (e) => {
   }
 });
 
-/** Saves pending changes, then goes back to the Content Manager. */
+/** Saves pending changes, then goes back to the page on the Pages screen. */
 async function close() {
   if (session.isDirty) await session.save();
   const state = session.saveState.value;

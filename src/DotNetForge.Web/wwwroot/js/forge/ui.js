@@ -214,12 +214,15 @@
     });
     window.matchMedia("(min-width: 64.0625rem)").addEventListener("change", function (mq) { if (mq.matches) { setDrawer(false); } });
 
-    // ---- Sidebar groups remember being opened or closed (the active group always stays open) ----------------
+    // ---- Sidebar groups stay open or closed across screens until the user toggles them --------------------
+    // The group holding the active screen is open and counts as opened, so it stays open after leaving it.
     var navState = {};
     try { navState = JSON.parse(storage.get("dnf-nav") || "{}") || {}; } catch (e) { navState = {}; }
     $all("details[data-nav-group]").forEach(function (group) {
         var key = group.getAttribute("data-nav-group");
-        if (!group.hasAttribute("data-nav-active") && Object.prototype.hasOwnProperty.call(navState, key)) {
+        if (group.getAttribute("data-nav-active") === "true") {
+            navState[key] = true;
+        } else if (Object.prototype.hasOwnProperty.call(navState, key)) {
             group.open = !!navState[key];
         }
         group.addEventListener("toggle", function () {
@@ -227,6 +230,7 @@
             storage.set("dnf-nav", JSON.stringify(navState));
         });
     });
+    storage.set("dnf-nav", JSON.stringify(navState));
 
     // ---- Toasts --------------------------------------------------------------------------------------------
     var region = doc.querySelector("[data-toasts]");

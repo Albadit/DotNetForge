@@ -12,16 +12,14 @@
     var settings = ViewData["Settings"] as IDictionary<string, object?> ?? new Dictionary<string, object?>();
     var showFailedLogins = !(settings.TryGetValue("showFailedLogins", out var sfl) && sfl is bool sb && !sb);
 
-    // Tenant-scoped like the core Audit Log screen: this tenant's entries plus system-wide ones (no tenant).
-    Guid? tenantId = Guid.TryParse(User.FindFirst("dnf:tenant")?.Value, out var t) ? t : null;
-    var scoped = Db.AuditLogs.AsNoTracking().Where(a => a.TenantId == tenantId || a.TenantId == null);
-    var entries = await scoped.OrderByDescending(a => a.Id).Take(50).ToListAsync();
-    var failedLogins = await scoped.CountAsync(a => a.Action == AuditActions.UserLoginFailed);
+    var logs = Db.AuditLogs.AsNoTracking();
+    var entries = await logs.OrderByDescending(a => a.Id).Take(50).ToListAsync();
+    var failedLogins = await logs.CountAsync(a => a.Action == AuditActions.UserLoginFailed);
 }
 <main class="ext-page stack-lg">
     @* The admin shell around the iframe already shows the tab's title, so the page starts with its content. *@
     <h1 class="sr-only">Audit Dashboard</h1>
-    <p class="text-muted">Recent administrative activity in this tenant.</p>
+    <p class="text-muted">Recent administrative activity.</p>
 
     <div class="ext-stats">
         <stat-card icon="activity" label="Recent events" value="@entries.Count.ToString()" />

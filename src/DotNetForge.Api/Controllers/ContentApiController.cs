@@ -4,6 +4,7 @@ using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace DotNetForge.Api.Controllers;
 
 /// <summary>Headless content endpoints (.docs/features/headless-api.md). All access is gated by token permissions.</summary>
 [Route("api/content")]
+[Tags("Pages")]
 public sealed class ContentApiController : ApiControllerBase
 {
     private readonly DotNetForgeDbContext _db;
@@ -24,14 +26,13 @@ public sealed class ContentApiController : ApiControllerBase
         _audit = audit;
     }
 
-    /// <summary>GET /api/content/pages - lists pages in the token's tenant.</summary>
+    /// <summary>GET /api/content/pages - lists all pages.</summary>
     [HttpGet("pages")]
     [RequireApiPermission(PermissionKeys.ContentRead)]
     public async Task<IActionResult> GetPages()
     {
         var pages = await _db.Pages
             .AsNoTracking()
-            .Where(p => p.TenantId == TenantId)
             .OrderBy(p => p.SortOrder).ThenBy(p => p.Title)
             .Select(p => new
             {
@@ -48,7 +49,10 @@ public sealed class ContentApiController : ApiControllerBase
         return Ok(pages);
     }
 
-    /// <summary>GET /api/content/{type} - lists entries of a content type (foundation: pages).</summary>
+    /// <summary>
+    /// GET /api/content/{type} - pages only (<c>pages</c>); entries of content types are served by
+    /// <c>/api/entries/{type}</c> (<see cref="EntriesApiController"/>), so any other type answers an empty list as before.
+    /// </summary>
     [HttpGet("{type}")]
     [RequireApiPermission(PermissionKeys.ContentRead)]
     public async Task<IActionResult> GetByType(string type)
@@ -58,25 +62,24 @@ public sealed class ContentApiController : ApiControllerBase
             return await GetPages();
         }
 
-        // Collection/Single types are part of the content-manager foundation; none seeded yet.
         return Ok(Array.Empty<object>());
     }
 
     /// <summary>
-    /// POST /api/content/pages - creates an unpublished root-level page in the token's tenant. The same rules as the
+    /// POST /api/content/pages - creates an unpublished root-level page. The same rules as the
     /// Content Manager apply (<see cref="IPageService"/>): slug normalization, uniqueness, length limits.
     /// </summary>
     [HttpPost("pages")]
     [RequireApiPermission(PermissionKeys.ContentCreate)]
     public async Task<IActionResult> CreatePage([FromBody] CreatePageRequest request)
     {
-        var page = new Page { TenantId = TenantId };
+        var page = new Page();
         var error = await _pages.ApplyAsync(page, new PageInput
         {
             Title = request.Title,
             Slug = request.Slug,
             MetaDescription = request.MetaDescription,
-        }, TenantId, HttpContext.RequestAborted);
+        }, HttpContext.RequestAborted);
 
         if (error is not null)
         {

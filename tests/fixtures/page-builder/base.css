@@ -73,3 +73,18 @@
 .pe-root .pe-post-bubble strong{display:block;color:#000}
 .pe-root .pe-post-bubble span{display:block;font-size:12px}
 .pe-root .pe-post-bubble p{margin:0;white-space:pre-line}
+.pe-root .pe-t-collection{min-width:0}
+.pe-root .pe-collection-empty{margin:0;padding:1.5em;border:1px dashed currentColor;border-radius:8px;opacity:.7;text-align:center}
+.pe-root .pe-carousel>.pe-in{overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+.pe-root .pe-carousel>.pe-in>.pe-t-item{flex:0 0 auto;scroll-snap-align:start}
+.pe-root .pe-table-wrap{width:100%;overflow-x:auto}
+.pe-root .pe-table{width:100%;border-collapse:collapse;font-size:.95em}
+.pe-root .pe-table th,.pe-root .pe-table td{padding:.65em .8em;border-bottom:1px solid var(--dnn-color-neutral,#e5e7eb);text-align:left;vertical-align:top}
+.pe-root .pe-table th{font-weight:700;white-space:nowrap}
+.pe-root .pe-table a{color:var(--dnn-color-primary,#3355dd);font-weight:600}
+.pe-root .pe-pager{display:flex;align-items:center;justify-content:center;gap:1em;margin-top:1.5em}
+.pe-root .pe-pager a{color:var(--dnn-color-primary,#3355dd);font-weight:600;text-decoration:none}
+.pe-root .pe-pager a:hover{text-decoration:underline}
+.pe-root .pe-pager-prev,.pe-root .pe-pager-next{min-width:5em}
+.pe-root .pe-pager-prev{text-align:right}
+.pe-root .pe-pager-status{opacity:.75;font-variant-numeric:tabular-nums}

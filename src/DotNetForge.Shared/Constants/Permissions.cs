@@ -6,8 +6,15 @@ namespace DotNetForge.Shared.Constants;
 /// </summary>
 public static class PermissionAreas
 {
+    /// <summary>Content pages (the page tree); the name predates structured content and is kept for stored grants.</summary>
     public const string CollectionTypes = "Collection types";
     public const string SingleTypes = "Single types";
+
+    /// <summary>The content type builder: defining types and their fields (.docs/features/structured-content.md).</summary>
+    public const string ContentTypes = "Content types";
+
+    /// <summary>Entries of the content types, in the Content Manager.</summary>
+    public const string Entries = "Entries";
     public const string Plugins = "Plugins";
     public const string Settings = "Settings";
     public const string Extensions = "Extensions";
@@ -30,7 +37,7 @@ public static class PermissionAreas
     public static readonly IReadOnlyList<string> All = new[]
     {
         CollectionTypes, SingleTypes, Plugins, Settings, Extensions,
-        Media, Users, Roles, Api, Webhooks, AuditLogs, Updates,
+        Media, Users, Roles, Api, Webhooks, AuditLogs, Updates, ContentTypes, Entries,
     };
 }
 
@@ -65,6 +72,14 @@ public static class PermissionKeys
     public const string ContentDelete = "content.delete";
     public const string ContentPublish = "content.publish";
 
+    public const string SchemaRead = "schema.read";
+
+    public const string EntriesRead = "entries.read";
+    public const string EntriesCreate = "entries.create";
+    public const string EntriesUpdate = "entries.update";
+    public const string EntriesDelete = "entries.delete";
+    public const string EntriesPublish = "entries.publish";
+
     public const string MediaRead = "media.read";
     public const string MediaUpload = "media.upload";
     public const string MediaUpdate = "media.update";
@@ -94,6 +109,7 @@ public static class PermissionKeys
     {
         CoreRead, CoreManage,
         ContentRead, ContentCreate, ContentUpdate, ContentDelete, ContentPublish,
+        SchemaRead, EntriesRead, EntriesCreate, EntriesUpdate, EntriesDelete, EntriesPublish,
         MediaRead, MediaUpload, MediaUpdate, MediaDelete,
         UsersRead, UsersCreate, UsersUpdate, UsersDelete,
         RolesRead, RolesCreate, RolesUpdate, RolesDelete,
@@ -103,4 +119,23 @@ public static class PermissionKeys
     };
 
     public static bool IsKnown(string key) => All.Contains(key);
+
+    /// <summary>
+    /// How a group of keys (their prefix) is named on screens. The stored keys keep their names - tokens hold them -
+    /// so <c>content.*</c> (the page tree) shows as "Pages", <c>entries.*</c> as "Content Manager".
+    /// </summary>
+    public static string GroupLabel(string prefix) => prefix switch
+    {
+        "content" => "Pages",
+        "entries" => "Content Manager",
+        "schema" => "Content types",
+        "core" => "Core",
+        "media" => "Media",
+        "users" => "Users",
+        "roles" => "Roles",
+        "settings" => "Settings",
+        "extensions" => "Extensions",
+        "webhooks" => "Webhooks",
+        _ => prefix,
+    };
 }

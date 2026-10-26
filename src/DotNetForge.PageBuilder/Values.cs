@@ -75,6 +75,8 @@ namespace DotNetForge.PageBuilder
 
         private static readonly Regex ControlChars = new Regex(@"[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]", Options);
         private static readonly Regex NodeIdPattern = new Regex(@"^[a-z0-9]{1,16}\z", Options);
+        private static readonly Regex ReferencePattern = new Regex(@"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\z", Options);
+        private static readonly Regex FieldPathPattern = new Regex(@"^[$A-Za-z][$A-Za-z0-9_.]{0,119}\z", Options);
 
         /// <summary>A CSS color: hex, rgb()/hsl() (whitespace collapsed), var(--x) or one of a few keywords.</summary>
         public static string Color(JToken value)
@@ -251,6 +253,20 @@ namespace DotNetForge.PageBuilder
             if (!Js.TryString(value, out var name)) return null;
             if (name.Length == 0) return string.Empty;
             return Schema.PageIcons.ContainsKey(name) ? name : null;
+        }
+
+        /// <summary>A content type or entry id (a GUID with hyphens), lower-cased; null for anything else.</summary>
+        public static string Reference(string value)
+        {
+            return value != null && ReferencePattern.IsMatch(value) ? value.ToLowerInvariant() : null;
+        }
+
+        /// <summary>A content field path (<c>price</c>, <c>specs.width</c>, <c>$title</c>), or an empty string; null when invalid.</summary>
+        public static string FieldPath(JToken value)
+        {
+            if (!Js.TryString(value, out var raw)) return null;
+            if (raw.Length == 0) return string.Empty;
+            return FieldPathPattern.IsMatch(raw) ? raw : null;
         }
 
         /// <summary>Node ids: short, lower-case alphanumerics; they become CSS class names.</summary>

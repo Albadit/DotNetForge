@@ -4,7 +4,7 @@
 
 Renders a live content page for anonymous visitors at the URL formed by its slugs (e.g. `/about/team`), including
 pages with a dynamic `[param]` segment, with the active theme's `Page.cshtml` when a theme extension is enabled and
-the modules placed on that page. It is the frontend half of the [Content Manager](content-manager.md).
+the modules placed on that page. It is the frontend half of [Pages](pages.md); content lists in its layout show entries from the [Content Manager](content-manager.md).
 Rules: [content pages and routing](../features/content-pages-and-routing.md); theming: [themes](../features/themes.md).
 
 ## Route / Navigation
@@ -49,8 +49,8 @@ _Layout
 │       │   └── "Dynamic route: name = value, ..."        only when a [param] segment matched
 │       ├── modules (ExtensionModules view component)     only when an active module lists this path
 │       └── <alert tone="Info" title="No content yet">
-│           "This page is published but has no builder content - the page builder and layouts are not part of the
-│            foundation. Manage it in the Content Manager, or enable a theme to style the site."
+│           "This page is published but has no layout yet. Design it in Pages (Layout tab), or enable a theme
+│            to style the site."
 └── footer.site-footer "Powered by DotNetForge CMS"
 
 With an active theme that has Views/Page.cshtml, the theme's view (and its layout) replaces all of the above.
@@ -67,7 +67,7 @@ and `ViewData["CanonicalUrl"]`. A theme view also gets `Extension`, `Settings`, 
 `AppName` and `Menu` ([themes](../features/themes.md)).
 
 The **No content yet** `<alert>` (Info tone, `role="status"`) is always shown in the built-in view; its text links the
-[Content Manager](content-manager.md) (`/admin/content`).
+[Pages](pages.md) (`/admin/pages`).
 
 `ExtensionModules` (`@await Component.InvokeAsync("ExtensionModules", new { page = Model })`, also callable from
 themes): renders the `Views/Module.cshtml` of every active `module` extension whose `pages` setting lists the current
@@ -79,7 +79,7 @@ throws is replaced by "<name> could not be displayed.".
 ### Resolve and render
 
 1. Trim slashes; an empty path redirects to `Index` (`/`).
-2. Load the **tree shape only** - `Id`, `ParentPageId`, `Slug` - of all live pages (all tenants), as a projection.
+2. Load the **tree shape only** - `Id`, `ParentPageId`, `Slug` - of all live pages, as a projection.
 3. Walk segments from the root level: exact slug (case-insensitive) first, else the `[...]` sibling; capture dynamic
    values.
 4. Any segment without a match → `404` (empty body).
@@ -115,7 +115,7 @@ Not applicable (read-only). Slugs were normalized when saved.
 ## Loading behaviour
 
 Server-rendered; two queries per request: the `(Id, ParentPageId, Slug)` projection of every live page, then the
-matched row - plus, with an active theme, the default tenant's `DefaultTheme` and the live-page list for the menu. No
+matched row - plus, with an active theme, the live-page list for the menu. No
 caching (enabled state is cached up to 30 s).
 
 ## Empty states
@@ -124,7 +124,7 @@ Not applicable (a page always has a title).
 
 ## User interactions
 
-Links only: brand (`/`), **Admin** (`/admin`), the "Content Manager" link in the alert (`/admin/content`) and the
+Links only: brand (`/`), **Admin** (`/admin`), the "Pages" link in the alert (`/admin/pages?selected={id}#layout`) and the
 "Skip to content" link. No scripts beyond `theme.js` (no `ui.js`).
 
 ## Dependencies
@@ -149,7 +149,7 @@ flowchart TD
 ## Related pages
 
 - Receives navigation from: [public home](public-home.md).
-- Links to: [Content Manager](content-manager.md).
+- Links to: [Pages](pages.md).
 - Shares rendering with: [public home](public-home.md) (root page uses the same view).
 - Themes and modules are enabled on [Plugins](plugins.md).
 
@@ -176,9 +176,8 @@ flowchart TD
 ## Known limitations
 
 - `UrlRedirect` and `File` page types neither redirect nor serve a file.
-- No content body, per-page theme or layout selection; no 404 page.
+- No content body or layout selection; no 404 page.
 - Children of the root page (`/`) are unreachable.
-- Cross-tenant: pages of every tenant are matched.
 
 ## Planned (not implemented)
 
@@ -192,11 +191,10 @@ Model, rules and acceptance criteria: [content pages and routing → Planned](..
 
 | Area | Target | Today |
 | --- | --- | --- |
-| Tenant | resolve the tenant first (domain, subdomain or path prefix), then match only its content ([multi-tenancy](../features/multi-tenancy.md)) | every tenant's live pages are candidates |
-| Resolution order | static content page → dynamic route (priority, sort order, specificity) → extension route → tenant fallback/404 page | tree walk with `[name]` fallback per segment, empty `404` |
+| Resolution order | static content page → dynamic route (priority, sort order, specificity) → extension route → fallback/404 page | tree walk with `[name]` fallback per segment, empty `404` |
 | Page types | `UrlRedirect` redirects to `TargetUrl`; `File` serves or links the File Manager asset; `ExistingPage` renders the referenced page | all render `Page.cshtml` |
 | Body | the published version's page-builder modules | fixed note |
-| Theme | page theme/layout, else the tenant default theme; admin, setup and login never themed | ✔ site-wide active theme ([themes](../features/themes.md)); ✘ per-page theme/layout |
+| Theme | page theme/layout, else the site's default theme; admin, setup and login never themed | ✔ the page's own theme (`Page.ThemeId`) when enabled, else `ThemeResolver.DefaultThemeId` when enabled, else the first enabled theme ([themes](../features/themes.md)); ✘ per-page layout |
 | Access | public pages for everyone; private pages only for the granted roles/users | liveness only |
 | SEO | meta title (fallback title ✔), meta description ✔, canonical ✔, keywords; dynamic routes render title/meta/keywords/canonical templates with parameter values, entry-level values override | keywords not rendered |
 | Dynamic route values | resolve the target content, module or handler from the extracted parameters | values only displayed |
@@ -214,7 +212,7 @@ Model, rules and acceptance criteria: [content pages and routing → Planned](..
 ### Edge cases
 
 - Missing or disabled route target → next stage / 404, no exception; the route is flagged broken in the admin.
-- Page theme uninstalled, incompatible or with missing assets → render with the tenant default (or built-in default)
+- Page theme uninstalled, incompatible or with missing assets → render with the site's default (or built-in default)
   theme and log it ([themes](../features/themes.md#edge-cases)).
 - File page whose asset was deleted cannot be published (broken-reference warning in the admin).
 

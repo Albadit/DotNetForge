@@ -67,8 +67,8 @@ public sealed class CmsIntegrationTests
         await factory.InstallAsync();
         var admin = await factory.SignInAsync();
 
-        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/content", "/admin/content/create", new Dictionary<string, string>());
-        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/content", "/admin/content/create", new Dictionary<string, string>());
+        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", "/admin/pages/create", new Dictionary<string, string>());
+        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", "/admin/pages/create", new Dictionary<string, string>());
 
         Guid second = default;
         await factory.WithDbAsync(async db =>
@@ -77,16 +77,16 @@ public sealed class CmsIntegrationTests
             Assert.Equal(new[] { "new-page", "new-page-2" }, slugs);
             second = await db.Pages.Where(p => p.Slug == "new-page-2").Select(p => p.Id).SingleAsync();
         });
-        var tree = await admin.GetStringAsync("/admin/content");
-        Assert.Contains($"action=\"/admin/content/delete/{second}\"", tree);
-        Assert.Contains($"action=\"/admin/content/duplicate/{second}\"", tree);
+        var tree = await admin.GetStringAsync("/admin/pages");
+        Assert.Contains($"action=\"/admin/pages/delete/{second}\"", tree);
+        Assert.Contains($"action=\"/admin/pages/duplicate/{second}\"", tree);
         Assert.Contains("data-tree-toggle", tree);
         Assert.Contains("data-tree-collapse-all", tree);
         // "View on site": a live page links to its public URL, a switched-off one says why it can't be opened.
         Assert.Matches("<a href=\"/about\"[^>]*target=\"_blank\"", tree);
         Assert.Contains("Not on the site: this page is disabled.", tree);
 
-        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/content", $"/admin/content/delete/{second}", new Dictionary<string, string>());
+        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", $"/admin/pages/delete/{second}", new Dictionary<string, string>());
         await factory.WithDbAsync(async db => Assert.False(await db.Pages.AnyAsync(p => p.Id == second)));
     }
 
@@ -107,8 +107,8 @@ public sealed class CmsIntegrationTests
             (aboutId, aboutOrder) = (about.Id, about.SortOrder);
         });
 
-        var response = await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/content", $"/admin/content/duplicate/{aboutId}", new Dictionary<string, string>());
-        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/content", $"/admin/content/duplicate/{aboutId}", new Dictionary<string, string>());
+        var response = await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", $"/admin/pages/duplicate/{aboutId}", new Dictionary<string, string>());
+        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", $"/admin/pages/duplicate/{aboutId}", new Dictionary<string, string>());
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         await factory.WithDbAsync(async db =>

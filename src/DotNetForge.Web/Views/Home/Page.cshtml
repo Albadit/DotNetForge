@@ -4,7 +4,9 @@
 @{
     var draft = ViewData["DraftPreview"] as bool? == true;
     var canvas = ViewData["BuilderCanvas"] as bool? == true;
-    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Title : Model.MetaTitle;
+    // A detail page (a content list showing the entry its URL names) is titled after that entry.
+    ViewData["Title"] = ViewData["ContentTitle"] as string is { Length: > 0 } entryTitle ? entryTitle
+        : string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Title : Model.MetaTitle;
     ViewData["MetaDescription"] = Model.MetaDescription;
     ViewData["CanonicalUrl"] = Model.CanonicalUrl;
     ViewData["NoIndex"] = Model.NoIndex || draft;
@@ -41,7 +43,7 @@ else
         @await Component.InvokeAsync("ExtensionModules", new { page = Model })
 
         <alert tone="Info" title="No content yet">
-            This page is published but has no layout yet. Design it in the <a href="/admin/content?selected=@Model.Id#layout">Content Manager</a>
+            This page is published but has no layout yet. Design it in <a href="/admin/pages?selected=@Model.Id#layout">Pages</a>
             (Layout tab), or enable a theme to style the site.
         </alert>
     </article>

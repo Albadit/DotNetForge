@@ -32,7 +32,6 @@ public sealed class RolesController : AdminControllerBase
         // can't count across collections in one query (.docs/database/mongodb.md#query-rules).
         var roles = await _db.Roles
             .AsNoTracking()
-            .Where(r => r.TenantId == TenantId)
             .OrderByDescending(r => r.IsBuiltIn).ThenBy(r => r.Name)
             .Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn })
             .ToListAsync();
@@ -115,7 +114,7 @@ public sealed class RolesController : AdminControllerBase
     [RequirePermission(PermissionAreas.Roles, PermissionActions.Delete)]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var name = await _db.Roles.AsNoTracking().Where(r => r.Id == id && r.TenantId == TenantId).Select(r => r.Name).FirstOrDefaultAsync();
+        var name = await _db.Roles.AsNoTracking().Where(r => r.Id == id).Select(r => r.Name).FirstOrDefaultAsync();
         var error = await _roles.DeleteAsync(id, Actor);
         if (error is not null)
         {
@@ -129,7 +128,7 @@ public sealed class RolesController : AdminControllerBase
 
     private static int CatalogSize => PermissionCatalog.Areas.Sum(a => a.Actions.Count);
 
-    private ManagementActor Actor => new(CurrentUserId ?? Guid.Empty, TenantId, User.IsInRole(Roles.SuperAdmin));
+    private ManagementActor Actor => new(CurrentUserId ?? Guid.Empty, User.IsInRole(Roles.SuperAdmin));
 
     private static bool IsSuperAdmin(string name, bool builtIn) =>
         builtIn && string.Equals(name, Roles.SuperAdmin, StringComparison.OrdinalIgnoreCase);
@@ -142,7 +141,7 @@ public sealed class RolesController : AdminControllerBase
 
     private async Task<RoleFormModel?> BuildFormAsync(Guid id, RoleInput? input)
     {
-        var role = await _db.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id && r.TenantId == TenantId);
+        var role = await _db.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
         if (role is null)
         {
             return null;
@@ -150,7 +149,7 @@ public sealed class RolesController : AdminControllerBase
 
         var memberIds = await _db.UserRoles.AsNoTracking().Where(ur => ur.RoleId == id).Select(ur => ur.UserId).ToListAsync();
         var members = (await _db.Users.AsNoTracking()
-                .Where(u => u.TenantId == TenantId && memberIds.Contains(u.Id))
+                .Where(u => memberIds.Contains(u.Id))
                 .Select(u => new { u.Id, u.Email, u.FirstName, u.LastName })
                 .ToListAsync())
             .Select(u => new RoleMember(u.Id, u.Email, $"{u.FirstName} {u.LastName}".Trim()))

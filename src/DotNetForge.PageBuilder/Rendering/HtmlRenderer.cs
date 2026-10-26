@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Newtonsoft.Json.Linq;
 
 namespace DotNetForge.PageBuilder.Rendering
 {
@@ -23,6 +24,24 @@ namespace DotNetForge.PageBuilder.Rendering
 
         /// <summary>Whether a DNN module is available on this page for this viewer (view mode); null = all are.</summary>
         public Func<int, bool> HasModule { get; set; }
+
+        /// <summary>
+        /// The entries of the content lists, by node id (<c>{ items, total, page, pageCount }</c>), resolved by the host
+        /// before rendering; null = no data (lists show their empty text, or the bare template in the editor).
+        /// </summary>
+        public JObject Data { get; set; }
+
+        /// <summary>The content list entry being rendered (<c>{ id, fields }</c>); its fields fill bound props.</summary>
+        public JObject Item { get; set; }
+
+        /// <summary>Canvas only: a repeated copy of an item template, written without editor hooks.</summary>
+        public bool Ghost { get; set; }
+
+        /// <summary>This context for the template of one content list entry.</summary>
+        public RenderContext ForItem(JObject item, bool ghost)
+        {
+            return new RenderContext { Mode = Mode, IsVisible = IsVisible, HasModule = HasModule, Data = Data, Item = item, Ghost = ghost };
+        }
     }
 
     /// <summary>
@@ -102,6 +121,7 @@ namespace DotNetForge.PageBuilder.Rendering
             if (node == null || IsSkipped(node, ctx)) return;
             var comp = ComponentRegistry.Get(node.Type);
             if (comp == null) return;
+            node = Binding.Apply(node, ctx.Item);
 
             var tag = comp.Tag(node);
             sb.Append('<').Append(tag).Append(" class=\"").Append(Format.EscapeHtml(ClassesOf(doc, node))).Append('"');
@@ -110,13 +130,29 @@ namespace DotNetForge.PageBuilder.Rendering
             {
                 foreach (var a in attributes) sb.Append(' ').Append(a.Key).Append("=\"").Append(Format.EscapeHtml(a.Value)).Append('"');
             }
-            if (ctx.Mode == RenderMode.Canvas) sb.Append(" data-pe-id=\"").Append(node.Id).Append('"');
+            if (ctx.Mode == RenderMode.Canvas && !ctx.Ghost) sb.Append(" data-pe-id=\"").Append(node.Id).Append('"');
             sb.Append('>');
             if (comp.VoidElement) return;
 
-            var children = new StringBuilder();
-            if (node.Children != null) foreach (var child in node.Children) AppendNode(children, doc, child, ctx);
-            sb.Append(comp.Content(node, ctx, children.ToString())).Append("</").Append(tag).Append('>');
+            string children;
+            if (node.Type == "collection")
+            {
+                // The item template once per entry; in the editor only the first copy carries the editing hooks.
+                children = Collections.Inner(node, ctx, (item, index) =>
+                {
+                    var itemCtx = ctx.ForItem(item, ctx.Ghost || (ctx.Mode == RenderMode.Canvas && index > 0));
+                    var html = new StringBuilder();
+                    if (node.Children != null) foreach (var child in node.Children) AppendNode(html, doc, child, itemCtx);
+                    return html.ToString();
+                });
+            }
+            else
+            {
+                var html = new StringBuilder();
+                if (node.Children != null) foreach (var child in node.Children) AppendNode(html, doc, child, ctx);
+                children = html.ToString();
+            }
+            sb.Append(comp.Content(node, ctx, children)).Append("</").Append(tag).Append('>');
         }
 
         /// <summary>Normalized module ids are whole numbers in int range; anything else maps to 0 (no module).</summary>

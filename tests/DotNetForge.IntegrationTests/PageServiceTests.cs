@@ -15,7 +15,6 @@ namespace DotNetForge.IntegrationTests;
 /// </summary>
 public sealed class PageServiceTests : IAsyncLifetime
 {
-    private readonly Guid _tenant = Guid.NewGuid();
     private SqliteConnection _connection = null!;
     private DotNetForgeDbContext _db = null!;
     private PageService _service = null!;
@@ -42,14 +41,14 @@ public sealed class PageServiceTests : IAsyncLifetime
 
     private async Task<Page> AddAsync(string slug, Guid? parent = null)
     {
-        var page = new Page { TenantId = _tenant, Title = slug, Slug = slug, ParentPageId = parent };
+        var page = new Page { Title = slug, Slug = slug, ParentPageId = parent };
         _db.Pages.Add(page);
         await _db.SaveChangesAsync();
         return page;
     }
 
     private Task<string?> ApplyAsync(Page page, string slug, Guid? parent = null) =>
-        _service.ApplyAsync(page, new PageInput { Title = "T", Slug = slug, ParentPageId = parent }, _tenant);
+        _service.ApplyAsync(page, new PageInput { Title = "T", Slug = slug, ParentPageId = parent });
 
     [Fact]
     public async Task Published_is_the_only_switch_and_saving_clears_the_legacy_disabled_flag()
@@ -63,7 +62,7 @@ public sealed class PageServiceTests : IAsyncLifetime
         Assert.Empty(_db.Pages.Live(DateTime.UtcNow).Where(p => p.Id == page.Id));
 
         // Switching Published on makes it live and clears the old flag.
-        Assert.Null(await _service.ApplyAsync(page, new PageInput { Title = "Legacy", Slug = "legacy", Published = true }, _tenant));
+        Assert.Null(await _service.ApplyAsync(page, new PageInput { Title = "Legacy", Slug = "legacy", Published = true }));
         await _db.SaveChangesAsync();
         Assert.False(page.Disabled);
         Assert.Single(_db.Pages.Live(DateTime.UtcNow).Where(p => p.Id == page.Id));
@@ -72,7 +71,7 @@ public sealed class PageServiceTests : IAsyncLifetime
     [Fact]
     public async Task Slugifies_and_applies_valid_input()
     {
-        var page = new Page { TenantId = _tenant };
+        var page = new Page();
         Assert.Null(await ApplyAsync(page, "Our Team!"));
         Assert.Equal("our-team", page.Slug);
     }
@@ -81,7 +80,7 @@ public sealed class PageServiceTests : IAsyncLifetime
     public async Task Rejects_duplicate_slug_under_the_same_parent_including_root()
     {
         await AddAsync("about");
-        var error = await ApplyAsync(new Page { TenantId = _tenant }, "About");
+        var error = await ApplyAsync(new Page(), "About");
         Assert.Contains("already exists", error);
     }
 
@@ -99,14 +98,14 @@ public sealed class PageServiceTests : IAsyncLifetime
     {
         var blog = await AddAsync("blog");
         await AddAsync("[slug]", blog.Id);
-        Assert.Contains("dynamic", await ApplyAsync(new Page { TenantId = _tenant }, "[id]", blog.Id));
+        Assert.Contains("dynamic", await ApplyAsync(new Page(), "[id]", blog.Id));
     }
 
     [Fact]
     public async Task Rejects_overlong_fields_before_saving()
     {
-        var error = await _service.ApplyAsync(new Page { TenantId = _tenant },
-            new PageInput { Title = new string('x', 301), Slug = "x" }, _tenant);
+        var error = await _service.ApplyAsync(new Page(),
+            new PageInput { Title = new string('x', 301), Slug = "x" });
         Assert.Contains("at most 300", error);
     }
 
@@ -118,18 +117,14 @@ public sealed class PageServiceTests : IAsyncLifetime
         await AddAsync("team", a.Id);
         var otherTeam = await AddAsync("team", b.Id);
 
-        var error = await _service.ReorderAsync(new[] { new PagePosition(otherTeam.Id, a.Id, 1) }, _tenant);
+        var error = await _service.ReorderAsync(new[] { new PagePosition(otherTeam.Id, a.Id, 1) });
         Assert.Contains("share the slug 'team'", error);
     }
 
     [Fact]
-    public async Task Reorder_rejects_pages_of_another_tenant()
+    public async Task Reorder_rejects_pages_that_do_not_exist()
     {
-        var foreign = new Page { TenantId = Guid.NewGuid(), Title = "x", Slug = "x" };
-        _db.Pages.Add(foreign);
-        await _db.SaveChangesAsync();
-
-        var error = await _service.ReorderAsync(new[] { new PagePosition(foreign.Id, null, 0) }, _tenant);
+        var error = await _service.ReorderAsync(new[] { new PagePosition(Guid.NewGuid(), null, 0) });
         Assert.Contains("does not exist", error);
     }
 

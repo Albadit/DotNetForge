@@ -30,7 +30,6 @@ Target behaviour from the original product specification. Nothing in this sectio
 - **Email → Templates** screen: list, view, edit, preview (sample data, no send) and restore-to-default templates.
 - SMTP credentials are secrets: they live in `.env`, never in Git; any database override is encrypted at rest; the
   password is write-only (never returned to the UI, the API, logs or audit details).
-- Email settings and templates may be tenant-scoped ([multi-tenancy](multi-tenancy.md)).
 - This module owns message content and delivery only; the flows that trigger the messages (confirmation, reset,
   lockout) belong to [authentication](authentication.md).
 
@@ -83,8 +82,8 @@ Shipped defaults:
 
 Email is part of the **Settings** permission area. Default: Super Admin and Admin can view and edit the
 configuration, send a test email, and view, edit, preview and restore templates; Editor, Author, Authenticated and
-Public cannot. A custom role with the matching Settings permission may be allowed. Tenant Admins manage only their
-tenants' email. Role model: [authorization](authorization.md).
+Public cannot. A custom role with the matching Settings permission may be allowed. Role model:
+[authorization](authorization.md).
 
 ### User flows
 
@@ -150,7 +149,7 @@ tenants' email. Role model: [authorization](authorization.md).
 ## Where to change things
 
 - **SMTP sender**: a new `SmtpEmailSender` in `src/DotNetForge.Infrastructure/Messaging/` implementing `IEmailSender`, BCL
-  first (architecture rule 12, [codebase](../architecture/codebase.md#architectural-rules-for-changes)), registered in
+  first (architecture rule 11, [codebase](../architecture/codebase.md#architectural-rules-for-changes)), registered in
   `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. For development, log messages via `ILogger` or use a local SMTP catcher
   (e.g. a Mailpit container) - never write mail files into the deployment directory.
 - **Contract**: if a sender name, reply-to or the template key must travel with the message, extend `EmailMessage`
@@ -158,7 +157,7 @@ tenants' email. Role model: [authorization](authorization.md).
 - **Configuration**: new `SMTP_*` keys follow [configuration → Where to change things](configuration.md#where-to-change-things)
   (`EnvConfigurationLoader`, `AppEnvironment`, `.env.example`, tests). Encrypt any database-stored password with ASP.NET
   Core Data Protection (shared framework, no new package).
-- **Templates**: an `EmailTemplate` entity (tenant-scoped, key + subject + body) in `src/DotNetForge.Shared/Entities`
+- **Templates**: an `EmailTemplate` entity (key + subject + body) in `src/DotNetForge.Shared/Entities`
   plus a migration; shipped defaults as constants in one place, seeded idempotently by `DataSeeder` or used as the
   fallback when no row exists. Variable parsing, validation and rendering are pure logic: put them in
   `src/DotNetForge.Core` with unit tests, and HTML-encode variable values.

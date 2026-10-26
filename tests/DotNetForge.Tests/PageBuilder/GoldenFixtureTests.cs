@@ -19,7 +19,7 @@ namespace DotNetForge.Tests.PageBuilder
     /// </summary>
     public class GoldenFixtureTests
     {
-        private const int ExpectedFixtureCount = 77;
+        private const int ExpectedFixtureCount = 84;
 
         private static string FixtureDir => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fixtures");
 
@@ -136,6 +136,8 @@ namespace DotNetForge.Tests.PageBuilder
                 Mode = (string)context["mode"] == "canvas" ? RenderMode.Canvas : RenderMode.View,
                 IsVisible = n => !hidden.Contains(n.Id),
                 HasModule = id => modules == null || modules.Contains(id),
+                // Content list entries (tests/js/content-list-fixtures.mjs writes these cases).
+                Data = context["data"] as JObject,
             };
         }
 

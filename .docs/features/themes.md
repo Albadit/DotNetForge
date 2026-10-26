@@ -2,20 +2,21 @@
 
 A theme is an extension (manifest `type: "theme"`) that controls how the **public site** looks: Razor views, a
 layout, static assets and manifest settings. Themes never touch the admin area, setup, sign-in or the error screen.
-The site-wide theme slot and per-page themes are built; per-tenant themes, preview and settings editing are
-[planned](#planned-not-implemented). Extension mechanics (enabling, view data, resources): [extensions](extensions.md).
+The site-wide theme slot and per-page themes are built; a selectable default theme, preview and settings editing
+are [planned](#planned-not-implemented). Extension mechanics (enabling, view data, resources): [extensions](extensions.md).
 Per-page theme fields: [content pages and routing](content-pages-and-routing.md#page-model-additions).
 
 ## Which theme is active
 
-`ThemeResolver.GetActiveThemeAsync` (`src/DotNetForge.Web/Services/ThemeResolver.cs`, scoped) decides per request:
+`ThemeResolver.GetActiveThemeAsync` (`src/DotNetForge.Web/Services/ThemeResolver.cs`, scoped; it reads only
+`ExtensionCatalog`, not the database) decides per request:
 
 1. The active `theme` extensions (`ExtensionCatalog.GetActiveAsync("theme")`: valid manifest, enabled on the
    [Plugins screen](../pages/plugins.md), code loaded if it has any). None → the built-in views.
-2. For a content page with a `ThemeId` (chosen on the Content Manager's **Theme** tab) that names one of them, that
+2. For a content page with a `ThemeId` (chosen on the Pages screen's **Theme** tab) that names one of them, that
    theme. A page theme that is not enabled is ignored.
-3. The `DefaultTheme` of the default tenant (the oldest `Tenant`; there is no tenant resolution yet) when it names one
-   of them (case-insensitive). `Tenant.DefaultTheme` is seeded as `dotnetforge.theme.default` and no screen edits it.
+3. `ThemeResolver.DefaultThemeId` = `dotnetforge.theme.default` (the bundled sample) when it is one of them
+   (case-insensitive). The default is a constant; no setting or screen changes it.
 4. Otherwise the first active theme by name.
 
 Disabling the active theme therefore falls back to the next enabled theme, then to the built-in views, without a
@@ -79,7 +80,7 @@ affects it, and it never affects a theme.
 **Sample.** `extensions/themes/default-theme` (`dotnetforge.theme.default`, views only): `Shared/_Layout.cshtml`
 with the menu (and the `FullWidth` / `NoIndex` / `SocialImage` keys), `Page.cshtml` (renders a page builder layout
 when there is one), `Index.cshtml`, `Views/Resources/css/theme.css`; settings `supportsDarkMode`,
-`accent` (`indigo`/`teal`/`rose`), `tagline`. It matches the seeded `DefaultTheme`, so enabling it themes the site.
+`accent` (`indigo`/`teal`/`rose`), `tagline`. It is `ThemeResolver.DefaultThemeId`, so enabling it themes the site.
 
 ## Planned (not implemented)
 
@@ -97,14 +98,13 @@ Target behaviour from the original product specification. Nothing in this sectio
     views, editable in the admin ✘.
 - **Scope:** only public content pages ✔. Never the admin area or the setup screen ✔; the sign-in screen only when
   explicitly configured (✘ never themed today).
-- **Default theme:** exactly one default theme per tenant (column ✔ `Tenant.DefaultTheme`, read for the default
-  tenant only ✔), used when a page has no override and as the fallback when a selected theme is unavailable.
+- **Default theme:** exactly one default theme, chosen by an administrator (✘; today the constant
+  `ThemeResolver.DefaultThemeId` ✔), used when a page has no override and as the fallback when a selected theme is
+  unavailable.
 - **Per-page override:** a content page may store a theme, a layout of that theme and page-specific layout settings;
-  unset means the tenant default ([content pages and routing](content-pages-and-routing.md#page-model-additions)).
+  unset means the default theme ([content pages and routing](content-pages-and-routing.md#page-model-additions)).
   Dynamic routes carry the same optional theme/layout.
 - **Preview:** render live public content with an installed theme in an isolated context, without applying it.
-- **Tenants:** each tenant has its own default theme and its own set of enabled themes
-  ([multi-tenancy](multi-tenancy.md)).
 
 Installed theme record:
 
@@ -120,8 +120,8 @@ Installed theme record:
 | `assets` | string[] | ✔ | bundled static asset paths |
 | `settings` | object | | configured values keyed by the manifest `settings` schema |
 
-Default theme setting: `defaultThemeId` (required, always an installed, enabled, compatible theme) scoped by
-`tenantId` in multi-tenant deployments - maps to `Tenant.DefaultTheme` ✔.
+Default theme setting: `defaultThemeId` (required, always an installed, enabled, compatible theme) - replaces the
+constant `ThemeResolver.DefaultThemeId` ✔.
 
 The manifest uses the canonical extension fields (`id`, `name`, `description`, `version`, `type`, `author`,
 `entryPoint`, `permissions`; ✔ validated by `ManifestValidator`). The spec defines neither the format of a settings
@@ -137,10 +137,10 @@ schema nor a manifest field for core compatibility; both must be designed.
 an isolated context → exit, optionally set it as default. Live default and per-page assignments are untouched.
 
 **Set the default theme.** Theme settings → choose an installed, enabled, compatible theme → validate (manifest,
-assets, compatibility) → save `defaultThemeId` for the active tenant → every page without an override renders with it
+assets, compatibility) → save `defaultThemeId` → every page without an override renders with it
 immediately; admin, setup and (unless configured) sign-in are unaffected.
 
-**Select a theme per page.** In the [Content Manager](../pages/content-manager.md#planned-not-implemented) choose a
+**Select a theme per page.** On [Pages](../pages/pages.md#planned-not-implemented) choose a
 theme and optionally a layout, or clear the override → validate theme state and that the layout exists in it → only
 that page changes.
 
@@ -154,7 +154,7 @@ schema → validate values against the schema → save → pages using the theme
 | Valid manifest with all canonical fields and `type` = `theme`; invalid manifests are not installed | ✔ validation (invalid themes are never used); ✘ no install step |
 | Required assets and at least one layout present before install or apply; otherwise flagged and never set as default | ✘ |
 | Compatible with the current core version; otherwise status `incompatible`, not installed or applied | ✘ |
-| Exactly one valid default theme per tenant; removing or unsetting it without a replacement is rejected | ✘ (column always has a value, never validated) |
+| Exactly one valid default theme; removing or unsetting it without a replacement is rejected | ✘ (a constant; when it is not enabled the first enabled theme is used) |
 | Per-page theme/layout must reference an installed, enabled, compatible theme and an existing layout; else rejected on save | ✘ |
 | Theme setting values validate against the manifest `settings` schema (type, allowed values) | ✘ |
 | Admin area, setup and (unless configured) sign-in are never rendered with a theme | ✔ only `HomeController` uses themes |
@@ -170,14 +170,12 @@ Role defaults (permission areas `Extensions`, `Settings`; see [authorization](au
 | Select theme/layout per page | ✔ | ✔ | ✔ | own pages if granted | ✘ | ✘ |
 | View themed public pages | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 
-In multi-tenant deployments theme management is limited to the user's tenants, except for global Super Admins.
-
 ### Edge cases
 
 - **Uninstalling the default theme:** blocked, or the default is first reassigned to the built-in default theme.
   (✔ today: disabling it falls back to the next enabled theme or the built-in views - [Which theme is
   active](#which-theme-is-active).)
-- **Uninstalling a theme used by pages:** those pages fall back to the tenant default theme and still render.
+- **Uninstalling a theme used by pages:** those pages fall back to the default theme and still render.
 - **Default theme becomes invalid** (assets missing, incompatible after a core update): fall back to the built-in
   default theme and warn administrators.
 - **Missing or broken assets at render time:** fall back to the default (or built-in default) theme and log; never
@@ -185,8 +183,6 @@ In multi-tenant deployments theme management is limited to the user's tenants, e
 - **Incompatible after a core upgrade:** marked `incompatible`, not applied; dependent pages and settings fall back to
   the default theme.
 - **Page override vs site default:** the override applies to that page only; clearing it returns to the default.
-- **Tenant scope:** a theme not enabled for the active tenant never renders for it; the tenant default (or built-in
-  default) applies.
 - **Preview leakage:** previewing never changes the live default, per-page assignments or another user's session.
 - **Setup and sign-in:** unchanged when the default theme changes (sign-in only themed when explicitly configured).
 
@@ -199,7 +195,7 @@ In multi-tenant deployments theme management is limited to the user's tenants, e
 - [ ] Installation is rejected when required assets are missing or the theme is incompatible with the core version.
 - [ ] An administrator can preview an installed theme without changing the live default or per-page assignments.
 - [ ] An administrator can set the default theme, and every non-overridden public page renders with it immediately
-  (✔ enabling a theme applies at once; ✘ no screen sets `Tenant.DefaultTheme`).
+  (✔ enabling a theme applies at once; ✘ no screen sets the default theme).
 - [ ] There is always exactly one valid default theme; removing or unsetting it without a replacement is rejected.
 - [ ] A page can override theme/layout in the Content Manager, affecting only that page.
 - [ ] Clearing a page override returns the page to the default theme.
@@ -210,7 +206,6 @@ In multi-tenant deployments theme management is limited to the user's tenants, e
 - [ ] Missing or broken assets at render time fall back to the default (or built-in default) theme with a logged
   warning and no broken public output.
 - [ ] A theme marked incompatible after a core upgrade is not applied, and dependent pages fall back to the default.
-- [ ] Each tenant has its own default theme and enabled themes, with no cross-tenant leakage.
 - [ ] Only Super Admin and Admin install/uninstall, set the default, configure settings and preview themes; per-page
   selection follows the Content Manager permission model.
 
@@ -221,7 +216,7 @@ In multi-tenant deployments theme management is limited to the user's tenants, e
 | Which theme is active | `ThemeResolver` (never ask `IExtensionLoader` or the state directly - go through `ExtensionCatalog`) |
 | Which view is rendered, theme view data | `HomeController.ThemedViewAsync`; data every extension view gets: `ExtensionViewRenderer.AddExtensionViewData` |
 | Theme-specific manifest checks (layouts, assets, compatibility) | `ManifestValidator` + `tests/DotNetForge.Tests/ManifestValidationTests.cs` |
-| Edit the default theme | `Tenant.DefaultTheme` (column exists, read by `ThemeResolver`); add the edit to a Settings screen ([admin screens](../architecture/pages.md)) |
+| Edit the default theme | today the constant `ThemeResolver.DefaultThemeId`; a selectable default needs a stored setting read by `ThemeResolver` and an edit on a Settings screen ([admin screens](../architecture/pages.md)) |
 | Theme a new public screen | call `ThemedViewAsync("<Name>", model)` in its `HomeController` action and document the view name above |
 | Serve theme assets | `ExtensionResourcesController` / `ExtensionResources.Serve` (`Path.GetFullPath` + prefix check); never expose `extensions/` through `UseStaticFiles` |
 | Write a theme | [extension development guide](../guides/extension-development.md); tests: `ExtensionTests` (fixture `tests/fixtures/extensions/test-theme`) |

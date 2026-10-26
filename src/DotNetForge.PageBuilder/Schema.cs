@@ -77,6 +77,13 @@ namespace DotNetForge.PageBuilder
         private static readonly HashSet<string> Types = new HashSet<string>(StringComparer.Ordinal)
         {
             "text", "inline", "rich", "url", "image", "enum", "bool", "int", "links", "module", "video", "slug", "icon", "comments",
+            "ref", "field", "filters", "columns",
+        };
+
+        /// <summary>Prop types a node inside a content list can take from an entry's fields (<see cref="PageNode.Bind"/>).</summary>
+        public static readonly IReadOnlyCollection<string> BindableTypes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "text", "inline", "rich", "url", "image", "video",
         };
 
         private readonly JToken defaultValue;

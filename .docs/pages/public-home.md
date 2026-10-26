@@ -65,7 +65,7 @@ Layout: [design system → public fallback](../architecture/design-system.md#pub
 | Header / footer (`_Layout`) | `ViewData["AppName"]` | both variants |
 | Hero (`section.site-hero`, the page's only `<h1>`) | `ViewData["AppName"]` | variant B |
 | Published pages list (`ul.card.site-page-list`) | model `List<(string Title, string Slug)>`, `ViewData["PublishedCount"]` | variant B, when count > 0 |
-| `<empty-state icon="pages">` with **Open the Content Manager** | - | variant B, when no live pages |
+| `<empty-state icon="pages">` with **Open Pages** | - | variant B, when no live pages |
 
 ## Functionality
 
@@ -80,7 +80,7 @@ No other actions.
 
 ## Data used by the page
 
-`Page` rows (all tenants), `AppEnvironment.AppName`, `DateTime.UtcNow` for the liveness window.
+`Page` rows, `AppEnvironment.AppName`, `DateTime.UtcNow` for the liveness window.
 
 ## State
 
@@ -111,14 +111,14 @@ Variant B with zero live pages shows, in a card under **Published pages**:
 | Element | Text |
 | --- | --- |
 | Title | "Nothing published yet" |
-| Text | "Create and publish a page in the Content Manager." |
-| Action | **Open the Content Manager** (`/admin/content`, `.btn-primary`) |
+| Text | "Create and publish a page in Pages." |
+| Action | **Open Pages** (`/admin/pages`, `.btn-primary`) |
 
 On a fresh install the seeded `Home` page (slug `/`, published) is live, so variant A is shown.
 
 ## User interactions
 
-Links only (brand, **Admin**, page links, **Plugins**, **Open the Content Manager**) and the "Skip to content" link.
+Links only (brand, **Admin**, page links, **Plugins**, **Open Pages**) and the "Skip to content" link.
 No scripts beyond `theme.js`.
 
 ## Dependencies
@@ -147,11 +147,10 @@ flowchart TD
 
 - Navigates to: [public content page](public-page.md), `/admin` ([Dashboard](dashboard.md) or [Sign in](login.md)).
 - Receives navigation from: the [error screen](error.md), the brand link.
-- Content is managed in the [Content Manager](content-manager.md).
+- Pages are managed on [Pages](pages.md); structured content in the [Content Manager](content-manager.md).
 
 ## Important implementation details
 
-- Queries ignore `TenantId` - pages of every tenant are candidates (single tenant only today).
 - `Index` loads the root page in full with one query; the shape-only tree walk applies to
   [`RenderPage`](public-page.md#resolve-and-render), not to `/`.
 - Every response carries the security headers of `SecurityHeadersMiddleware`; the CSP (`script-src 'self';
@@ -161,7 +160,7 @@ flowchart TD
 - The built-in `_Layout` does not render `_Feedback` (no toasts, no confirm dialog) and does not load `ui.js`, so
   `data-*` behaviours from the [design system](../architecture/design-system.md#behaviours) do not work in public
   views.
-- The **Admin** header link and the hero's **Plugins** / empty state's **Open the Content Manager** links are shown to
+- The **Admin** header link and the hero's **Plugins** / empty state's **Open Pages** links are shown to
   every visitor; anonymous visitors are sent to [Sign in](login.md).
 - The root lookup ignores `ParentPageId`: a nested page with slug `home` would be used as the root.
 - The fallback list includes nested pages but links them as `/<slug>`, which 404s for anything below the top level
@@ -178,14 +177,13 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Requirements
 
-- The root page and the fallback list come from the **active tenant** only, resolved by domain, subdomain or path
-  prefix ([multi-tenancy](../features/multi-tenancy.md)).
 - The root page follows the same rules as any content page: published builder content, per-page view permissions,
   page type behaviour, preview ([public content page → Planned](public-page.md#planned-not-implemented)).
-- Public screens render with the page's theme/layout or the tenant default theme (✔ the site-wide active theme;
-  per-page themes ✘, [themes](../features/themes.md#planned-not-implemented)).
+- Public screens render with the page's theme/layout or the site's default theme (✔ the page's own theme when
+  enabled, else `ThemeResolver.DefaultThemeId` (`dotnetforge.theme.default`) when enabled, else the first enabled
+  theme; per-page layouts ✘, [themes](../features/themes.md#planned-not-implemented)).
 - Generated menus list `DisplayInMenu` pages (✔ in themes, top level only).
-- With no matching content, the tenant's fallback/404 page is used.
+- With no matching content, the site's fallback/404 page is used.
 
 Acceptance criteria: [content pages and routing](../features/content-pages-and-routing.md#acceptance-criteria),
 [themes](../features/themes.md#acceptance-criteria).

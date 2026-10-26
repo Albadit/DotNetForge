@@ -117,17 +117,29 @@ function iconName(value) {
 function nodeId(value) {
   return typeof value === "string" && /^[a-z0-9]{1,16}$/.test(value) ? value : null;
 }
+/** A content type or entry id (a GUID with hyphens), lower-cased; null for anything else. */
+function reference(value) {
+  return typeof value === "string" && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value) ? value.toLowerCase() : null;
+}
+/** A content field path (price, specs.width, $title), or "" for none; null when invalid. */
+function fieldPath(value) {
+  if (typeof value !== "string") return null;
+  if (value === "") return "";
+  return /^[$A-Za-z][$A-Za-z0-9_.]{0,119}$/.test(value) ? value : null;
+}
 export {
   PAGE_ICONS,
   clamp,
   classNames,
   color,
+  fieldPath,
   iconName,
   imageUrl,
   int,
   linkUrl,
   nodeId,
   num,
+  reference,
   slug,
   text,
   track,

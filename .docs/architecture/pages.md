@@ -26,8 +26,9 @@ flowchart LR
 
 ## Route map
 
-Every screen in the application. Auth column: **Anon** = anonymous; **AdminArea** = any admin-capable role
-(`Super Admin`, `Admin`, `Editor`, `Author`); **SA/Admin** = `Super Admin` or `Admin`; **SA** = `Super Admin` only;
+Every screen in the application. Auth column: **Anon** = anonymous; **AdminArea** = any role except `Authenticated`
+and `Public` (the built-in `Super Admin`, `Admin`, `Developer`, `Editor`, `Author` and every custom role);
+**SA/Admin** = `Super Admin` or `Admin`; **SA** = `Super Admin` only; **SA/Dev** = `Super Admin` or `Developer`;
 **+ perm** = individual actions also check `(area, action)` permissions through `Can`/`CanModify`. All routes except
 `/setup`, `/health` and paths with a file extension additionally require the CMS to be installed.
 
@@ -42,15 +43,20 @@ Every screen in the application. Auth column: **Anon** = anonymous; **AdminArea*
 | Page layout stylesheet | `GET /page-css/{id:guid}.css?v={hash}` | `PageCssController.Get` | none - `text/css` of a live page's published layout (cached a year when `v` matches) | Anon | [page builder → Rendering](../features/page-builder.md#rendering) |
 | Public extension resource | `GET /ext/{id}/resources/{**path}` | `ExtensionResourcesController.Resource` | none - a file from the extension's `Views/Resources/` | Anon; only active `theme` / `module` extensions, else 404 | [extensions → Slots](../features/extensions.md#slots) |
 | Extension endpoints | whatever an extension maps (`IExtension.MapEndpoints`) or its MVC controllers route, e.g. `/sitemap.xml`, `/robots.txt` (SEO Toolkit), `POST /ext/contact-form/submit` (Contact Form) | the extension | the extension's | as the extension sets (public unless it adds authorization); `404` while the extension is not active | [extensions](../features/extensions.md#slots) |
-| Media file | `GET /media/{id:guid}/{fileName?}` | `MediaFilesController.Download` | none - 302 to a presigned URL or a file stream | public file: Anon; private file: AdminArea user of the file's tenant, else 404 | [media storage](../features/media-storage.md#download-flow) |
+| Media file | `GET /media/{id:guid}/{fileName?}` | `MediaFilesController.Download` | none - 302 to a presigned URL or a file stream | public file: Anon; private file: AdminArea user, else 404 | [media storage](../features/media-storage.md#download-flow) |
 | Error | `/error` (any HTTP method) | `HomeController.Error` | `src/DotNetForge.Web/Views/Home/Error.cshtml` | Anon | [error](../pages/error.md) |
 | Dashboard | `GET /admin` | `DashboardController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/Dashboard/Index.cshtml` | AdminArea | [dashboard](../pages/dashboard.md) |
-| Content Manager | `GET /admin/content`, `POST /admin/content/{create,update/{id},duplicate/{id},delete/{id},reorder}` | `ContentController` | `src/DotNetForge.Web/Areas/Admin/Views/Content/Index.cshtml` (+ `_TreeNodes`, `_PageForm` with the Page settings / SEO / Theme / Permissions / Layout tabs) | AdminArea + perm (`Collection types`: `create` (also duplicate); `update`/`update.own` or a page edit grant; `publish` to change Published or schedule; `delete`/`delete.own`; reorder and page permissions need `update`) | [content-manager](../pages/content-manager.md) |
-| Page builder | `GET /admin/content/{id}/builder` (+ `canvas`, `preview`, `draft.css`, `state`, `media`; `POST save`, `publish`, `unpublish`, `discard`, `heartbeat`, `upload`) | `PageBuilderController` | `src/DotNetForge.Web/Areas/Admin/Views/PageBuilder/{Index,Canvas}.cshtml` (no admin shell) | AdminArea + may edit the page; publish/unpublish need `publish`, upload `Media`/`create` | [page-builder](../pages/page-builder.md) |
+| Content Manager | `GET /admin/content`, `GET /admin/content/{type}` (`q`, `status`, `sort`, `desc`, `page`), `GET /admin/content/{type}/new`, `GET /admin/content/{type}/{id}`; `POST /admin/content/{type}/new`, `POST /admin/content/{type}/{id}` (`intent` save / publish), `POST /admin/content/{type}/{id}/{publish,unpublish,duplicate,delete}`, `POST /admin/content/{type}/{delete-selected,reorder}`; JSON `GET /admin/content/api/{entries,media}`, `POST /admin/content/api/media/upload`; `GET /admin/content?selected={pageId}` and `GET /admin/content/{pageId}/builder` → 301 to Pages | `ContentController` | `src/DotNetForge.Web/Areas/Admin/Views/Content/{Index,List,Edit,_Field}.cshtml` | AdminArea + `[RequirePermission(Entries, read)]` on every route + perm (`Entries`: `create` (also duplicate); `update`/`update.own`; `publish`; `delete`/`delete.own`; reorder `update`; uploads `Media`/`create`) | [content-manager](../pages/content-manager.md) |
+| Content types | `GET /admin/content-types`, `GET /admin/content-types/new`, `POST /admin/content-types/create`, `GET`/`POST /admin/content-types/{id}`, `POST /admin/content-types/{id}/delete` | `ContentTypesController` | `src/DotNetForge.Web/Areas/Admin/Views/ContentTypes/{Index,New,Edit}.cshtml` | AdminArea + `[RequirePermission(Content types, read)]`; `create` / `update` / `delete` per action | [content-types](../pages/content-types.md) |
+| Pages | `GET /admin/pages`, `POST /admin/pages/{create,update/{id},duplicate/{id},delete/{id},reorder}` | `PagesController` | `src/DotNetForge.Web/Areas/Admin/Views/Pages/Index.cshtml` (+ `_TreeNodes`, `_PageForm` with the Page settings / SEO / Theme / Permissions / Layout tabs) | AdminArea + `[RequirePermission(Collection types, read)]` + perm (`Collection types`: `create` (also duplicate); `update`/`update.own` or a page edit grant; `publish` to change Published or schedule; `delete`/`delete.own`; reorder and page permissions need `update`) | [pages](../pages/pages.md) |
+| Page builder | `GET /admin/pages/{id}/builder` (+ `canvas`, `preview`, `draft.css`, `state`, `media`, `content/types`, `content/link-targets`, `content/entries`; `POST save`, `publish`, `unpublish`, `discard`, `heartbeat`, `upload`, `content/preview`) | `PageBuilderController` | `src/DotNetForge.Web/Areas/Admin/Views/PageBuilder/{Index,Canvas}.cshtml` (no admin shell) | AdminArea + may edit the page; publish/unpublish need `publish`, upload `Media`/`create` | [page-builder](../pages/page-builder.md) |
 | Profile | `GET /admin/profile`, `POST /admin/profile`, `POST /admin/profile/password` | `ProfileController` | `src/DotNetForge.Web/Areas/Admin/Views/Profile/Index.cshtml` | AdminArea (own account only) | [profile](../pages/profile.md) |
-| Media | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/visibility/{id}`, `POST /admin/media/delete/{id}`, `POST /admin/media/delete-selected` (bulk, at most `MediaController.MaxBulkDelete` = 100 ids) | `MediaController` (`.Index`, `.Upload`, `.Visibility`, `.Delete`, `.DeleteSelected`) | `src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml` | AdminArea + perm (`Media`: upload needs `create`; public/private needs `update` or `update.own`; delete needs `delete`, or `delete.own` for files the user uploaded - checked per file in a bulk delete) | [media](../pages/media.md) |
+| Media | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/visibility/{id}`, `POST /admin/media/delete/{id}`, `POST /admin/media/delete-selected` (bulk, at most `MediaController.MaxBulkDelete` = 100 ids) | `MediaController` (`.Index`, `.Upload`, `.Visibility`, `.Delete`, `.DeleteSelected`) | `src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml` | AdminArea + `[RequirePermission(Media, read)]` + perm (`Media`: upload needs `create`; public/private needs `update` or `update.own`; delete needs `delete`, or `delete.own` for files the user uploaded - checked per file in a bulk delete) | [media](../pages/media.md) |
 | Settings | `GET /admin/settings`, `POST /admin/settings/save` | `SettingsController` | `src/DotNetForge.Web/Areas/Admin/Views/Settings/Index.cshtml` | AdminArea + perm (`Settings`: `read`; save needs `update`) | [settings](../pages/settings.md) |
 | API Tokens | `GET /admin/api-tokens`, `GET/POST /admin/api-tokens/create`, `POST /admin/api-tokens/revoke/{id}` | `ApiTokensController` | `src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/{Index,Create,Created}.cshtml` | AdminArea + perm (`API`: `read`; create needs `create`, revoke `delete`) | [api-tokens](../pages/api-tokens.md) |
+| API Endpoints | `GET /admin/api-endpoints`, `GET/POST /admin/api-endpoints/new`, `GET/POST /admin/api-endpoints/{id}`, `POST /admin/api-endpoints/{id}/token`, `POST /admin/api-endpoints/{id}/delete`, `POST /admin/api-endpoints/test` | `ApiEndpointsController` | `src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/{Index,Edit}.cshtml` | AdminArea + SA/Dev (`[Authorize(Roles = "Super Admin,Developer")]`) | [api-endpoints](../pages/api-endpoints.md) |
+| API Docs | `GET /admin/api-docs` | `ApiDocsController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/ApiDocs/Index.cshtml` (frames the reference below) | AdminArea + SA/Dev (`ApiDocs` policy) | [api-docs](../pages/api-docs.md) |
+| API reference (Scalar) | `GET /admin/api-docs/reference/` (+ its scripts under that prefix), `GET /admin/api-docs/openapi/v1.json` | `MapApiDocs` (`src/DotNetForge.Web/ApiDocs/ApiDocsEndpoints.cs`): `MapScalarApiReference`, `MapOpenApi` | none - Scalar's own HTML page (no admin shell) and the OpenAPI JSON | SA/Dev (`ApiDocs` policy; anonymous → sign-in, other roles → denied) | [API docs](../features/api-docs.md) |
 | Roles | `GET /admin/roles`, `GET/POST /admin/roles/create`, `GET/POST /admin/roles/{id}`, `POST /admin/roles/{id}/duplicate`, `POST /admin/roles/{id}/delete` | `RolesController` | `src/DotNetForge.Web/Areas/Admin/Views/Roles/{Index,Edit}.cshtml` | AdminArea + perm (`Roles`: `read`; create/duplicate `create`, save `update`, delete `delete`) | [roles](../pages/roles.md) |
 | Users | `GET /admin/users`, `GET/POST /admin/users/create`, `GET/POST /admin/users/{id}`, `POST /admin/users/{id}/{enable,disable,delete}` | `UsersController` | `src/DotNetForge.Web/Areas/Admin/Views/Users/{Index,Edit}.cshtml` | AdminArea + perm (`Users`: `read`; create `create`, save/enable/disable `update`, delete `delete`) | [users](../pages/users.md) |
 | Audit Logs | `GET /admin/audit-logs` | `AuditLogsController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/AuditLogs/Index.cshtml` | AdminArea + perm (`Audit logs`: `read`) | [audit-logs](../pages/audit-logs.md) |
@@ -58,7 +64,8 @@ Every screen in the application. Auth column: **Anon** = anonymous; **AdminArea*
 | Admin extension tab | `GET /admin/ext/{id}` (shell), `GET /admin/ext/{id}/raw` (active `admin` extensions), `GET /admin/ext/{id}/resources/{**path}` (any active extension) | `ExtensionsController.Host`, `ExtensionViewController.Render` / `.Resource` | `src/DotNetForge.Web/Areas/Admin/Views/Extensions/Host.cshtml` + the extension's own views | AdminArea | [extension-host](../pages/extension-host.md) |
 | Module placeholders | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization`, `/admin/transfer`, `/admin/webhooks`, `/admin/email/configuration`, `/admin/email/templates`, `/admin/providers`, `/admin/advanced-settings` | `ModulesController` | `src/DotNetForge.Web/Areas/Admin/Views/Modules/Placeholder.cshtml` | AdminArea | [module-placeholders](../pages/module-placeholders.md) |
 
-Non-screen endpoints: `GET /health` (JSON, bypasses install gate) and `/api/*` ([headless API](../features/headless-api.md)).
+Non-screen endpoints: `GET /health` (JSON, bypasses install gate), `/api/*` ([headless API](../features/headless-api.md))
+and `/api/custom/*` ([custom endpoints](../features/custom-endpoints.md)).
 
 The Settings screen was AdminArea before; Editors and Authors now get the denied screen there.
 
@@ -115,8 +122,13 @@ on every response. For screens this means:
   content page and fails on any inline style, `<style>`, inline `<script>` or `on…=` handler.
 - Forms may only post to this origin; images may also come from `data:` and HTTPS origins (media redirects to
   presigned object-storage URLs).
-- The admin extension host embeds `/admin/ext/{id}/raw` in a same-origin `<iframe>`, allowed by `frame-src 'self'`
-  and `X-Frame-Options: SAMEORIGIN`.
+- The admin extension host embeds `/admin/ext/{id}/raw` and the [API Docs](../pages/api-docs.md) screen embeds
+  `/admin/api-docs/reference/` in a same-origin `<iframe>`, allowed by `frame-src 'self'` and
+  `X-Frame-Options: SAMEORIGIN`.
+- The one exception to the strict policy is Scalar's page (`/admin/api-docs/reference/`, not an MVC view): it gets
+  `script-src 'self' 'nonce-…'` (a fresh nonce per response, on Scalar's one inline script) and
+  `style-src 'self' 'unsafe-inline'` (`SecurityHeadersMiddleware.ApiReferencePolicy`). Every other response, the API
+  Docs screen included, keeps the strict policy (`ApiDocsTests`).
 - In Development the policy is **report-only**: violations appear only as browser console warnings, so check the
   console when adding UI.
 
@@ -137,24 +149,26 @@ flowchart TB
     Model --> Sidebar["_Sidebar + _NavLink"]
     Model --> Crumbs["Top-bar breadcrumbs"]
     Model --> Screens["Screens: actions shown only when reachable<br/>(dashboard quick actions)"]
-    Sidebar --> Main["Main: Dashboard, Content Manager, Media, Marketplace"]
+    Sidebar --> Main["Main: Dashboard, Pages, Content Manager, Content types, Media, Marketplace"]
     Sidebar --> Settings["Settings (four collapsible groups):<br/>Global Settings · Administration Panel · Email · Users & Permissions Plugin"]
     Sidebar --> Ext["Extensions: one link per enabled admin extension"]
 ```
 
 | Behaviour | How |
 | --- | --- |
-| Role-aware | A link is shown only when the user passes its controller's `[Authorize]` data - `AdminArea` and `[RequirePermission]` (collected from the class and its base classes, combined with `AuthorizationPolicy.CombineAsync`, evaluated with `IAuthorizationService`), so custom roles see what their grants open. With the default grants an Editor or Author sees all of Main but in Settings only the placeholder links (`ModulesController` is AdminArea): no Settings, API Tokens, Plugins, Roles, Users or Audit Logs, and no Administration Panel group. Empty groups and sections are dropped. Hiding is never the gate - the controller still refuses a direct URL. |
+| Role-aware | A link is shown only when the user passes its controller's `[Authorize]` data - `AdminArea`, `[RequirePermission]`, role lists and named policies (collected from the class and its base classes, combined with `AuthorizationPolicy.CombineAsync`, evaluated with `IAuthorizationService`), so custom roles see what their grants open. With the default grants an Editor or Author sees Dashboard, Pages, Content Manager, Media and Marketplace in Main (not Content types) but in Settings only the placeholder links (`ModulesController` is AdminArea): no Settings, API Tokens, API Endpoints, API Docs, Plugins, Roles, Users or Audit Logs, and no Administration Panel group. A `Developer` sees Dashboard and Marketplace in Main, and in Global Settings API Tokens, API Endpoints, API Docs and the placeholders - no Pages, Content Manager, Content types, Media, Settings or Plugins. Empty groups and sections are dropped. Hiding is never the gate - the controller still refuses a direct URL. |
 | Active link | The longest href that equals the request path or is a parent of it (`/admin` only matches itself), so `/admin/api-tokens/create` marks **API Tokens**; it gets `aria-current="page"`. If a link were listed twice, only its first occurrence would be marked. |
-| Groups | Settings sub-groups are `<details data-nav-group>`; the group holding the active link renders open, the others closed; `ui.js` remembers what the user opened or closed (`localStorage` `dnf-nav`), the active group always opens. |
+| Groups | Settings sub-groups are `<details data-nav-group>`; the group holding the active link renders open, the others closed; `ui.js` remembers what the user opened or closed (`localStorage` `dnf-nav`) and counts the active group as opened, so a group stays open across screens (also after leaving it) until the user closes it. |
 | Planned modules | `Planned: true` links (the [module placeholders](../pages/module-placeholders.md)) show a **Soon** badge. |
 | Breadcrumbs | Section → group → link label (the link is clickable), then the screen's `ViewData["Title"]` when it differs (e.g. **Create API token**). Not shown on the dashboard or when the trail has one entry. |
 | `Allows(href)` | `AdminNavModel.Allows("/admin/users")` is true when the user's sidebar contains that href; the dashboard uses it to show quick actions and cards only for reachable screens. |
 
 - Items with no built screen route to `ModulesController` placeholders, so the navigation has no dead links.
 - Navigation is full page loads; there is no client router. Deep links are ordinary URLs, e.g.
-  `/admin/content?selected={pageId}`. Below 64rem the sidebar is a drawer (menu button in the top bar).
-- Tested by `AdminUiTests.The_sidebar_shows_only_screens_the_role_may_open`.
+  `/admin/pages?selected={pageId}`. Below 64rem the sidebar is a drawer (menu button in the top bar).
+- Tested by `AdminUiTests.The_sidebar_shows_only_screens_the_role_may_open` (Editor),
+  `ApiDocsTests.Only_super_admins_and_developers_open_the_docs` (Developer) and
+  `UserAndRoleManagementTests.A_custom_role_grants_exactly_its_permissions_and_edits_apply_at_once` (custom role).
 
 ### Admin extension tabs (dynamic navigation)
 
@@ -167,12 +181,11 @@ tab on the next request. See [extension host](../pages/extension-host.md).
 ## How screens load data
 
 - **Synchronously on the server, before the response is sent.** There is no client-side data fetching on any
-  screen; every screen arrives fully rendered. The only loading indicator is the extension host's skeleton, shown
-  until the extension's `<iframe>` has loaded.
-- Reads use `AsNoTracking()` and project into a view model (`Select(...)`), scoped by `AdminControllerBase.TenantId`.
-  Audit Logs and the Dashboard (audit count and **Recent activity**) also include entries with no tenant
-  (`TenantId == null`, e.g. failed sign-ins); extension data and global settings are not tenant-specific - documented
-  per screen.
+  screen; every screen arrives fully rendered. The only loading indicator is the skeleton of the extension host and
+  the API Docs screen, shown until their `<iframe>` has loaded.
+- Reads use `AsNoTracking()` and project into a view model (`Select(...)`). There is one site per installation, so
+  no query is scoped: Audit Logs and the Dashboard (audit count and **Recent activity**) include every entry, including
+  failed sign-ins - documented per screen.
 - Lists are unpaged on the server except Audit Logs (`Take(100)`) and the dashboard's activity
   (`DashboardController.RecentActivityCount` = 8). Search, filters, sorting and pagination of a list are client-side
   enhancements over the rendered rows (`data-collection` in `ui.js`); without JavaScript the whole list shows.
@@ -208,8 +221,8 @@ sequenceDiagram
 Conventions every mutating screen follows:
 
 - `<form method="post">` with `@Html.AntiForgeryToken()`; the action has `[HttpPost]` and
-  `[ValidateAntiForgeryToken]`. Antiforgery is configured with `HeaderName = "X-CSRF-TOKEN"` so the only `fetch`
-  call (Content Manager reorder) can send the token in a header. File uploads use `enctype="multipart/form-data"`
+  `[ValidateAntiForgeryToken]`. Antiforgery is configured with `HeaderName = "X-CSRF-TOKEN"` so the `fetch`
+  calls (Pages and entry-list reorder, the page builder, the Content Manager's media upload) can send the token in a header. File uploads use `enctype="multipart/form-data"`
   and declare `[RequestSizeLimit]`/`[RequestFormLimits]` on the action (Media: 25 MB × 10 + 1 MB).
 - Success → Post/Redirect/Get with an optional `TempData["Success"]` (or `TempData["Error"]`/`["Info"]`) message,
   shown as a toast by the layout (`Views/Shared/_Feedback.cshtml`); screens never render their own flash markup
@@ -226,12 +239,12 @@ Conventions every mutating screen follows:
 
 | State | Mechanism | Lifetime | Example |
 | --- | --- | --- | --- |
-| Selected item | query string | URL | `/admin/content?selected={id}` |
+| Selected item | query string | URL | `/admin/pages?selected={id}` |
 | View data | view model / `ViewData` / `ViewBag` | one request | `ViewData["ParentOptions"]`, `ViewBag.Permissions` |
 | Flash message | `TempData["Success"]` / `["Error"]` / `["Info"]` (cookie TempData provider, Data Protection) | until read on the next request; the toast auto-hides after 6 s (Success only) | "Saved 'About'." |
 | Form input after a failed POST | the bound model is passed back to the view | one request | `PageInput` keeps unsaved edits |
 | Signed-in user | auth cookie `dnf.auth` (keys in `DataProtectionKeys`) | 8 h sliding; account re-checked every request (30 s cache) | name in the sidebar account menu |
-| Client UI state | DOM (`ui.js`, `content.js`) | until reload | list search/filter/page, selection, conditional fields, drag state |
+| Client UI state | DOM (`ui.js`, `pages.js`, `entries.js`, `content-types.js`) | until reload | list search/filter/page, selection, conditional fields, drag state |
 | UI preferences | browser `localStorage` (`ui.js`, `theme.js`) | until cleared | `dnf-theme` (light/dark/system), `dnf-nav` (open sidebar groups), `dnf-view:<screen>` (grid/list) |
 | Persistent | database (+ `IFileStorage` for media bytes) | permanent | everything else |
 
@@ -241,7 +254,7 @@ defaults); there is no client-side data cache and no global client state.
 ## Loading states
 
 Screens are server-rendered in one response; the browser's own page-load indicator is the main feedback. The
-extension host shows a skeleton until its `<iframe>` loads. The one asynchronous action (tree reorder) gives no
+extension host and the API Docs screen show a skeleton until their `<iframe>` loads (`iframe[data-frame]` in `ui.js`). The one asynchronous action (tree reorder) gives no
 in-progress indicator and reloads the page when it finishes (after a toast on failure).
 
 ## Error handling on screens
@@ -257,12 +270,13 @@ in-progress indicator and reloads the page when it finishes (after a toast on fa
 Two layers, both enforced on the server:
 
 1. **Screen access** - the `AdminArea` policy plus `[RequirePermission(area, action)]` on the controller and its
-   mutating actions (Plugins: `[Authorize(Roles = "Super Admin")]`); see the route map and
+   mutating actions (Plugins: `[Authorize(Roles = "Super Admin")]`; API Endpoints:
+   `[Authorize(Roles = "Super Admin,Developer")]`; API Docs: the `ApiDocs` policy); see the route map and
    [authorization → screen access](../features/authorization.md#screen-access).
 2. **Record permissions** - `AdminControllerBase.Can(area, action)` and
    `CanModify(area, anyAction, ownAction, createdById)` evaluate the user's roles' stored grants
-   ([authorization](../features/authorization.md#how-permissions-are-evaluated)). Used by the Content Manager (area
-   `Collection types`) and Media (area `Media`); a denied action returns `Forbid()`.
+   ([authorization](../features/authorization.md#how-permissions-are-evaluated)). Used by Pages (area
+   `Collection types`), the Content Manager (area `Entries`) and Media (area `Media`); a denied action returns `Forbid()`.
 
 What the view hides (never the gate - the server checks again):
 
@@ -271,9 +285,11 @@ What the view hides (never the gate - the server checks again):
 | Sidebar links and groups | `AdminNavigationService` ([navigation](#navigation)) |
 | Dashboard quick actions and cards | `DashboardViewModel.CanCreatePages` / `CanUpload` and `AdminNavModel.Allows(href)` |
 | Media upload card, a file's **Delete**, its selection checkbox | `MediaIndexViewModel.CanUpload`, `MediaRowViewModel.CanDelete` |
-| Content Manager drag-to-reorder | `ViewData["CanReorder"]` (`Collection types`/`update`) |
+| Pages drag-to-reorder | `ViewData["CanReorder"]` (`Collection types`/`update`) |
+| Content Manager: **New entry**, row actions, bulk delete, reorder, publish buttons, read-only form | `ContentManagerViewModel` / `EntryListViewModel` / `EntryEditViewModel` flags (`Entries` grants) |
+| Content types: create, save, delete | `ContentTypesIndexViewModel` / `ContentTypeEditViewModel` flags (`Content types` grants) |
 
-The Content Manager otherwise shows every button to every admin-capable user: an Author who saves or deletes another
+Pages otherwise shows every button to every user who can open it: an Author who saves or deletes another
 user's page gets the denied screen, and changing Published or the schedule without `publish` re-renders the form with
 "You don't have permission to publish, unpublish or schedule pages.". Other screens have no per-button logic - if a
 user can open them, every action on them is available.
@@ -287,9 +303,12 @@ JavaScript the form submits directly. Mechanics: [design system → feedback](de
 
 | Screen | Confirmation |
 | --- | --- |
-| Content Manager | **Delete page** (`_PageForm`): "Delete this page? Its child pages move up a level." |
+| Pages | **Delete page** (`_PageForm`): "Delete this page? Its child pages move up a level." |
+| Content Manager | **Delete** an entry, **Delete selected**, **Unpublish** |
+| Content types | **Delete content type**, removing a field in the builder |
 | Media | a file's **Delete** and the bulk **Delete** of the selection |
 | API Tokens | **Revoke** |
+| API Endpoints | **Delete endpoint**, **Regenerate token** / **Generate token** |
 | Plugins | **Disable** (enable needs no confirmation) |
 
 A failed reorder shows a danger toast (`window.Forge.toast`) with the server's `{ error }` or "Could not save the new
@@ -302,13 +321,13 @@ order." and reloads. There are no inline `onsubmit`/`onclick` handlers (the CSP 
 | --- | --- | --- |
 | Layouts | `Views/Shared/`, `src/DotNetForge.Web/Areas/Admin/Views/Shared/` | `_Layout`, `_AuthLayout`, `_AdminLayout` |
 | Shared partials | `Views/Shared/` (all layouts), `Areas/Admin/Views/Shared/` (admin shell) | `_Feedback` (toasts + confirm dialog), `_ThemeMenu`, `_Sidebar`, `_NavLink` |
-| Screen partials | next to the screen that owns them, prefixed `_` | `Content/_TreeNodes.cshtml` (recursive), `Content/_PageForm.cshtml` |
+| Screen partials | next to the screen that owns them, prefixed `_` | `Pages/_TreeNodes.cshtml` (recursive), `Pages/_PageForm.cshtml` |
 | Navigation | `src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs` | `AdminNavigation.Tree`, `AdminNavigationService` |
 | View components | admin: class in `src/DotNetForge.Web/Areas/Admin/Components/`, view in `src/DotNetForge.Web/Areas/Admin/Views/Shared/Components/<Name>/Default.cshtml`; public: `src/DotNetForge.Web/Components/` | `ExtensionWidgetsViewComponent` (dashboard widgets), `ExtensionModulesViewComponent` (page modules, returns HTML directly) |
 | Tag helpers | ASP.NET Core's (`@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers`) and the UI ones in `src/DotNetForge.Web/Ui/UiTagHelpers.cs` (`@addTagHelper *, DotNetForge.Web`), both in each `_ViewImports` | `asp-for`, `asp-action`; `<icon>`, `<badge>`, `<alert>`, `<empty-state>`, `<stat-card>`, `<timestamp>`, `<form-errors />` |
 | Presentation helpers | `src/DotNetForge.Web/Ui/` | `AuditPresentation` (action labels/icons), `MediaPresentation` (file kind, size) |
 | Styles | `src/DotNetForge.Web/wwwroot/css/forge/` | `tokens.css`, `base.css`, `components.css`, `admin.css`, `auth.css`, `public.css` |
-| Scripts | `src/DotNetForge.Web/wwwroot/js/forge/` | `theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `content.js` (Content Manager only) |
+| Scripts | `src/DotNetForge.Web/wwwroot/js/forge/` | `theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types builder) |
 | Icons | `src/DotNetForge.Web/wwwroot/img/icons.svg` | sprite used by `<icon name="…">` |
 
 Reusable UI is the **Forge design system** - class-based components, tag helpers, partials and data-attribute
@@ -324,8 +343,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 | Area | Target |
 | --- | --- |
 | Admin shell | One built-in admin layout for every admin screen ✔ (`_AdminLayout`). Public [themes](../features/themes.md) never affect the admin area, the setup wizard or (unless login theming is explicitly configured) the sign-in screen; applying a public theme to an admin route is rejected. |
-| Tenant context | The shell shows the active tenant on every admin screen and offers a tenant switcher to users authorized for more than one tenant. Behaviour, gating and scoping: [multi-tenancy → admin tenant switcher](../features/multi-tenancy.md#admin-tenant-switcher). Today the shell shows no tenant (the static "Tenant Default" block was removed: one site per installation). |
-| Role-aware sidebar | Items the current role cannot open are hidden ✔ ([navigation](#navigation)). Still planned: hiding items whose module is disabled for the active tenant or role, and hiding by granted permissions rather than by the controller's role attributes (an Editor sees the placeholder links because `ModulesController` is AdminArea). |
+| Role-aware sidebar | Items the current role cannot open are hidden ✔ ([navigation](#navigation)). Still planned: hiding items whose module is disabled for the role, and hiding by granted permissions rather than by the controller's role attributes (an Editor sees the placeholder links because `ModulesController` is AdminArea). |
 | Active state | ✔ The current section is highlighted including its child routes and the group containing it is expanded ([navigation](#navigation)). |
 | Owning module | Every sidebar leaf routes to exactly one owning module; built screens are in the [route map](#route-map), unbuilt ones in [module placeholders](../pages/module-placeholders.md). |
 
@@ -340,10 +358,12 @@ added, removed or reordered without a spec change. `AdminNavigation.Tree` follow
 | Spec | `AdminNavigation.Tree` today |
 | --- | --- |
 | Main → **File Manager** | labelled **Media** (`/admin/media`) |
+| Main → **Content Manager** (the page tree) | three links: **Pages** (`/admin/pages`, the page tree), **Content Manager** (`/admin/content`, structured content) and **Content types** (`/admin/content-types`) - content, pages and content models are separate screens ([structured content](../features/structured-content.md)) |
 | Global Settings → **Overview** | labelled **Settings** (`/admin/settings`, the key/value editor); the Overview screen is [planned](../pages/settings.md#planned-not-implemented) |
 | Global Settings → **File Manager** (between Internationalization and Plugins) | missing; file manager settings: [media storage](../features/media-storage.md) |
 | one Settings group with four collapsible sub-groups | ✔ one **Settings** section with four collapsible `<details>` sub-groups |
 | Users & Permissions Plugin → **Roles** | not repeated: **Roles** is listed once, under Administration Panel - two links to the same screen confused users |
+| Global Settings: API Tokens, then Content History | **API Endpoints** (`/admin/api-endpoints`, icon `code`) and **API Docs** (`/admin/api-docs`, icon `book`), both for Super Admins and Developers, added after API Tokens - [custom API endpoints](../features/custom-endpoints.md) and the [API docs](../features/api-docs.md), additions the spec tree does not list |
 | no Extensions group | `AdminNavigationService` appends an **Extensions** section (admin extension tabs) when at least one admin extension is enabled - an addition the spec tree does not list |
 
 All other entries and their order already match.
@@ -354,8 +374,9 @@ Default visibility; actual visibility follows the role's granted permissions ([a
 
 | Role | Enters admin area | Sidebar shows |
 | --- | --- | --- |
-| `Super Admin` | yes | full tree, all tenants |
-| `Admin` | yes | full tree within assigned tenant(s) |
+| `Super Admin` | yes | full tree |
+| `Admin` | yes | full tree except Plugins (Super Admin only), API Endpoints and API Docs (Super Admin and Developer only) |
+| `Developer` | yes | ✔ Dashboard, API Tokens, API Endpoints, API Docs (+ the placeholder links); no content, media, settings or administration screens |
 | `Editor` | yes | items permitted by role (typically Content Manager, File Manager, Content History); Settings sub-groups hidden unless granted |
 | `Author` | yes | limited (typically Content Manager and File Manager, own content); no Administration Panel, Email or Users & Permissions Plugin unless granted |
 | `Authenticated` | no | none |
@@ -364,34 +385,27 @@ Default visibility; actual visibility follows the role's granted permissions ([a
 - The entry column is enforced ✔: non-admin-capable roles are denied before any module loads (`AdminArea` policy).
 - Hiding an item is never the gate: each module enforces its own check on every request ✔ (controller
   `[Authorize]` attributes; `Can`/`CanModify` for content and media actions).
-- Authors are limited to their own content ✔ in the Content Manager and Media (`update.own`/`delete.own` via
+- Authors are limited to their own content ✔ in Pages, the Content Manager and Media (`update.own`/`delete.own` via
   `CanModify`).
-- Hiding by role ✔: the sidebar drops links whose controller the role cannot open. Not yet by granted permissions:
-  an Editor still sees the placeholder links (Content History, Email, Providers, ...), and a role without any
-  `Media` permission still sees **Media**.
-- Tenant scoping further restricts what a non-global admin sees (only assigned tenants and their data).
+- Hiding by role ✔: the sidebar drops links whose controller the role cannot open - also by granted read
+  permissions where the controller requires one (Pages, Content Manager, Content types, Media, Settings, API Tokens,
+  Users, Roles, Audit Logs). Not yet for placeholders: every admin user still sees the placeholder links (Content
+  History, Email, Providers, ...), because `ModulesController` is AdminArea.
 
 ### User flows
 
 **Open the admin area**
 
 1. ✔ Not installed → `/setup`; not signed in → `/account/login`; not admin-capable → `/account/denied`.
-2. Resolve the active tenant ([multi-tenancy](../features/multi-tenancy.md#planned-not-implemented)); if it cannot be
-   resolved, fall back to the default tenant or deny.
-3. Render the built-in admin layout ✔ and a sidebar filtered by role ✔, permissions and module availability.
+2. Render the built-in admin layout ✔ and a sidebar filtered by role ✔, permissions and module availability.
 
-**Navigate to a module:** select a Main item or a leaf inside a Settings sub-group → the owning module opens scoped
-to the active tenant → the leaf is marked active and its parent group stays expanded ✔.
-
-**Switch tenant:** see [multi-tenancy → admin tenant switcher](../features/multi-tenancy.md#admin-tenant-switcher).
+**Navigate to a module:** select a Main item or a leaf inside a Settings sub-group → the owning module opens → the leaf is marked active and its parent group stays expanded ✔.
 
 ### Rules and validation
 
 - The sidebar matches the canonical tree exactly (groups, items, order).
 - Every leaf resolves to exactly one owning module route; no dead links ✔ (placeholders via `ModulesController`).
 - Admin routes always render with the built-in admin layout ✔; a public theme can never be applied to them.
-- The active tenant is present and valid on every admin request; otherwise default-tenant fallback or deny. Today
-  `AdminControllerBase.TenantId` silently returns `Guid.Empty` when the claim is missing.
 - Unauthenticated → 401 (API-style requests) or redirect to sign-in ✔; authenticated without an admin-capable role →
   403 ✔ (via `302 /account/denied`, which responds 403).
 
@@ -402,9 +416,7 @@ to the active tenant → the leaf is marked active and its parent group stays ex
 | Role or permissions change mid-session | Re-evaluated on the next request; hidden items stay unreachable by URL. Today roles are cookie claims fixed at sign-in (8 h sliding), so a change takes effect only after signing in again; a disabled or deleted account is signed out within 30 s ✔ (`ValidateSessionAsync`). |
 | Authenticated/Public user hits an admin route | 403, no sidebar ✔ (denied screen uses `_AuthLayout`). |
 | Public theme tries to style the admin | No effect on admin, setup or sign-in (unless login theming is configured). |
-| Non-global admin with no assigned tenant | Default-tenant fallback or deny entry. |
-| Tenant switched during an edit | Current screen reloads in the new scope; edits made in one tenant's context are never applied to another. |
-| Module disabled for the active tenant or role | Item hidden, not shown as a broken link. |
+| Module disabled for the role | Item hidden, not shown as a broken link. |
 
 ### Acceptance criteria
 
@@ -415,7 +427,8 @@ to the active tenant → the leaf is marked active and its parent group stays ex
   `src/DotNetForge.Web/Areas/Admin/Views/_ViewStart.cshtml` sets `_AdminLayout`; theme views are only used by
   `HomeController.ThemedViewAsync`.
 - [x] The setup and sign-in screens are unaffected by public themes - both set `Layout = "_AuthLayout"`.
-- [x] Only `Super Admin`, `Admin`, `Editor`, `Author` enter the admin area; others get 403 - `AdminArea` policy on
+- [x] `Authenticated` and `Public` never enter the admin area (403); the admin-capable built-in roles (`Super Admin`,
+  `Admin`, `Developer`, `Editor`, `Author`) and custom roles do - `AdminArea` policy (`Roles.CanEnterAdmin`) on
   `AdminControllerBase`, forbid → `AccountController.Denied` (status 403).
 - [x] Unauthenticated requests to admin routes are redirected to sign-in - cookie `LoginPath` in
   `DependencyRegistration`.
@@ -423,9 +436,6 @@ to the active tenant → the leaf is marked active and its parent group stays ex
   `AdminNavigationService` (controller `[Authorize]` data), blocking by controller attributes and `Can`/`CanModify`;
   `AdminUiTests.The_sidebar_shows_only_screens_the_role_may_open`. (Hiding by permissions and module availability:
   not built.)
-- [ ] The tenant switcher is in the admin chrome and shows the active tenant on every screen - nothing is shown today.
-- [ ] The switcher lists all tenants for global Super Admins and only assigned tenants for tenant admins.
-- [ ] Switching tenant reloads the current module filtered to the selected tenant.
 - [x] Roles resolves to one module without divergent role data - a single `/admin/roles` link (`RolesController`;
   the spec's second entry is not repeated, `UserAndRoleManagementTests.The_sidebar_lists_roles_once`).
 - [x] The selected sidebar item is highlighted and its parent group expanded - longest-href match (child routes

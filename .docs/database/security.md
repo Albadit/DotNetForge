@@ -40,10 +40,8 @@ What the database layer does so that commands are safe by default, and what call
 database, including `Users.PasswordHash`, `ApiTokens` and the Data Protection keys. Therefore:
 - **Never build commands from request input without an allowlist.**
   - If users choose fields, sorting or filters (a report builder, an API), map their choices to a fixed set of
-    collections and fields, and apply tenant filters (`TenantId`) yourself.
+    collections and fields, and apply any row restrictions (for example, only published rows) yourself.
   - The service validates names; it does not authorize them.
-- **Keep tenant isolation.** The CMS has no global query filters; filter by `TenantId` explicitly, as everywhere else
-  ([codebase rules](../architecture/codebase.md#architectural-rules-for-changes)).
 - **Use read-only database accounts** for named databases that are only queried.
 
 ## Connections and secrets

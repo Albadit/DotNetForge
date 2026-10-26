@@ -2,9 +2,9 @@
 
 ## Purpose
 
-A minimal key/value editor. It lists the settings visible to the active tenant (global rows + tenant rows) and lets
-a `Super Admin` or `Admin` create or overwrite a **tenant-scoped** setting. No application code reads these settings
-yet; they are readable through `GET /api/settings`.
+A minimal key/value editor. It lists all settings (one value per key) and lets a `Super Admin` or `Admin` create a
+setting or overwrite its value. No application code reads these settings yet; they are readable through
+`GET /api/settings`.
 
 ## Route / Navigation
 
@@ -31,8 +31,8 @@ src/DotNetForge.Web/Services/AuditService.cs                        settings.cha
 ## Page layout
 
 ```text
-Settings (_AdminLayout; header "Settings" + description "Key/value settings for <APP_NAME>. Saving creates or
-│         updates a value for this tenant; global values (no tenant) stay as they are.")
+Settings (_AdminLayout; header "Settings" + description "Key/value settings for <APP_NAME>. Saving creates a key
+│         or updates its value.")
 └── .settings-layout
     ├── card "All settings" [data-collection, 25 per page]   "N total" / "x of N"
     │   ├── toolbar (JS only): search "Search keys and values"
@@ -40,7 +40,7 @@ Settings (_AdminLayout; header "Settings" + description "Key/value settings for 
     │   │   └── row "No setting matches the search."   [data-collection-empty]
     │   └── pagination                                  JS, more than 25 matching rows
     │   (no settings → empty state "No settings yet" instead of toolbar and table)
-    └── card "Add or update" - "An existing key is overwritten for this tenant."
+    └── card "Add or update" - "An existing key is overwritten."
         └── form#settingForm (POST /admin/settings/save, antiforgery)
             ├── <form-errors />
             ├── Key * (placeholder "site.tagline", monospace) · Value (optional, textarea)
@@ -54,7 +54,7 @@ Component mechanics: [design system → components](../architecture/design-syste
 
 | Component | Inputs | Behaviour |
 | --- | --- | --- |
-| Settings table | `SettingsIndexViewModel.Settings` (`(Key, Value)` list ordered by key) | read-only; global and tenant rows are indistinguishable; client-side search over key and value, sort by **Key**, 25 rows per page |
+| Settings table | `SettingsIndexViewModel.Settings` (`(Key, Value)` list ordered by key) | read-only; client-side search over key and value, sort by **Key**, 25 rows per page |
 | **Edit** button | `data-fill="#settingForm"` + `data-fill-key` / `data-fill-value` | copies the row's key and value into the form and focuses **Key**; nothing is saved until **Save setting** |
 | Add or update form | `key`, `value` (simple parameters) | posts to `SettingsController.Save`; **Clear** resets the fields |
 
@@ -66,7 +66,7 @@ Component mechanics: [design system → components](../architecture/design-syste
 2. **Validation:** browser `required` on Key; server: key not blank (`Key is required.`); trimmed key ≤ 200 and
    value ≤ 4000 characters (`Keys are limited to 200 characters and values to 4000.`).
 3. **Call:** `SettingsController.Save(key, value)`.
-4. **Backend:** trims the key; finds a `Setting` with `TenantId` = active tenant and that key; creates it if missing;
+4. **Backend:** trims the key; finds the `Setting` with that key; creates it if missing;
    sets `Value` (untrimmed, may be empty/null); `SaveChangesAsync`; audit `settings.changed` (entity `Setting`, id and
    display = key - the value is not recorded).
 5. **Result:** redirect to `/admin/settings`, success toast `Saved '<key>'.`.
@@ -82,7 +82,7 @@ toolbar, **Edit** buttons and pagination stay hidden and every row is listed.
 
 ## Data used by the page
 
-`Settings` where `TenantId == null || TenantId == active tenant`; `AppEnvironment.AppName` (description).
+All `Settings` rows (`Key`, `Value`, ordered by key); `AppEnvironment.AppName` (description).
 
 ## State
 
@@ -144,12 +144,12 @@ SettingsController → DotNetForgeDbContext, AppEnvironment, IAuditService (Audi
 flowchart TD
     A["GET /admin/settings"] --> R{"Super Admin or Admin?"}
     R -- no --> X["302 /account/denied"]
-    R -- yes --> B[List global + tenant settings]
+    R -- yes --> B[List all settings]
     B -- "Edit (JS)" --> B
     B --> C[POST save key/value]
     C --> D{"key blank or too long?"}
     D -- yes --> E[Re-render with error] --> B
-    D -- no --> F["upsert tenant row + audit settings.changed"] --> G["302 + toast"] --> A
+    D -- no --> F["upsert row by key + audit settings.changed"] --> G["302 + toast"] --> A
 ```
 
 ## Related pages
@@ -160,15 +160,15 @@ flowchart TD
 
 ## Important implementation details
 
-- Saving a key that exists as a **global** row creates a tenant row with the same key; both then appear in the list
-  (global rows cannot be edited here). **Edit** on a global row therefore prepares a tenant override.
+- `Settings.Key` is unique (DB index): saving an existing key overwrites its value. When the `RemoveTenants`
+  migration made keys unique it deleted former global (no tenant) rows that a tenant row with the same key shadowed;
+  the value the screen showed was kept.
 - Values are displayed HTML-encoded; there is no secret masking - don't store secrets here.
 
 ## Known limitations
 
 - No delete, no typed settings, no grouping, no logo upload or overview diagnostics (see
   [planned](#planned-not-implemented)).
-- Global and tenant rows look the same in the table.
 - No consumer of `Setting` rows in the application.
 
 ## Planned (not implemented)
@@ -194,9 +194,6 @@ diagnostics, two logo uploads, a **Check for updates** action, a system health i
 | Environment | e.g. `Development`, `Production` | hosting environment | ✔ `IWebHostEnvironment.EnvironmentName` (not displayed) |
 | Installed extensions | count (optional list) | extension registry ([extensions](../features/extensions.md)) | `InstalledExtensions` holds the enabled state (written on enable/disable); on-disk discovery is `IExtensionLoader.Discover`, "is it active" is `ExtensionCatalog` |
 | System health | `Healthy` \| `Degraded` \| `Unhealthy` + per-check detail | health check service | ✘ (`GET /health` returns a static `ok`) |
-
-Instance-wide facts (versions, provider, environment) are identical for every tenant; tenant-scoped settings and
-branding reflect the active tenant only.
 
 **Branding logos (the only editable inputs)**
 
@@ -240,14 +237,14 @@ area (e.g. `Webhooks`, `API`, `Media`, `Extensions`, `Users`, `Roles`).
 | Apply update / rollback | ✔ | only if explicitly granted | ✘ |
 | Open a settings sub-screen | per that screen's permission area | same | same (`Authenticated`/`Public`: never) |
 
-`Super Admin` has full access across all tenants; `Admin` is limited to assigned tenants. Today only `Super Admin`
-and `Admin` can open this screen and save tenant settings (fixed role check, not the `Settings` permission area).
+`Super Admin` has full access. With the default grants only `Super Admin` and `Admin` can open this screen and save
+settings.
 
 ### User flows
 
 | Flow | Steps |
 | --- | --- |
-| View overview | open **Settings → Global Settings → Overview** → resolve active tenant, check `Settings` read → load diagnostics → render read-only fields, current logos (or defaults), hub table, **Check for updates** |
+| View overview | open **Settings → Global Settings → Overview** → check `Settings` read → load diagnostics → render read-only fields, current logos (or defaults), hub table, **Check for updates** |
 | Upload admin menu logo | pick file → client checks type/size → server re-validates (type, size, safe-upload) → store via media subsystem, generate URL → save reference, audit → sidebar/header shows it immediately; public site unaffected |
 | Upload login logo | same validation and storage → audit → sign-in and setup screens show it on next render |
 | Remove / reset logo | clear the field and save → reference removed, surface reverts to the default → audit |
@@ -279,7 +276,6 @@ and `Admin` can open this screen and save tenant settings (fixed role check, not
 | Logo reference points to a missing file | Surface falls back to the default logo, no broken image. |
 | Active public theme | No effect on the admin logo or admin area. |
 | `Settings` permission revoked mid-session | Subsequent saves/update actions denied server-side. |
-| Multi-tenant | Instance-wide diagnostics identical across tenants; tenant settings and branding never leak between tenants ([multi-tenancy](../features/multi-tenancy.md#planned-not-implemented)). |
 
 ### Acceptance criteria
 
@@ -306,10 +302,9 @@ and `Admin` can open this screen and save tenant settings (fixed role check, not
 - [ ] Every successful global settings change (logo upload, logo reset, update action) is audited - only key/value
   saves exist and are audited.
 - [ ] The admin menu logo and admin area are unaffected by any active public theme.
-- [ ] Tenant context is resolved before rendering and tenant-scoped settings do not leak across tenants.
 
 ## Extension points
 
-- A typed setting used by code: read it in a small service that queries `Settings` (tenant row first, then global)
+- A typed setting used by code: read it in a small service that queries `Settings` by key
   and register it in `DependencyRegistration`; don't query `Settings` from many controllers.
 - Delete: add `POST /admin/settings/delete` with antiforgery and an audit entry.

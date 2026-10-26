@@ -5,6 +5,8 @@
   <ItemGroup>
     <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
     <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
+    <!-- Structured content stores rich text in the page builder's format (Content/EntryData.cs). -->
+    <ProjectReference Include="..\DotNetForge.PageBuilder\DotNetForge.PageBuilder.csproj" />
   </ItemGroup>
 
 </Project>

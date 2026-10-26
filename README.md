@@ -12,6 +12,12 @@ targeting **.NET 10**, with **SQLite** (default) and **PostgreSQL** support. It 
 **Traditional** CMS (visual admin), a **Headless** CMS (token-secured API), or **both at once**
 (**Hybrid**) over the same content.
 
+Content is structured and kept apart from presentation: define **content types** (blog posts, products, events...)
+with a visual field builder, manage their entries in the **Content Manager**, and show them on any page with a
+**content list** in the page builder - cards, a list, a carousel, a table or a detail page - mapping each element to a
+field. Editing an entry updates every page that shows it. Details:
+[structured content](.docs/features/structured-content.md).
+
 Product goals and scope: [`.docs/product.md`](.docs/product.md). The technical documentation - architecture,
 every screen, every feature, verified against the code - starts at [`.docs/README.md`](.docs/README.md); what is
 built versus planned is in
@@ -29,7 +35,8 @@ built versus planned is in
 cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
 
 # 2. Build everything (incl. extensions) and run the web app, from the repository root
-run                           # Windows (run.cmd); Linux/macOS: ./run.sh
+dotnet build
+dotnet run --project src/DotNetForge.Web
 ```
 
 Then open <http://localhost:5000>. On first run the app redirects to **`/setup`**, where you create
@@ -60,8 +67,7 @@ project; the web app is `src/DotNetForge.Web`.
 
 | Command | What it does |
 | --- | --- |
-| `run` (Windows) / `./run.sh` | Builds the solution with every extension, then runs the web app (http://localhost:5000). |
-| `dotnet run --project src/DotNetForge.Web` | Builds and runs only the web app (extensions as last built). |
+| `dotnet run --project src/DotNetForge.Web` | Builds and runs only the web app (http://localhost:5000; extensions as last built). |
 | `dotnet watch --project src/DotNetForge.Web` | Same, with hot reload. |
 | `dotnet build` | Builds the whole solution, including the sample extensions. |
 | `dotnet test` | Runs the unit and integration tests. |
@@ -105,7 +111,7 @@ Both providers apply their committed EF Core migrations on startup; see
 DotNetForge.slnx         # Solution: every project below
 src/
   DotNetForge.Web/       # ASP.NET Core MVC web app: admin area, public site, setup, composition root
-  DotNetForge.*/         # Libraries: Abstractions, Shared, Core, Data, Infrastructure, Extensions, Sdk, Api
+  DotNetForge.*/         # Libraries: Abstractions, Shared, Core, Data, Content, Infrastructure, PageBuilder, Extensions, Sdk, Api
 tests/                   # DotNetForge.Tests (unit) + DotNetForge.IntegrationTests (integration)
 extensions/              # Your extensions, by type (themes, plugins, modules, widgets, admin, ...); read-only at runtime
 docker/                  # Dockerfile (+ its .dockerignore) and compose.dev.yml for local PostgreSQL + S3
@@ -126,10 +132,12 @@ build step - it ships with the host. Every screen uses the dependency-free **For
 role-aware sidebar, works on phones and without JavaScript): CSS in
 [`src/DotNetForge.Web/wwwroot/css/forge/`](src/DotNetForge.Web/wwwroot/css/forge/), Razor tag helpers in
 [`src/DotNetForge.Web/Ui/`](src/DotNetForge.Web/Ui/) - see [design-system.md](.docs/architecture/design-system.md).
-Forms post with antiforgery tokens; the only fetch call is the Content Manager's drag-and-drop reorder (sending the
-token in an `X-CSRF-TOKEN` header).
+Forms post with antiforgery tokens; the few `fetch` calls (drag-and-drop reorder, the page builder, pickers) send the
+token in an `X-CSRF-TOKEN` header.
 
-Built screens: Dashboard, **Content Manager** (page tree + settings + scheduling), **Media** (upload, download,
+Built screens: Dashboard, **Content Manager** (entries of your content types, generated forms, drafts and publishing),
+**Content types** (visual field builder, templates), **Pages** (page tree, settings, SEO, scheduling, permissions) with
+the visual **page builder**, **Media** (upload, download,
 delete and bulk delete; local or S3-compatible storage), Settings, Users, Roles, Audit Logs, Plugins (enable/disable extensions),
 API Tokens. Remaining planned areas link to documented placeholders.
 
@@ -150,9 +158,10 @@ the full secret is shown once), then call the API with a bearer token:
 
 ```bash
 curl -H "Authorization: Bearer <token>" http://localhost:5000/api/content/pages
+curl -H "Authorization: Bearer <token>" "http://localhost:5000/api/entries/blog-posts?sort=-publishedOn&pageSize=10"
 ```
 
-Every endpoint enforces the token's granular permission (`content.read`, `media.read`, ...).
+Every endpoint enforces the token's granular permission (`content.read`, `entries.read`, `media.read`, ...).
 Missing authentication returns `401`; a missing permission returns `403`. Endpoint list:
 [.docs/features/headless-api.md](.docs/features/headless-api.md).
 

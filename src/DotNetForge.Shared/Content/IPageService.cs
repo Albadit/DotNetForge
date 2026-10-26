@@ -12,12 +12,12 @@ public interface IPageService
 {
     /// <summary>Validates <paramref name="input"/> and applies it to <paramref name="page"/> (new or existing).</summary>
     /// <returns>A user-facing error message, or <c>null</c> when the input was applied.</returns>
-    Task<string?> ApplyAsync(Page page, PageInput input, Guid tenantId, CancellationToken cancellationToken = default);
+    Task<string?> ApplyAsync(Page page, PageInput input, CancellationToken cancellationToken = default);
 
-    /// <summary>Validates and applies tree positions (drag-and-drop) for pages of the tenant.</summary>
+    /// <summary>Validates and applies tree positions (drag-and-drop).</summary>
     /// <returns>A user-facing error message, or <c>null</c> when the positions were applied.</returns>
     Task<string?> ReorderAsync(
-        IReadOnlyList<PagePosition> positions, Guid tenantId, CancellationToken cancellationToken = default);
+        IReadOnlyList<PagePosition> positions, CancellationToken cancellationToken = default);
 
     /// <summary>Re-parents the page's children to its parent and removes the page, when that keeps the tree valid.</summary>
     /// <returns>A user-facing error message, or <c>null</c> when the page was removed.</returns>

@@ -7,8 +7,7 @@ namespace DotNetForge.Web.Services;
 
 /// <summary>
 /// <see cref="IPublishedPages"/> over the page table: one single-table query of the live pages, then the URL of each
-/// page is built by walking up its parents in memory. Like the public routing in <c>HomeController</c> there is no
-/// tenant resolution yet (.docs/features/multi-tenancy.md), so every tenant's live pages are included.
+/// page is built by walking up its parents in memory.
 /// </summary>
 public sealed class PublishedPageService : IPublishedPages
 {

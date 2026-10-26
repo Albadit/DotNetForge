@@ -3,16 +3,14 @@ using DotNetForge.Shared.Enums;
 namespace DotNetForge.Shared.Entities;
 
 /// <summary>
-/// A page in the tenant's content tree (.docs/features/content-pages-and-routing.md). Foundation subset: tree, slug,
+/// A page in the content tree (.docs/features/content-pages-and-routing.md). Foundation subset: tree, slug,
 /// SEO metadata, publish/menu flags, and page type.
 /// </summary>
 public class Page
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public Guid TenantId { get; set; }
-
-    /// <summary>Lowercase, URL-safe segment. Unique within parent scope per tenant.</summary>
+    /// <summary>Lowercase, URL-safe segment. Unique among its siblings.</summary>
     public string Slug { get; set; } = string.Empty;
 
     public string Title { get; set; } = string.Empty;
@@ -106,8 +104,6 @@ public class PagePermission
 
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public Guid TenantId { get; set; }
-
     public Guid PageId { get; set; }
 
     public Guid RoleId { get; set; }
@@ -125,8 +121,6 @@ public class PageUserPermission
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public Guid TenantId { get; set; }
-
     public Guid PageId { get; set; }
 
     public Guid UserId { get; set; }
@@ -142,8 +136,6 @@ public class PageUserPermission
 public class MediaFile
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-
-    public Guid TenantId { get; set; }
 
     public string FileName { get; set; } = string.Empty;
 

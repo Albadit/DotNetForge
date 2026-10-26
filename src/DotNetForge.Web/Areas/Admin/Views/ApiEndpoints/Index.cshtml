@@ -1,0 +1,103 @@
+@using DotNetForge.Content.Endpoints
+@using DotNetForge.Shared.Enums
+@model ApiEndpointsIndexViewModel
+@{
+    ViewData["Title"] = "API Endpoints";
+    ViewData["Description"] = "Your own APIs under /api/custom/: each endpoint answers GET, POST, PUT, PATCH or DELETE with its own SQL.";
+}
+
+@section Actions {
+    <a class="btn btn-primary" href="/admin/api-endpoints/new"><icon name="plus" /> New endpoint</a>
+}
+
+@if (!Model.Supported)
+{
+    <alert tone="Warning" title="Needs a SQL database">This site runs on MongoDB, which has no SQL: endpoints can be edited but answer 501 until the site uses SQLite, PostgreSQL, SQL Server or MySQL.</alert>
+}
+
+<section class="card" aria-labelledby="endpoints-title" data-collection data-page-size="25">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" id="endpoints-title">Endpoints</h2>
+            <p class="card-description" data-collection-count>@Model.Endpoints.Count total</p>
+        </div>
+    </div>
+    @if (Model.Endpoints.Count == 0)
+    {
+        <empty-state icon="code" title="No API endpoints yet" text="Give it a path, add its operations - each a method with its own SQL - and call it at /api/custom/your-path.">
+            <a class="btn btn-primary" href="/admin/api-endpoints/new"><icon name="plus" /> New endpoint</a>
+        </empty-state>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table table-stack">
+                <thead>
+                    <tr>
+                        <th scope="col" data-sort="text">Name</th>
+                        <th scope="col" data-sort="text">Path</th>
+                        <th scope="col">Operations</th>
+                        <th scope="col">Access</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" data-sort="date">Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.Endpoints)
+                    {
+                        <tr data-item>
+                            <td class="cell-lead">
+                                <a class="cell-primary" href="/admin/api-endpoints/@e.Id">@e.Name</a>
+                                @if (!string.IsNullOrEmpty(e.Description))
+                                {
+                                    <span class="cell-sub">@e.Description</span>
+                                }
+                            </td>
+                            <td data-label="Path" data-sort-value="@e.Path"><code>/api/custom/@e.Path</code></td>
+                            <td data-label="Operations">
+                                <span class="cluster">
+                                    @foreach (var operation in Model.Operations[e.Id])
+                                    {
+                                        <badge tone="@MethodTone(operation.Method)" class="method-badge" title="@operation.Method /api/custom/@CustomEndpointService.Template(e, operation)">@operation.Method@(operation.Path.Length > 0 ? " /" + operation.Path : "")</badge>
+                                    }
+                                </span>
+                            </td>
+                            <td data-label="Access">
+                                @if (e.Access == EndpointAccess.Public)
+                                {
+                                    <badge tone="Warning">Public</badge>
+                                }
+                                else
+                                {
+                                    <badge>Token</badge>
+                                }
+                            </td>
+                            <td data-label="Status">
+                                @if (e.Enabled)
+                                {
+                                    <badge tone="Success" dot="true">Enabled</badge>
+                                }
+                                else
+                                {
+                                    <badge dot="true">Disabled</badge>
+                                }
+                            </td>
+                            <td data-label="Updated" data-sort-value="@e.UpdatedDate.ToString("O")"><timestamp value="@e.UpdatedDate" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" data-collection-pagination hidden></div>
+    }
+</section>
+
+@functions {
+    private static Tone MethodTone(string method) => method switch
+    {
+        "GET" => Tone.Info,
+        "POST" => Tone.Success,
+        "DELETE" => Tone.Danger,
+        _ => Tone.Warning,
+    };
+}

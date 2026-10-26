@@ -16,9 +16,8 @@ app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker fi
 
 ```bash
 cp .env.example .env                              # once
-run                                               # build all + start (run.cmd / ./run.sh); http://localhost:5000 → /setup on a fresh DB
-dotnet run --project src/DotNetForge.Web          # start without building the extensions
-dotnet build                                      # whole solution
+dotnet build                                      # whole solution, incl. extensions
+dotnet run --project src/DotNetForge.Web          # start; http://localhost:5000 → /setup on a fresh DB
 dotnet test                                       # unit + integration tests
 python .claude/skills/verify/check_links.py       # docs link check
 ```
@@ -26,10 +25,17 @@ python .claude/skills/verify/check_links.py       # docs link check
 ## Must know
 
 - All DI in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. Admin controllers derive from `AdminControllerBase`; API
-  controllers from `ApiControllerBase` with `[RequireApiPermission]` on every action.
-- Filter every tenant-scoped query by `TenantId` from the base controller - there are no global query filters.
+  controllers from `ApiControllerBase` with `[RequireApiPermission]` on every action (only exception: the `/api/custom/` route
+  of custom SQL endpoints, `.docs/features/custom-endpoints.md`).
 - Content-page rules live only in `src/DotNetForge.Web/Services/PageService.cs`; public visibility only in
   `PageVisibility.Live` (`src/DotNetForge.Shared/Content/PublishedPages.cs`).
+- Three separate systems (`.docs/features/structured-content.md`): **Content Manager** `/admin/content` (entries of
+  content types), **Content types** `/admin/content-types` (fields), **Pages** `/admin/pages` (page tree, URLs, SEO;
+  layouts in the page builder, which shows entries with *content lists*). Field/entry rules are pure code in
+  `src/DotNetForge.Core/Content/` (`ContentSchema`, `EntryData`, `ItemData`); database rules in
+  `src/DotNetForge.Content/` (`ContentTypeService`, `ContentEntryService`, `ContentQueryService`), shared by admin and
+  API - never re-implement them in a controller. Filter/sort entries only through `ContentQueryService` (the
+  `ContentEntryValues` index keeps it single-table).
 - Every admin POST: `[ValidateAntiForgeryToken]` + `AuditService.LogAsync(AuditActions.X, ...)`.
 - The deployment directory is read-only: never write runtime files under the content root - use `IFileStorage`
   (media) or the database; `ReadOnlyDeploymentTests` fails otherwise. No inline script/style in views (CSP).
@@ -51,7 +57,8 @@ python .claude/skills/verify/check_links.py       # docs link check
 - Page builder (`.docs/features/page-builder.md`): C# in `src/DotNetForge.PageBuilder`, editor in
   `wwwroot/js/builder` (plain ES modules, no build). One schema copy in `wwwroot/builder/schema/` (embedded by the C#
   project) - change it, or the JS core/renderer, only with `node tests/js/page-builder-fixtures.mjs` and the
-  `PageBuilder` unit tests green (C# and JS must render byte-identically).
+  `PageBuilder` unit tests green (C# and JS must render byte-identically; content-list cases are written by
+  `node tests/js/content-list-fixtures.mjs`).
 - `IEmailSender` has no implementation and webhooks are not delivered (see `.docs/implementation-status.md`).
 - Optional: `DNF_TEST_POSTGRES` runs the integration tests on PostgreSQL; `DNF_TEST_S3_*` runs live S3 tests
   (`docker/compose.dev.yml` provides both servers).

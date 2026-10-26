@@ -60,9 +60,6 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                     b.Property<bool>("Revoked")
                         .HasColumnType("bit");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -74,10 +71,10 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TokenPrefix");
-
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("Name")
                         .IsUnique();
+
+                    b.HasIndex("TokenPrefix");
 
                     b.ToTable("ApiTokens");
                 });
@@ -118,9 +115,6 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                     b.Property<bool>("Success")
                         .HasColumnType("bit");
 
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
@@ -138,9 +132,9 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Timestamp");
+                    b.HasIndex("Action");
 
-                    b.HasIndex("TenantId", "Action");
+                    b.HasIndex("Timestamp");
 
                     b.ToTable("AuditLogs");
                 });
@@ -173,6 +167,265 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                         .IsUnique();
 
                     b.ToTable("AuthProviders");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DataJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("HasDraft")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("PublishedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PublishedDataJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PublishedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SearchText")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("Version")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentTypeId", "SortOrder");
+
+                    b.ToTable("ContentEntries");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentEntryValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<double?>("Number")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("Published")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryId");
+
+                    b.HasIndex("ContentTypeId", "Published", "Field", "Number");
+
+                    b.HasIndex("ContentTypeId", "Published", "Field", "Text");
+
+                    b.ToTable("ContentEntryValues");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("Drafts")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FieldsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TitleField")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("ContentTypes");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.CustomEndpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Access")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TokenProtected")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Path");
+
+                    b.ToTable("CustomEndpoints");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.CustomEndpointOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EndpointId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("MaxRows")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ParametersJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Result")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Sql")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndpointId", "Method", "Path")
+                        .IsUnique();
+
+                    b.ToTable("CustomEndpointOperations");
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.InstalledExtension", b =>
@@ -266,9 +519,6 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("UploadedById")
                         .HasColumnType("uniqueidentifier");
 
@@ -276,8 +526,6 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.ToTable("MediaFiles");
                 });
@@ -372,9 +620,6 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("ThemeId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -389,7 +634,7 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "ParentPageId", "Slug")
+                    b.HasIndex("ParentPageId", "Slug")
                         .IsUnique()
                         .HasFilter("[ParentPageId] IS NOT NULL");
 
@@ -413,12 +658,7 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.HasIndex("PageId", "RoleId", "Permission")
                         .IsUnique();
@@ -443,15 +683,10 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.HasIndex("PageId", "UserId", "Permission")
                         .IsUnique();
@@ -477,12 +712,9 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("Name")
                         .IsUnique();
 
                     b.ToTable("Roles");
@@ -526,18 +758,14 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Value")
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Key")
-                        .IsUnique()
-                        .HasFilter("[TenantId] IS NOT NULL");
+                    b.HasIndex("Key")
+                        .IsUnique();
 
                     b.ToTable("Settings");
                 });
@@ -558,61 +786,12 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                     b.Property<DateTime?>("InstalledAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("SeedVersion")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.ToTable("SystemState");
-                });
-
-            modelBuilder.Entity("DotNetForge.Shared.Entities.Tenant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DefaultLocale")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("DefaultTheme")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("PathPrefix")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PrimaryDomain")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Subdomains")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Slug")
-                        .IsUnique();
-
-                    b.ToTable("Tenants");
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.User", b =>
@@ -656,12 +835,9 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Email")
+                    b.HasIndex("Email")
                         .IsUnique();
 
                     b.ToTable("Users");
@@ -715,9 +891,6 @@ namespace DotNetForge.Data.Database.Providers.SqlServer.Migrations
                     b.Property<string>("Secret")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Url")
                         .IsRequired()

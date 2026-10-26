@@ -11,7 +11,7 @@ Tells them so and offers a way back or to sign in as someone else.
 | --- | --- |
 | Route | `GET /account/denied` (status code set to **403**) |
 | Query parameter | `ReturnUrl` is appended by the cookie middleware but ignored |
-| Reached from | a direct URL or bookmark to an admin screen whose role check fails (e.g. an Editor opening `/admin/users`, `/admin/plugins` or `/admin/settings` - the sidebar no longer shows those links), and any `Forbid()` from a resource-level check (e.g. an Author editing, deleting or reordering a page they did not create in the [Content Manager](content-manager.md)) |
+| Reached from | a direct URL or bookmark to an admin screen whose role check fails (e.g. an Editor opening `/admin/users`, `/admin/plugins` or `/admin/settings` - the sidebar no longer shows those links), and any `Forbid()` from a resource-level check (e.g. an Author editing, deleting or reordering a page they did not create on [Pages](pages.md), or an entry in the [Content Manager](content-manager.md)) |
 
 ## Relevant source files
 
@@ -94,8 +94,8 @@ flowchart LR
   (verified by `AdminUiTests.The_sidebar_shows_only_screens_the_role_may_open`).
 - Resource-level refusals (`Can`/`CanModify` → `Forbid()`, e.g. an Author and another author's page) are not
   predicted by the sidebar and still end up here.
-- A `fetch` that is forbidden (the Content Manager's reorder) also follows the redirect here and receives this 403
-  page; `content.js` then shows the toast "Could not save the new order." and reloads.
+- A `fetch` that is forbidden (the reorder on Pages) also follows the redirect here and receives this 403
+  page; `pages.js` then shows the toast "Could not save the new order." and reloads.
 - The page carries no inline script or style (CSP, see [security](../features/security.md)). It is not among the
   pages `AdminUiTests.Every_screen_renders_without_inline_script_or_style` checks (that test covers
   `/account/login`, `/` and `/about` outside the admin).

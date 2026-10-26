@@ -1,13 +1,15 @@
 using DotNetForge.Api.Authorization;
 using DotNetForge.Data;
 using DotNetForge.Shared.Constants;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Api.Controllers;
 
-/// <summary>GET /api/media - lists media in the token's tenant (media.read).</summary>
+/// <summary>GET /api/media - lists media (media.read).</summary>
 [Route("api/media")]
+[Tags("Media")]
 public sealed class MediaApiController : ApiControllerBase
 {
     private readonly DotNetForgeDbContext _db;
@@ -20,7 +22,6 @@ public sealed class MediaApiController : ApiControllerBase
     {
         var media = await _db.MediaFiles
             .AsNoTracking()
-            .Where(m => m.TenantId == TenantId)
             .OrderByDescending(m => m.UploadedDate)
             .Select(m => new { m.Id, m.FileName, m.ContentType, m.SizeBytes, m.IsPublic, m.UploadedDate })
             .ToListAsync();
@@ -29,8 +30,9 @@ public sealed class MediaApiController : ApiControllerBase
     }
 }
 
-/// <summary>GET /api/users - lists users in the token's tenant (users.read).</summary>
+/// <summary>GET /api/users - lists users (users.read).</summary>
 [Route("api/users")]
+[Tags("Users")]
 public sealed class UsersApiController : ApiControllerBase
 {
     private readonly DotNetForgeDbContext _db;
@@ -43,7 +45,6 @@ public sealed class UsersApiController : ApiControllerBase
     {
         var users = await _db.Users
             .AsNoTracking()
-            .Where(u => u.TenantId == TenantId)
             .Select(u => new
             {
                 u.Id,
@@ -59,8 +60,9 @@ public sealed class UsersApiController : ApiControllerBase
     }
 }
 
-/// <summary>GET /api/roles - lists roles in the token's tenant (roles.read).</summary>
+/// <summary>GET /api/roles - lists roles (roles.read).</summary>
 [Route("api/roles")]
+[Tags("Roles")]
 public sealed class RolesApiController : ApiControllerBase
 {
     private readonly DotNetForgeDbContext _db;
@@ -74,7 +76,6 @@ public sealed class RolesApiController : ApiControllerBase
         // Two single-table queries (works on every provider, including MongoDB).
         var roles = await _db.Roles
             .AsNoTracking()
-            .Where(r => r.TenantId == TenantId)
             .Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn })
             .ToListAsync();
         var roleIds = roles.Select(r => r.Id).ToList();
@@ -87,6 +88,7 @@ public sealed class RolesApiController : ApiControllerBase
 
 /// <summary>GET /api/settings - lists global settings (settings.read).</summary>
 [Route("api/settings")]
+[Tags("Settings")]
 public sealed class SettingsApiController : ApiControllerBase
 {
     private readonly DotNetForgeDbContext _db;
@@ -99,7 +101,6 @@ public sealed class SettingsApiController : ApiControllerBase
     {
         var settings = await _db.Settings
             .AsNoTracking()
-            .Where(s => s.TenantId == null || s.TenantId == TenantId)
             .Select(s => new { s.Key, s.Value })
             .ToListAsync();
 
@@ -109,6 +110,7 @@ public sealed class SettingsApiController : ApiControllerBase
 
 /// <summary>GET /api/extensions - lists installed extensions (extensions.read).</summary>
 [Route("api/extensions")]
+[Tags("Extensions")]
 public sealed class ExtensionsApiController : ApiControllerBase
 {
     private readonly DotNetForgeDbContext _db;

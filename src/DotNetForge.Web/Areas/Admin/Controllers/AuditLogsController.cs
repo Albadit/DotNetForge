@@ -18,11 +18,8 @@ public sealed class AuditLogsController : AdminControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        // Entries without a tenant (failed sign-ins: no account was resolved) belong to the sign-in tenant and stay
-        // visible; entries of other tenants never are.
         var entries = await _db.AuditLogs
             .AsNoTracking()
-            .Where(a => a.TenantId == TenantId || a.TenantId == null)
             .OrderByDescending(a => a.Id)
             .Take(100)
             .ToListAsync();

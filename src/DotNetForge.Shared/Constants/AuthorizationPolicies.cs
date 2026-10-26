@@ -11,4 +11,7 @@ public static class AuthorizationPolicies
     /// Each screen then requires its own permission.
     /// </summary>
     public const string AdminArea = "AdminArea";
+
+    /// <summary>Signed in as a Super Admin or Developer - the API docs (Scalar) and their OpenAPI document.</summary>
+    public const string ApiDocs = "ApiDocs";
 }

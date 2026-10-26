@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lists the admin users of the active tenant and lets holders of the **Users** grants create, edit, enable/disable and
+Lists the admin users and lets holders of the **Users** grants create, edit, enable/disable and
 delete them and assign their roles. The edit screen shows each user's effective permissions - what their roles allow
 together. After a fresh install the list contains only the Super Admin created by [Setup](setup.md).
 
@@ -40,7 +40,7 @@ List - Users (h1) · [Create user]
 Form - "Create user" / "Edit user" (h1, the email as description)
 ├── form.editor-main
 │   ├── card **Details**: First name · Last name · Email* · Password* (create) / New password (edit, optional)
-│   └── card **Roles***: one checkbox row per tenant role (built-in badge, description) · [Manage roles]
+│   └── card **Roles***: one checkbox row per role (built-in badge, description) · [Manage roles]
 │       · footer: Cancel · [Create user] / [Save changes] (the form has no status: see Disable access)
 └── aside.editor-aside (edit only)
     ├── card **Account**: status badge · Created · Last sign-in
@@ -58,7 +58,7 @@ Form - "Create user" / "Edit user" (h1, the email as description)
 | **Status** | `Enabled` → `Success`, `Disabled` → `Danger` dot badge |
 | **Last sign-in** | `<timestamp>`, "Never" before the first sign-in |
 | Row menu (⋯) | **Edit** (or **View** without `Users` / `update`); **Enable**/**Disable** (with `update`) and **Delete** (with `delete`, confirmation dialog) - not on your own row; these post `returnTo=list`, so the result toast shows on the list |
-| Role checkbox | `name="RoleIds" value="{roleId}"`; `Super Admin` is disabled with "Only a Super Admin can give this role." for non-Super Admins (a held one is posted as a hidden field) |
+| Role checkbox | every role in the database, built-in first (`IsBuiltIn`), then by name - the seven built-in roles (`Admin`, `Author`, `Authenticated`, `Developer`, `Editor`, `Public`, `Super Admin`) and the custom ones; `Developer` (API docs, API tokens and API endpoints only) is assignable like any other role. `name="RoleIds" value="{roleId}"`; `Super Admin` is disabled with "Only a Super Admin can give this role." for non-Super Admins (a held one is posted as a hidden field) |
 | Effective permissions | `PermissionCatalog.Areas` × the saved roles' grants from `IRoleGrantStore` (Super Admin: everything) |
 
 ## Functionality
@@ -74,8 +74,8 @@ Role changes reach a signed-in user at their next sign-in (roles are claims); [g
 
 ## Data used by the page
 
-Single-table queries combined in memory (every provider, including MongoDB): `Users` of the tenant, `UserRoles` of
-those users, `Roles` of the tenant. Links to a role outside the tenant are dropped.
+Single-table queries combined in memory (every provider, including MongoDB): all `Users`, `UserRoles` of those
+users, all `Roles`. Links to a role that no longer exists are dropped.
 
 ## State
 
@@ -103,10 +103,10 @@ toasts.
 | Rule | Message |
 | --- | --- |
 | Email valid, at most 256 characters | "Enter a valid email address (at most 256 characters)." |
-| Email unique in the tenant (case-insensitive) | "Another user already uses …" |
+| Email unique (case-insensitive) | "Another user already uses …" |
 | Names at most 100 characters each | "First and last name are limited to 100 characters each." |
 | Password (required on create) | `PasswordPolicy`: 8+ characters, a letter, a number, not a common password |
-| At least one role of the tenant | "Choose at least one role." / "One of the chosen roles no longer exists. Reload the page and try again." |
+| At least one existing role | "Choose at least one role." / "One of the chosen roles no longer exists. Reload the page and try again." |
 | `Super Admin` role by a non-Super Admin | "Only a Super Admin can give the Super Admin role." |
 | Changing a Super Admin by a non-Super Admin | "Only a Super Admin can change or delete a Super Admin." |
 | Last enabled Super Admin | "This is the last enabled Super Admin. Give another user the Super Admin role first." |
@@ -116,6 +116,7 @@ toasts.
 
 | Case | Text |
 | --- | --- |
+| No users at all | "No users yet." |
 | Search/filters match nothing (JS) | "No user matches the search or filters." |
 | User without roles (effective permissions) | "No roles, so no permissions." |
 
@@ -160,7 +161,7 @@ flowchart LR
 - Emails are stored trimmed as entered; sign-in compares them exactly (`AuthService`), uniqueness is checked
   case-insensitively.
 - `LastLoginDate` is updated by `AuthService` on each successful sign-in; lockout state is not shown.
-- The whole tenant's user list is rendered in one response; pagination only hides rows.
+- The whole user list is rendered in one response; pagination only hides rows.
 
 ## Known limitations
 

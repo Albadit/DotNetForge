@@ -14,8 +14,6 @@ public class Role
 
     public bool IsBuiltIn { get; set; }
 
-    public Guid TenantId { get; set; }
-
     public ICollection<RolePermission> Permissions { get; set; } = new List<RolePermission>();
 
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

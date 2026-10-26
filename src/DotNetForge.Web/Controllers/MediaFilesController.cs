@@ -11,7 +11,7 @@ namespace DotNetForge.Web.Controllers;
 
 /// <summary>
 /// Serves media files at <c>/media/{id}/{fileName}</c> (.docs/features/media-storage.md). Public files are open to
-/// everyone; private files only to admin-capable users of the file's tenant - anyone else gets 404, so a private
+/// everyone; private files only to signed-in admin-capable users - anyone else gets 404, so a private
 /// file's existence is not revealed. After authorization the browser is redirected to a short-lived presigned URL
 /// (S3 providers) or the bytes are streamed by the app (local provider).
 /// </summary>
@@ -38,10 +38,10 @@ public sealed class MediaFilesController : Controller
     {
         var file = await _db.MediaFiles.AsNoTracking()
             .Where(m => m.Id == id)
-            .Select(m => new { m.TenantId, m.FileName, m.ContentType, m.RelativePath, m.IsPublic })
+            .Select(m => new { m.FileName, m.ContentType, m.RelativePath, m.IsPublic })
             .FirstOrDefaultAsync(HttpContext.RequestAborted);
 
-        if (file is null || (!file.IsPublic && !CanReadPrivate(file.TenantId)))
+        if (file is null || (!file.IsPublic && !CanReadPrivate()))
         {
             return NotFound();
         }
@@ -71,9 +71,7 @@ public sealed class MediaFilesController : Controller
         return File(stored.Content, file.ContentType, enableRangeProcessing: stored.Content.CanSeek);
     }
 
-    private bool CanReadPrivate(Guid fileTenantId) =>
+    private bool CanReadPrivate() =>
         User.Identity?.IsAuthenticated == true &&
-        Roles.CanEnterAdmin(User.FindAll(ClaimTypes.Role).Select(c => c.Value)) &&
-        Guid.TryParse(User.FindFirst(AuthService.TenantClaimType)?.Value, out var tenant) &&
-        tenant == fileTenantId;
+        Roles.CanEnterAdmin(User.FindAll(ClaimTypes.Role).Select(c => c.Value));
 }

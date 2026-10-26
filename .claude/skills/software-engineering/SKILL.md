@@ -28,8 +28,8 @@ things belong:
 
 - `.docs/architecture/codebase.md` → *Architectural rules for changes* (DI only in `src/DotNetForge.Web/Startup/DependencyRegistration.cs`,
   `Core` never references EF/`Data`, content-page rules only in `PageService`, admin controllers derive from
-  `AdminControllerBase`, API controllers from `ApiControllerBase`, every query filters by `TenantId`, every admin
-  POST has antiforgery + an `AuditService` entry, every API action has `[RequireApiPermission]`).
+  `AdminControllerBase`, API controllers from `ApiControllerBase`, every admin POST has antiforgery + an
+  `AuditService` entry, every API action has `[RequireApiPermission]`).
 - `.docs/architecture/dependencies.md` → *Dependencies that must not be bypassed*.
 - `.docs/implementation-status.md` → what is built vs. only planned, and which code has no runtime caller (e.g.
   `IEmailSender` has no implementation, webhooks are not delivered).

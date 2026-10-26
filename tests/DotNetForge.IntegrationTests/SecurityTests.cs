@@ -51,8 +51,8 @@ public sealed class SecurityTests
         Guid aboutId = default;
         await baseFactory.WithDbAsync(async db => aboutId = await db.Pages.Where(p => p.Slug == "about").Select(p => p.Id).SingleAsync());
 
-        var response = await DotNetForgeWebFactory.PostFormAsync(client, $"/admin/content?selected={aboutId}",
-            $"/admin/content/update/{aboutId}", new Dictionary<string, string> { ["Title"] = "About", ["Slug"] = "about" });
+        var response = await DotNetForgeWebFactory.PostFormAsync(client, $"/admin/pages?selected={aboutId}",
+            $"/admin/pages/update/{aboutId}", new Dictionary<string, string> { ["Title"] = "About", ["Slug"] = "about" });
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.Contains("Something went wrong", await response.Content.ReadAsStringAsync());
@@ -60,10 +60,10 @@ public sealed class SecurityTests
 
     private sealed class ThrowingPageService : IPageService
     {
-        public Task<string?> ApplyAsync(Page page, PageInput input, Guid tenantId, CancellationToken cancellationToken = default) =>
+        public Task<string?> ApplyAsync(Page page, PageInput input, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Simulated failure.");
 
-        public Task<string?> ReorderAsync(IReadOnlyList<PagePosition> positions, Guid tenantId, CancellationToken cancellationToken = default) =>
+        public Task<string?> ReorderAsync(IReadOnlyList<PagePosition> positions, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Simulated failure.");
 
         public Task<string?> DeleteAsync(Page page, CancellationToken cancellationToken = default) =>
@@ -100,7 +100,6 @@ public sealed class SecurityTests
         {
             var entry = await db.AuditLogs.SingleAsync(a => a.Action == AuditActions.UserLogin);
             Assert.NotNull(entry.UserId);
-            Assert.NotNull(entry.TenantId);
         });
     }
 
@@ -111,7 +110,7 @@ public sealed class SecurityTests
         await factory.InstallAsync();
         var editorId = await factory.CreateUserAsync("editor@example.com", "Edit0rPass1", Roles.Editor);
         var editor = await factory.SignInAsync("editor@example.com", "Edit0rPass1");
-        Assert.Equal(HttpStatusCode.OK, (await editor.GetAsync("/admin/content")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await editor.GetAsync("/admin/pages")).StatusCode);
 
         await factory.WithDbAsync(async db =>
         {
@@ -123,7 +122,7 @@ public sealed class SecurityTests
         // The "still active" check is cached for up to 30 s per user; a fresh factory cache isn't shared, so clear it.
         factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>().Remove($"dnf:session:{editorId}");
 
-        var response = await editor.GetAsync("/admin/content");
+        var response = await editor.GetAsync("/admin/pages");
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains("/account/login", response.Headers.Location?.OriginalString);
     }
@@ -176,17 +175,17 @@ public sealed class SecurityTests
         Guid aboutId = default;
         await factory.WithDbAsync(async db => aboutId = await db.Pages.Where(p => p.Slug == "about").Select(p => p.Id).SingleAsync());
 
-        var delete = await DotNetForgeWebFactory.PostFormAsync(author, "/admin/content", $"/admin/content/delete/{aboutId}",
+        var delete = await DotNetForgeWebFactory.PostFormAsync(author, "/admin/pages", $"/admin/pages/delete/{aboutId}",
             new Dictionary<string, string>());
         Assert.Contains("/account/denied", delete.Headers.Location?.OriginalString);
 
         // Their own page: editable, but publishing needs the publish permission.
-        await DotNetForgeWebFactory.PostFormAsync(author, "/admin/content", "/admin/content/create", new Dictionary<string, string>());
+        await DotNetForgeWebFactory.PostFormAsync(author, "/admin/pages", "/admin/pages/create", new Dictionary<string, string>());
         Guid ownId = default;
         await factory.WithDbAsync(async db => ownId = await db.Pages.Where(p => p.Title == "Untitled page").Select(p => p.Id).SingleAsync());
 
-        var publish = await DotNetForgeWebFactory.PostFormAsync(author, $"/admin/content?selected={ownId}",
-            $"/admin/content/update/{ownId}", new Dictionary<string, string>
+        var publish = await DotNetForgeWebFactory.PostFormAsync(author, $"/admin/pages?selected={ownId}",
+            $"/admin/pages/update/{ownId}", new Dictionary<string, string>
             {
                 ["Title"] = "Mine",
                 ["Slug"] = "mine",
@@ -196,8 +195,8 @@ public sealed class SecurityTests
         Assert.Equal(HttpStatusCode.OK, publish.StatusCode);
         Assert.Contains("permission to publish", await publish.Content.ReadAsStringAsync());
 
-        var save = await DotNetForgeWebFactory.PostFormAsync(author, $"/admin/content?selected={ownId}",
-            $"/admin/content/update/{ownId}", new Dictionary<string, string>
+        var save = await DotNetForgeWebFactory.PostFormAsync(author, $"/admin/pages?selected={ownId}",
+            $"/admin/pages/update/{ownId}", new Dictionary<string, string>
             {
                 ["Title"] = "Mine",
                 ["Slug"] = "mine",
@@ -218,9 +217,9 @@ public sealed class SecurityTests
             aboutId = await db.Pages.Where(p => p.Slug == "about").Select(p => p.Id).SingleAsync();
             teamId = await db.Pages.Where(p => p.Slug == "team").Select(p => p.Id).SingleAsync();
         });
-        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, "/admin/content");
+        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, "/admin/pages");
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/admin/content/reorder")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/admin/pages/reorder")
         {
             // About becomes a child of its own child Team.
             Content = JsonContent.Create(new { items = new[] { new { id = aboutId, parentPageId = (Guid?)teamId, sortOrder = 0 } } }),
@@ -260,7 +259,6 @@ public sealed class SecurityTests
             plaintext = generated.Plaintext;
             db.ApiTokens.Add(new ApiToken
             {
-                TenantId = await db.Tenants.Select(t => t.Id).FirstAsync(),
                 Name = "test",
                 PermissionsCsv = PermissionKeys.ContentCreate,
                 TokenHash = generated.Hash,

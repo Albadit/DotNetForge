@@ -30,4 +30,20 @@ public static class AuditActions
     public const string WebhookCreated = "webhook.created";
     public const string AuditExported = "audit.exported";
     public const string CmsInstalled = "cms.installed";
+    public const string ContentTypeCreated = "contenttype.created";
+    public const string ContentTypeUpdated = "contenttype.updated";
+    public const string ContentTypeDeleted = "contenttype.deleted";
+    public const string EntryCreated = "entry.created";
+    public const string EntryUpdated = "entry.updated";
+    public const string EntryPublished = "entry.published";
+    public const string EntryUnpublished = "entry.unpublished";
+    public const string EntryDeleted = "entry.deleted";
+    public const string EndpointCreated = "endpoint.created";
+    public const string EndpointUpdated = "endpoint.updated";
+    public const string EndpointDeleted = "endpoint.deleted";
+    public const string EndpointTested = "endpoint.tested";
+    public const string EndpointTokenRegenerated = "endpoint.token.regenerated";
+
+    /// <summary>A custom endpoint that is not a GET ran (it may have changed data).</summary>
+    public const string EndpointExecuted = "endpoint.executed";
 }

@@ -56,7 +56,7 @@ extensions/admin/audit-dashboard/**                                     the samp
     └── iframe.ext-frame src=/admin/ext/{id}/raw  title=<name>  data-frame   (viewport height minus header, min 28rem)
         └── extension document (its own _Layout)
             e.g. Audit Dashboard (host tokens/base/components CSS + theme.js, the host's tag helpers):
-            ├── sr-only h1 "Audit Dashboard" + "Recent administrative activity in this tenant."
+            ├── sr-only h1 "Audit Dashboard" + "Recent administrative activity."
             ├── <stat-card>s: Recent events · Failed sign-ins (if settings.showFailedLogins != false) · Last activity (relative)
             ├── card: table.table of the latest 50 audit entries (When, User, Action, Entity, Result, IP)
             │   or empty state "No audit activity yet"
@@ -89,8 +89,8 @@ extensions/admin/audit-dashboard/**                                     the samp
 ## Data used by the page
 
 Manifest (`id`, `name`, `settings`), files under the extension's `Views/`. Whatever the extension's views inject -
-the sample injects `DotNetForgeDbContext` and reads the `AuditLogs` of the signed-in user's tenant (`dnf:tenant`
-claim) plus system-wide entries, like the core [Audit Logs](audit-logs.md) screen.
+the sample injects `DotNetForgeDbContext` and reads all `AuditLogs`, like the core [Audit Logs](audit-logs.md)
+screen.
 
 ## State
 
@@ -197,8 +197,7 @@ route), [Audit Logs](audit-logs.md) (the sample's data source).
 
 ## Known limitations
 
-- Extensions run with host privileges; no permission or tenant sandbox (the sample scopes its audit query to the
-  tenant itself).
+- Extensions run with host privileges; no permission sandbox.
 - The frame applies the saved theme when it loads (`theme.js`); switching Light/Dark in the shell's theme menu does
   not re-theme an already loaded frame until it reloads (no storage listener). "System" follows the OS in both.
 - No CSP nonce support: an extension cannot opt into inline script or style.

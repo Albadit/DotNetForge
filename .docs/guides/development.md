@@ -13,7 +13,8 @@ Set up, run, debug and change DotNetForge CMS locally. Architecture: [codebase.m
 ```bash
 cp .env.example .env          # PowerShell: Copy-Item .env.example .env
 dotnet tool restore           # restores the pinned dotnet-ef tool (only needed for migrations)
-run                           # run.cmd (Windows) / ./run.sh: dotnet build + run the web app
+dotnet build                  # the whole solution, including the extensions
+dotnet run --project src/DotNetForge.Web
 ```
 
 Open <http://localhost:5000>. You are redirected to `/setup`; create the first administrator (email + a password with
@@ -29,8 +30,7 @@ Starting without `.env` fails fast with
 
 | Command | Purpose |
 | --- | --- |
-| `run` (Windows, `run.cmd`) / `./run.sh` | `dotnet build` of the solution (CMS + extensions), then `dotnet run --project src/DotNetForge.Web --no-build` (profile `http`, `http://localhost:5000`); extra arguments go to the app. `dotnet run` alone can't work at the root: it needs a project file, and a second one next to `DotNetForge.slnx` would break `dotnet build`/`dotnet test` |
-| `dotnet run --project src/DotNetForge.Web` | build and run only the web app - extensions keep their last build |
+| `dotnet run --project src/DotNetForge.Web` | build and run only the web app (profile `http`, `http://localhost:5000`) - extensions keep their last build, so run `dotnet build` first after changing one |
 | `dotnet run --project src/DotNetForge.Web --launch-profile https` | also listen on `https://localhost:5001` |
 | `dotnet watch --project src/DotNetForge.Web` | run with hot reload |
 | `dotnet build` | build the whole solution, including the sample extensions with code (into each extension's own `bin/`) |
@@ -58,7 +58,7 @@ the app first and then at the repository root (the folder holding `DotNetForge.s
 | Want to | Do |
 | --- | --- |
 | Start over (back to the setup wizard) | stop the app, delete `storage/` (SQLite database + local media), start again |
-| Re-create the starter pages | delete all pages in the Content Manager, restart (seeding re-creates them when the tenant has no pages) |
+| Re-create the starter pages | delete all pages on the Pages screen, restart (seeding re-creates them when there are no pages) |
 | Unlock a locked account | wait 15 minutes, or clear `LockoutEndUtc` on the `Users` row |
 
 In Development the default SQLite database (`storage/dotnetforge.db`) and local media (`storage/media/`) are in the
@@ -113,7 +113,7 @@ Every built-in screen is built from the Forge design system - read
 | Change | Where | Picked up |
 | --- | --- | --- |
 | Styles (tokens, components, screen layout) | `src/DotNetForge.Web/wwwroot/css/forge/` (`tokens.css`, `components.css`, `admin.css`, ...) | on reload (files are served from `wwwroot`, links carry `asp-append-version`) |
-| Behaviour | `wwwroot/js/forge/ui.js` (data attributes), `content.js` (Content Manager), a new page script via `@section Scripts` | on reload |
+| Behaviour | `wwwroot/js/forge/ui.js` (data attributes), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types), a new page script via `@section Scripts` | on reload |
 | Icons | `wwwroot/img/icons.svg` (`<symbol id="…">`, Lucide paths) | on reload |
 | Views, layouts, partials | `Areas/Admin/Views/`, `Views/` | on the next request (Razor runtime compilation is on) |
 | Tag helpers, navigation tree | `src/DotNetForge.Web/Ui/UiTagHelpers.cs`, `Areas/Admin/Navigation/AdminNavigation.cs` | rebuild and restart |
@@ -163,7 +163,7 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
   developer exception page.
 - **SQL:** raise `Microsoft.EntityFrameworkCore.Database.Command` to `Information` in `src/DotNetForge.Web/appsettings.Development.json`.
 - **Inspect the DB:** open `storage/dotnetforge.db` with any SQLite browser (stop the app first if you write to it).
-- **Uploaded media (local provider):** files are under `storage/media/<tenant>/<yyyy>/<MM>/`; the `MediaFiles.RelativePath`
+- **Uploaded media (local provider):** files are under `storage/media/<yyyy>/<MM>/`; the `MediaFiles.RelativePath`
   column holds each file's key.
 - **CSP in Development** is report-only: violations appear in the browser console instead of breaking the page.
 - **Extension views** are compiled at runtime from `extensions/`; edits apply on the next request. Extension
@@ -262,7 +262,6 @@ which are ✔):
 
 - extensions may register endpoints, declared in the manifest `routes` (✔ registered by code -
   `IExtension.MapEndpoints` or MVC controllers; `routes` is informational);
-- tenant context resolves from domain, path, header or token (today only the token's `dnf:tenant` claim);
 - no unauthenticated privileged endpoint; every endpoint has unit/integration tests.
 
 **Adding permissions:**
@@ -284,7 +283,7 @@ repository keeps the same six files in `.github/agents/`, as short quick referen
 | `architecture-summary.md` | project structure, core vs extensions, database layer, **how content pages and modules work together** |
 | `extension-system.md` | extension types, the `dotnetforge.extension.json` manifest, validation, loading, enable/disable/update/remove lifecycle |
 | `permissions.md` | default roles (Super Admin → Public), permission areas, RBAC, how custom permissions are declared and enforced |
-| `api-reference.md` | headless/hybrid usage, API tokens and scopes, endpoint conventions, tenant-aware resolution |
+| `api-reference.md` | headless/hybrid usage, API tokens and scopes, endpoint conventions |
 | `development-guidelines.md` | how to add features safely: interfaces for extension points, DI, migrations, manifest validation, a permission check on every action, secrets out of Git |
 
 ### Rules and validation
@@ -303,9 +302,8 @@ repository keeps the same six files in `.github/agents/`, as short quick referen
   [configuration](../features/configuration.md), [database](../architecture/database.md)).
 - [x] Using PostgreSQL is documented end to end, including migrations ([Developing against PostgreSQL and S3](#developing-against-postgresql-and-s3), [Database and migrations](#database-and-migrations); `PostgreSqlDbContext` migrations).
 - [x] Switching providers requires only a `DATABASE_PROVIDER`/connection-string change (every provider prepares its schema at startup - `DatabaseInitializer`; data is not copied).
-- [ ] Creating API endpoints is documented with permission checks, input validation **and tenant-aware resolution**
-  (first two ✔ in [headless API](../features/headless-api.md#conventions-for-new-endpoints); tenant resolution does
-  not exist).
+- [x] Creating API endpoints is documented with permission checks and input validation
+  ([headless API](../features/headless-api.md#conventions-for-new-endpoints)).
 - [ ] Adding permissions is documented and mapped to permission areas and role/token assignment.
 - [x] Writing unit tests is documented and points to the test projects ([testing](testing.md)).
 - [x] Running unit tests is documented, per project ([Everyday commands](#everyday-commands-repository-root); there is

@@ -15,13 +15,13 @@ filters, sorting, the theme switch and multi-select bulk actions need them (each
 | Icons | `wwwroot/img/icons.svg` (sprite) + `<icon>` tag helper |
 | Tag helpers | `src/DotNetForge.Web/Ui/UiTagHelpers.cs` (`<icon>`, `<badge>`, `<alert>`, `<empty-state>`, `<stat-card>`, `<timestamp>`, `<form-errors>`) |
 | Presentation helpers | `Ui/AuditPresentation.cs` (audit action labels/icons), `Ui/MediaPresentation.cs` (file kind, size) |
-| Behaviours | `wwwroot/js/forge/theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `content.js` (Content Manager) |
+| Behaviours | `wwwroot/js/forge/theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types builder) |
 | Shared partials | `Views/Shared/_Feedback.cshtml` (toasts + confirm dialog) and `_ThemeMenu.cshtml` - admin and auth layouts |
 | Navigation | `Areas/Admin/Navigation/AdminNavigation.cs` (tree + `AdminNavigationService`) |
 
 Constraints it is built around: the Content-Security-Policy (`script-src 'self'; style-src 'self'; font-src 'self'`
 - no inline script, style attribute, event handler, web font or CDN; see [security](../features/security.md)), the
-no-new-dependencies rule ([codebase rule 16](codebase.md#architectural-rules-for-changes)) and server rendering.
+no-new-dependencies rule ([codebase rule 15](codebase.md#architectural-rules-for-changes)) and server rendering.
 
 ## Brand and tokens
 
@@ -191,7 +191,7 @@ Write row and card menus with the tag helpers (`src/DotNetForge.Web/Ui/MenuTagHe
 | `data-reveal="#password"` | show/hide password |
 | `data-tooltip="…"` (+ the same text in `aria-label`) | tooltip on hover and keyboard focus: one shared `.tooltip` in the top layer (`popover="manual"`), so a scrolling or `overflow: hidden` parent never clips it; above the element, below when there is no room, kept inside the window; `--color-tooltip-*` tokens (dark bubble in light theme, light bubble in dark); hidden on scroll, pointer down and Esc |
 | `data-fill="#form"` + `data-fill-<field>` | fill a form from a row (Settings → Edit) |
-| `details[data-nav-group]` | sidebar sub-group open state remembered (the active group always opens) |
+| `details[data-nav-group]` | sidebar sub-group open state remembered across screens (the active group opens and stays open after leaving it) |
 | `iframe[data-frame]` | hides the skeleton once an admin extension has loaded |
 
 ## Accessibility (WCAG 2.2 AA)

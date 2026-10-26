@@ -40,10 +40,9 @@ Plugins (_AdminLayout; header "Plugins" + description "Extensions found in the e
     │   ├── status tabs: All N · Enabled N · Disabled N · Needs attention N (only when a problem exists)
     │   └── search "Search extensions" · "All types" ▾ (the types found)
     ├── .extension-list: one article.extension-card per manifest (.is-enabled when enabled)
-    │   ├── type icon · **name** v<version> · id (tooltip: id · extensions/<folder>) · badge Enabled / Disabled
+    │   ├── type icon · **name** v<version> · id (tooltip: id · extensions/<folder>) · [problem icon] · badge Enabled / Disabled
     │   ├── description
     │   ├── badges: <type> · Code (manifest names an assembly) · one per dependency (tooltip "Needs <id>")
-    │   ├── alert "Not running" (warning) / "Invalid manifest" (danger) with the problem   when Problem is set
     │   └── footer: "by <author>" · [Disable] (confirm) or [Enable]
     └── empty state "No matching extensions"   [data-collection-empty]
     (no manifest at all → empty state "No extensions found" instead of toolbar and cards)
@@ -68,7 +67,7 @@ by type, then name. Component mechanics: [design system](../architecture/design-
 | Card part | Rule |
 | --- | --- |
 | Type icon | `theme` palette, `authentication` log-in, `connector` plug, `library` package, `admin` panel, `widget` gauge, `provider` bell, `module` box, other puzzle |
-| Problem alert | title **Invalid manifest** (danger) when the manifest is invalid, else **Not running** (warning) |
+| Problem | only an icon button in the header when `Problem` is set - triangle-alert (warning, **Not running**) or circle-x (danger, **Invalid manifest**), tooltip with that title; clicking it opens a popover (`.menu-list[popover]`, placed by `ui.js`, closes on Escape / outside click) with the alert and the problem text |
 | Action | **Disable** when `CanToggle` and enabled (even with a problem); **Enable** when `CanToggle`, disabled and no problem; nothing otherwise |
 | Filters | items carry `data-state` (`enabled` / `disabled`, plus `problem`) for the status tabs and `data-type` for the type filter |
 
@@ -101,7 +100,7 @@ Without JavaScript the toolbar stays hidden and every card is listed.
 
 ## Data used by the page
 
-`InstalledExtensions` (`Id`, `Status`, `InstalledDate`; not tenant-scoped - extensions are global) and
+`InstalledExtensions` (`Id`, `Status`, `InstalledDate`) and
 `IExtensionLoader.Discover()`, a singleton rooted at `AppEnvironment.ExtensionsPath` that caches the scan until a
 manifest file changes. Code state comes from `ExtensionRuntime` (loaded once at startup) via `ExtensionCatalog`.
 `InstalledExtensions` rows whose manifest is gone are not listed.
@@ -123,15 +122,15 @@ doesn't - see [Planned](#planned-not-implemented).)
 
 ## Validation
 
-Manifest validity is `ManifestValidator`; its errors are shown in the card's alert. Enable/Disable refusals are shown
+Manifest validity is `ManifestValidator`; its errors are shown in the card's problem popover. Enable/Disable refusals are shown
 as an error toast (messages above). Changes are serialized per instance by a semaphore.
 
 ## Error handling
 
 | Failure | Detection | User sees | Recovery |
 | --- | --- | --- | --- |
-| Invalid JSON / missing fields | loader / validator | **Invalid manifest** alert with the errors, no action | fix the manifest (picked up without restart) |
-| Code missing, failing or changed after startup | `ExtensionRuntime`, `ExtensionCatalog.Problem` | **Not running** alert with the reason, no Enable | build the extension, restart |
+| Invalid JSON / missing fields | loader / validator | **Invalid manifest** icon; its popover lists the errors; no action | fix the manifest (picked up without restart) |
+| Code missing, failing or changed after startup | `ExtensionRuntime`, `ExtensionCatalog.Problem` | **Not running** icon; its popover shows the reason; no Enable | build the extension, restart |
 | Refused enable/disable | `ExtensionLifecycleService` | error toast with the message | enable dependencies first / disable dependents first |
 | Other exceptions (e.g. file-system permission) | - | global error page | - |
 

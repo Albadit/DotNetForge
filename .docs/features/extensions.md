@@ -214,7 +214,7 @@ Each sample is runnable; [extensions/README.md](../../extensions/README.md) says
 
 | Folder | id | type | Code | What it does |
 | --- | --- | --- | :-: | --- |
-| `extensions/admin/audit-dashboard` | `dotnetforge.admin.audit-dashboard` | admin | | admin tab with the tenant's recent audit activity |
+| `extensions/admin/audit-dashboard` | `dotnetforge.admin.audit-dashboard` | admin | | admin tab with the recent audit activity |
 | `extensions/widgets/weather-widget` | `dotnetforge.widget.weather` | widget | ✔ | dashboard tile with the current weather (Open-Meteo, cached 15 min, fails soft) |
 | `extensions/themes/default-theme` | `dotnetforge.theme.default` | theme | | public-site layout, menu, page and home views, light/dark |
 | `extensions/modules/contact-form` | `dotnetforge.module.contact-form` | module | ✔ | contact form on the `pages` it lists; messages to media storage (`ext/contact-form/...`) + audit `contactform.submitted` |

@@ -1,0 +1,498 @@
+{
+  "name": "content-list-table",
+  "input": {
+    "schema": 1,
+    "root": "r",
+    "settings": {},
+    "nodes": {
+      "r": {
+        "id": "r",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "s"
+        ]
+      },
+      "s": {
+        "id": "s",
+        "type": "section",
+        "parent": "r",
+        "props": {},
+        "children": [
+          "c"
+        ]
+      },
+      "c": {
+        "id": "c",
+        "type": "collection",
+        "parent": "s",
+        "props": {
+          "source": "6F1D2C3B-4A5E-4F60-8A7B-9C0D1E2F3A4B",
+          "limit": 3,
+          "paginate": true,
+          "itemUrl": "/products/{slug}",
+          "view": "table",
+          "columns": [
+            {
+              "field": "name",
+              "label": "Product"
+            },
+            {
+              "field": "price",
+              "label": ""
+            },
+            {
+              "field": "missing",
+              "label": "Gone"
+            },
+            {
+              "field": "bad path!",
+              "label": "x"
+            }
+          ]
+        },
+        "children": [
+          "i"
+        ],
+        "layout": {
+          "base": {
+            "mode": "grid",
+            "columns": 3,
+            "colGap": 24,
+            "rowGap": 24
+          },
+          "mobile": {
+            "columns": 1
+          }
+        }
+      },
+      "i": {
+        "id": "i",
+        "type": "item",
+        "parent": "c",
+        "props": {},
+        "children": [
+          "img",
+          "h",
+          "p",
+          "t",
+          "b"
+        ],
+        "place": {
+          "base": {
+            "col": 2,
+            "row": 3,
+            "colSpan": 1,
+            "rowSpan": 1
+          }
+        },
+        "layout": {
+          "base": {
+            "mode": "stack",
+            "direction": "column",
+            "gap": 8
+          }
+        },
+        "style": {
+          "base": {
+            "padding": [
+              16,
+              16,
+              16,
+              16
+            ],
+            "radius": [
+              12,
+              12,
+              12,
+              12
+            ],
+            "shadow": "md"
+          }
+        }
+      },
+      "img": {
+        "id": "img",
+        "type": "image",
+        "parent": "i",
+        "props": {
+          "alt": "Product"
+        },
+        "bind": {
+          "src": "{photo}",
+          "alt": "{name}",
+          "caption": "no braces",
+          "fit": "{name}"
+        }
+      },
+      "h": {
+        "id": "h",
+        "type": "heading",
+        "parent": "i",
+        "props": {
+          "level": "3"
+        },
+        "bind": {
+          "text": "{name}"
+        }
+      },
+      "p": {
+        "id": "p",
+        "type": "text",
+        "parent": "i",
+        "props": {},
+        "bind": {
+          "content": "From {price} USD"
+        }
+      },
+      "t": {
+        "id": "t",
+        "type": "text",
+        "parent": "i",
+        "props": {},
+        "bind": {
+          "content": "{description}"
+        }
+      },
+      "b": {
+        "id": "b",
+        "type": "button",
+        "parent": "i",
+        "props": {
+          "label": "View"
+        },
+        "bind": {
+          "href": "{$url}",
+          "label": "View {name}"
+        }
+      }
+    }
+  },
+  "normalized": {
+    "schema": 1,
+    "root": "r",
+    "nodes": {
+      "r": {
+        "id": "r",
+        "type": "page",
+        "parent": null,
+        "props": {},
+        "children": [
+          "s"
+        ]
+      },
+      "s": {
+        "id": "s",
+        "type": "section",
+        "parent": "r",
+        "props": {
+          "tag": "section",
+          "contentWidth": 0,
+          "anchor": ""
+        },
+        "children": [
+          "c"
+        ]
+      },
+      "c": {
+        "id": "c",
+        "type": "collection",
+        "parent": "s",
+        "props": {
+          "source": "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b",
+          "mode": "list",
+          "entry": "",
+          "routeParam": "",
+          "routeField": "slug",
+          "filters": [],
+          "sortField": "",
+          "sortDir": "asc",
+          "limit": 3,
+          "paginate": true,
+          "view": "table",
+          "columns": [
+            {
+              "field": "name",
+              "label": "Product"
+            },
+            {
+              "field": "price",
+              "label": ""
+            },
+            {
+              "field": "missing",
+              "label": "Gone"
+            }
+          ],
+          "carousel": false,
+          "itemUrl": "/products/{slug}",
+          "emptyText": "Nothing to show yet.",
+          "prevLabel": "Previous",
+          "nextLabel": "Next"
+        },
+        "children": [
+          "i"
+        ],
+        "layout": {
+          "base": {
+            "mode": "grid",
+            "columns": 3,
+            "colGap": 24,
+            "rowGap": 24
+          },
+          "mobile": {
+            "columns": 1
+          }
+        }
+      },
+      "i": {
+        "id": "i",
+        "type": "item",
+        "parent": "c",
+        "props": {
+          "tag": "article"
+        },
+        "children": [
+          "img",
+          "h",
+          "p",
+          "t",
+          "b"
+        ],
+        "layout": {
+          "base": {
+            "mode": "stack",
+            "direction": "column",
+            "gap": 8
+          }
+        },
+        "place": {
+          "base": {
+            "colSpan": 1,
+            "rowSpan": 1
+          }
+        },
+        "style": {
+          "base": {
+            "padding": [
+              16,
+              16,
+              16,
+              16
+            ],
+            "radius": [
+              12,
+              12,
+              12,
+              12
+            ],
+            "shadow": "md"
+          }
+        }
+      },
+      "img": {
+        "id": "img",
+        "type": "image",
+        "parent": "i",
+        "props": {
+          "src": "",
+          "alt": "Product",
+          "fit": "cover",
+          "href": "",
+          "newTab": false,
+          "caption": ""
+        },
+        "bind": {
+          "src": "{photo}",
+          "alt": "{name}"
+        }
+      },
+      "h": {
+        "id": "h",
+        "type": "heading",
+        "parent": "i",
+        "props": {
+          "text": [
+            {
+              "text": "Heading"
+            }
+          ],
+          "level": "3"
+        },
+        "bind": {
+          "text": "{name}"
+        }
+      },
+      "p": {
+        "id": "p",
+        "type": "text",
+        "parent": "i",
+        "props": {
+          "content": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "Write something here."
+                }
+              ]
+            }
+          ]
+        },
+        "bind": {
+          "content": "From {price} USD"
+        }
+      },
+      "t": {
+        "id": "t",
+        "type": "text",
+        "parent": "i",
+        "props": {
+          "content": [
+            {
+              "type": "p",
+              "runs": [
+                {
+                  "text": "Write something here."
+                }
+              ]
+            }
+          ]
+        },
+        "bind": {
+          "content": "{description}"
+        }
+      },
+      "b": {
+        "id": "b",
+        "type": "button",
+        "parent": "i",
+        "props": {
+          "label": "View",
+          "href": "#",
+          "newTab": false,
+          "variant": "primary",
+          "icon": "",
+          "iconPosition": "start"
+        },
+        "bind": {
+          "label": "View {name}",
+          "href": "{$url}"
+        }
+      }
+    },
+    "settings": {
+      "breakpoints": {
+        "tablet": 1024,
+        "mobile": 640
+      }
+    }
+  },
+  "error": false,
+  "context": {
+    "mode": "view",
+    "data": {
+      "c": {
+        "items": [
+          {
+            "id": "a1",
+            "fields": {
+              "$url": {
+                "text": "/products/chair",
+                "url": "/products/chair"
+              },
+              "name": {
+                "text": "Chair & <Table> \"set\" 'one'"
+              },
+              "slug": {
+                "text": "chair"
+              },
+              "price": {
+                "text": "1,249.50",
+                "value": 1249.5
+              },
+              "photo": {
+                "text": "chair.jpg",
+                "url": "/media/1/chair.jpg"
+              },
+              "description": {
+                "text": "Comfy",
+                "rich": [
+                  {
+                    "type": "p",
+                    "runs": [
+                      {
+                        "text": "Comfy ",
+                        "b": true
+                      },
+                      {
+                        "text": "and ",
+                        "i": true
+                      },
+                      {
+                        "text": "strong",
+                        "href": "https://example.com"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "ul",
+                    "items": [
+                      [
+                        {
+                          "text": "oak"
+                        }
+                      ],
+                      [
+                        {
+                          "text": "walnut"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "a2",
+            "fields": {
+              "$url": {
+                "text": "/products/caf%C3%A9",
+                "url": "/products/caf%C3%A9"
+              },
+              "name": {
+                "text": "Café ü (special)!"
+              },
+              "price": {
+                "text": "15",
+                "value": 15
+              },
+              "photo": {
+                "text": "bad",
+                "url": "javascript:alert(1)"
+              },
+              "description": {
+                "text": "Line one\nline two"
+              }
+            }
+          },
+          {
+            "id": "a3",
+            "fields": {
+              "name": {
+                "text": "No picture"
+              }
+            }
+          }
+        ],
+        "total": 3,
+        "page": 3,
+        "pageCount": 3
+      }
+    }
+  },
+  "html": "<div class=\"pe-root pe-node pe-t-page pe-n-r\"><section class=\"pe-node pe-t-section pe-n-s\"><div class=\"pe-in\"><div class=\"pe-node pe-t-collection pe-n-c pe-view-table\"><div class=\"pe-table-wrap\"><table class=\"pe-table\"><thead><tr><th scope=\"col\">Product</th><th scope=\"col\">price</th><th scope=\"col\">Gone</th></tr></thead><tbody><tr><td><a href=\"/products/chair\">Chair &amp; &lt;Table&gt; &quot;set&quot; &#39;one&#39;</a></td><td>1,249.50</td><td></td></tr><tr><td><a href=\"/products/caf%C3%A9\">Café ü (special)!</a></td><td>15</td><td></td></tr><tr><td>No picture</td><td></td><td></td></tr></tbody></table></div><nav class=\"pe-pager\" aria-label=\"Pages\"><a class=\"pe-pager-prev\" href=\"?pg-c=2\" rel=\"prev\">Previous</a><span class=\"pe-pager-status\">3 / 3</span><span class=\"pe-pager-next\"></span></nav></div></div></section></div>",
+  "css": ".pe-root.pe-n-r{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap}\n.pe-root .pe-n-s>.pe-in{display:flex;flex-direction:column;gap:16px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap}\n.pe-root .pe-n-c>.pe-in{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(40px,auto);column-gap:24px;row-gap:24px}\n@media (max-width:639.98px){.pe-root .pe-n-c>.pe-in{grid-template-columns:repeat(1,minmax(0,1fr))}}\n.pe-root .pe-n-i{display:flex;flex-direction:column;gap:8px;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap;grid-column:span 1;grid-row:span 1;padding:16px 16px 16px 16px;border-radius:12px 12px 12px 12px;box-shadow:0 4px 12px rgba(0,0,0,.10)}\n@media (min-width:1024px){.pe-root .pe-hide-d{display:none!important}}\n@media (min-width:640px) and (max-width:1023.98px){.pe-root .pe-hide-t{display:none!important}}\n@media (max-width:639.98px){.pe-root .pe-hide-m{display:none!important}}"
+}

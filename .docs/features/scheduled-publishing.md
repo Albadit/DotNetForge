@@ -3,7 +3,7 @@
 Content pages can carry a UTC publish and unpublish time. Visibility is decided per request by
 `PageVisibility.Live` ([liveness](content-pages-and-routing.md#liveness)); the background job only finalizes the
 stored state after a schedule has passed. The fields are edited on the
-[Content Manager](../pages/content-manager.md#save-page-settings) (**Publishing** section of the form).
+[Pages](../pages/pages.md#save-page-settings) (**Publishing** section of the form).
 
 ## `ScheduledPublishingService`
 
@@ -14,7 +14,6 @@ stored state after a schedule has passed. The fields are edited on the
 | Start | waits `StartupDelay` = 5 s (`Program.cs` already runs `DatabaseInitializer` before the host starts hosted services; the delay is a safety margin) |
 | Interval | `Interval` = 15 s between runs |
 | Scope | creates a DI scope per run, resolves `DotNetForgeDbContext` |
-| Tenants | all tenants (no filter) |
 | Instances | runs in **every** app instance - no lock or leader election. Safe because a run is idempotent: it only clears passed dates and sets `Published = false`, so two instances at worst write the same values twice (and both log) |
 | Due publish | pages with `ScheduledPublishDate <= UtcNow` → `ScheduledPublishDate = null`, `UpdatedDate = now` (Published unchanged) |
 | Due unpublish | pages with `ScheduledUnpublishDate <= UtcNow` → `Published = false`, `ScheduledUnpublishDate = null`, `UpdatedDate = now` |

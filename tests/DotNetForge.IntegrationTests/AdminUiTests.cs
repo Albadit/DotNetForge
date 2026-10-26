@@ -18,7 +18,7 @@ public sealed partial class AdminUiTests
 {
     private static readonly string[] AdminScreens =
     {
-        "/admin", "/admin/content", "/admin/media", "/admin/settings", "/admin/users", "/admin/users/create", "/admin/roles",
+        "/admin", "/admin/pages", "/admin/content", "/admin/content-types", "/admin/content-types/new", "/admin/media", "/admin/settings", "/admin/users", "/admin/users/create", "/admin/roles",
         "/admin/roles/create", "/admin/audit-logs", "/admin/profile",
         "/admin/api-tokens", "/admin/api-tokens/create", "/admin/plugins", "/admin/marketplace", "/admin/content-history",
         "/admin/internationalization", "/admin/transfer", "/admin/webhooks", "/admin/email/configuration",
@@ -35,7 +35,7 @@ public sealed partial class AdminUiTests
     private static partial Regex H1();
 
     /// <summary>The CSP forbids inline script and style; every screen has one h1, a language and a skip link.</summary>
-    private static void AssertWellFormed(string path, string html)
+    internal static void AssertWellFormed(string path, string html)
     {
         var style = InlineStyle().Match(html);
         Assert.False(style.Success, $"{path} has an inline style attribute: {Around(html, style.Index)}");
@@ -64,7 +64,7 @@ public sealed partial class AdminUiTests
             roleIds = await db.Roles.Select(r => r.Id).ToListAsync();
         });
 
-        var editors = roleIds.Select(id => $"/admin/roles/{id}").Append($"/admin/users/{userId}").Append($"/admin/content?selected={pageId}");
+        var editors = roleIds.Select(id => $"/admin/roles/{id}").Append($"/admin/users/{userId}").Append($"/admin/pages?selected={pageId}");
         foreach (var path in AdminScreens.Concat(editors))
         {
             var response = await admin.GetAsync(path);
@@ -94,7 +94,7 @@ public sealed partial class AdminUiTests
         var editorHtml = await editor.GetStringAsync("/admin");
         Assert.Contains("href=\"/admin/content\"", editorHtml);
         Assert.Contains("href=\"/admin/media\"", editorHtml);
-        foreach (var restricted in new[] { "/admin/plugins", "/admin/users", "/admin/settings", "/admin/api-tokens" })
+        foreach (var restricted in new[] { "/admin/plugins", "/admin/users", "/admin/settings", "/admin/api-tokens", "/admin/content-types" })
         {
             Assert.DoesNotContain($"href=\"{restricted}\"", editorHtml);
             // Hiding is not the gate: the screen itself still refuses.
@@ -107,6 +107,14 @@ public sealed partial class AdminUiTests
         // A child route marks its screen active and puts it in the breadcrumb trail.
         Assert.Contains("href=\"/admin/api-tokens\" aria-current=\"page\"", adminHtml);
         Assert.Contains("<span aria-current=\"page\">Create API token</span>", adminHtml);
+
+        // Only the group holding the active screen is marked active (ui.js keeps the others as the user left them).
+        Assert.Matches("data-nav-group=\"Global Settings\" open=\"open\"\\s+data-nav-active=\"true\"", adminHtml);
+        Assert.Matches("data-nav-group=\"Email\"\\s+data-nav-active=\"false\"", adminHtml);
+
+        // Pages comes before the Content Manager in the Main section.
+        Assert.True(adminHtml.IndexOf("href=\"/admin/pages\"", StringComparison.Ordinal)
+            < adminHtml.IndexOf("href=\"/admin/content\"", StringComparison.Ordinal));
     }
 
     [Fact]

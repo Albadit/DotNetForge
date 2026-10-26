@@ -65,9 +65,8 @@ public sealed class SetupController : Controller
         _status.MarkInstalled();
 
         // Sign the new Super Admin in and head to the dashboard.
-        var tenantId = await _authService.GetDefaultTenantIdAsync(HttpContext.RequestAborted);
         var signIn = await _authService.ValidateAsync(
-            request.Email.Trim(), request.Password, tenantId, HttpContext.RequestAborted);
+            request.Email.Trim(), request.Password, HttpContext.RequestAborted);
 
         if (signIn is { Status: SignInStatus.Success, Principal: not null })
         {

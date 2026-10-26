@@ -20,7 +20,6 @@ Task LogAsync(string action, string? entityType = null, string? entityId = null,
 | --- | --- |
 | `UserId` | `NameIdentifier` claim; `null` when anonymous **or when the caller is an API token** |
 | `UserDisplaySnapshot` | API token: `API token {token id}` (from the `dnf:token` claim); otherwise `Identity.Name` or the email claim. Max 256 |
-| `TenantId` | `dnf:tenant` claim (cookie or API token); `null` when anonymous |
 | `IpAddress` | `Connection.RemoteIpAddress` or `"unknown"` - the real client IP only when forwarded headers are enabled ([deployment](../guides/deployment.md#behind-a-reverse-proxy)) |
 | `UserAgent` | `User-Agent` header (max 512) or `"unknown"` |
 | `Timestamp` | `DateTime.UtcNow` |
@@ -36,7 +35,7 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 
 | Action constant | Key | Written by | Entity |
 | --- | --- | --- | --- |
-| `UserLogin` | `user.login` | `AccountController.Login` (success; `HttpContext.User` is set to the new principal first, so the entry carries the user and tenant); `ExternalLoginController.Callback` (details `via <provider>`) | `User`, id, email |
+| `UserLogin` | `user.login` | `AccountController.Login` (success; `HttpContext.User` is set to the new principal first, so the entry carries the user); `ExternalLoginController.Callback` (details `via <provider>`) | `User`, id, email |
 | `UserLoginFailed` | `user.login.failed` | `AccountController.Login` (any failure; `success: false`); `ExternalLoginController` (details `via <provider>` or `external sign-in`) | `User`, no id, the typed / provider email |
 | `UserLogout` | `user.logout` | `AccountController.Logout` | - |
 | `UserCreated` | `user.created` | `UserManagementService.CreateAsync` (from `UsersController.Create`) | `User`, id, email |
@@ -44,11 +43,25 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 | `UserDeleted` | `user.deleted` | `UserManagementService.DeleteAsync` | `User`, id, email |
 | `RoleChanged` | `role.changed` | `RoleManagementService` create / update of name or description / duplicate / delete (details `Created`, `Updated`, `Duplicated from <name>`, `Deleted`); `UserManagementService.UpdateAsync` when a user's roles change (entity `User`, details `Role assignment changed`) | `Role`, id, name |
 | `PermissionChanged` | `permission.changed` | `RoleManagementService.UpdateAsync` when the grant set changes; `PagePermissionService.SaveAsync` when a page's grants change (entity `Page`, details list the view and edit roles) | `Role` / `Page`, id, name |
-| `CmsInstalled` | `cms.installed` | `SetupController.Index` (POST, after a successful install; written after the automatic sign-in, so it carries the new user and tenant) | `User`, id, email |
-| `ContentCreated` | `content.created` | `ContentController.Create` and `Duplicate` (details "Duplicate of '<title>'"); `ContentApiController.CreatePage` (`POST /api/content/pages`, actor = API token) | `Page`, id, title |
-| `ContentUpdated` | `content.updated` | `ContentController.Update`; `PageBuilderService` publish / unpublish (details `Layout published` / `Layout unpublished`; draft saves are not audited) | `Page`, id, title |
-| `ContentDeleted` | `content.deleted` | `ContentController.Delete` | `Page`, id, title |
-| `ContentReordered` | `content.reordered` | `ContentController.Reorder` | `Page`, no id, `"{n} page(s)"` |
+| `CmsInstalled` | `cms.installed` | `SetupController.Index` (POST, after a successful install; written after the automatic sign-in, so it carries the new user) | `User`, id, email |
+| `ContentCreated` | `content.created` | `PagesController.Create` and `Duplicate` (details "Duplicate of '<title>'"); `ContentApiController.CreatePage` (`POST /api/content/pages`, actor = API token) | `Page`, id, title |
+| `ContentUpdated` | `content.updated` | `PagesController.Update`; `PageBuilderService` publish / unpublish (details `Layout published` / `Layout unpublished`; draft saves are not audited) | `Page`, id, title |
+| `ContentDeleted` | `content.deleted` | `PagesController.Delete` | `Page`, id, title |
+| `ContentReordered` | `content.reordered` | `PagesController.Reorder` | `Page`, no id, `"{n} page(s)"` |
+| `ContentTypeCreated` | `contenttype.created` | `ContentTypeService.CreateAsync` (one per type, so a template that adds linked types writes several) | `ContentType`, id, name |
+| `ContentTypeUpdated` | `contenttype.updated` | `ContentTypeService.UpdateAsync` (details `"{n} field(s)"` when the fields changed) | `ContentType`, id, name |
+| `ContentTypeDeleted` | `contenttype.deleted` | `ContentTypeService.DeleteAsync` (details `"With {n} entries"` when its entries went too; no entry is audited separately) | `ContentType`, id, name |
+| `EntryCreated` | `entry.created` | `ContentEntryService.SaveAsync` (new entry) and `DuplicateAsync` (details "Duplicate of '<title>'") | `Entry`, entry id, "<type name>: <entry title>" (`Untitled` when the title is empty) |
+| `EntryUpdated` | `entry.updated` | `ContentEntryService.SaveAsync` (existing entry) | as above |
+| `EntryPublished` | `entry.published` | `ContentEntryService.PublishAsync`; also after a save that publishes (written after `entry.created` / `entry.updated`) | as above |
+| `EntryUnpublished` | `entry.unpublished` | `ContentEntryService.UnpublishAsync` | as above |
+| `EntryDeleted` | `entry.deleted` | `ContentEntryService.DeleteAsync`, and once per entry by `DeleteManyAsync` (bulk delete) | as above |
+| `EndpointCreated` | `endpoint.created` | `CustomEndpointService.SaveAsync` (new endpoint; details: its name and operations, e.g. `Products: GET, GET /{id}, POST`) | `CustomEndpoint`, id, its base path (`CustomEndpointService.Display`: "/api/custom/products") |
+| `EndpointUpdated` | `endpoint.updated` | `CustomEndpointService.SaveAsync` (existing endpoint; details as above) | as above |
+| `EndpointDeleted` | `endpoint.deleted` | `CustomEndpointService.DeleteAsync` (the endpoint and its operations; details: its name) | as above |
+| `EndpointTested` | `endpoint.tested` | `ApiEndpointsController.Test` (one operation; details `Changes rolled back` / `Changes kept`) | `CustomEndpoint`, no id (the run may be unsaved), the tested operation's route (`CustomEndpointService.Route`: "GET /api/custom/products/{id}") |
+| `EndpointTokenRegenerated` | `endpoint.token.regenerated` | `CustomEndpointService.RegenerateTokenAsync` (from `ApiEndpointsController.RegenerateToken`; details: its name; never the token) | `CustomEndpoint`, id, its base path |
+| `EndpointExecuted` | `endpoint.executed` | `CustomEndpointsApiController.Call` for every method but GET; details `<name> (called with its token)` or `<name> (public call)`; `Success = false` when the SQL failed. No API token is involved, so the actor is anonymous - or the signed-in user when the call carries the admin session cookie (e.g. "Test Request" in the [API docs](api-docs.md)) | `CustomEndpoint`, id, the called operation's route ("DELETE /api/custom/products/{id}") |
 | `MediaUploaded` | `media.uploaded` | `MediaService.UploadAsync` (per stored file, from `MediaController.Upload`) | `MediaFile`, id, file name |
 | `MediaDeleted` | `media.deleted` | `MediaService.DeleteAsync` (from `MediaController.Delete`) | `MediaFile`, id, file name |
 | `MediaUpdated` | `media.updated` | `MediaService.SetVisibilityAsync` (from `MediaController.Visibility`; details `Made public` / `Made private`) | `MediaFile`, id, file name |
@@ -62,10 +75,13 @@ Defined but never written: `plugin.installed`, `webhook.created`, `audit.exporte
 
 **Extension-defined actions.** Extensions write through the same `IAuditService` with their own action strings
 (`LogAsync` accepts any string). The samples write `contactform.submitted` (Contact Form: entity `ContactMessage`, the
-storage key, `"<name> <email>"`, details = the first 200 characters of the message; anonymous, so no user and no
-tenant).
+storage key, `"<name> <email>"`, details = the first 200 characters of the message; anonymous, so no user).
 
-Not logged: API reads, scheduler changes (`ScheduledPublishingService`), and failed or denied operations other than
+The content-type and entry actions come from the [Content Manager](../pages/content-manager.md),
+[Content types](../pages/content-types.md) and `/api/entries` alike (the services audit, not the controllers), so the
+actor is the signed-in user or the API token ([structured content](structured-content.md)).
+
+Not logged: API reads, reordering of entries or content types, scheduler changes (`ScheduledPublishingService`), and failed or denied operations other than
 sign-in (403s, validation errors, rejected uploads, refused enable/disable). `Details` is filled only by external
 sign-in and extensions.
 
@@ -84,21 +100,10 @@ Extensions subscribe to every saved entry with `services.AddAuditEventHandler<TH
 | Isolation | each call gets its own DI scope and a `HandlerTimeout` of 30 s (via the cancellation token); an exception is logged (`Audit handler ... failed on ...`) and the next handler runs |
 | Durability | none: events queued in memory are lost on shutdown or crash; the `AuditLogs` row is the record. Per instance only |
 
-`AuditEvent` carries `Action`, `EntityType`, `EntityId`, `EntityDisplay`, `Details`, `Success`, `TenantId`,
-`UserDisplay`, `IpAddress`, `TimestampUtc` - not the user agent or user id. Sample: `extensions/providers/sms-notifications`
+`AuditEvent` carries `Action`, `EntityType`, `EntityId`, `EntityDisplay`, `Details`, `Success`, `UserDisplay`,
+`IpAddress`, `TimestampUtc` - not the user agent or user id. Sample: `extensions/providers/sms-notifications`
 sends an SMS for the actions in its `notifyOn` setting (default `user.login.failed`, `contactform.submitted`,
 `plugin.enabled`, `plugin.disabled`).
-
-## Tenant scoping of reads
-
-| Reader | Filter |
-| --- | --- |
-| Audit Logs screen (`AuditLogsController`, latest 100) | `TenantId == active tenant || TenantId == null` |
-| Dashboard **Audit entries** count (`DashboardController`) | same |
-| Audit Dashboard extension (`extensions/admin/audit-dashboard`) | same (tenant from the `dnf:tenant` claim) |
-
-Entries without a tenant (failed sign-ins, where no account was resolved) belong to the sign-in tenant and stay
-visible; with a second tenant they would be visible in every tenant ([multi-tenancy](multi-tenancy.md)).
 
 ## Rules
 
@@ -106,7 +111,6 @@ visible; with a second tenant they would be visible in every tenant ([multi-tena
 - Log after the change is saved; the two saves are not transactional, so a failure between them loses the entry.
 - Never put secrets (passwords, token plaintext, hashes) in `Details` or the display snapshots.
 - No code may update or delete `AuditLogs` rows.
-- Any new reader of `AuditLogs` filters by the active tenant like `AuditLogsController`.
 - Extensions that react to audit events use `AddAuditEventHandler`, never polling `AuditLogs`; a handler must be
   fast (30 s timeout) and must not write an audit entry for every event it handles (that would loop).
 
@@ -118,18 +122,15 @@ Viewer (list, filters, search, export): [Audit Logs screen](../pages/audit-logs.
 ### Requirements
 
 - Every significant admin **and system** action writes an audit entry, both successful and failed.
-- Fields: User, Action, Entity type, Entity ID, IP address, User agent, Timestamp (UTC), Details, Tenant - all ✔
+- Fields: User, Action, Entity type, Entity ID, IP address, User agent, Timestamp (UTC), Details - all ✔
   columns on `AuditLogEntry`. Target deltas:
   - **IP address:** the real client IP, honouring trusted forwarded/proxy headers where configured (✔ when
     `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`; off by default).
-  - **Details:** structured JSON context (changed field names, previous/new values, reason, plugin name, target
-    tenant), redacted before persistence. No caller fills it today.
-  - **Tenant:** required in multi-tenant deployments; access to entries is filtered by the active tenant
-    ([multi-tenancy](multi-tenancy.md)). ✔ Audit Logs screen and Dashboard count
-    ([Tenant scoping of reads](#tenant-scoping-of-reads)); failed-login entries have no tenant.
+  - **Details:** structured JSON context (changed field names, previous/new values, reason, plugin name),
+    redacted before persistence. No caller fills it today.
 - **Acting principal** for non-interactive actions (system, background job, API token): record system, the token
   identifier or a null user, keeping IP/user agent where available. ✔ API token: `UserId = null`,
-  `UserDisplaySnapshot = "API token {id}"`, tenant from the token (`AuditService`); the scheduler writes nothing.
+  `UserDisplaySnapshot = "API token {id}"` (`AuditService`); the scheduler writes nothing.
 - **Action vocabulary** is extensible: extensions may register additional action types (✔ they may write any action
   string, e.g. `contactform.submitted`; ✘ no registration).
 - **Retention:** configurable retention policy with rotation/archival (by age, or roll over to archive storage at a
@@ -155,7 +156,7 @@ Tracked actions (minimum set):
 ### User flows
 
 **Automatic logging (system side):** action completes or fails → build the entry (User, Action, Entity type/ID, IP,
-user agent, server UTC timestamp, Details, Tenant) → redact secrets from Details → append (never reversible or
+user agent, server UTC timestamp, Details) → redact secrets from Details → append (never reversible or
 editable) → a failed action is still recorded with a failure indication (`Success = false` ✔); an audit-write failure
 must not silently swallow the underlying error.
 
@@ -166,7 +167,6 @@ must not silently swallow the underlying error.
 | View audit logs | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
 | Filter / search / export | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ |
 | Edit or delete entries | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
-| View across all tenants | ✔ (global) | ✘ (assigned tenant only) | ✘ | ✘ | ✘ | ✘ |
 
 - **Append-only:** no UI or API path updates or deletes an entry (✔ none exists) and mutation attempts are rejected
   (no store-level guard exists today).
@@ -189,10 +189,6 @@ must not silently swallow the underlying error.
   (`AccountController` stores the typed email in `EntityDisplaySnapshot`); repeated failures feed lockout and rate
   limiting ([security](security.md)).
 - **Clock skew** across instances: use one consistent server time source.
-- **Tenant isolation:** entries never leak across tenants; tenant admins see only their tenant (today the Audit Logs
-  screen ✔, the Dashboard count ✔ and the Audit Dashboard extension ✔ are scoped, but failed-login entries and
-  anonymous extension entries carry no `TenantId`, so they show in every tenant; extension handlers receive every
-  tenant's events).
 - **Audit store unavailable:** records are never dropped silently - surface the failure and/or buffer for a durable
   write. Today `LogAsync` runs after the change is saved, so an audit failure produces an error after the change.
 
@@ -203,12 +199,9 @@ Viewer criteria (pagination, filters, search, export) are on the [Audit Logs scr
 - [x] Each entry records User, Action, Entity type, Entity ID, IP address, User agent, Timestamp (UTC) and Details (`AuditLogEntry`, `AuditService.LogAsync`; no caller fills Details yet).
 - [ ] Logged actions include user login, failed login, content created/updated/deleted, media uploaded, plugin installed, plugin disabled, role changed, permission changed, settings changed, API token created and webhook created (constants ✔; written ✔ except plugin installed and webhook created).
 - [ ] Failed actions, including failed logins with no resolved user, are recorded with a null user and without the attempted password (failed logins ✔ `AccountController`; other failures are not logged).
-- [ ] Each entry carries the tenant it occurred in and log access is filtered by the active tenant (filter ✔ `AuditLogsController`, `DashboardController`, Audit Dashboard extension; failed-login entries have no tenant).
 - [ ] Only Super Admin and Admin can view, filter, search and export audit logs (viewing ✔ `AuditLogsController` role check; the rest does not exist).
-- [ ] Super Admin can view logs across all tenants; tenant Admins see only their tenant's logs (everyone sees the active tenant plus tenant-less entries; no cross-tenant view).
 - [ ] Entries are append-only: no UI or API path edits or deletes an entry, and mutation attempts are rejected (no path ✔; no rejection guard).
 - [x] Passwords and token/secret plaintext are never persisted in any field, for any action (current writers: `AccountController` / `SetupController` log only the email, `ApiTokensController` only id and name, API-token actors only the token id; no generic redaction).
 - [ ] Timestamps are stored in UTC and displayed in the viewer's configured timezone (UTC storage ✔; shown as UTC).
 - [ ] A retention/rotation policy is configurable; archival/purge is a controlled process without interactive per-entry deletion.
-- [ ] No audit entry leaks across tenant boundaries (screen, Dashboard and Audit Dashboard extension ✔; tenant-less entries are shared; extension handlers see all tenants).
 - [ ] Every audit-log read, filter, search and export request passes an explicit permission check.

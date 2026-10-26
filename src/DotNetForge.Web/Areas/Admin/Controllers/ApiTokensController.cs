@@ -41,7 +41,6 @@ public sealed class ApiTokensController : AdminControllerBase
     {
         var tokens = await _db.ApiTokens
             .AsNoTracking()
-            .Where(t => t.TenantId == TenantId)
             .OrderByDescending(t => t.CreatedDate)
             .ToListAsync();
 
@@ -78,8 +77,8 @@ public sealed class ApiTokensController : AdminControllerBase
             return View();
         }
 
-        // Names are unique per tenant (revoked tokens included) - say so instead of failing at save time.
-        if (await _db.ApiTokens.AnyAsync(t => t.TenantId == TenantId && t.Name == name))
+        // Names are unique (revoked tokens included) - say so instead of failing at save time.
+        if (await _db.ApiTokens.AnyAsync(t => t.Name == name))
         {
             ModelState.AddModelError(string.Empty, $"A token named '{name}' already exists. Choose another name.");
             return View();
@@ -101,7 +100,6 @@ public sealed class ApiTokensController : AdminControllerBase
 
         var token = new ApiToken
         {
-            TenantId = TenantId,
             Name = name,
             Description = description,
             Duration = tokenDuration,
@@ -130,7 +128,7 @@ public sealed class ApiTokensController : AdminControllerBase
     [RequirePermission(PermissionAreas.Api, PermissionActions.Delete)]
     public async Task<IActionResult> Revoke(Guid id)
     {
-        var token = await _db.ApiTokens.FirstOrDefaultAsync(t => t.Id == id && t.TenantId == TenantId);
+        var token = await _db.ApiTokens.FirstOrDefaultAsync(t => t.Id == id);
         if (token is not null && !token.Revoked)
         {
             token.Revoked = true;

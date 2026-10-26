@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Global / tenant settings (.docs/pages/settings.md): lists key/value settings visible to the tenant (global rows
-/// have a null tenant) and lets a user with the Settings update grant add or update a tenant-scoped setting.
+/// Settings (.docs/pages/settings.md): lists the key/value settings and lets a user with the Settings update grant add
+/// or update one.
 /// </summary>
 [Route("admin/settings")]
 [RequirePermission(PermissionAreas.Settings, PermissionActions.Read)]
@@ -60,10 +60,10 @@ public sealed class SettingsController : AdminControllerBase
         }
 
         var trimmed = key.Trim();
-        var setting = await _db.Settings.FirstOrDefaultAsync(s => s.TenantId == TenantId && s.Key == trimmed);
+        var setting = await _db.Settings.FirstOrDefaultAsync(s => s.Key == trimmed);
         if (setting is null)
         {
-            setting = new Setting { TenantId = TenantId, Key = trimmed };
+            setting = new Setting { Key = trimmed };
             _db.Settings.Add(setting);
         }
 
@@ -78,7 +78,6 @@ public sealed class SettingsController : AdminControllerBase
     {
         var settings = await _db.Settings
             .AsNoTracking()
-            .Where(s => s.TenantId == null || s.TenantId == TenantId)
             .OrderBy(s => s.Key)
             .Select(s => new { s.Key, s.Value })
             .ToListAsync();
