@@ -3,9 +3,8 @@ using DotNetForge.Data.Database;
 namespace DotNetForge.Data;
 
 /// <summary>
-/// Brings the main database up to date at startup and seeds baseline data. The provider decides how: SQL providers
-/// apply their committed migration set (<c>Migrations/</c>, <c>Migrations/PostgreSql/</c>, <c>Migrations/SqlServer/</c>,
-/// <c>Migrations/MySql/</c>); MongoDB creates missing collections and indexes (.docs/architecture/database.md).
+/// Brings the CMS database (PostgreSQL) up to date at startup - its committed migrations in
+/// <c>Database/Providers/PostgreSql/Migrations/</c> - and seeds baseline data (.docs/architecture/database.md).
 /// </summary>
 public static class DatabaseInitializer
 {

@@ -30,8 +30,8 @@ src/DotNetForge.Web/wwwroot/css/forge/public.css    .site-header, .site-main, .s
 ```text
 Error (_Layout, title "Error · DotNetForge CMS")
 ├── "Skip to content" link
-├── header.site-header: logo mark + "DotNetForge CMS" (→ /) · [Admin →] (/admin)
-│                       (brand falls back to "DotNetForge CMS" - Error() does not set AppName)
+├── header.site-header: logo mark + "DotNetForge CMS" (→ /) · [Admin →] (/admin, only for users who may enter the admin)
+│                       (brand falls back to "DotNetForge CMS" and no page menu - Error() sets neither AppName nor Menu)
 ├── main#main.site-main
 │   └── section.card > div.empty-state
 │       ├── triangle-alert icon
@@ -57,7 +57,8 @@ Anonymous.
 
 ## Validation, loading, empty states, user interactions
 
-Not applicable; two links (**Admin**, **Return home**) and the skip link.
+Not applicable; two links (**Admin**, only for signed-in users who may enter the admin (`Roles.CanEnterAdmin`), and
+**Return home**) and the skip link.
 
 ## Error handling
 

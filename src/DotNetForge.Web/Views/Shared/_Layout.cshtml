@@ -1,5 +1,13 @@
+@using System.Security.Claims
+@using DotNetForge.Shared.Constants
+@using DotNetForge.Shared.Content
 @{
     var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
+    // Top-level live pages marked "display in menu" (HomeController); the current one is highlighted.
+    var menu = ViewData["Menu"] as IReadOnlyList<PublishedPage> ?? Array.Empty<PublishedPage>();
+    var current = Context.Request.Path.Value?.TrimEnd('/') is { Length: > 0 } path ? path : "/";
+    // The Admin link only for signed-in users who may enter the admin; visitors don't see it.
+    var canEnterAdmin = User.Identity?.IsAuthenticated == true && Roles.CanEnterAdmin(User.FindAll(ClaimTypes.Role).Select(c => c.Value));
     var title = ViewData["Title"] as string;
     var description = ViewData["MetaDescription"] as string;
     var canonical = ViewData["CanonicalUrl"] as string;
@@ -57,7 +65,28 @@
                 <img src="~/img/logo-mark.svg" alt="" width="28" height="28" />
                 <span>@appName</span>
             </a>
-            <a class="btn btn-sm" href="/admin">Admin <icon name="arrow-right" size="sm" /></a>
+            @if (menu.Count > 0)
+            {
+                <nav class="site-nav" aria-label="Site">
+                    @foreach (var item in menu)
+                    {
+                        var active = string.Equals(item.Path, current, StringComparison.OrdinalIgnoreCase);
+                        <a href="@item.Path" aria-current="@(active ? "page" : null)">@item.Title</a>
+                    }
+                </nav>
+            }
+            @if (canEnterAdmin)
+            {
+                <a class="btn btn-sm" href="/admin">Admin <icon name="arrow-right" size="sm" /></a>
+            }
+            else if (User.Identity?.IsAuthenticated == true)
+            {
+                @* A site-only account (e.g. one that signed up at /register) signs out here; admins do it in the admin. *@
+                <form method="post" action="/account/logout">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm"><icon name="log-out" size="sm" /> Sign out</button>
+                </form>
+            }
         </div>
     </header>
     @* A page builder layout spans the full width (its sections set their own content width). *@

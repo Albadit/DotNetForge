@@ -32,7 +32,7 @@ things belong:
   `AuditService` entry, every API action has `[RequireApiPermission]`).
 - `.docs/architecture/dependencies.md` → *Dependencies that must not be bypassed*.
 - `.docs/implementation-status.md` → what is built vs. only planned, and which code has no runtime caller (e.g.
-  `IEmailSender` has no implementation, webhooks are not delivered).
+  webhooks are not delivered; email is sent only when `SMTP_*` is configured).
 - `.docs/guides/deployment.md` → the deployment directory is read-only: never write runtime files under the content
   root (use `IFileStorage` or the database); `ReadOnlyDeploymentTests` enforces it.
 - `.docs/features/security.md` → known gaps; don't widen them.

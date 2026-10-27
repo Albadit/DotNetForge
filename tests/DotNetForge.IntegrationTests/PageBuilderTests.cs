@@ -149,7 +149,7 @@ public sealed class PageBuilderTests
         using var visitor = factory.CreateNoRedirectClient();
         var anonymous = await visitor.GetAsync("/about");
         Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
-        Assert.StartsWith("/account/login", anonymous.Headers.Location?.OriginalString);
+        Assert.StartsWith("/login", anonymous.Headers.Location?.OriginalString);
         var page = await admin.GetStringAsync("/about");
         Assert.Contains("<meta name=\"robots\" content=\"noindex\" />", page);
         Assert.Contains("og:image", page);

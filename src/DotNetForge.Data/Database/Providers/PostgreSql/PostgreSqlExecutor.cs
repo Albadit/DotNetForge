@@ -125,6 +125,21 @@ public sealed class PostgreSqlExecutor : IDatabaseExecutor
         await command.ExecuteScalarAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<string>> ListCollectionsAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' ORDER BY table_name";
+        var names = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            names.Add(reader.GetString(0));
+        }
+
+        return names;
+    }
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     /// <summary>

@@ -80,7 +80,7 @@ the [Users](users.md) screen.
 
 ## Data used by the page
 
-Single-table queries combined in memory (every provider, including MongoDB): all `Roles`, `UserRoles` by
+Single-table queries combined in memory: all `Roles`, `UserRoles` by
 role ids (counts and members), `RolePermissions` by role ids, `Users` by member ids.
 
 ## State
@@ -170,7 +170,7 @@ flowchart LR
   code checks.
 - Seeded rows outside the catalog (e.g. `Media` / `publish`) aren't shown or counted, but are kept on save and copied
   by Duplicate.
-- Deleting removes `RolePermission` rows first (MongoDB has no cascading deletes).
+- Deleting removes `RolePermission` rows first.
 
 ## Known limitations
 

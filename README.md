@@ -8,7 +8,8 @@
 # DotNetForge CMS
 
 A modular, secure, lightweight **hybrid CMS** built on **ASP.NET Core MVC** (C#, EF Core, Razor),
-targeting **.NET 10**, with **SQLite** (default) and **PostgreSQL** support. It runs as a
+targeting **.NET 10**, on **PostgreSQL** (SQLite, SQL Server, MySQL and MongoDB can be added as extra databases for
+your own data). It runs as a
 **Traditional** CMS (visual admin), a **Headless** CMS (token-secured API), or **both at once**
 (**Hybrid**) over the same content.
 
@@ -26,7 +27,7 @@ built versus planned is in
 ## Requirements
 
 - [.NET SDK 10.0](https://dotnet.microsoft.com/download) (pinned via [`global.json`](global.json)).
-- Optionally PostgreSQL if you don't use the default SQLite provider.
+- PostgreSQL - e.g. `docker compose -f docker/databases/postgres.yml up -d` (Docker), or any PostgreSQL server.
 
 ## Quick start
 
@@ -34,7 +35,12 @@ built versus planned is in
 # 1. Configure the environment (secrets live in .env, never committed)
 cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
 
-# 2. Build everything (incl. extensions) and run the web app, from the repository root
+# 2. Start PostgreSQL and set DATABASE_CONNECTION_STRING in .env to
+#    Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+#    (or copy .env.developer instead of .env.example: it has it filled in)
+docker compose -f docker/databases/postgres.yml up -d
+
+# 3. Build everything (incl. extensions) and run the web app, from the repository root
 dotnet build
 dotnet run --project src/DotNetForge.Web
 ```
@@ -43,17 +49,18 @@ Then open <http://localhost:5000>. On first run the app redirects to **`/setup`*
 the first administrator (assigned the **Super Admin** role). After setup you land on the admin
 dashboard at **`/admin`**; the setup wizard is then permanently blocked.
 
-Optional: `docker compose -f docker/compose.dev.yml up -d` starts PostgreSQL and an S3-compatible server for developing
-against production-like backends ([development guide](.docs/guides/development.md#developing-against-postgresql-and-s3)).
+Optional: `cp .env.developer .env` and `docker compose -f docker/compose.dev.yml up -d` run the app against PostgreSQL,
+RustFS (S3) and Mailpit (SMTP); `docker compose -f docker/compose.app.yml up -d --build` runs the app itself in Docker
+([development guide](.docs/guides/development.md#docker-services-for-development)).
 
 ## Production
 
-The app runs from a **read-only deployment directory**: data goes to PostgreSQL (or SQLite on a volume), uploaded media
+The app runs from a **read-only deployment directory**: data goes to PostgreSQL, uploaded media
 to S3-compatible object storage (Cloudflare R2 recommended), and the Data Protection key ring to the database.
 
 ```bash
 docker build -f docker/Dockerfile -t dotnetforge .
-docker run --read-only --tmpfs /tmp -p 8080:8080 -e DATABASE_PROVIDER=postgresql -e "DATABASE_CONNECTION_STRING=Host=...;Database=..." \
+docker run --read-only --tmpfs /tmp -p 8080:8080 -e "DATABASE_CONNECTION_STRING=Host=...;Database=..." \
   -e STORAGE_S3_SERVICE_URL=... -e STORAGE_S3_BUCKET=... \
   -e STORAGE_S3_ACCESS_KEY_ID=... -e STORAGE_S3_SECRET_ACCESS_KEY=... dotnetforge
 ```
@@ -70,7 +77,7 @@ project; the web app is `src/DotNetForge.Web`.
 | `dotnet run --project src/DotNetForge.Web` | Builds and runs only the web app (http://localhost:5000; extensions as last built). |
 | `dotnet watch --project src/DotNetForge.Web` | Same, with hot reload. |
 | `dotnet build` | Builds the whole solution, including the sample extensions. |
-| `dotnet test` | Runs the unit and integration tests. |
+| `dotnet test` | Runs the unit and integration tests (the integration tests need PostgreSQL, [testing](.docs/guides/testing.md#databases)). |
 
 In VS Code, **F5** starts the debugger and **Run Build Task** offers build, run, watch and test tasks.
 
@@ -81,29 +88,25 @@ Copy `.env.example` to `.env` and set the values. Secrets are **never** committe
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `DATABASE_PROVIDER` | Recommended | `sqlite`, `postgresql`, `sqlserver`, `mysql` or `mongodb`; empty = detect from the connection string ([database configuration](.docs/database/configuration.md)). |
-| `DATABASE_CONNECTION_STRING` | Outside Development | The database's connection string; empty = SQLite at `storage/dotnetforge.db` (Development only). |
+| `DATABASE_CONNECTION_STRING` | Yes | The PostgreSQL connection string - the CMS database is always PostgreSQL; startup stops without it. |
+| `DATABASES_<NAME>_PROVIDER`, `DATABASES_<NAME>_CONNECTION_STRING` | No | Additional databases (SQLite, PostgreSQL, SQL Server, MySQL, MongoDB) for extensions, custom API endpoints and exports. |
 | `APP_NAME` | No | Display name. Defaults to `DotNetForge CMS`. |
-| `APP_URL` | No | Public base URL, e.g. `http://localhost:5000`. Must be absolute; currently only validated. |
+| `APP_URL` | No | Public base URL, e.g. `http://localhost:5000`. Must be absolute; used for the links in emails. |
 | `STORAGE_S3_*` | Outside Development | S3-compatible storage for uploads (bucket, keys, endpoint). Any provider works: the endpoint decides (R2, AWS S3, MinIO, Supabase). Empty in Development = `storage/media`. |
 
-Outside Development nothing may default into the deployment directory: SQLite needs an absolute path and media needs
-S3.
+Outside Development nothing defaults: the PostgreSQL connection string and S3 storage are required.
 
 Full reference: [.docs/features/configuration.md](.docs/features/configuration.md).
 
-### Switching to PostgreSQL
+### Another PostgreSQL server
 
 ```env
-DATABASE_PROVIDER=postgresql
-DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres
+DATABASE_CONNECTION_STRING=Host=db.example.com;Port=5432;Database=dotnetforge;Username=cms;Password=<secret>;GSS Encryption Mode=Disable
 ```
 
-SQL Server, MySQL and MongoDB work the same way; examples are in
+The app applies its committed EF Core migrations on startup; see
+[.docs/architecture/database.md](.docs/architecture/database.md). Additional databases:
 [.docs/database/configuration.md](.docs/database/configuration.md).
-
-Both providers apply their committed EF Core migrations on startup; see
-[.docs/architecture/database.md](.docs/architecture/database.md).
 
 ## Project layout
 
@@ -114,11 +117,11 @@ src/
   DotNetForge.*/         # Libraries: Abstractions, Shared, Core, Data, Content, Infrastructure, PageBuilder, Extensions, Sdk, Api
 tests/                   # DotNetForge.Tests (unit) + DotNetForge.IntegrationTests (integration)
 extensions/              # Your extensions, by type (themes, plugins, modules, widgets, admin, ...); read-only at runtime
-docker/                  # Dockerfile (+ its .dockerignore) and compose.dev.yml for local PostgreSQL + S3
+docker/                  # Dockerfile, compose.dev.yml (PostgreSQL + RustFS + Mailpit), compose.app.yml (app in Docker), databases/ s3/ mail/
 .docs/                   # Technical documentation (start at .docs/README.md), incl. planned work per topic
 .github/                 # CI workflow, Dependabot, and AI-agent quick references (.github/agents/)
 .claude/skills/          # Claude Code project skills
-storage/                 # Development only, git-ignored: local SQLite database and media
+storage/                 # Development only, git-ignored: local media (and SQLite additional databases)
 ```
 
 See [.docs/architecture/overview.md](.docs/architecture/overview.md) for a one-page architecture summary and

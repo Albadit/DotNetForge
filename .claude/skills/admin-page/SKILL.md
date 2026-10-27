@@ -5,7 +5,7 @@ description: >-
   AdminControllerBase, attribute route under /admin, role restriction, view model, Razor view built from the Forge
   design system, POST + antiforgery + audit for mutations, sidebar link, and the matching .docs/pages document. Use when
   asked to build an admin page/screen, replace one of the module placeholders (Marketplace, Content History,
-  Internationalization, Transfer, Webhooks, Email Configuration/Templates, Providers, Advanced Settings), or add an
+  Internationalization, Webhooks, Providers), or add an
   action/form to an existing admin screen.
 ---
 
@@ -62,7 +62,7 @@ Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.doc
    section/group of `AdminNavigation.Tree` (`src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs`); when
    replacing a placeholder, change its controller type and drop `Planned: true`. Visibility per role (from the
    controller's `[Authorize]`), active state and breadcrumbs follow - hiding is never the gate.
-7. **Tests** - integration test in `tests/DotNetForge.IntegrationTests`: anonymous → 302 `/account/login`; after
+7. **Tests** - integration test in `tests/DotNetForge.IntegrationTests`: anonymous → 302 `/login`; after
    `factory.InstallAsync()` + sign-in → 200 (see `.docs/guides/testing.md` for the antiforgery pattern). Add the route
    to `AdminUiTests.AdminScreens` (CSP, one `<h1>`, skip link).
 8. **Docs** - create/update `.docs/pages/<screen>.md` using

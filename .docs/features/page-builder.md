@@ -202,8 +202,9 @@ Plain ES modules loaded by `Index.cshtml` (`<script type="module" src="/js/build
   template copy shows) and `Ghost`. The first copy of an item template is the editable one (with `data-pe-id`); the
   other copies are rendered without hooks, so clicking them selects the list. A change inside a template rebuilds its
   list (`frame.js`), and new preview data re-renders the canvas. Text bound to a field is not edited inline.
-- The canvas is a same-origin iframe (`GET canvas`): the page as the site shows it - the page's theme
-  (`ThemeResolver`, as `HomeController` resolves it) with its header, menu and footer, or the built-in page view -
+- The canvas is a same-origin iframe (`GET canvas`): the page as the site shows it - the page's theme, its
+  own or one a parent hands down (`ThemeResolver.PageThemeIdAsync`, as `HomeController` resolves it), with its header,
+  menu and footer, or the built-in page view (with the built-in header menu) -
   where `PageLayoutViewComponent` emits an empty `#pe-canvas-mount` and `canvas.css` instead of the layout
   (`ViewData["BuilderCanvas"]`). The editor renders the layout into the mount with the JS renderer and patches only
   the changed nodes. `GET preview` renders the draft through the same theme.

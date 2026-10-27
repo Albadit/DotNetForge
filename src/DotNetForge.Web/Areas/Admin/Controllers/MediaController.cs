@@ -9,10 +9,11 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Media library (.docs/pages/media.md): list, upload, change visibility and delete. File bytes
-/// live in <c>IFileStorage</c>; rules are in <see cref="MediaService"/>. Upload needs <c>Media/create</c>; changing
-/// public/private needs <c>Media/update</c> (or <c>update.own</c>); delete needs <c>Media/delete</c> (or
-/// <c>delete.own</c>) - the "own" grants for files the user uploaded.
+/// Media library (.docs/pages/media.md): browse folders, upload, change visibility, move and delete. File bytes
+/// live in <c>IFileStorage</c>; rules are in <see cref="MediaService"/> and <see cref="MediaFolderService"/> (folders
+/// are virtual). Upload and creating folders need <c>Media/create</c>; changing public/private and moving files need
+/// <c>Media/update</c> (or <c>update.own</c>); renaming and moving folders <c>Media/update</c>; delete needs
+/// <c>Media/delete</c> (or <c>delete.own</c> for files) - the "own" grants for files the user uploaded.
 /// </summary>
 [Route("admin/media")]
 [RequirePermission(PermissionAreas.Media, PermissionActions.Read)]
@@ -23,21 +24,157 @@ public sealed class MediaController : AdminControllerBase
 
     private readonly DotNetForgeDbContext _db;
     private readonly MediaService _media;
+    private readonly MediaFolderService _folders;
 
-    public MediaController(DotNetForgeDbContext db, MediaService media)
+    public MediaController(DotNetForgeDbContext db, MediaService media, MediaFolderService folders)
     {
         _db = db;
         _media = media;
+        _folders = folders;
     }
 
+    /// <summary>The library at the top level, or inside <paramref name="folder"/>.</summary>
     [HttpGet("")]
-    public async Task<IActionResult> Index() => View(await BuildIndexAsync());
+    public async Task<IActionResult> Index(Guid? folder)
+    {
+        if (folder is { } id && !await _db.MediaFolders.AnyAsync(f => f.Id == id))
+        {
+            return NotFound();
+        }
+
+        return View(await BuildIndexAsync(folder));
+    }
+
+    [HttpPost("folders")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateFolder(Guid? parentId, string? name)
+    {
+        if (!Can(PermissionAreas.Media, PermissionActions.Create))
+        {
+            return Forbid();
+        }
+
+        // CreateAsync writes the MediaFolderCreated audit entry.
+        var (folder, error) = await _folders.CreateAsync(parentId, name, CurrentUserId, HttpContext.RequestAborted);
+        if (folder is null)
+        {
+            TempData["Error"] = error;
+            return Back(parentId);
+        }
+
+        TempData["Success"] = $"Created the folder '{folder.Name}'.";
+        return Back(parentId);
+    }
+
+    [HttpPost("folders/{id:guid}/rename")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RenameFolder(Guid id, string? name)
+    {
+        if (!Can(PermissionAreas.Media, PermissionActions.Update))
+        {
+            return Forbid();
+        }
+
+        // RenameAsync writes the MediaFolderUpdated audit entry.
+        var error = await _folders.RenameAsync(id, name, HttpContext.RequestAborted);
+        TempData[error is null ? "Success" : "Error"] = error ?? "Folder renamed.";
+        return Back(id);
+    }
+
+    [HttpPost("folders/{id:guid}/move")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MoveFolder(Guid id, Guid? parentId)
+    {
+        if (!Can(PermissionAreas.Media, PermissionActions.Update))
+        {
+            return Forbid();
+        }
+
+        // MoveAsync writes the MediaFolderUpdated audit entry.
+        var error = await _folders.MoveAsync(id, parentId, HttpContext.RequestAborted);
+        TempData[error is null ? "Success" : "Error"] = error ?? "Folder moved.";
+        return Back(id);
+    }
+
+    [HttpPost("folders/{id:guid}/delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteFolder(Guid id)
+    {
+        if (!Can(PermissionAreas.Media, PermissionActions.Delete))
+        {
+            return Forbid();
+        }
+
+        var parentId = await _db.MediaFolders.Where(f => f.Id == id).Select(f => f.ParentId).FirstOrDefaultAsync();
+        // DeleteAsync writes the MediaFolderDeleted audit entry; a folder with content is refused.
+        var error = await _folders.DeleteAsync(id, HttpContext.RequestAborted);
+        if (error is not null)
+        {
+            TempData["Error"] = error;
+            return Back(id);
+        }
+
+        TempData["Success"] = "Folder deleted.";
+        return Back(parentId);
+    }
+
+    /// <summary>Moves the selected files into <paramref name="folderId"/> (empty = top level); same checks per file as visibility.</summary>
+    [HttpPost("move-selected")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MoveSelected(List<Guid> ids, Guid? folderId, Guid? returnFolder)
+    {
+        ids = ids.Distinct().ToList();
+        if (ids.Count == 0 || ids.Count > MaxBulkDelete)
+        {
+            TempData["Error"] = ids.Count == 0 ? "Select at least one file." : $"Move at most {MaxBulkDelete} files at a time.";
+            return Back(returnFolder);
+        }
+
+        string? targetPath = null;
+        if (folderId is { } target)
+        {
+            targetPath = await _db.MediaFolders.Where(f => f.Id == target).Select(f => f.Path).FirstOrDefaultAsync();
+            if (targetPath is null)
+            {
+                TempData["Error"] = "The target folder no longer exists.";
+                return Back(returnFolder);
+            }
+        }
+
+        var files = await _db.MediaFiles.Where(m => ids.Contains(m.Id)).ToListAsync();
+        var moved = 0;
+        var refused = 0;
+        foreach (var file in files)
+        {
+            if (!CanModify(PermissionAreas.Media, PermissionActions.Update, PermissionActions.UpdateOwn, file.UploadedById))
+            {
+                refused++;
+                continue;
+            }
+
+            // MoveFileAsync writes a MediaMoved audit entry per file.
+            await _folders.MoveFileAsync(file, folderId, targetPath, HttpContext.RequestAborted);
+            moved++;
+        }
+
+        if (moved > 0)
+        {
+            TempData["Success"] = $"Moved {(moved == 1 ? "1 file" : $"{moved} files")} to {targetPath ?? "the top level"}.";
+        }
+
+        if (refused > 0)
+        {
+            TempData["Error"] = $"{refused} {(refused == 1 ? "file was" : "files were")} not moved: your role may not change them.";
+        }
+
+        return Back(returnFolder);
+    }
 
     [HttpPost("upload")]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(MaxRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestBytes)]
-    public async Task<IActionResult> Upload(List<IFormFile> files, bool isPublic)
+    public async Task<IActionResult> Upload(List<IFormFile> files, bool isPublic, Guid? folderId)
     {
         if (!Can(PermissionAreas.Media, PermissionActions.Create))
         {
@@ -53,15 +190,21 @@ public sealed class MediaController : AdminControllerBase
             ModelState.AddModelError(string.Empty, $"Upload at most {MediaService.MaxFilesPerUpload} files at a time.");
         }
 
+        if (folderId is { } target && !await _db.MediaFolders.AnyAsync(f => f.Id == target))
+        {
+            ModelState.AddModelError(string.Empty, "That folder no longer exists.");
+            folderId = null;
+        }
+
         if (!ModelState.IsValid)
         {
-            return View(nameof(Index), await BuildIndexAsync());
+            return View(nameof(Index), await BuildIndexAsync(folderId));
         }
 
         var uploaded = 0;
         foreach (var file in files)
         {
-            var (saved, error) = await _media.UploadAsync(file, isPublic, CurrentUserId, HttpContext.RequestAborted);
+            var (saved, error) = await _media.UploadAsync(file, isPublic, CurrentUserId, folderId, ct: HttpContext.RequestAborted);
             if (error is not null)
             {
                 ModelState.AddModelError(string.Empty, error);
@@ -75,11 +218,11 @@ public sealed class MediaController : AdminControllerBase
         if (!ModelState.IsValid)
         {
             // Some files failed: show which, alongside the ones that were stored.
-            return View(nameof(Index), await BuildIndexAsync());
+            return View(nameof(Index), await BuildIndexAsync(folderId));
         }
 
         TempData["Success"] = uploaded == 1 ? "Uploaded 1 file." : $"Uploaded {uploaded} files.";
-        return RedirectToAction(nameof(Index));
+        return Back(folderId);
     }
 
     [HttpPost("visibility/{id:guid}")]
@@ -101,7 +244,7 @@ public sealed class MediaController : AdminControllerBase
         TempData["Success"] = isPublic
             ? $"'{file.FileName}' is now public: anyone with the link can open it."
             : $"'{file.FileName}' is now private: only signed-in admin users can open it.";
-        return RedirectToAction(nameof(Index));
+        return Back(file.FolderId);
     }
 
     [HttpPost("delete/{id:guid}")]
@@ -121,7 +264,7 @@ public sealed class MediaController : AdminControllerBase
 
         await _media.DeleteAsync(file, HttpContext.RequestAborted);
         TempData["Success"] = $"Deleted '{file.FileName}'.";
-        return RedirectToAction(nameof(Index));
+        return Back(file.FolderId);
     }
 
     /// <summary>Most files one bulk delete accepts.</summary>
@@ -134,13 +277,13 @@ public sealed class MediaController : AdminControllerBase
     /// </summary>
     [HttpPost("delete-selected")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteSelected(List<Guid> ids)
+    public async Task<IActionResult> DeleteSelected(List<Guid> ids, Guid? returnFolder)
     {
         ids = ids.Distinct().ToList();
         if (ids.Count == 0 || ids.Count > MaxBulkDelete)
         {
             TempData["Error"] = ids.Count == 0 ? "Select at least one file." : $"Delete at most {MaxBulkDelete} files at a time.";
-            return RedirectToAction(nameof(Index));
+            return Back(returnFolder);
         }
 
         var files = await _db.MediaFiles.Where(m => ids.Contains(m.Id)).ToListAsync();
@@ -172,25 +315,59 @@ public sealed class MediaController : AdminControllerBase
             TempData["Error"] = "None of the selected files exist any more.";
         }
 
-        return RedirectToAction(nameof(Index));
+        return Back(returnFolder);
     }
 
-    private async Task<MediaIndexViewModel> BuildIndexAsync()
+    /// <summary>Back to the library, in <paramref name="folder"/> when there is one.</summary>
+    private RedirectResult Back(Guid? folder) => Redirect(folder is { } id ? $"/admin/media?folder={id}" : "/admin/media");
+
+    private async Task<MediaIndexViewModel> BuildIndexAsync(Guid? folderId)
     {
+        var folders = await _folders.AllAsync(HttpContext.RequestAborted);
+        var current = folderId is { } id ? folders.FirstOrDefault(f => f.Id == id) : null;
         var rows = await _db.MediaFiles
             .AsNoTracking()
+            .Where(m => m.FolderId == folderId)
             .OrderByDescending(m => m.UploadedDate)
             .Select(m => new { m.Id, m.FileName, m.ContentType, m.SizeBytes, m.IsPublic, m.UploadedDate, m.UploadedById })
             .ToListAsync();
+
+        // Content counts of the subfolders shown here (single-table queries, combined in memory).
+        var children = folders.Where(f => f.ParentId == folderId).ToList();
+        var childIds = children.Select(f => f.Id).ToList();
+        var fileCounts = await _db.MediaFiles.AsNoTracking()
+            .Where(m => m.FolderId != null && childIds.Contains(m.FolderId.Value))
+            .GroupBy(m => m.FolderId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Key!.Value, g => g.Count);
 
         var canDeleteAny = Can(PermissionAreas.Media, PermissionActions.Delete);
         var canDeleteOwn = Can(PermissionAreas.Media, PermissionActions.DeleteOwn);
         var canUpdateAny = Can(PermissionAreas.Media, PermissionActions.Update);
         var canUpdateOwn = Can(PermissionAreas.Media, PermissionActions.UpdateOwn);
 
+        var breadcrumbs = new List<MediaFolderLink>();
+        for (var f = current; f is not null; f = f.ParentId is { } parent ? folders.FirstOrDefault(x => x.Id == parent) : null)
+        {
+            breadcrumbs.Insert(0, new MediaFolderLink(f.Id, f.Name, f.Path));
+        }
+
         return new MediaIndexViewModel
         {
             CanUpload = Can(PermissionAreas.Media, PermissionActions.Create),
+            CanEditFolders = canUpdateAny,
+            CanDeleteFolders = canDeleteAny,
+            Current = current is null ? null : new MediaFolderLink(current.Id, current.Name, current.Path),
+            Breadcrumbs = breadcrumbs,
+            Folders = children.Select(f => new MediaFolderRowViewModel
+            {
+                Id = f.Id,
+                Name = f.Name,
+                Path = f.Path,
+                Files = fileCounts.GetValueOrDefault(f.Id),
+                Folders = folders.Count(x => x.ParentId == f.Id),
+            }).ToList(),
+            AllFolders = folders.Select(f => new MediaFolderLink(f.Id, f.Name, f.Path)).ToList(),
             Files = rows.Select(m => new MediaRowViewModel
             {
                 Id = m.Id,

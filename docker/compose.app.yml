@@ -1,0 +1,54 @@
+# DotNetForge CMS built from docker/Dockerfile and run like production (Production environment, read-only root
+# filesystem, non-root) against the development services of docker/compose.dev.yml (.docs/guides/deployment.md#docker).
+#   docker compose -f docker/compose.app.yml up -d --build
+#   open http://localhost:8080 → /setup on the first start
+# Stop with "docker compose -f docker/compose.app.yml down" (add -v to delete the data).
+#
+# Media links: the app signs download URLs with STORAGE_S3_SERVICE_URL and the browser opens them, so the address must
+# work inside and outside Docker. rustfs.localhost does: browsers resolve *.localhost to 127.0.0.1 (the published
+# port 9000), containers reach RustFS through its network alias of that name (docker/s3/rustfs.yml).
+# The auth cookie is Secure-only outside Development; browsers accept it on http://localhost.
+# Development only: every password and key here is public.
+
+name: dotnetforge
+
+include:
+  - databases/postgres.yml
+  - s3/rustfs.yml
+  - mail/mailpit.yml
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: dotnetforge:local
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs-bucket:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    environment:
+      APP_NAME: DotNetForge CMS
+      APP_URL: http://localhost:8080
+      DATABASE_CONNECTION_STRING: Host=postgres;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+      STORAGE_S3_SERVICE_URL: http://rustfs.localhost:9000
+      STORAGE_S3_BUCKET: dotnetforge
+      STORAGE_S3_ACCESS_KEY_ID: dotnetforge-dev
+      STORAGE_S3_SECRET_ACCESS_KEY: dotnetforge-dev-secret
+      STORAGE_S3_REGION: us-east-1
+      STORAGE_S3_FORCE_PATH_STYLE: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_USERNAME: dotnetforge
+      SMTP_PASSWORD: dotnetforge-dev
+      SMTP_FROM: cms@dotnetforge.test
+      SMTP_FROM_NAME: DotNetForge CMS (docker)
+      SMTP_TLS: "false"
+    ports:
+      - "8080:8080"

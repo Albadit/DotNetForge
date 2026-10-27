@@ -7,11 +7,13 @@ Full guide: [development.md](../../.docs/guides/development.md). Testing: [testi
 - From the repository root: `dotnet run --project src/DotNetForge.Web`, `dotnet watch --project src/DotNetForge.Web`,
   `dotnet build`, `dotnet test` (solution `DotNetForge.slnx`).
 - Tests: `dotnet test tests/DotNetForge.Tests`, `dotnet test tests/DotNetForge.IntegrationTests`.
-- Migrations: `dotnet tool restore`, then add the migration for **each SQL context** (`DotNetForgeDbContext`,
-  `PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext`, output `Database/Providers/<Database>/Migrations/`,
-  with `--project/--startup-project src/DotNetForge.Data`); see the `database-change` skill.
-- Optional backends: `docker compose -f docker/compose.dev.yml up -d` (PostgreSQL + S3); `DNF_TEST_POSTGRES` and
-  `DNF_TEST_S3_*` run the tests against them.
+- Migrations: `dotnet tool restore`, then **one** migration for `PostgreSqlDbContext` (output
+  `Database/Providers/PostgreSql/Migrations/`, with `--project/--startup-project src/DotNetForge.Data`); see the
+  `database-change` skill.
+- PostgreSQL is required (the CMS database and the integration tests): `docker compose -f docker/databases/postgres.yml up -d`
+  (`DNF_TEST_POSTGRES` overrides the test server). Optional: `docker compose -f docker/compose.dev.yml up -d`
+  (PostgreSQL + RustFS S3 + Mailpit, for `.env.developer`; one file per service in `docker/databases|s3|mail/`);
+  `DNF_TEST_S3_*` runs the live S3 tests, `DNF_TEST_SQLSERVER`/`_MYSQL`/`_MONGODB` the additional-database tests.
 
 ## Layering rules
 

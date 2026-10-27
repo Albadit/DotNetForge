@@ -68,8 +68,7 @@ sequenceDiagram
 ```
 
 Concurrency: two simultaneous submissions both pass the service's pre-check; the store re-reads `SystemState`
-inside its transaction. On **SQLite** writes are serialized, so the second commit fails (`DbUpdateException` →
-"The CMS is already installed.") and the first writer wins. On **PostgreSQL** (default `READ COMMITTED`) both
+inside its transaction. On PostgreSQL (default `READ COMMITTED`) both
 transactions can read `Installed = false` and both commit - two Super Admins - because `SystemState` has no
 concurrency token; only identical emails collide on the unique `Email` index. See the edge case under
 [Planned](#planned-not-implemented).
@@ -103,9 +102,9 @@ columns, so an over-long value is a validation message instead of a database err
 ## Before the first start
 
 Configuration is validated at process start, before the wizard can run ([configuration](configuration.md)). Outside
-Development the defaults inside the deployment directory are refused: SQLite needs an explicit
-`DATABASE_CONNECTION_STRING` with an absolute `Data Source` (in-memory allowed), and media needs S3 storage
-(`STORAGE_S3_*`) - otherwise the process exits with a configuration error. See [deployment](../guides/deployment.md#read-only-deployment-requirements) and
+Development nothing defaults: the PostgreSQL `DATABASE_CONNECTION_STRING` and S3 storage (`STORAGE_S3_*`) are
+required - otherwise the process exits with a configuration error. In Development the CMS database defaults to the
+local PostgreSQL (`localhost:5432`), which must be running before the wizard can open. See [deployment](../guides/deployment.md#read-only-deployment-requirements) and
 [environment variables](../guides/deployment.md#environment-variables).
 
 ## Not implemented
@@ -143,7 +142,7 @@ The `.env` part of the same specification is in [configuration → Planned](conf
 
 | Case | Target | Today |
 | --- | --- | --- |
-| Concurrent submissions | Exactly one Super Admin; the loser gets "already installed" | `InstallationStore` re-reads `SystemState` inside the transaction. SQLite serialises writers; under PostgreSQL's default `READ COMMITTED` two transactions that both read `Installed = false` can both commit (no concurrency token on `SystemState`). No test covers it. |
+| Concurrent submissions | Exactly one Super Admin; the loser gets "already installed" | `InstallationStore` re-reads `SystemState` inside the transaction; under PostgreSQL's default `READ COMMITTED` two transactions that both read `Installed = false` can both commit (no concurrency token on `SystemState`). No test covers it. |
 | Duplicate email on create | Fail with a clear error, stay uninstalled | Rolled back, but the `DbUpdateException` is reported as `The CMS is already installed.` |
 | Database unreachable at startup | Clear error, no wizard | unhandled exception (see Requirements) |
 

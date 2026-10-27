@@ -38,6 +38,10 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 | `UserLogin` | `user.login` | `AccountController.Login` (success; `HttpContext.User` is set to the new principal first, so the entry carries the user); `ExternalLoginController.Callback` (details `via <provider>`) | `User`, id, email |
 | `UserLoginFailed` | `user.login.failed` | `AccountController.Login` (any failure; `success: false`); `ExternalLoginController` (details `via <provider>` or `external sign-in`) | `User`, no id, the typed / provider email |
 | `UserLogout` | `user.logout` | `AccountController.Logout` | - |
+| `UserRegistered` | `user.registered` | `AccountService.RegisterAsync` (`/register`; details `Role: <name>`; anonymous actor) | `User`, id, email |
+| `PasswordResetRequested` | `user.password.reset.requested` | `AccountService.RequestPasswordResetAsync` (`success` = an enabled account matched; anonymous) | `User`, id when matched, the typed email |
+| `PasswordReset` | `user.password.reset` | `AccountService.ResetPasswordAsync` (a reset link was used) | `User`, id, email |
+| `EmailConfirmed` | `user.email.confirmed` | `AccountService.ConfirmEmailAsync` (first use of a confirmation link) | `User`, id, email |
 | `UserCreated` | `user.created` | `UserManagementService.CreateAsync` (from `UsersController.Create`) | `User`, id, email |
 | `UserUpdated` | `user.updated` | `UserManagementService.UpdateAsync` / `.SetStatusAsync` (details `Enabled` / `Disabled`); `ProfileService` (details `Own profile` / `Own password changed`) | `User`, id, email |
 | `UserDeleted` | `user.deleted` | `UserManagementService.DeleteAsync` | `User`, id, email |
@@ -65,7 +69,17 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 | `MediaUploaded` | `media.uploaded` | `MediaService.UploadAsync` (per stored file, from `MediaController.Upload`) | `MediaFile`, id, file name |
 | `MediaDeleted` | `media.deleted` | `MediaService.DeleteAsync` (from `MediaController.Delete`) | `MediaFile`, id, file name |
 | `MediaUpdated` | `media.updated` | `MediaService.SetVisibilityAsync` (from `MediaController.Visibility`; details `Made public` / `Made private`) | `MediaFile`, id, file name |
-| `SettingsChanged` | `settings.changed` | `SettingsController.Save` | `Setting`, key, key (value not recorded) |
+| `MediaMoved` | `media.moved` | `MediaFolderService.MoveFileAsync` (from `MediaController.MoveSelected`, per file; details `To <path>`) | `MediaFile`, id, file name |
+| `MediaFolderCreated` | `media.folder.created` | `MediaFolderService.CreateAsync` (from `MediaController.CreateFolder`) | `MediaFolder`, id, path |
+| `MediaFolderUpdated` | `media.folder.updated` | `MediaFolderService.RenameAsync` / `MoveAsync` (details `Renamed from …` / `Moved from …`) | `MediaFolder`, id, new path |
+| `MediaFolderDeleted` | `media.folder.deleted` | `MediaFolderService.DeleteAsync` (empty folders only) | `MediaFolder`, id, path |
+| `SettingsChanged` | `settings.changed` | `SettingsController.Save`; `UserAccountSettingsService.SaveAsync` (display "Advanced User Settings"); `EmailConfigurationController` connection test and test sends (display "Email configuration"; details "Connection test passed/failed", "Test email sent", "Test of '<template>' failed" ...; a failure `success: false`); `EmailTemplateService` save / restore (entity `EmailTemplate`, key, "Email template: <name>"); `DatabaseTransferService.SaveScheduleAsync` (display "Backup schedule", details the schedule) | `Setting`, key (or none), key or screen name (value not recorded) |
+| `TransferExported` | `transfer.exported` | `DatabaseTransferService.ExportAsync` (from `DataManagementController.Export`; a failure `success: false`) | `TransferRecord`, id, file name |
+| `BackupCreated` | `transfer.backup.created` | `DatabaseTransferService` - Back up now, automatic backups (no user; details "Automatic") and the safety backup before an import (details its note) | `TransferRecord`, id, file name |
+| `BackupDownloaded` | `transfer.backup.downloaded` | `DatabaseTransferService.OpenBackupAsync` (from `DataManagementController.Download`) | `TransferRecord`, id, file name |
+| `BackupDeleted` | `transfer.backup.deleted` | `DatabaseTransferService.DeleteBackupAsync`; pruning of automatic backups (details "Older than the newest n automatic backups") | `TransferRecord`, id, file name |
+| `TransferImported` | `transfer.imported` | `DatabaseTransferService.ImportAsync` (Development; details `<source> → <target>`; a refused or failed import `success: false` with the reason) | `TransferRecord`, id, file name |
+| `BackupRestored` | `transfer.backup.restored` | `DatabaseTransferService.RestoreAsync` (Development; like `TransferImported`) | `TransferRecord`, id, file name |
 | `ApiTokenCreated` | `apitoken.created` | `ApiTokensController.Create` | `ApiToken`, id, name |
 | `ApiTokenRevoked` | `apitoken.revoked` | `ApiTokensController.Revoke` | `ApiToken`, id, name |
 | `PluginEnabled` | `plugin.enabled` | `ExtensionLifecycleService.EnableAsync` (from `PluginsController.Enable`) | `Extension`, manifest id, name |

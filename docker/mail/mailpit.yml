@@ -1,0 +1,25 @@
+# Mailpit: an SMTP server that keeps every message in a web inbox (http://localhost:8026) instead of delivering it
+# (.docs/guides/development.md#production-like-s3-and-email). Also part of docker/compose.dev.yml.
+#   docker compose -f docker/mail/mailpit.yml up -d
+# .env (as in .env.developer):
+#   SMTP_HOST=localhost
+#   SMTP_PORT=1026
+#   SMTP_USERNAME=dotnetforge
+#   SMTP_PASSWORD=dotnetforge-dev
+#   SMTP_FROM=cms@dotnetforge.test
+#   SMTP_TLS=false
+# It requires a sign-in like a real mail server; TLS stays off (the app checks certificates, Mailpit's would be
+# self-signed). Ports 1026/8026 so it runs beside another Mailpit on the default 1025/8025. Development only.
+
+name: dotnetforge
+
+services:
+  mailpit:
+    image: axllent/mailpit:v1.31
+    environment:
+      MP_SMTP_AUTH: "dotnetforge:dotnetforge-dev"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+      MP_MAX_MESSAGES: 500
+    ports:
+      - "1026:1025"
+      - "8026:8025"

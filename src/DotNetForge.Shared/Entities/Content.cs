@@ -56,6 +56,12 @@ public class Page
     /// <summary>Theme extension id for this page; null = the site's theme (.docs/features/themes.md).</summary>
     public string? ThemeId { get; set; }
 
+    /// <summary>
+    /// Child pages without a theme of their own use <see cref="ThemeId"/> too - and their children, down to the next page
+    /// that sets its own theme.
+    /// </summary>
+    public bool ThemeForChildren { get; set; }
+
     /// <summary>Asks search engines not to index the page (<c>robots: noindex</c>).</summary>
     public bool NoIndex { get; set; }
 
@@ -147,11 +153,34 @@ public class MediaFile
 
     public string RelativePath { get; set; } = string.Empty;
 
-    public string FolderPath { get; set; } = "/";
+    /// <summary>The library folder it is shown in (<see cref="MediaFolder"/>); null = the top level. Folders are virtual:
+    /// moving a file never moves its stored object.</summary>
+    public Guid? FolderId { get; set; }
 
     public bool IsPublic { get; set; } = true;
 
     public Guid? UploadedById { get; set; }
 
     public DateTime UploadedDate { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// A folder of the media library (.docs/pages/media.md#folders): nested by <see cref="ParentId"/>, with the
+/// materialized <see cref="Path"/> ("/Photos/2026") for breadcrumbs, uniqueness and "is it inside" checks.
+/// </summary>
+public class MediaFolder
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The parent folder; null = the top level of the library.</summary>
+    public Guid? ParentId { get; set; }
+
+    /// <summary>"/" + the names from the top, e.g. <c>/Photos/2026</c>. Unique; kept in sync on rename and move.</summary>
+    public string Path { get; set; } = string.Empty;
+
+    public Guid? CreatedById { get; set; }
+
+    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 }

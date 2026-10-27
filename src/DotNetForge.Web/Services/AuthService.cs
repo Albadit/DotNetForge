@@ -15,6 +15,9 @@ public enum SignInStatus
     InvalidCredentials,
     Disabled,
     LockedOut,
+
+    /// <summary>The password is right, but email confirmation is on and this account hasn't confirmed its email yet.</summary>
+    EmailNotConfirmed,
 }
 
 public sealed record SignInResult(SignInStatus Status, ClaimsPrincipal? Principal, User? User);
@@ -32,12 +35,17 @@ public sealed class AuthService
     private readonly DotNetForgeDbContext _db;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IDateTimeProvider _clock;
+    private readonly UserAccountSettingsService _accountSettings;
+    private readonly AccountService _accounts;
 
-    public AuthService(DotNetForgeDbContext db, IPasswordHasher passwordHasher, IDateTimeProvider clock)
+    public AuthService(DotNetForgeDbContext db, IPasswordHasher passwordHasher, IDateTimeProvider clock, UserAccountSettingsService accountSettings,
+        AccountService accounts)
     {
         _db = db;
         _passwordHasher = passwordHasher;
         _clock = clock;
+        _accountSettings = accountSettings;
+        _accounts = accounts;
     }
 
     public async Task<SignInResult> ValidateAsync(
@@ -66,18 +74,31 @@ public sealed class AuthService
         if (!_passwordHasher.Verify(password ?? string.Empty, user.PasswordHash))
         {
             user.FailedLoginCount++;
-            if (user.FailedLoginCount >= MaxFailedAttempts)
+            var lockedNow = user.FailedLoginCount >= MaxFailedAttempts;
+            if (lockedNow)
             {
                 user.LockoutEndUtc = _clock.UtcNow.Add(LockoutWindow);
                 user.FailedLoginCount = 0;
             }
 
             await _db.SaveChangesAsync(cancellationToken);
+            if (lockedNow)
+            {
+                // The "Account locked" email (Email → Templates); nothing without SMTP, a failed send is only logged.
+                await _accounts.SendAccountLockedAsync(user, LockoutWindow, cancellationToken);
+            }
+
             return new SignInResult(SignInStatus.InvalidCredentials, null, null);
         }
 
         user.FailedLoginCount = 0;
         user.LockoutEndUtc = null;
+        if (!user.EmailConfirmed && (await _accountSettings.GetAsync(cancellationToken)).EmailConfirmation)
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            return new SignInResult(SignInStatus.EmailNotConfirmed, null, user);
+        }
+
         return await CompleteSignInAsync(user, cancellationToken);
     }
 

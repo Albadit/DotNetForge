@@ -72,11 +72,11 @@ All versions are pinned centrally in `Directory.Packages.props` (`ManagePackageV
 | --- | --- | --- | --- |
 | `Microsoft.EntityFrameworkCore` | 10.0.12 | Data | ORM |
 | `Microsoft.EntityFrameworkCore.Relational` | 10.0.12 | Data | relational APIs (transactions, migrations) |
-| `Microsoft.EntityFrameworkCore.Sqlite` | 10.0.12 | Data | default provider |
-| `Npgsql.EntityFrameworkCore.PostgreSQL` | 10.0.3 | Data | PostgreSQL provider |
-| `Microsoft.EntityFrameworkCore.SqlServer` | 10.0.12 | Data | SQL Server provider (needs ICU: `InvariantGlobalization=false`) |
-| `MySql.EntityFrameworkCore` | 10.0.9 | Data | MySQL provider (Oracle; Pomelo has no EF Core 10 release) |
-| `MongoDB.EntityFrameworkCore` | `[10.0.4]` (pinned) | Data | MongoDB provider; brings `MongoDB.Driver`, used natively by `MongoExecutor` |
+| `Npgsql.EntityFrameworkCore.PostgreSQL` | 10.0.3 | Data | PostgreSQL provider - the CMS database (and PostgreSQL additional databases) |
+| `Microsoft.EntityFrameworkCore.Sqlite` | 10.0.12 | Data | SQLite additional databases (brings `Microsoft.Data.Sqlite`) |
+| `Microsoft.EntityFrameworkCore.SqlServer` | 10.0.12 | Data | SQL Server additional databases (brings `Microsoft.Data.SqlClient`; needs ICU: `InvariantGlobalization=false`) |
+| `MySql.EntityFrameworkCore` | 10.0.9 | Data | MySQL additional databases (Oracle, brings `MySql.Data`; Pomelo has no EF Core 10 release) |
+| `MongoDB.EntityFrameworkCore` | `[10.0.4]` (pinned) | Data | MongoDB additional databases; brings `MongoDB.Driver`, used natively by `MongoExecutor` |
 | `Microsoft.EntityFrameworkCore.Design` | 10.0.12 | Data only, `PrivateAssets="all"` | `dotnet ef` design-time support; does not flow into the web host or the publish output |
 | `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` | 10.0.12 | Data | `IDataProtectionKeyContext`, `PersistKeysToDbContext` - Data Protection key ring in the database |
 | `AWSSDK.S3` | 4.0.104.1 | Infrastructure (also the S3 connector sample, compile-only) | `S3FileStorage` (any S3-compatible service, presigned URLs) |
@@ -84,7 +84,7 @@ All versions are pinned centrally in `Directory.Packages.props` (`ManagePackageV
 | `Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation` | 10.0.12 | Web | compiles extension views from `extensions/` at runtime, in memory |
 | `Microsoft.AspNetCore.OpenApi` | 10.0.12 | Web | builds the OpenAPI document of the headless API (`AddOpenApi`, `MapOpenApi`) that the [API docs](../features/api-docs.md) render; extended by `ApiDocsTransformers.cs` with the token schemes, permission keys and custom endpoints |
 | `Scalar.AspNetCore` | 2.18.3 | Web | the interactive API reference (Scalar) at `/admin/api-docs/reference/` (`MapScalarApiReference`); its scripts are served by the package from this origin - font CDN, telemetry, "Ask AI" agent, MCP and developer tools switched off ([API docs](../features/api-docs.md)) |
-| `System.Security.Cryptography.Pkcs` / `.Xml` | 10.0.13 | none directly - transitive pins (`CentralPackageTransitivePinningEnabled`) | security fix: Pkcs comes from `Microsoft.Data.SqlClient` (SQL Server provider), Xml from `Microsoft.AspNetCore.DataProtection`; their 10.0.12 / 9.0.11 versions are affected by NU1902/NU1903 advisories (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-r955-8q5j-3h83, GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj) |
+| `System.Security.Cryptography.Pkcs` / `.Xml` | 10.0.13 | none directly - transitive pins (`CentralPackageTransitivePinningEnabled`) | security fix: Pkcs comes from `Microsoft.Data.SqlClient` (SQL Server provider, additional databases), Xml from `Microsoft.AspNetCore.DataProtection`; their 10.0.12 / 9.0.11 versions are affected by NU1902/NU1903 advisories (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-r955-8q5j-3h83, GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj) |
 | `Microsoft.NET.Test.Sdk` | 17.12.0 | tests | test host |
 | `xunit` / `xunit.runner.visualstudio` | 2.9.2 / 2.8.2 | tests | test framework |
 | `Microsoft.AspNetCore.Mvc.Testing` | 10.0.12 | IntegrationTests | `WebApplicationFactory<Program>` |
@@ -97,7 +97,12 @@ packages pull SQLitePCLRaw 2.1.12.
 Rate limiting (`AddRateLimiter`), Data Protection, `IMemoryCache` and forwarded headers come from the shared
 framework (`Microsoft.AspNetCore.App`) - no packages.
 
-There are no frontend packages: no `package.json`, no ESLint config. The page builder's JavaScript
+There are no frontend packages: no `package.json`, no ESLint config. One vendored library: the **Monaco** code
+editor (`monaco-editor` 0.52.2, MIT, Microsoft), the files of its AMD build that the HTML editor needs - loader,
+editor core, the HTML and CSS language services and their worker, and the HTML/CSS/JavaScript colorizers, about
+5.6 MB - copied into `src/DotNetForge.Web/wwwroot/lib/monaco/` with its `LICENSE` and `ThirdPartyNotices.txt`. It is
+loaded only by the email template editor ([Email Templates](../pages/email-templates.md)); to update it, replace those
+files from the same paths of a newer `monaco-editor` package (`min/vs/...`). The page builder's JavaScript
 (`wwwroot/js/builder/`) is plain ES modules, served as files - no bundler; its conformance test
 (`tests/js/page-builder-fixtures.mjs`) needs only Node. Extension projects do not use
 `Directory.Packages.props` (`extensions/Directory.Build.props` turns central package management off for them).
@@ -105,7 +110,8 @@ There are no frontend packages: no `package.json`, no ESLint config. The page bu
 **Rule:** don't add a package for something the BCL or ASP.NET Core already does. Cryptography, `.env` parsing,
 hashing and signing are deliberately in-house; `AWSSDK.S3` is the exception, for S3 request signing.
 `Microsoft.AspNetCore.OpenApi` is ASP.NET Core's own OpenAPI generator (not part of the shared framework), and
-`Scalar.AspNetCore` is there because ASP.NET Core ships no UI to read and try an OpenAPI document.
+`Scalar.AspNetCore` is there because ASP.NET Core ships no UI to read and try an OpenAPI document, Monaco because
+the browser has no code editor (IntelliSense, validation markers, colorization).
 
 ## DI registrations
 
@@ -117,10 +123,10 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | --- | --- | --- | --- |
 | `AppEnvironment` | instance from `EnvConfigurationLoader` | singleton | `AccountController`, `SetupController`, `HomeController`, `DashboardController`, `SettingsController` |
 | `IMemoryCache` | `AddMemoryCache()` | singleton | cookie session check (`ValidateSessionAsync`, key `dnf:session:{userId}`), `ApiTokenAuthenticationHandler` (key `dnf:apitoken:{sha256}`) |
-| `DotNetForgeDbContext` | `AddDbContext<DotNetForgeDbContext, TContext>` by the main database's provider (`IDatabaseProvider.AddDbContext`; `TContext` = the provider's context type) | scoped | almost every controller, all API controllers, `MediaFilesController`, `AuthService`, `AuditService`, `PageService`, `MediaService`, `InstallationStore`, `ApiTokenAuthenticationHandler`, the Data Protection key repository, admin extension views (`@inject`) |
-| `DatabaseProviderRegistry`, `DatabaseCatalog` | `AddDotNetForgeDatabases` (built during registration from `AddDatabaseProvider<T>(name)` calls) | singleton | `QueryRouter`, `Program.cs` (schema initialization) |
+| `DotNetForgeDbContext` | `AddDbContext<DotNetForgeDbContext, PostgreSqlDbContext>` by `PostgreSqlDatabaseProvider.AddDbContext` (the CMS database is PostgreSQL) | scoped | almost every controller, all API controllers, `MediaFilesController`, `AuthService`, `AuditService`, `PageService`, `MediaService`, `InstallationStore`, `ApiTokenAuthenticationHandler`, the Data Protection key repository, admin extension views (`@inject`) |
+| `DatabaseProviderRegistry`, `DatabaseCatalog` | `AddDotNetForgeDatabases` (built during registration from `AddDatabaseProvider<T>(name)` calls) | singleton | `QueryRouter`, `Program.cs` (schema initialization), `SqlEndpointRunner`, `DatabaseTransferService` (export choices) |
 | `QueryRouter` | `AddDotNetForgeDatabases` | singleton | `DatabaseService` |
-| `IDatabaseService` → `DatabaseService` | `AddDotNetForgeDatabases` | singleton | not used by CMS code yet; for extensions and tooling ([database layer](../database/architecture.md)) |
+| `IDatabaseService` → `DatabaseService` | `AddDotNetForgeDatabases` | singleton | `DatabaseTransferService` (export of an additional database); extensions and tooling ([database layer](../database/architecture.md)) |
 | Data Protection | `AddDataProtection().SetApplicationName("DotNetForge").PersistKeysToDbContext<DotNetForgeDbContext>()` | framework | auth cookie, antiforgery, TempData |
 | keyed `IFileStorage` `"core"` (`ExtensionMediaStorage.CoreStorageKey`) | `S3FileStorage(env.Storage)`; `LocalFileStorage(env.Storage.LocalPath)` only in Development without `STORAGE_S3_*` | keyed singleton (factory) | `ExtensionMediaStorage`; replaced by `DotNetForgeWebFactory` in tests |
 | `IFileStorage` | `ExtensionMediaStorage` (core storage + every `MediaStorageContribution`) | singleton (factory) | `MediaService`, `MediaFilesController`, extensions (Contact Form) |
@@ -135,7 +141,7 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | `ContentApiService` | self (`src/DotNetForge.Content/`) | scoped | `EntriesApiController` |
 | `ContentRenderService` | self (`src/DotNetForge.Web/Services/`) | scoped | `HomeController`, `PageLayoutViewComponent`, `PageBuilderController`, `ContentController` |
 | `CustomEndpointService` | self (`src/DotNetForge.Content/Endpoints/`; Data Protection protector `DotNetForge.CustomEndpoints.Token.v1` for the endpoint tokens) | scoped | `ApiEndpointsController`, `CustomEndpointsApiController`, `ApiDocsDocumentTransformer`, `MapApiDocs` (Scalar's pre-filled tokens) |
-| `SqlEndpointRunner` | self (`src/DotNetForge.Content/Endpoints/`) | scoped | `ApiEndpointsController` (test run), `CustomEndpointsApiController` |
+| `SqlEndpointRunner` | self (`src/DotNetForge.Content/Endpoints/`; uses `DatabaseCatalog` and `IDatabaseProvider.CreateConnection` for additional databases) | scoped | `CustomEndpointService` (database check), `ApiEndpointsController` (database choices, test run), `CustomEndpointsApiController` |
 | OpenAPI document `v1` | `AddOpenApi("v1")` with `ApiDocsDocument.Includes` (`/api/*` except `/api/custom/{**path}`), `ApiDocsDocumentTransformer`, `ApiDocsOperationTransformer` (`src/DotNetForge.Web/ApiDocs/`) | framework | `MapApiDocs` → `GET /admin/api-docs/openapi/v1.json` |
 | `ProfileService` | self | scoped | `ProfileController` |
 | `IPermissionService` | `PermissionService(IRoleGrantStore)` (factory) | singleton | `AdminControllerBase.Can` / `CanModify` (resolved from `RequestServices`), `PermissionAuthorizationHandler` |
@@ -150,10 +156,10 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | `ExtensionLifecycleService` | self | scoped | `PluginsController` |
 | `AdminNavigationService` | self (`src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs`) | scoped (builds the sidebar once per request) | `_AdminLayout`, `Dashboard/Index.cshtml` (`@inject`; quick actions via `Allows`) |
 | `ExtensionViewRenderer` | self | singleton | `HomeController`, `ExtensionViewController`, widget and module view components |
-| `ThemeResolver` | self | scoped | `HomeController` |
+| `ThemeResolver` | self (reads `ExtensionCatalog` and, for theme inheritance, `DotNetForgeDbContext`) | scoped | `HomeController`, `PageBuilderController` (canvas, preview); the static `InheritedFrom`: `PagesController` (Theme tab) |
 | `LoginProviders` | self (every `LoginProviderContribution`) | singleton | `AccountController`, `ExternalLoginController` |
 | `AuditEventDispatcher` | self (every `AuditHandlerContribution`), also `AddHostedService` | singleton (hosted) | `AuditService` |
-| `IPublishedPages` | `PublishedPageService` | scoped | `HomeController` (theme menu), extensions (SEO Toolkit sitemap) |
+| `IPublishedPages` | `PublishedPageService` | scoped | `HomeController` and `PageBuilderController` (header menu, `ViewData["Menu"]`), extensions (SEO Toolkit sitemap) |
 | contribution records (`MediaStorageContribution`, `LoginProviderContribution`, `AuditHandlerContribution`) | registered by the SDK helpers in an extension's `ConfigureServices` | singleton | `ExtensionMediaStorage`, `LoginProviders`, `AuditEventDispatcher` |
 | an extension's own services | its `ConfigureServices` | as it chooses | the extension, other extensions, extension views (`@inject`) |
 | `IInstallationStore` | `InstallationStore` | scoped | `InstallationService`, `InstallationMiddleware`, integration tests |
@@ -161,15 +167,19 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | `InstallationStatusCache` | self | singleton | `InstallationMiddleware`, `SetupController` |
 | `IHttpContextAccessor` | framework | singleton | `AuditService` |
 | `AuthService` | self | scoped | `AccountController`, `ExternalLoginController`, `SetupController`, `ValidateSessionAsync` |
-| `IAuditService` | `AuditService` | scoped | `AccountController`, `ExternalLoginController`, `SetupController`, `PagesController`, `ContentTypeService`, `ContentEntryService`, `SettingsController`, `ApiTokensController`, `MediaService`, `UserManagementService`, `RoleManagementService`, `ProfileService`, `PageBuilderService`, `PagePermissionService`, `ContentApiController`, `ExtensionLifecycleService`, `CustomEndpointService`, `ApiEndpointsController` (test run), `CustomEndpointsApiController`, extensions (Contact Form) |
+| `IEmailSender` | `SmtpEmailSender` (`DotNetForge.Infrastructure.Messaging`) | scoped | `AccountService`, `EmailConfigurationController` (test send) |
+| `EmailConfigurationService`, `IEmailSettingsSource` (the same instance) | self (`src/DotNetForge.Web/Services/EmailConfigurationService.cs`) | scoped | `SmtpEmailSender`, `AccountService`, `UserAccountSettingsService`, `AdvancedSettingsController`, `EmailConfigurationController` |
+| `UserAccountSettingsService` | self (`src/DotNetForge.Web/Services/UserAccountSettings.cs`) | scoped | `AuthService` (email confirmation), `AccountService`, `AccountController`, `AdvancedSettingsController` |
+| `AccountService` | self | scoped | `AccountController` (registration, password reset, email confirmation), `AuthService` (account-locked email) |
+| `EmailTemplateService` | self | scoped | `AccountService` (rendering), `EmailTemplatesController` |
+| `IAuditService` | `AuditService` | scoped | `AccountController`, `AccountService`, `UserAccountSettingsService`, `EmailConfigurationService`, `EmailConfigurationController`, `ExternalLoginController`, `SetupController`, `PagesController`, `ContentTypeService`, `ContentEntryService`, `SettingsController`, `ApiTokensController`, `MediaService`, `UserManagementService`, `RoleManagementService`, `ProfileService`, `PageBuilderService`, `PagePermissionService`, `ContentApiController`, `ExtensionLifecycleService`, `CustomEndpointService`, `ApiEndpointsController` (test run), `CustomEndpointsApiController`, extensions (Contact Form) |
 | `IPageService` | `PageService` | scoped | `PagesController`, `ContentApiController` |
 | `MediaService` | self | scoped | `MediaController`, `ContentController` (uploads from entry forms), `PageBuilderController` |
 | `UserManagementService` | self (`src/DotNetForge.Web/Services/`) | scoped | `UsersController` |
 | `RoleManagementService` | self (`src/DotNetForge.Web/Services/`) | scoped | `RolesController` |
 | `ScheduledPublishingService` | `AddHostedService` | singleton (hosted) | host |
 
-Not registered (removed): `IEmailSender` (no implementation exists; `FileSystemEmailSender` was deleted) and
-`IWebhookSigner` (`HmacWebhookSigner` and its tests are kept for planned webhooks).
+Not registered: `IWebhookSigner` (`HmacWebhookSigner` and its tests are kept for planned webhooks).
 
 Framework services also configured there:
 
@@ -191,7 +201,9 @@ Framework services also configured there:
 `InstallationMiddleware` and `ExtensionEndpointGateMiddleware` receive their dependencies through `InvokeAsync`
 parameters (the middleware itself is constructed once). `SecurityHeadersMiddleware` takes `IWebHostEnvironment` in its
 constructor; it gives only the Scalar page (a response whose `HttpContext.Items` carries Scalar's nonce) a policy with
-`script-src 'self' 'nonce-…'` and `style-src 'self' 'unsafe-inline'` (`ApiReferencePolicy`).
+`script-src 'self' 'nonce-…'` and `style-src 'self' 'unsafe-inline'` (`ApiReferencePolicy`), screens with the Monaco
+editor `style-src 'self' 'unsafe-inline'` (`CodeEditorPolicy`, via `PagePolicyItemKey`; scripts stay `'self'`), and
+the email template preview its own enforced sandbox policy (`EmailPreviewPolicy`, via `PolicyOverrideItemKey`).
 
 ## Dependencies that must not be bypassed
 
@@ -212,7 +224,7 @@ constructor; it gives only the Scalar page (a response whose `HttpContext.Items`
 | Deciding whether an extension may contribute (combining discovery, loaded code and enabled state) | `ExtensionCatalog` (`GetActiveAsync`, `FindActiveAsync`, `IsActiveAsync`) | one rule for every slot: valid, first with its id, enabled, code loaded |
 | Re-implementing the public "live" rule | `PageVisibility.Live` | one definition of what the public sees |
 | Hard-coding sidebar links or per-role link checks in a view | `AdminNavigation.Tree` + `AdminNavigationService` (`AdminNavModel.Allows`) | one tree for sidebar, active state and breadcrumbs; visibility follows the controllers' `[Authorize]` rules |
-| `asp-validation-summary`, inline styles, CSS/JS libraries in views | the [design system](design-system.md) (`<form-errors />`, `wwwroot/css/forge`, `ui.js`) | CSP (`style-src 'self'`), one look across screens, no front-end dependencies |
+| `asp-validation-summary`, inline styles, CSS/JS libraries in views | the [design system](design-system.md) (`<form-errors />`, `wwwroot/css/forge`, `ui.js`); for code, the vendored Monaco editor (email templates only) | CSP (`style-src 'self'`), one look across screens, no front-end dependencies beyond Monaco |
 | Replacing `IFileStorage` or adding auth buttons/audit hooks from an extension with plain DI | `AddMediaStorage`, `AddLoginProvider`, `AddAuditEventHandler` (`DotNetForge.Sdk`) | the host can switch the contribution off while the extension is disabled |
 | Building your own sign-in principal | `AuthService.ValidateAsync` | lockout, claims shape (user id, name, email, roles) |
 | Hard-coding role names / permission keys / audit actions / rate-limit / authorization policy names | `Roles`, `PermissionKeys`, `PermissionAreas`, `PermissionActions`, `AuditActions`, `RateLimitPolicies`, `AuthorizationPolicies` | one source of truth |

@@ -31,20 +31,22 @@ The rules, the call flow and the responses are in [custom endpoints](../features
 
 ```text
 src/DotNetForge.Web/Areas/Admin/Controllers/ApiEndpointsController.cs   list, new/edit, save, regenerate token, delete, test run
-src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/Index.cshtml         list card: name, path, operation badges, access, status, updated
-src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/Edit.cshtml          Path card, Operations (cards + "Operations as JSON") + Settings, Call it, Delete
-src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs               ApiEndpointsIndexViewModel (+ Operations), ApiEndpointEditViewModel (+ Calls, Token)
+src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/Index.cshtml         list card: name, path (+ database), operation badges, access, status, updated
+src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/Edit.cshtml          Path card, Operations (cards + "Operations as JSON") + Settings (+ Database), Call it, Delete
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs               ApiEndpointsIndexViewModel (+ Operations), ApiEndpointEditViewModel (+ Databases, Calls, Token)
 src/DotNetForge.Web/wwwroot/js/forge/endpoints.js                       operation cards ⇄ OperationsJson: SQL hints, parameter table, result settings, test run each
 src/DotNetForge.Shared/Entities/CustomEndpoint.cs                       CustomEndpoint (+ TokenProtected), CustomEndpointOperation
 src/DotNetForge.Web/wwwroot/css/forge/admin.css                         "API Endpoints editor" section
 src/DotNetForge.Content/Endpoints/CustomEndpointService.cs              rules (shared with the API), endpoint tokens (TokenOf, VerifyToken, RegenerateTokenAsync)
+src/DotNetForge.Content/Endpoints/SqlEndpointRunner.cs                  the database choices (Databases, Problem) and the test run's SQL
 ```
 
 ## Page layout
 
-- **List** - one card: name (link) with description, `/api/custom/path`, one coloured badge per operation (method
-  and sub-path; GET info, POST success, PUT/PATCH warning, DELETE danger), access (`Token` / `Public`), status,
-  updated; sortable, paged by 25. Empty state with **New endpoint**. A warning on MongoDB.
+- **List** - one card: name (link) with description, `/api/custom/path` (with "on database <name>" under it when the
+  endpoint runs on an additional database), one coloured badge per operation (method and sub-path; GET info, POST
+  success, PUT/PATCH warning, DELETE danger), access (`Token` / `Public`), status, updated; sortable, paged by 25.
+  Empty state with **New endpoint**.
 - **Editor** (`.editor` two columns; a new endpoint starts with one GET operation on its own path):
   - **Path** - the base path with a fixed `/api/custom/` prefix.
   - **Operations** - "What the API answers: one per method and sub-path, each with its own SQL, parameters and test
@@ -52,8 +54,15 @@ src/DotNetForge.Content/Endpoints/CustomEndpointService.cs              rules (s
     settings, test run), each of which opens and closes; **Open all** / **Close all** (shown from two operations on)
     and **Add operation** next to the heading. The posted field is `OperationsJson`, also editable under "Operations
     as JSON" (the only editor without JavaScript).
-  - Aside: **Settings** (name, description, who may call it, enabled - off: every operation answers 404, Save),
+  - Aside: **Settings** (name, description, **Database** - only when there is a choice, who may call it, enabled -
+    off: every operation answers 404, Save),
     **Call it** (saved endpoints only, see below) and **Delete endpoint** (only the button, with confirmation).
+
+**Database** - a select shown only when there is more than one choice (`SqlEndpointRunner.Databases`: "CMS
+database (PostgreSQL)" first, then each additional SQL database as "<name> (<provider>)") or the endpoint already has
+a database; a saved database that is no longer configured appears as "<name> (not configured)" and saving then fails
+with "There is no database …". Hint: "Where the SQL runs. More databases: `DATABASES_<NAME>_*` in the configuration."
+MongoDB databases are never offered ([databases](../features/custom-endpoints.md#databases)).
 
 **Who may call it** - two radio cards, **Token** (default: callers send the endpoint's own token, one for all its
 operations, shown under Call it once saved) and **Anyone** (no token - only for data that may be public); no hint text.
@@ -94,7 +103,8 @@ Call it - no description                                                 (Token)
   ([parameters](../features/custom-endpoints.md#parameters)).
 - **SQL hints** are computed live in the browser under each SQL box: an `@name` without a parameter ("… the database
   will reject the statement.") and a parameter the SQL doesn't use.
-- **Save** validates on the server ([rules](../features/custom-endpoints.md#an-endpoint)); errors appear in
+- **Save** validates on the server ([rules](../features/custom-endpoints.md#an-endpoint), including the database);
+  errors appear in
   `<form-errors />` with the form as typed. Success redirects to the editor with a toast ("Created '…'." /
   "Saved '…'."). The first save gives the endpoint its token (`CustomEndpointService.SaveAsync`:
   `TokenProtected ??= …`), whatever its access, so switching it to **Token** later never leaves it open.
@@ -109,7 +119,7 @@ Call it - no description                                                 (Token)
   longer works." The old token is refused at once.
 - **Test run** (per operation) posts the whole form plus the operation, its test values and the rollback choice with
   the antiforgery header and shows that operation's result without saving anything (changes are undone unless the
-  admin turns that off). It needs no token.
+  admin turns that off). It runs on the database selected in the form and needs no token.
 - **Try it in the API docs** opens [API Docs](api-docs.md), where every enabled token endpoint is listed with its token
   already filled in.
 - **Delete** asks first ("Delete '<name>' and its operations? Apps calling them get 404. This can't be undone.");
@@ -120,7 +130,7 @@ Call it - no description                                                 (Token)
 Super Admins and Developers only (`[Authorize(Roles = "Super Admin,Developer")]` on `ApiEndpointsController`, plus
 `AdminArea`): other users are sent to [Access denied](access-denied.md) and don't see the link. There is no
 finer-grained check - whoever opens the screen can create, edit, test, regenerate tokens and delete. The SQL runs with
-the application's database rights.
+the application's rights on the chosen database (the CMS database or an additional one).
 
 Calling an endpoint is not decided by roles or API tokens: a **Token** endpoint needs its own token
 (`Authorization: Bearer dnfe_…`, else 401), an **Anyone** endpoint needs none and ignores a token that is sent
@@ -137,7 +147,8 @@ From the API: `endpoint.executed` (non-GET calls, shown as the operation's route
 
 ## Known limitations
 
-- The SQL is not checked until it runs (test run or call); the database's dialect applies.
+- The SQL is not checked until it runs (test run or call); the chosen database's dialect applies (PostgreSQL for the
+  CMS database).
 - No version history of an endpoint's SQL; the audit log records who changed it, not what.
 - An endpoint has exactly one token: no expiry, no second token for a smooth switch - regenerating cuts off every
   caller of the old one at once.

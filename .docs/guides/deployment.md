@@ -7,7 +7,7 @@ everything it writes at runtime goes to the database or to object storage, never
 
 | Runtime data | Where it goes | Never |
 | --- | --- | --- |
-| Content, users, settings, audit log | the database (PostgreSQL recommended, or SQLite on a mounted volume) | `storage/` next to the app |
+| Content, users, settings, audit log | the PostgreSQL database | `storage/` next to the app |
 | Uploaded media | S3-compatible object storage via `IFileStorage` (`STORAGE_S3_*`, required) | the content root |
 | Data Protection key ring (auth cookies, antiforgery tokens) | the `DataProtectionKeys` table | the default `~/.aspnet/DataProtection-Keys` folder |
 | Upload buffering (multipart bodies over 64 KB) | the OS temp directory: `ASPNETCORE_TEMP`, else `/tmp` | - must be writable (tmpfs), is not storage |
@@ -18,11 +18,11 @@ everything it writes at runtime goes to the database or to object storage, never
 
 What enforces this:
 
-- Outside Development, `EnvConfigurationLoader` refuses any default that points inside the deployment directory: a
-  SQLite database needs an explicit **absolute** `Data Source`, and media needs S3 settings. The process exits with
+- Outside Development nothing defaults: the PostgreSQL `DATABASE_CONNECTION_STRING` and the S3 settings are
+  required (a SQLite additional database needs an **absolute** `Data Source` on a volume). The process exits with
   code 1 and a clear message otherwise ([configuration](../features/configuration.md)).
 - `ReadOnlyDeploymentTests` runs setup, sign-in, enabling an extension, admin screens (including an admin extension
-  tab), uploads, downloads and deletes, and fails if any file under the content root changed. CI also boots the Docker image with `--read-only` (job `read-only-container`).
+  tab), uploads, downloads and deletes, and fails if any file under the content root changed. CI also builds and runs the image read-only with `docker/compose.app.yml` (job `read-only-container`).
 - Verified manually (October 2026): the image with `--read-only --tmpfs /tmp` against PostgreSQL 17 and an
   S3-compatible server passed 19 end-to-end checks with an empty `docker diff`, and sessions survived a container
   restart.
@@ -47,10 +47,10 @@ your platform's secret store, never in the image or the repository.
 | Variable | Production value | Secret | Notes |
 | --- | --- | :-: | --- |
 | `ASPNETCORE_ENVIRONMENT` | `Production` (image default) | | Enables the production rules, HSTS, enforced CSP, Secure cookies |
-| `DATABASE_PROVIDER` | `postgresql` (or `sqlserver`, `mysql`, `mongodb`, `sqlite`) | | [database configuration](../database/configuration.md) |
-| `DATABASE_CONNECTION_STRING` | `Host=…;Database=dotnetforge;Username=…;Password=…;GSS Encryption Mode=Disable` | ✔ | SQLite: `Data Source=/data/dotnetforge.db` on a volume; other databases: [examples](../database/configuration.md#main-database) |
+| `DATABASE_CONNECTION_STRING` | `Host=…;Database=dotnetforge;Username=…;Password=…;GSS Encryption Mode=Disable` | ✔ | required; the CMS database is always PostgreSQL ([database configuration](../database/configuration.md)) |
+| `DATABASES_<NAME>_PROVIDER`, `_CONNECTION_STRING` | optional | ✔ | additional databases for your own data ([more databases](../database/configuration.md#more-databases)) |
 | `APP_NAME` | display name | | |
-| `APP_URL` | public base URL | | validated, not used for links yet |
+| `APP_URL` | public base URL | | the links in password-reset and confirmation emails |
 | `STORAGE_S3_SERVICE_URL` | `https://<account-id>.r2.cloudflarestorage.com` | | empty = AWS S3 |
 | `STORAGE_S3_BUCKET` | bucket name | | |
 | `STORAGE_S3_ACCESS_KEY_ID` | bucket-scoped key id | ✔ | |
@@ -78,7 +78,6 @@ docker build -f docker/Dockerfile -t dotnetforge .
 docker run -d --name dotnetforge \
   --read-only --tmpfs /tmp \
   -p 8080:8080 \
-  -e DATABASE_PROVIDER=postgresql \
   -e "DATABASE_CONNECTION_STRING=Host=db;Database=dotnetforge;Username=dotnetforge;Password=<secret>;GSS Encryption Mode=Disable" \
   -e STORAGE_S3_SERVICE_URL=https://<account-id>.r2.cloudflarestorage.com \
   -e STORAGE_S3_BUCKET=dotnetforge-media \
@@ -87,6 +86,9 @@ docker run -d --name dotnetforge \
   -e ASPNETCORE_FORWARDEDHEADERS_ENABLED=true \
   dotnetforge
 ```
+
+To try the image locally with PostgreSQL, S3 and SMTP: `docker compose -f docker/compose.app.yml up -d --build`
+([development → the app in Docker](development.md#the-app-in-docker)).
 
 On first start the app applies the database migrations and seeds baseline data, then redirects every request to
 `/setup` until the first Super Admin is created. `GET /health` returns `{ "status": "ok", "app": "<APP_NAME>" }` and
@@ -124,15 +126,19 @@ Terminate TLS at the proxy (nginx, Caddy, Traefik, a cloud load balancer) and fo
 
 ## Database
 
-- **PostgreSQL** (recommended for production): the app applies `Database/Providers/PostgreSql/Migrations/` on start. Use a dedicated
-  database and user. Add `GSS Encryption Mode=Disable` to the connection string; otherwise Npgsql probes for Kerberos
-  (`libgssapi_krb5.so.2`), which the slim image doesn't include, and logs an error line on start.
-- **SQLite**: only on a persistent volume with an absolute path, and only for a single instance.
-- **SQL Server, MySQL 8**: `DATABASE_PROVIDER=sqlserver` / `mysql`; each applies its own migration set on start. MySQL is
-  never auto-detected, so set the provider. Enable TLS in the connection string when the server is not on a private
-  network ([database security](../database/security.md#connections-and-secrets)).
-- **MongoDB**: `DATABASE_PROVIDER=mongodb`, a replica set or Atlas (the CMS needs transactions), database name in the
-  URL path; collections and indexes are created on start ([MongoDB](../database/mongodb.md)).
+- **PostgreSQL** (the CMS database - the only one supported): the app applies `Database/Providers/PostgreSql/Migrations/`
+  on start. Use a dedicated database and user. Add `GSS Encryption Mode=Disable` to the connection string; otherwise
+  Npgsql probes for Kerberos (`libgssapi_krb5.so.2`), which the slim image doesn't include, and logs an error line on
+  start.
+- **Additional databases** (SQLite, PostgreSQL, SQL Server, MySQL 8, MongoDB) for extensions, custom API endpoints and
+  exports: `DATABASES_<NAME>_PROVIDER` / `_CONNECTION_STRING` ([more databases](../database/configuration.md#more-databases)).
+  They hold no CMS tables and get no migrations. SQLite only on a persistent volume with an absolute path; MySQL is
+  never auto-detected, so set the provider; MongoDB transactions need a replica set or Atlas. Enable TLS in the
+  connection string when the server is not on a private network
+  ([database security](../database/security.md#connections-and-secrets)).
+- **Moving from a SQLite, SQL Server, MySQL or MongoDB CMS database** (earlier builds): those no longer start. An export
+  made there imports into PostgreSQL on [Data Management](../pages/data-management.md) in Development when its data
+  version matches ([database → provider](../architecture/database.md#provider)).
 - **Upgrading from a database created before PostgreSQL migrations existed** (created by `EnsureCreated`): it has no
   `__EFMigrationsHistory`, so migrating fails on existing tables. Recreate it, or create the `DataProtectionKeys`
   table by hand and insert the `20261005180055_InitialCreate` row into `__EFMigrationsHistory` before starting the new
@@ -167,7 +173,9 @@ Back up the database and the media bucket together; rows reference object keys.
 
 - PostgreSQL: managed backups / point-in-time recovery, or scheduled `pg_dump`.
 - Media: enable bucket versioning or replicate to a second bucket (`rclone sync`, `aws s3 sync`) on a schedule.
-- No backup data is written by the app itself.
+- The app's own backups ([Data Management](../pages/data-management.md): manual or scheduled, off by default) are
+  exports of the CMS data stored in the media storage under `backups/` - no media files, and restoring them works
+  only in Development. They complement the database's own backups; they don't replace them.
 
 ## Verification
 
@@ -175,7 +183,7 @@ After deploying:
 
 ```bash
 curl -fsS https://cms.example.com/health          # {"status":"ok",...}
-curl -sI https://cms.example.com/account/login | grep -i content-security-policy
+curl -sI https://cms.example.com/login | grep -i content-security-policy
 ```
 
 Then sign in, upload a file in **Media**, open it, and delete it. In Docker, `docker diff <container>` must show no

@@ -1,8 +1,10 @@
 # ---- Secrets ----
-# Secrets live in .env and must NEVER be committed. Only .env.example is tracked.
+# Secrets live in .env and must NEVER be committed. Only .env.example and .env.developer (public development
+# credentials for the containers in docker/) are tracked.
 .env
 .env.*
 !.env.example
+!.env.developer
 
 # ---- .NET build output ----
 bin/

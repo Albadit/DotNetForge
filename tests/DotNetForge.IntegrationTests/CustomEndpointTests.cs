@@ -104,7 +104,7 @@ public sealed class CustomEndpointTests
         return client;
     }
 
-    [SqlDatabaseFact]
+    [Fact]
     public async Task One_endpoint_answers_several_methods_with_typed_parameters_and_its_own_token()
     {
         using var factory = new DotNetForgeWebFactory();
@@ -178,7 +178,7 @@ public sealed class CustomEndpointTests
         });
     }
 
-    [SqlDatabaseFact]
+    [Fact]
     public async Task Public_endpoints_need_no_token_and_disabled_ones_answer_404()
     {
         using var factory = new DotNetForgeWebFactory();
@@ -209,7 +209,7 @@ public sealed class CustomEndpointTests
         Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/api/custom/cheap")).StatusCode);
     }
 
-    [SqlDatabaseFact]
+    [Fact]
     public async Task The_editor_validates_runs_tests_rotates_tokens_and_is_for_super_admins_and_developers()
     {
         using var factory = new DotNetForgeWebFactory();
@@ -289,41 +289,5 @@ public sealed class CustomEndpointTests
             Assert.True(await db.AuditLogs.AnyAsync(a => a.Action == AuditActions.EndpointTested));
             Assert.True(await db.AuditLogs.AnyAsync(a => a.Action == AuditActions.EndpointTokenRegenerated));
         });
-    }
-
-    [MongoDbFact]
-    public async Task On_mongodb_endpoints_can_be_kept_but_answer_501()
-    {
-        using var factory = new DotNetForgeWebFactory();
-        await factory.InstallAsync();
-        var admin = await factory.SignInAsync();
-
-        Assert.Contains("Needs a SQL database", await admin.GetStringAsync("/admin/api-endpoints"));
-        Assert.Equal(HttpStatusCode.Redirect, (await CreateAsync(admin, Endpoint("Items", "GET", "items", "SELECT 1", access: "Public"))).StatusCode);
-        Assert.Equal(HttpStatusCode.NotImplemented, (await factory.CreateClient().GetAsync("/api/custom/items")).StatusCode);
-    }
-}
-
-/// <summary>A fact that needs SQL: skipped when the suite runs on MongoDB (<c>DNF_TEST_MONGODB</c>).</summary>
-public sealed class SqlDatabaseFactAttribute : FactAttribute
-{
-    public SqlDatabaseFactAttribute()
-    {
-        if (TestDatabaseServer.IsMongoDb)
-        {
-            Skip = "Custom endpoints run SQL; MongoDB has none.";
-        }
-    }
-}
-
-/// <summary>A fact that runs only when the suite runs on MongoDB.</summary>
-public sealed class MongoDbFactAttribute : FactAttribute
-{
-    public MongoDbFactAttribute()
-    {
-        if (!TestDatabaseServer.IsMongoDb)
-        {
-            Skip = "Runs only on MongoDB (set DNF_TEST_MONGODB).";
-        }
     }
 }

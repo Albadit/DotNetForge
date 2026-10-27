@@ -51,6 +51,12 @@ public interface IDatabaseProvider
     IDatabaseExecutor CreateExecutor(DatabaseSettings settings, IModel? model, ILoggerFactory loggerFactory);
 
     /// <summary>
+    /// An unopened ADO.NET connection for raw SQL - custom API endpoints on an additional database
+    /// (.docs/features/custom-endpoints.md) - or <c>null</c> when the database has no SQL (MongoDB).
+    /// </summary>
+    System.Data.Common.DbConnection? CreateConnection(DatabaseSettings settings) => null;
+
+    /// <summary>
     /// Translates a driver exception into a <see cref="DatabaseException"/>, or returns <c>null</c> when it isn't a
     /// database error (bugs propagate unchanged).
     /// </summary>
@@ -70,6 +76,9 @@ public interface IDatabaseExecutor : IAsyncDisposable
 
     /// <summary>Opens a connection and runs a trivial command; throws the driver exception on failure.</summary>
     Task TestConnectionAsync(CancellationToken cancellationToken);
+
+    /// <summary>The database's own tables or collections (system ones left out), sorted by name.</summary>
+    Task<IReadOnlyList<string>> ListCollectionsAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>What providers may need to know about the host when normalizing settings.</summary>

@@ -1,0 +1,26 @@
+# PostgreSQL 17 for development (.docs/database/configuration.md). Also part of docker/compose.dev.yml.
+#   docker compose -f docker/databases/postgres.yml up -d
+# .env:
+#   DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+# Host port 5432 unless DNF_POSTGRES_PORT is set (e.g. DNF_POSTGRES_PORT=5433 when another PostgreSQL uses 5432 -
+# then Port=5433 in the connection string). Development only: the password is public.
+
+name: dotnetforge
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dotnetforge
+    ports:
+      - "${DNF_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "dotnetforge"]
+      interval: 2s
+      retries: 30
+
+volumes:
+  postgres-data:

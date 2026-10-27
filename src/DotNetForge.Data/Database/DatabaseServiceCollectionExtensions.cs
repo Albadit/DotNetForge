@@ -14,7 +14,7 @@ namespace DotNetForge.Data.Database;
 public static class DatabaseServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers a provider under <paramref name="name"/> (the value of <c>DATABASE_PROVIDER</c>). Register the same
+    /// Registers a provider under <paramref name="name"/> (the value of <c>DATABASES_&lt;NAME&gt;_PROVIDER</c>). Register the same
     /// type again under another name for an alias. A later registration of a name replaces an earlier one.
     /// </summary>
     public static IServiceCollection AddDatabaseProvider<TProvider>(this IServiceCollection services, string name)

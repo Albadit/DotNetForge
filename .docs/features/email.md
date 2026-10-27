@@ -1,24 +1,58 @@
 # Email
 
 Outbound transactional email: the SMTP connection, a test send, and the library of email templates the CMS sends
-to users (confirmation, password reset, invitation, lockout, admin notifications). Today only a contract and a
-development sender exist; nothing in the application sends email.
+to users (confirmation, password reset, invitation, lockout, admin notifications). Today an SMTP sender configured on
+`SMTP_*` in `.env` (shown read-only on **Email → Configuration**) sends four templates - email confirmation, password reset, welcome
+and account locked - which administrators can customize on **Email → Templates**
+([self-service account flows](authentication.md#self-service-accounts)).
 
 ## Current state
 
 | Piece | Location | Status |
 | --- | --- | --- |
 | `IEmailSender.SendAsync(EmailMessage, CancellationToken)` | `src/DotNetForge.Abstractions/Messaging/IMessagingContracts.cs` | contract |
-| `EmailMessage` (`To`, `Subject`, `Body`, `IsHtml` = `true`) | same file | one recipient; no sender, reply-to, CC or attachments |
-| Implementation / DI registration | - | **none**. The former `FileSystemEmailSender` (wrote messages to `storage/logs/email`, never used) was removed: the deployment directory is read-only ([deployment](../guides/deployment.md#read-only-deployment-requirements)) |
-| Email Configuration screen | `GET /admin/email/configuration` → `ModulesController.EmailConfiguration` | [placeholder](../pages/module-placeholders.md) |
-| Email Templates screen | `GET /admin/email/templates` → `ModulesController.EmailTemplates` | placeholder |
-| Sidebar | `AdminNavigation.Tree` group **Settings → Email** → Configuration, Templates (each with a **Soon** badge) | links only; any admin-capable role sees and opens them |
+| `EmailMessage` (`To`, `Subject`, `Body`, `IsHtml` = `true`, `Template`) | same file | one recipient; no sender, reply-to, CC or attachments; `Template` = the template key, for the email log |
+| `SmtpEmailSender` | `src/DotNetForge.Infrastructure/Messaging/SmtpEmailSender.cs`, registered as the keyed transport (`LoggingEmailSender.TransportKey`) in `DependencyRegistration` | BCL `System.Net.Mail.SmtpClient` with the settings in effect, read per send (`IEmailSettingsSource`); 30 s timeout (`TimeoutException`); STARTTLS when TLS is on (implicit TLS on port 465 is **not** supported - use 587); credentials only when `SMTP_USERNAME` is set; `From` = `SMTP_FROM` with `SMTP_FROM_NAME` or `APP_NAME`. Throws when SMTP is not configured - callers check `EmailSettings.IsConfigured` first |
+| `LoggingEmailSender` | `src/DotNetForge.Web/Services/LoggingEmailSender.cs`, the scoped `IEmailSender` | sends through the transport and writes an `EmailLog` entry per attempt (time, recipient, subject, template, sent/failed + reason; own DI scope; 30-day retention) - the email log of [Email → Configuration](../pages/email-configuration.md) |
+| Settings in effect | `EmailConfigurationService` (`IEmailSettingsSource`) | `SMTP_*` from `.env` → `AppEnvironment.Email` only ([configuration](configuration.md#email-smtp); a partial configuration fails startup) |
+| Messages sent | `AccountService` (and `AuthService` on lockout) | the four [templates](#templates), rendered by `EmailTemplateService.RenderAsync` |
+| Email Configuration screen | `/admin/email/configuration` → `EmailConfigurationController` | ✔ the `.env` settings read-only, connection test (`SmtpProbe`), test sends (plain or a template), email log, Mailpit link in Development - [Email → Configuration](../pages/email-configuration.md) |
+| Email Templates screen | `/admin/email/templates` → `EmailTemplatesController` | ✔ edit, preview (sandboxed), restore default - [Email → Templates](../pages/email-templates.md) |
+| Sidebar | `AdminNavigation.Tree` group **Settings → Email** → Configuration, Templates (both need Settings read) | |
 
-Not present: SMTP keys (neither `.env.example` nor `AppEnvironment` has any), an SMTP sender, template storage or
-rendering, and any flow that sends mail. Account lockout (`AuthService.MaxFailedAttempts` = 5,
-`AuthService.LockoutWindow` = 15 min) sends nothing; sign-up, password reset, confirmation and invitations are not
-built ([authentication](authentication.md)). There is no encryption-at-rest helper for secrets.
+Without SMTP (nothing saved on the screen and `SMTP_HOST` / `SMTP_FROM` empty) nothing is sent: the sign-in screen has no **Forgot password?**
+link, `/forgot-password` answers `404` and email confirmation cannot be turned on
+([Advanced Settings](../pages/advanced-settings.md)). A failed send never fails the request: `AccountService` logs
+the exception type only (SMTP errors can echo addresses) and the form answers as usual.
+
+Not present: a plain-text part, per-language templates, and the invitation and admin-notification messages (no
+flow sends them).
+
+## Templates
+
+Every email the CMS sends is rendered from a template ([Email → Templates](../pages/email-templates.md)). The catalog
+is code (`src/DotNetForge.Core/Email/EmailTemplateCatalog.cs`); a customized subject/body is stored in the
+`EmailTemplates` table only while it differs from the default, so restoring the default deletes the row.
+
+| Template | Key | Sent when (by) | Variables (**required**) |
+| --- | --- | --- | --- |
+| Email confirmation | `email-confirmation` | registration with email confirmation on, and **resend** (`AccountService`) | `{{userName}}`, **`{{confirmationUrl}}`**, `{{expiryDays}}`, `{{appName}}`, `{{appUrl}}` |
+| Password reset | `password-reset` | **Forgot password** for an enabled account (`AccountService`) | `{{userName}}`, **`{{resetUrl}}`**, `{{expiryMinutes}}`, `{{appName}}`, `{{appUrl}}` |
+| Welcome email | `welcome-email` | an account is ready: registration without confirmation, or the first confirmation (`AccountService`) | `{{userName}}`, `{{loginUrl}}`, `{{appName}}`, `{{appUrl}}` |
+| Account locked | `account-locked` | 5 wrong passwords start the 15-minute lockout (`AuthService` → `AccountService.SendAccountLockedAsync`) | `{{userName}}`, `{{unlockUrl}}` (the forgot-password page - a reset also unlocks), `{{lockoutMinutes}}`, `{{appName}}`, `{{appUrl}}` |
+
+- `{{userName}}` = `User.DisplayName`, `{{appName}}` / `{{appUrl}}` = `APP_NAME` / `APP_URL`; links are built from
+  `APP_URL`, never from the request.
+- Rules (`EmailTemplateRenderer`, unit-tested): only the template's variables, written `{{name}}`; required variables
+  must be in the body; no incomplete `{{`/`}}`; subject one line ≤ 500, body ≤ 20 000. Values are HTML-encoded in the
+  body, plain in the subject. A template is saved, previewed or sent only when valid - an unresolved placeholder never
+  reaches a recipient.
+- Every email is framed by `EmailLayout` (`src/DotNetForge.Core/Email/EmailLayout.cs`): the site name with the
+  forge-orange mark, the body in a white card with the orange accent bar, a footer with the site URL - the Forge
+  colours as inline styles in tables (what email clients render; no SVG logo). The frame isn't editable; the default
+  bodies use its helpers for the heading, the orange button and the plain-link fallback.
+- Nothing is sent without SMTP; welcome and account-locked emails are skipped then. A failed send is logged with the
+  exception type only.
 
 ## Planned (not implemented)
 
@@ -26,10 +60,11 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Requirements
 
-- **Email → Configuration** screen: save SMTP settings, validate them, send a test email.
-- **Email → Templates** screen: list, view, edit, preview (sample data, no send) and restore-to-default templates.
-- SMTP credentials are secrets: they live in `.env`, never in Git; any database override is encrypted at rest; the
-  password is write-only (never returned to the UI, the API, logs or audit details).
+- ✔ **Email → Configuration** screen: the `.env` SMTP settings (read-only), a connection test, test sends and the email log ([Email → Configuration](../pages/email-configuration.md)).
+- ✔ **Email → Templates** screen: list, view, edit, preview (sample data, no send) and restore-to-default templates
+  ([Email → Templates](../pages/email-templates.md); four templates - see below).
+- SMTP credentials are secrets: they live in `.env` only, never in Git or the database; the password is never shown
+  (Email → Configuration says only whether it is set) and never written to logs, the email log or audit details.
 - This module owns message content and delivery only; the flows that trigger the messages (confirmation, reset,
   lockout) belong to [authentication](authentication.md).
 
@@ -40,25 +75,21 @@ Target behaviour from the original product specification. Nothing in this sectio
 | SMTP host | hostname / IP | yes | e.g. `smtp.example.com` |
 | SMTP port | int `1-65535` | yes | `25`, `465` (implicit TLS), `587` (STARTTLS) |
 | SMTP username | string | conditional | required when the server needs authentication |
-| SMTP password | secret | conditional | stored encrypted, never echoed back |
+| SMTP password | secret | conditional | in `.env` only, never shown (only "set" / "not set") |
 | Sender email | email | yes | `From` address |
 | Sender name | string | no | display name, e.g. `DotNetForge CMS` |
 | SSL/TLS enabled | bool | yes | must be consistent with the port |
 | Test email recipient | email | no | used only by **Send test email**; not a sending setting |
 
-Proposed `.env` keys (database values may override where supported):
+✔ The `.env` keys exist with these names: `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_USERNAME`,
+`SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_FROM_NAME`, `SMTP_TLS` (default `true`)
+([configuration](configuration.md#email-smtp)); they are the only SMTP configuration (no database override). Still planned: implicit TLS (port 465).
 
-```env
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USERNAME=
-SMTP_PASSWORD=
-SMTP_SENDER_EMAIL=
-SMTP_SENDER_NAME=DotNetForge CMS
-SMTP_SSL_ENABLED=true
-```
+### Templates (specification)
 
-### Templates
+✔ Built for four of the six templates ([Templates](#templates)); the variable lists grew where the emails needed it
+(`{{expiryDays}}`, `{{appUrl}}`). Still planned: **User invitation** and **Admin notification** (no invitation flow and
+no notification events exist).
 
 Template fields: **key** (stable system id, not editable), **display name**, **subject** and **body** (HTML; both
 may contain variables), **is customized** (derived: differs from the shipped default; drives *Restore default*),
@@ -124,14 +155,15 @@ Public cannot. A custom role with the matching Settings permission may be allowe
 - Undefined variable: save and preview fail naming it; never send or render an unresolved placeholder.
 - Restore on a non-customized template: no-op or disabled; no audit entry.
 - Email confirmation enabled while SMTP is unconfigured or failing: surface the dependency instead of leaving new
-  users stuck.
+  users stuck (✔ unconfigured: the switch is disabled with a warning and the setting counts as off; ✘ a failing
+  server is only logged).
 - Two admins editing one template: no silent overwrite (warning or optimistic concurrency).
 - Failures are logged without the password or other secrets.
 
 ### Acceptance criteria
 
-- [ ] SMTP settings (host, port, username, password, sender email, sender name, SSL/TLS) can be saved; the password is encrypted and never returned in plaintext.
-- [ ] Invalid settings (bad host, out-of-range port, invalid sender email) are rejected with field-level errors.
+- [x] SMTP settings (host, port, username, password, sender email, sender name, SSL/TLS) come from `.env` and are shown read-only; the password is never returned in plaintext.
+- [x] Invalid settings are rejected at startup (`EnvConfigurationLoader`: a partial or invalid `SMTP_*` configuration stops the app); the connection test shows which step fails.
 - [ ] An SSL/TLS-vs-port mismatch warns or is blocked.
 - [ ] A test email to a valid recipient succeeds with a confirmation.
 - [ ] A test send to an unreachable server returns a distinct timeout/connection error in bounded time and does not mark the config verified.
@@ -148,23 +180,23 @@ Public cannot. A custom role with the matching Settings permission may be allowe
 
 ## Where to change things
 
-- **SMTP sender**: a new `SmtpEmailSender` in `src/DotNetForge.Infrastructure/Messaging/` implementing `IEmailSender`, BCL
-  first (architecture rule 11, [codebase](../architecture/codebase.md#architectural-rules-for-changes)), registered in
-  `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. For development, log messages via `ILogger` or use a local SMTP catcher
-  (e.g. a Mailpit container) - never write mail files into the deployment directory.
+- **SMTP sender**: `SmtpEmailSender` in `src/DotNetForge.Infrastructure/Messaging/` (BCL only, architecture rule 11,
+  [codebase](../architecture/codebase.md#architectural-rules-for-changes)), registered in
+  `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. For development use a local SMTP catcher (e.g. a Mailpit
+  container) - never write mail files into the deployment directory. Integration tests replace `IEmailSender` with a
+  recorder (`DotNetForgeWebFactory.SentEmails`).
 - **Contract**: if a sender name, reply-to or the template key must travel with the message, extend `EmailMessage`
   in `Abstractions` - it must stay dependency-free and entity-free.
-- **Configuration**: new `SMTP_*` keys follow [configuration → Where to change things](configuration.md#where-to-change-things)
+- **Configuration**: the `SMTP_*` keys (`EnvConfigurationLoader.LoadEmail`, `EmailSettings`) follow [configuration → Where to change things](configuration.md#where-to-change-things)
   (`EnvConfigurationLoader`, `AppEnvironment`, `.env.example`, tests). Encrypt any database-stored password with ASP.NET
   Core Data Protection (shared framework, no new package).
-- **Templates**: an `EmailTemplate` entity (key + subject + body) in `src/DotNetForge.Shared/Entities`
-  plus a migration; shipped defaults as constants in one place, seeded idempotently by `DataSeeder` or used as the
-  fallback when no row exists. Variable parsing, validation and rendering are pure logic: put them in
-  `src/DotNetForge.Core` with unit tests, and HTML-encode variable values.
-- **Sending from flows**: callers (password reset, lockout, invitations) resolve the template by key, render, then
-  call `IEmailSender`; never build email bodies inline in controllers.
-- **Screens**: replace `EmailConfiguration` / `EmailTemplates` in `ModulesController` with an admin controller
-  restricted to `Roles.SuperAdmin`/`Roles.Admin` (`admin-page` skill); mutations are `POST` + antiforgery + audit
-  `AuditActions.SettingsChanged`. Add the screen docs under [pages](../pages/) and update
-  [module placeholders](../pages/module-placeholders.md) and [implementation status](../implementation-status.md).
+- **Templates**: catalog and rules in `src/DotNetForge.Core/Email/` (unit tests in `tests/DotNetForge.Tests/Email/`),
+  storage and audit in `EmailTemplateService`, the `EmailTemplate` entity (customized rows only).
+- **Sending from flows**: callers render a template by key (`EmailTemplateService.RenderAsync`) and call
+  `IEmailSender` (see `AccountService.SendAsync`); never build email bodies inline. A new template = an entry in
+  `EmailTemplateCatalog` (variables, required, defaults, sample values) + the sending flow; the screen lists it
+  automatically.
+- **Screens**: `EmailConfigurationController` (read-only settings, tools) and `EmailTemplatesController` (Settings
+  permission; POSTs with antiforgery + audit `AuditActions.SettingsChanged`); docs [Email Configuration](../pages/email-configuration.md),
+  [Email Templates](../pages/email-templates.md).
 - **Test send**: run with a timeout and map exceptions to the error categories above; log without secrets.

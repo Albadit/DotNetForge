@@ -21,10 +21,11 @@ public sealed class DatabaseServiceTests
     {
         var services = new ServiceCollection()
             .AddLogging(logging => logging.AddProvider(_logs).SetMinimumLevel(LogLevel.Debug))
-            .AddDatabaseProvider<FakeDatabaseProvider>("fake");
+            // Registered under the CMS provider's name, the fake also stands in for PostgreSQL as the main database.
+            .AddDatabaseProvider<FakeDatabaseProvider>("postgresql");
         services.AddDotNetForgeDatabases(
-            new DatabaseSettings { Provider = "fake", ConnectionString = MainConnection },
-            new[] { new DatabaseSettings { Name = "reports", Provider = "fake", ConnectionString = ReportsConnection } },
+            new DatabaseSettings { Provider = "postgresql", ConnectionString = MainConnection },
+            new[] { new DatabaseSettings { Name = "reports", Provider = "postgresql", ConnectionString = ReportsConnection } },
             new DatabaseHostContext(IsDevelopment: true, DevelopmentDataRoot: Path.GetTempPath()));
         _service = services.BuildServiceProvider().GetRequiredService<IDatabaseService>();
     }

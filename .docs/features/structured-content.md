@@ -151,8 +151,8 @@ file ids, array items as text; numbers in `Number`; booleans as `0/1` and `"true
 for the working copy (`Published = false`) and the published values (`Published = true`). Text is lower-cased and cut
 to 200 characters. Rich text, groups and repeaters are not indexed.
 
-`ContentQueryService.QueryAsync` answers an `EntryQuery` with single-table queries only, combined in memory, so it runs
-unchanged on every database including MongoDB ([database rules](../database/mongodb.md#query-rules)):
+`ContentQueryService.QueryAsync` answers an `EntryQuery` with single-table queries only, combined in memory (written
+when the CMS still ran on MongoDB too; the CMS database is now always PostgreSQL, [database rules](../architecture/database.md#rules)):
 
 1. the narrow entry rows of the type (`Id`, `SortOrder`, `Title`, dates), filtered by status and search
    (`SearchText.Contains`);

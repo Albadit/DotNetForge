@@ -24,6 +24,16 @@ public sealed class SettingsController : AdminControllerBase
     private const int MaxKeyLength = 200;
     private const int MaxValueLength = 4000;
 
+    /// <summary>
+    /// Keys owned by screens with their own rules: editing them here would skip those rules (e.g. a Super Admin
+    /// default role for sign-ups).
+    /// </summary>
+    private static readonly (string Prefix, string Screen)[] ManagedKeys =
+    {
+        ("users.", "Advanced Settings"),
+        (DatabaseTransferService.KeyPrefix, "Data Management"),
+    };
+
     private readonly IAuditService _audit;
 
     public SettingsController(DotNetForgeDbContext db, AppEnvironment env, IAuditService audit)
@@ -52,6 +62,10 @@ public sealed class SettingsController : AdminControllerBase
         {
             ModelState.AddModelError(string.Empty,
                 $"Keys are limited to {MaxKeyLength} characters and values to {MaxValueLength}.");
+        }
+        else if (ManagedKeys.FirstOrDefault(m => key.Trim().StartsWith(m.Prefix, StringComparison.OrdinalIgnoreCase)) is { Screen: { } screen })
+        {
+            ModelState.AddModelError(string.Empty, $"'{key.Trim()}' is managed on {screen}; change it there.");
         }
 
         if (!ModelState.IsValid)

@@ -5,45 +5,35 @@ Tables, relationships, constraints, migrations and seeding. All persistence goes
 file bytes are **not** in the database - they live in `IFileStorage`, and `MediaFiles` holds the metadata and the
 storage key ([media storage](../features/media-storage.md#storage-architecture)).
 
-## Providers
+## Provider
 
-The CMS runs on SQLite, PostgreSQL, SQL Server, MySQL or MongoDB, chosen by `DATABASE_PROVIDER` (or detected from
-the connection string). How providers work, how they are configured and how to add one:
-[database layer](../database/architecture.md), [providers](../database/providers.md),
-[configuration](../database/configuration.md).
+The CMS database is **PostgreSQL** (`DATABASE_CONNECTION_STRING`, required in every environment). SQLite, SQL Server, MySQL and MongoDB can only be additional databases
+(`DATABASES_<NAME>_*`) for `IDatabaseService`, custom endpoints and exports - they never hold these tables. How the
+database layer works, how it is configured and how to add a provider: [database layer](../database/architecture.md),
+[providers](../database/providers.md), [configuration](../database/configuration.md).
 
-| Provider | Context type | Schema at startup (`DatabaseInitializer` → `IDatabaseProvider.InitializeSchemaAsync`) |
-| --- | --- | --- |
-| SQLite | `DotNetForgeDbContext` | `MigrateAsync` - `Database/Providers/Sqlite/Migrations/` |
-| PostgreSQL | `PostgreSqlDbContext` | `MigrateAsync` - `Database/Providers/PostgreSql/Migrations/` |
-| SQL Server | `SqlServerDbContext` | `MigrateAsync` - `Database/Providers/SqlServer/Migrations/` |
-| MySQL | `MySqlDbContext` | `MigrateAsync` - `Database/Providers/MySql/Migrations/` |
-| MongoDB | `MongoDbContext` | `EnsureCreatedAsync` - collections and indexes ([MongoDB](../database/mongodb.md#schema-without-migrations)) |
+At startup `DatabaseInitializer` calls `IDatabaseProvider.InitializeSchemaAsync` - `MigrateAsync` with the migrations
+in `Database/Providers/PostgreSql/Migrations/` - then `DataSeeder` ([Seeding](#seeding)).
 
-PostgreSQL is the recommended production database ([deployment → database](../guides/deployment.md#database)).
+> **Existing SQLite, SQL Server, MySQL or MongoDB CMS databases** no longer start: the provider is refused at startup
+> ([configuration](../database/configuration.md#validation-startup)). The export file is model-driven, so an export
+> made on such a database imports into PostgreSQL on [Data Management](../pages/data-management.md) (Development
+> only) when its data version and schema match ([rules](../features/transfer-and-updates.md#rules)).
+>
+> **A PostgreSQL database created by a much earlier build** (via `EnsureCreated`) has no `__EFMigrationsHistory`
+> table, so `MigrateAsync` tries to create every table again and startup fails. Recreate the database, or baseline
+> it: create the `DataProtectionKeys` table by hand (as in
+> `Database/Providers/PostgreSql/Migrations/20261005180055_InitialCreate.cs`), then insert the row
+> `('20261005180055_InitialCreate', '<EF Core product version>')` into `__EFMigrationsHistory`.
 
-> **BREAKING for existing PostgreSQL databases.** A PostgreSQL database created by an earlier build (via
-> `EnsureCreated`) has no `__EFMigrationsHistory` table, so `MigrateAsync` tries to create every table again and
-> startup fails. Recreate the database, or baseline it: create the `DataProtectionKeys` table by hand (as in
-> `Database/Providers/PostgreSql/Migrations/20261005180055_InitialCreate.cs`), then insert the row `('20261005180055_InitialCreate',
-> '<EF Core product version>')` into `__EFMigrationsHistory`. SQLite databases upgrade normally.
+### Model and context
 
-### One model, one context type per provider
-
-EF Core binds a migration set to a context type, so each provider has its own type:
-
-- **`DotNetForgeDbContext`**
-  - Holds the whole model (all `DbSet`s and fluent configuration).
-  - Owns the SQLite migrations in `Database/Providers/Sqlite/Migrations/`.
-  - Not sealed, with a protected constructor for subclasses.
-- **`PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext` and `MongoDbContext`** derive from it.
-  - Each lives in its database's folder and owns that database's migration set
-    (`Database/Providers/<Database>/Migrations/`, namespace `DotNetForge.Data.Database.Providers.<Database>.Migrations`),
-    or for MongoDB the key generators.
-  - Provider-specific model adjustments live only there: `SqlServerDbContext` makes `SystemState.Id` non-identity,
-    and `MongoDbContext` generates the integer keys.
-- **The main database's provider registers its type as `DotNetForgeDbContext`** (`IDatabaseProvider.AddDbContext`),
-  so application code always injects `DotNetForgeDbContext` and never names a subclass.
+- **`DotNetForgeDbContext`** holds the whole model (all `DbSet`s and fluent configuration). Not sealed: a protected
+  constructor for the subclass, and a public one for tools and tests that only need the model.
+- **`PostgreSqlDbContext`** (`Database/Providers/PostgreSql/`) derives from it and owns the migrations (namespace
+  `DotNetForge.Data.Database.Providers.PostgreSql.Migrations`). EF Core binds a migration set to a context type.
+- **`PostgreSqlDatabaseProvider.AddDbContext` registers it as `DotNetForgeDbContext`**, so application code always
+  injects `DotNetForgeDbContext` and never names the subclass.
 
 ## Entity relationship diagram
 
@@ -83,10 +73,11 @@ removed by the `RemoveTenants` migrations).
 | `Roles` | `Guid Id` | `Name`(100), `Description`(500), `IsBuiltIn` | `Name` unique | `DataSeeder`, `RoleManagementService` |
 | `RolePermissions` | `Guid Id` | `RoleId`, `Area`(100), `Action`(100) | (`RoleId`, `Area`, `Action`) unique | `DataSeeder`, `RoleManagementService`; read by `RoleGrantStore` |
 | `UserRoles` | (`UserId`, `RoleId`) | - | composite PK | `InstallationStore`, `UserManagementService` |
-| `Pages` | `Guid Id` | `Slug`(200), `Title`(300), `MetaTitle`, `MetaDescription`, `SeoKeywords`, `CanonicalUrl`, `Published`, `Disabled`, `DisplayInMenu`, `ParentPageId`, `SortOrder`, `PageType`, `TargetUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate`, `NoIndex`, `SocialImageUrl`(2000), `ThemeId`(100), `LayoutJson` / `DraftLayoutJson` (unbounded text: `text` / `nvarchar(max)` / `longtext`), `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`, `CreatedById`, dates | (`ParentPageId`, `Slug`) unique | `PagesController` and `ContentApiController` through `IPageService`, `PageBuilderService` (layout columns), `ScheduledPublishingService`, `DataSeeder` |
+| `Pages` | `Guid Id` | `Slug`(200), `Title`(300), `MetaTitle`, `MetaDescription`, `SeoKeywords`, `CanonicalUrl`, `Published`, `Disabled`, `DisplayInMenu`, `ParentPageId`, `SortOrder`, `PageType`, `TargetUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate`, `NoIndex`, `SocialImageUrl`(2000), `ThemeId`(100), `ThemeForChildren`, `LayoutJson` / `DraftLayoutJson` (unbounded text: `text` / `nvarchar(max)` / `longtext`), `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`, `CreatedById`, dates | (`ParentPageId`, `Slug`) unique | `PagesController` and `ContentApiController` through `IPageService`, `PageBuilderService` (layout columns), `ScheduledPublishingService`, `DataSeeder` |
 | `PagePermissions` | `Guid Id` | `PageId`, `RoleId`, `Permission`(20: `view` / `edit`) | (`PageId`, `RoleId`, `Permission`) unique | `PagePermissionService` ([page permissions](../features/content-pages-and-routing.md#page-permissions)) |
 | `PageUserPermissions` | `Guid Id` | `PageId`, `UserId`, `Permission`(20), `Allow` (false = blocked) | (`PageId`, `UserId`, `Permission`) unique | `PagePermissionService`; removed by `UserManagementService.DeleteAsync` with the user |
-| `MediaFiles` | `Guid Id` | `FileName`(400, sanitized display name ≤ 200), `OriginalName`(400), `ContentType`(200, from the extension), `SizeBytes`, `RelativePath`(1000, the `IFileStorage` key `{yyyy}/{MM}/{guid:N}{ext}`; older uploads keep their earlier keys), `FolderPath` (always `/`), `IsPublic`, `UploadedById`, `UploadedDate` | - | `MediaService` (upload adds, delete removes) |
+| `MediaFiles` | `Guid Id` | `FileName`(400, sanitized display name ≤ 200), `OriginalName`(400), `ContentType`(200, from the extension), `SizeBytes`, `RelativePath`(1000, the `IFileStorage` key `{yyyy}/{MM}/{guid:N}{ext}`; older uploads keep their earlier keys), `FolderId`? (the `MediaFolders` row; null = top level), `IsPublic`, `UploadedById`, `UploadedDate` | `FolderId` | `MediaService` (upload adds, delete removes), `MediaFolderService` (moves) |
+| `MediaFolders` | `Guid Id` | `Name`(100), `ParentId`?, `Path`(1000, "/Photos/2026"), `CreatedById`?, `CreatedDate` | `Path` unique, `ParentId` | `MediaFolderService` - virtual library folders ([media → folders](../pages/media.md#folders)) |
 | `ApiTokens` | `Guid Id` | `Name`(200), `Description`(1000), `Duration`, `ExpirationDate`, `PermissionsCsv`, `CreatedById`, `CreatedDate`, `LastUsedDate`, `Revoked`, `TokenHash`, `TokenPrefix`(64) | `Name` unique; index on `TokenPrefix`; `Permissions` computed from CSV | `ApiTokensController`, `ApiTokenAuthenticationHandler` (`LastUsedDate`, at most every 5 min) |
 | `Webhooks` | `Guid Id` | `Name`, `Url`, `HeadersJson`, `EventsCsv`, `Enabled`, `Secret`, `LastDelivery` | - | **nothing** |
 | `WebhookDeliveries` | `Guid Id` | `WebhookId`, `TargetUrl`, `Event`, `ResponseStatusCode`, `ResponseTimeMs`, `AttemptNumber`, `Outcome`, `Detail` | index on `WebhookId` | **nothing** |
@@ -96,9 +87,12 @@ removed by the `RemoveTenants` migrations).
 | `ContentTypes` | `Guid Id` | `Name`(100), `Slug`(64, the API id), `Description`(500), `Icon`(40), `Kind` (`ContentTypeKind`), `FieldsJson` (unbounded, the field definitions), `TitleField`(64), `Drafts`, `SortOrder`, `CreatedById`, dates | `Slug` unique | `ContentTypeService` |
 | `ContentEntries` | `Guid Id` | `ContentTypeId`, `Title`(300), `SearchText`(1000, lower-cased), `DataJson` (working copy) / `PublishedDataJson` (published values, null = not published) - unbounded, `Published`, `HasDraft`, `PublishedDate`, `PublishedById`, `SortOrder`, `Version`, `CreatedById`, `UpdatedById`, dates | index (`ContentTypeId`, `SortOrder`) | `ContentEntryService` |
 | `ContentEntryValues` | `Guid Id` | `ContentTypeId`, `EntryId`, `Published` (which version), `Field`(100), `Text`(200, lower-cased), `Number` (double), `Date` | indexes (`ContentTypeId`, `Published`, `Field`, `Text`), (`ContentTypeId`, `Published`, `Field`, `Number`), (`EntryId`) | `ContentEntryService` (rewritten on every save, publish and type change); read by `ContentQueryService` ([querying](../features/structured-content.md#querying)) |
-| `CustomEndpoints` | `Guid Id` | `Name`(100), `Path`(200, the base path), `Description`(500), `Access` (`EndpointAccess`), `TokenProtected` (unbounded, nullable: the endpoint's own token encrypted with Data Protection), `Enabled`, `CreatedById`, dates | index on `Path` (not unique: `CustomEndpointService` refuses a second endpoint with the same base path) | `CustomEndpointService` ([custom endpoints](../features/custom-endpoints.md)) |
+| `CustomEndpoints` | `Guid Id` | `Name`(100), `Path`(200, the base path), `Description`(500), `Access` (`EndpointAccess`), `TokenProtected` (unbounded, nullable: the endpoint's own token encrypted with Data Protection), `Enabled`, `Database`(64, nullable: the additional database its SQL runs on, lower case; null = the CMS database), `CreatedById`, dates | index on `Path` (not unique: `CustomEndpointService` refuses a second endpoint with the same base path) | `CustomEndpointService` ([custom endpoints](../features/custom-endpoints.md)) |
+| `EmailLog` | `Guid Id` | `SentAt`, `Recipient`(320), `Subject`(500), `Template`(100)?, `Success`, `Error`(300)? | `SentAt` | `LoggingEmailSender` - one row per send attempt, kept 30 days ([Email Configuration](../pages/email-configuration.md#email-log)) |
+| `EmailTemplates` | `Guid Id` | `Key`(100), `Subject`(500), `Body` (unbounded; the service caps it at 20 000), `UpdatedDate`, `UpdatedById` | `Key` unique | `EmailTemplateService` - a row only while a template is customized ([email templates](../pages/email-templates.md)) |
 | `CustomEndpointOperations` | `Guid Id` | `EndpointId`, `Name`(100, nullable), `Method`(10), `Path`(200, the sub-path; empty = the endpoint's path), `Sql` and `ParametersJson` (unbounded), `Result` (`EndpointResultShape`), `TimeoutSeconds`, `MaxRows`, `SortOrder` | (`EndpointId`, `Method`, `Path`) unique; one method + path shape across all endpoints is checked by `CustomEndpointService` | `CustomEndpointService` (saved and deleted with the endpoint); run by `SqlEndpointRunner` |
 | `Settings` | `Guid Id` | `Key`(200), `Value`(4000) | `Key` unique (one value per key) | `SettingsController` |
+| `TransferRecords` | `Guid Id` | `Operation`, `Status` (enums), `Provider`(50), `SourceProvider`(50)?, `FileName`(260), `StorageKey`(500)?, `SizeBytes`, `RecordCount`, `Checksum`(64)?, `Automatic`, `Note`(200)?, `Error`(2000)?, `StartedAt`, `CompletedAt`?, `InitiatedById`? | `StartedAt` | `DatabaseTransferService` - one row per export, backup, import or restore; never exported or replaced by an import ([Data Management](../pages/data-management.md)) |
 | `AuthProviders` | `Guid Id` | `Name`(100), `Enabled`, `IsBuiltIn`, `SettingsJson` | `Name` unique | `DataSeeder` |
 | `DataProtectionKeys` | `int Id` (auto-increment) | `FriendlyName`, `Xml` | - | ASP.NET Core Data Protection (`PersistKeysToDbContext<DotNetForgeDbContext>`) |
 
@@ -114,7 +108,7 @@ until each endpoint gets a new token with **Generate token**).
 
 ### Column lengths
 
-PostgreSQL, SQL Server and MySQL enforce `HasMaxLength` (`varchar(n)`/`nvarchar(n)`); SQLite and MongoDB do not. Input is therefore checked before
+PostgreSQL enforces `HasMaxLength` (`character varying(n)`). Input is therefore checked before
 saving so an oversized value is a validation message, not a 500: `PageService` (Title 300, Slug 200, Meta title 300,
 Meta description 1000, Keywords 500, Canonical/Target URL/File reference 2000), `SettingsController` (key 200, value
 4000), `ApiTokensController` (name 200, description 1000), `InstallationService` (email 256, names 100),
@@ -124,66 +118,55 @@ and index text (200); and `AuditService` truncates its snapshots.
 
 ### Unique indexes and NULL
 
-The unique index (`ParentPageId`, `Slug`) on `Pages` includes a nullable column, and databases disagree about NULLs:
-
-| Database | Two root pages (`ParentPageId` NULL) with the same slug |
-| --- | --- |
-| SQLite, PostgreSQL, MySQL | allowed by the index (NULLs are distinct) |
-| SQL Server | allowed: EF Core creates the index filtered (`WHERE [ParentPageId] IS NOT NULL`) |
-| MongoDB | rejected by the index (null equals null) |
-
-So `PageService` checks slug uniqueness in code, including the root level, in:
+The unique index (`ParentPageId`, `Slug`) on `Pages` includes a nullable column. PostgreSQL treats NULLs as distinct,
+so the index allows two root pages (`ParentPageId` NULL) with the same slug. So `PageService` checks slug
+uniqueness in code, including the root level, in:
 - `ApplyAsync` (Pages screen edits and `POST /api/content/pages`);
 - `ReorderAsync`;
 - `DeleteAsync` (children moving up a level).
 
 ## Migrations
 
-| Migration | Context / folder | Adds |
-| --- | --- | --- |
-| `20260605120223_InitialCreate` | `DotNetForgeDbContext`, `Database/Providers/Sqlite/Migrations/` | all 15 application tables and indexes |
-| `20260605211609_AddPageSeoAndScheduling` | `DotNetForgeDbContext`, `Database/Providers/Sqlite/Migrations/` | `Pages.SeoKeywords`, `CanonicalUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate` |
-| `20261005180052_AddDataProtectionKeys` | `DotNetForgeDbContext`, `Database/Providers/Sqlite/Migrations/` | `DataProtectionKeys` |
-| `20261005180055_InitialCreate` | `PostgreSqlDbContext`, `Database/Providers/PostgreSql/Migrations/` | the current model in one step: all 16 tables and indexes |
-| `20261005212914_InitialCreate` | `SqlServerDbContext`, `Database/Providers/SqlServer/Migrations/` | the current model in one step |
-| `20261005211842_InitialCreate` | `MySqlDbContext`, `Database/Providers/MySql/Migrations/` | the current model in one step |
-| `20261023140154_AddPageBuilderAndPermissions` (SQLite), `20261023140202_…` (PostgreSQL), `20261023140210_…` (SQL Server), `20261023140217_…` (MySQL) | all four SQL contexts | `Pages.ThemeId`, `NoIndex`, `SocialImageUrl`, `LayoutJson`, `DraftLayoutJson`, `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`; table `PagePermissions` |
-| `20261023144952_AddPageUserPermissions` (SQLite), `20261023144957_…` (PostgreSQL), `20261023145002_…` (SQL Server), `20261023145008_…` (MySQL) | all four SQL contexts | table `PageUserPermissions` |
-| `20261026110542_AddStructuredContent` (SQLite), `20261026110549_…` (PostgreSQL), `20261026110556_…` (SQL Server), `20261026110603_…` (MySQL) | all four SQL contexts | tables `ContentTypes`, `ContentEntries`, `ContentEntryValues`; `SystemState.SeedVersion` |
-| `20261026130440_AddCustomEndpoints` (SQLite), `20261026130447_…` (PostgreSQL), `20261026130455_…` (SQL Server), `20261026130502_…` (MySQL) | all four SQL contexts | table `CustomEndpoints` |
-| `20261026145758_RemoveTenants` (SQLite), `20261026145804_…` (PostgreSQL), `20261026145859_…` (SQL Server), `20261026145905_…` (MySQL) | all four SQL contexts | removes table `Tenants` and every `TenantId` column; unique indexes without `TenantId` (`Users.Email`, `Roles.Name`, `Pages` (`ParentPageId`, `Slug`), `ApiTokens.Name`, `ContentTypes.Slug`, `CustomEndpoints` (`Method`, `Path`), `Settings.Key`), `AuditLogs` index on `Action`. Before `Settings.Key` becomes unique it deletes a global setting (no tenant) whose key a tenant setting also has - the tenant's value wins |
-| `20261026152309_AddEndpointTokens` (SQLite), `20261026152316_…` (PostgreSQL), `20261026152322_…` (SQL Server), `20261026152329_…` (MySQL) | all four SQL contexts | `CustomEndpoints.TokenProtected` (existing endpoints get a token on their next save or with **Generate token**) |
-| `20261026155546_AddEndpointOperations` (SQLite), `20261026155553_…` (PostgreSQL), `20261026155603_…` (SQL Server), `20261026155610_…` (MySQL) | all four SQL contexts | table `CustomEndpointOperations`; copies every endpoint into one operation (`INSERT … SELECT`: the endpoint's id as both `Id` and `EndpointId`, `Path` `''`, `Name` NULL, its `Method`, `Sql`, `ParametersJson`, `Result`, `TimeoutSeconds`, `MaxRows`, `SortOrder` 0), then drops those columns and the unique index (`Method`, `Path`) from `CustomEndpoints`; new indexes `CustomEndpoints.Path` and (`EndpointId`, `Method`, `Path`) unique. `Down` restores the columns empty - the operations are not copied back |
+One set, for `PostgreSqlDbContext`, in `src/DotNetForge.Data/Database/Providers/PostgreSql/Migrations/`, applied
+automatically at startup:
 
-Paths are relative to `src/DotNetForge.Data/`. All sets are applied automatically at startup by the configured
-provider. **Every schema change needs a migration
-in each of the four SQL sets.** MongoDB needs none: `EnsureCreated` adds new collections and indexes, but never
-changes existing indexes ([MongoDB](../database/mongodb.md#schema-without-migrations)).
+| Migration | Adds |
+| --- | --- |
+| `20261005180055_InitialCreate` | the model of that time in one step: all 16 tables and indexes (incl. `DataProtectionKeys`) |
+| `20261023140202_AddPageBuilderAndPermissions` | `Pages.ThemeId`, `NoIndex`, `SocialImageUrl`, `LayoutJson`, `DraftLayoutJson`, `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`; table `PagePermissions` |
+| `20261023144957_AddPageUserPermissions` | table `PageUserPermissions` |
+| `20261026110549_AddStructuredContent` | tables `ContentTypes`, `ContentEntries`, `ContentEntryValues`; `SystemState.SeedVersion` |
+| `20261026130447_AddCustomEndpoints` | table `CustomEndpoints` |
+| `20261026145804_RemoveTenants` | removes table `Tenants` and every `TenantId` column; unique indexes without `TenantId` (`Users.Email`, `Roles.Name`, `Pages` (`ParentPageId`, `Slug`), `ApiTokens.Name`, `ContentTypes.Slug`, `CustomEndpoints` (`Method`, `Path`), `Settings.Key`), `AuditLogs` index on `Action`. Before `Settings.Key` becomes unique it deletes a global setting (no tenant) whose key a tenant setting also has - the tenant's value wins |
+| `20261026152316_AddEndpointTokens` | `CustomEndpoints.TokenProtected` (existing endpoints get a token on their next save or with **Generate token**) |
+| `20261026155553_AddEndpointOperations` | table `CustomEndpointOperations`; copies every endpoint into one operation (`INSERT … SELECT`: the endpoint's id as both `Id` and `EndpointId`, `Path` `''`, `Name` NULL, its `Method`, `Sql`, `ParametersJson`, `Result`, `TimeoutSeconds`, `MaxRows`, `SortOrder` 0), then drops those columns and the unique index (`Method`, `Path`) from `CustomEndpoints`; new indexes `CustomEndpoints.Path` and (`EndpointId`, `Method`, `Path`) unique. `Down` restores the columns empty - the operations are not copied back |
+| `20261026164300_AddPageThemeForChildren` | `Pages.ThemeForChildren` (bool, not null, default `false`: existing pages hand no theme down) |
+| `20261027092545_AddEmailTemplates` | table `EmailTemplates` with a unique index on `Key` |
+| `20261027124505_AddTransferRecords` | table `TransferRecords` with an index on `StartedAt` |
+| `20261027135904_AddEndpointDatabase` | `CustomEndpoints.Database` (`character varying(64)`, nullable) |
+| `20261027145210_AddEmailLog` | table `EmailLog` with an index on `SentAt` |
+| `20261027153504_AddMediaFolders` | table `MediaFolders` (unique `Path`, index `ParentId`); `MediaFiles.FolderPath` dropped, `MediaFiles.FolderId` added (index) |
 
-Use the [database-change skill](../../.claude/skills/database-change/SKILL.md) or, from the repository root:
+**Every schema change needs one migration** for `PostgreSqlDbContext`. Use the
+[database-change skill](../../.claude/skills/database-change/SKILL.md) or, from the repository root:
 
 ```bash
 dotnet tool restore
-for ctx in DotNetForgeDbContext:Sqlite PostgreSqlDbContext:PostgreSql \
-           SqlServerDbContext:SqlServer MySqlDbContext:MySql; do
-  dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-    --context "${ctx%%:*}" --output-dir "Database/Providers/${ctx#*:}/Migrations"
-done
+dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data --context PostgreSqlDbContext --output-dir Database/Providers/PostgreSql/Migrations
 ```
 
 After generating:
 
 - **Strip the UTF-8 BOM** EF writes into the new files; `.editorconfig` sets `charset = utf-8` (no BOM).
-- **Check the snapshots.** There must be one `<Context>ModelSnapshot.cs` per folder.
+- **Check the snapshot.** There must be one `PostgreSqlDbContextModelSnapshot.cs` in the folder.
   - Don't pass `--namespace`: EF derives the snapshot's folder from it and writes it elsewhere.
-  - `dotnet ef migrations has-pending-model-changes --context <Context>` must report no changes afterwards.
-- **Read the generated SQL for each provider:**
-  - text columns that are indexed need a `HasMaxLength` (SQL Server and MySQL can't index unbounded text);
-  - integer keys that receive explicit values must not be identity columns (SQL Server).
-- **The design-time factories never connect** (`src/DotNetForge.Data/DesignTimeDbContextFactory.cs`, one per SQL
-  context). They read `DATABASE_CONNECTION_STRING` from the process environment, otherwise they use a placeholder.
-- **VS Code:** the **ef: add migration (…)** tasks run the command for one context each; run all four with the same
-  name.
+  - `dotnet ef migrations has-pending-model-changes --project src/DotNetForge.Data --startup-project src/DotNetForge.Data --context PostgreSqlDbContext`
+    must report no changes afterwards.
+- **Read the generated SQL:** indexed text columns need a `HasMaxLength`; check column types and the values existing
+  rows get.
+- **The design-time factory never connects** (`PostgreSqlDesignTimeDbContextFactory` in
+  `src/DotNetForge.Data/DesignTimeDbContextFactory.cs`). It reads `DATABASE_CONNECTION_STRING` from the process
+  environment, otherwise it uses a placeholder.
 
 ## Seeding
 
@@ -195,7 +178,7 @@ After generating:
 | Starter pages | no pages | `Home` (`/`, published), `About` (`about`, published), `News` (`news`, published), `Contact` (`contact`, not published), and under About: `Team` (`team`, published), `History` (`history`, not published) |
 | Auth providers | table empty | `Email` (enabled, built-in) + 16 disabled OAuth entries: Auth0, CAS, Cognito, Discord, Facebook, GitHub, Google, Instagram, Keycloak, LinkedIn, Microsoft, Patreon, Reddit, Twitch, Twitter/X, VK |
 | System state | no row | `SystemState { Id = 1, Installed = false }` |
-| One-time updates (`UpgradeAsync`) | `SystemState.SeedVersion < DataSeeder.CurrentSeedVersion` | each missing step once, then `SeedVersion = CurrentSeedVersion`. Step 1: built-in roles with no grant in `Content types` / `Entries` get the matrix defaults of those areas ([authorization](../features/authorization.md#permission-matrix-default-grants)) |
+| One-time updates (`UpgradeAsync`) | `SystemState.SeedVersion < DataSeeder.CurrentSeedVersion` | each missing step once, then `SeedVersion = CurrentSeedVersion`. Step 1: built-in roles with no grant in `Content types` / `Entries` get the matrix defaults of those areas ([authorization](../features/authorization.md#permission-matrix-default-grants)). Step 2: every existing user gets `EmailConfirmed = true`, so turning on email confirmation never locks out accounts that predate it ([authentication](../features/authentication.md#self-service-accounts)) |
 
 Deleting all pages therefore re-creates the starter tree on the next restart. Seeded pages have no `CreatedById`, so
 Authors (who may only edit their own pages) cannot edit them. Nothing seeds `Settings`, `MediaFiles`, `Webhooks`,
@@ -208,7 +191,7 @@ the [Content types](../pages/content-types.md) screen).
 | --- | --- |
 | Delete a content page (`PageService.DeleteAsync`) | children are re-parented to the deleted page's parent, then the page is removed; refused when that would create a duplicate slug or a second dynamic segment under the parent |
 | Delete a media file (`MediaService.DeleteAsync`) | the `MediaFiles` row is removed first, then the stored object; a failed object delete leaves an orphaned object (logged as a warning) |
-| Delete a role / user | `RoleManagementService` / `UserManagementService` remove `RolePermissions` / `UserRoles` first (MongoDB has no cascades); a role still held by users can't be deleted |
+| Delete a role / user | `RoleManagementService` / `UserManagementService` remove `RolePermissions` / `UserRoles` first; a role still held by users can't be deleted |
 | Delete a content page | `PagesController.Delete` removes its `PagePermissions` and `PageUserPermissions` before `PageService.DeleteAsync` |
 | Delete an entry / several | `ContentEntryService.DeleteAsync` / `DeleteManyAsync` remove the entries' `ContentEntryValues` with them; entries that linked to it keep the id (skipped when rendering) |
 | Delete a custom endpoint | `CustomEndpointService.DeleteAsync` removes its `CustomEndpointOperations` in the same save |
@@ -218,11 +201,11 @@ the [Content types](../pages/content-types.md) screen).
 
 ## Rules
 
-- Query through `DotNetForgeDbContext`; no raw SQL. Never inject or name a provider-specific context type.
-- **One table per query.** No joins, and no navigation properties across tables inside a query: combine small
-  single-table queries in memory. Every provider runs that, including MongoDB
-  ([MongoDB → Query rules](../database/mongodb.md#query-rules)).
+- Query through `DotNetForgeDbContext`; no raw SQL (custom API endpoints are the one deliberate exception). Never
+  inject or name `PostgreSqlDbContext`.
+- The CMS database is always PostgreSQL, so queries no longer need to avoid joins and navigations; the existing code
+  combines small single-table queries in memory, which keeps working.
 - Use `AsNoTracking()` + `Select` projection for reads that render a screen or API response.
-- Validate lengths before saving (PostgreSQL, SQL Server and MySQL enforce them).
-- Schema changes: change the entity + `OnModelCreating`, add a migration **for each of the four SQL contexts**, and
-  keep `DataSeeder` idempotent.
+- Validate lengths before saving (PostgreSQL enforces them).
+- Schema changes: change the entity + `OnModelCreating`, add **one** migration for `PostgreSqlDbContext`, and keep
+  `DataSeeder` idempotent.

@@ -32,6 +32,12 @@ public class CustomEndpoint
     /// <summary>Disabled endpoints answer 404 for every operation.</summary>
     public bool Enabled { get; set; } = true;
 
+    /// <summary>
+    /// The additional database its SQL runs on - the &lt;NAME&gt; of <c>DATABASES_&lt;NAME&gt;_*</c>, lower case - or
+    /// null for the CMS database.
+    /// </summary>
+    public string? Database { get; set; }
+
     public Guid? CreatedById { get; set; }
 
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

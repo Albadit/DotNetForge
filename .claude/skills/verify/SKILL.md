@@ -2,8 +2,8 @@
 name: verify
 description: >-
   Verifies a DotNetForge CMS change before reporting it done: dotnet build, unit and integration tests, the CI
-  dotnet format check, and - for UI, routing or auth changes - running the app against a throwaway SQLite database,
-  completing setup and probing routes with curl. Use after any code change, when asked to check, test, run or
+  dotnet format check, and - for UI, routing or auth changes - running the app against a throwaway PostgreSQL
+  database, completing setup and probing routes with curl. Use after any code change, when asked to check, test, run or
   smoke-test the app, or before writing release notes.
 ---
 
@@ -14,6 +14,7 @@ Run from the repository root. Report real output (counts, failures), never assum
 ## 1. Build and test
 
 ```bash
+docker compose -f docker/databases/postgres.yml up -d   # the integration tests need PostgreSQL (localhost:5432)
 dotnet build          # the solution, DotNetForge.slnx
 dotnet test           # both test projects (or: dotnet test tests/DotNetForge.Tests, tests/DotNetForge.IntegrationTests)
 ```
@@ -21,14 +22,16 @@ dotnet test           # both test projects (or: dotnet test tests/DotNetForge.Te
 Baseline (October 2026): 0 errors, 0 warnings; 758 unit tests pass (+5 live-S3 tests skipped unless `DNF_TEST_S3_*`
 is set) and 98 integration tests pass (+3 credential tests skipped unless their database server is set).
 Page builder JavaScript: `node tests/js/page-builder-fixtures.mjs` → 84/84 fixtures match (run it after changing
-anything in `wwwroot/js/builder/core`, `renderer` or `components`, or the schema). Integration tests need no `.env` (the factory sets environment variables and
-uses a temp directory) and must not run in parallel.
+anything in `wwwroot/js/builder/core`, `renderer` or `components`, or the schema). Integration tests need no `.env` (the factory sets environment variables, creates
+a fresh PostgreSQL database per factory on the `DNF_TEST_POSTGRES` server - default `localhost:5432`,
+`postgres`/`postgres` - and uses a temp directory) and must not run in parallel.
 
-Production-like backends (recommended when touching persistence or storage):
+Other backends (recommended when touching additional databases or storage):
 
 ```bash
-docker compose -f docker/compose.dev.yml up -d
-DNF_TEST_POSTGRES="Host=localhost;Port=5432;Username=postgres;Password=postgres" dotnet test tests/DotNetForge.IntegrationTests
+docker compose -f docker/databases/mysql.yml -f docker/s3/seaweedfs.yml up -d
+DNF_TEST_MYSQL="Server=localhost;Port=3306;Uid=root;Pwd=dotnetforge" dotnet test tests/DotNetForge.IntegrationTests \
+  --filter "FullyQualifiedName~AdditionalDatabase|FullyQualifiedName~DatabaseCredential"   # likewise DNF_TEST_SQLSERVER, DNF_TEST_MONGODB
 DNF_TEST_S3_SERVICE_URL=http://localhost:8333 DNF_TEST_S3_BUCKET=dotnetforge DNF_TEST_S3_ACCESS_KEY_ID=dev \
   DNF_TEST_S3_SECRET_ACCESS_KEY=dev DNF_TEST_S3_FORCE_PATH_STYLE=true dotnet test tests/DotNetForge.Tests
 ```
@@ -41,11 +44,11 @@ for p in src/*/*.csproj tests/*/*.csproj; do dotnet format "$p" --verify-no-chan
 
 ## 3. Smoke test the running app (UI / routing / auth changes)
 
-Use a throwaway database and a free port. Without `STORAGE_S3_*`, uploads land in the repository's git-ignored
-`storage/media` - delete what you upload:
+Use a throwaway PostgreSQL database (the migrations create it on start) and a free port. Without `STORAGE_S3_*`,
+uploads land in the repository's git-ignored `storage/media` - delete what you upload:
 
 ```bash
-export DATABASE_CONNECTION_STRING="Data Source=<scratch>/verify.db" \
+export DATABASE_CONNECTION_STRING="Host=localhost;Port=5432;Database=dnf_verify;Username=postgres;Password=postgres;GSS Encryption Mode=Disable" \
        ASPNETCORE_URLS=http://localhost:5077 ASPNETCORE_ENVIRONMENT=Development
 dotnet run --project src/DotNetForge.Web --no-build --no-launch-profile &   # after dotnet build; honours ASPNETCORE_URLS
 curl -s http://localhost:5077/health                 # {"status":"ok",...}
@@ -54,13 +57,10 @@ curl -s http://localhost:5077/health                 # {"status":"ok",...}
 Read-only check of the real image (what CI's `read-only-container` job does):
 
 ```bash
-docker build -f docker/Dockerfile -t dnf-check .
-docker run -d --name dnf-check --read-only --tmpfs /tmp -p 5078:8080 \
-  -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" -e STORAGE_S3_SERVICE_URL=http://s3.invalid \
-  -e STORAGE_S3_BUCKET=check -e STORAGE_S3_ACCESS_KEY_ID=check -e STORAGE_S3_SECRET_ACCESS_KEY=check dnf-check
-# (S3 is required outside Development; placeholders suffice because this check uploads nothing.)
-curl -s http://localhost:5078/health && docker diff dnf-check   # diff must be empty
-docker rm -f dnf-check
+docker compose -f docker/compose.app.yml up -d --build     # Production, read-only, PostgreSQL + RustFS + Mailpit
+curl -s http://localhost:8080/health && curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/setup
+docker compose -f docker/compose.app.yml exec -T app sh -c 'touch /app/probe'   # must fail: /app is read-only
+docker compose -f docker/compose.app.yml down -v
 ```
 
 On Git Bash for Windows prefix `docker run` with `MSYS_NO_PATHCONV=1` when arguments contain `/paths`.
@@ -77,12 +77,13 @@ curl -s -b $J -o /dev/null -w '%{http_code}\n' $B/admin/content
 ```
 
 Use `ASPNETCORE_ENVIRONMENT=Production` when checking error handling or the enforced CSP (Development shows the
-exception page and sends CSP report-only). Production also requires an explicit absolute `DATABASE_CONNECTION_STRING`
+exception page and sends CSP report-only). Production also requires an explicit `DATABASE_CONNECTION_STRING`
 and `STORAGE_S3_*` settings (the compose S3 server works), and the auth cookie is Secure-only (use HTTPS or `X-Forwarded-Proto: https` with
 `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`).
 Stop the process afterwards (PowerShell:
 `Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | ? CommandLine -like '*DotNetForge.Web.dll*' | % { Stop-Process -Id $_.ProcessId }`)
-and delete the scratch DB.
+and drop the scratch database
+(`docker compose -f docker/databases/postgres.yml exec postgres dropdb -U postgres dnf_verify`).
 
 ## 4. Docs
 

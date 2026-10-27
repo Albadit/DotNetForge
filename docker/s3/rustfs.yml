@@ -1,0 +1,43 @@
+# RustFS: S3-compatible object storage that checks access keys and signatures like a production S3 service
+# (.docs/guides/development.md#production-like-s3-and-email). Also part of docker/compose.dev.yml.
+#   docker compose -f docker/s3/rustfs.yml up -d
+# S3 API http://localhost:9000, console http://localhost:9001/rustfs/console/ (sign in with the keys).
+# .env (as in .env.developer):
+#   STORAGE_S3_SERVICE_URL=http://localhost:9000
+#   STORAGE_S3_BUCKET=dotnetforge
+#   STORAGE_S3_ACCESS_KEY_ID=dotnetforge-dev
+#   STORAGE_S3_SECRET_ACCESS_KEY=dotnetforge-dev-secret
+#   STORAGE_S3_REGION=us-east-1
+#   STORAGE_S3_FORCE_PATH_STYLE=true
+# Development only: the keys are public.
+
+name: dotnetforge
+
+services:
+  rustfs:
+    image: rustfs/rustfs:latest
+    environment:
+      RUSTFS_ACCESS_KEY: dotnetforge-dev
+      RUSTFS_SECRET_KEY: dotnetforge-dev-secret
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs-data:/data
+    # The app container of docker/compose.app.yml signs media URLs for this name; browsers resolve it to 127.0.0.1.
+    networks:
+      default:
+        aliases:
+          - rustfs.localhost
+
+  # Creates the bucket (a signed request, like any S3 client) once RustFS answers; 409 = it exists already.
+  rustfs-bucket:
+    image: curlimages/curl
+    depends_on:
+      - rustfs
+    command: ["sh", "-c", "until code=$$(curl -s -o /dev/null -w '%{http_code}' -X PUT --aws-sigv4 aws:amz:us-east-1:s3 --user dotnetforge-dev:dotnetforge-dev-secret http://rustfs:9000/dotnetforge); [ \"$$code\" = 200 ] || [ \"$$code\" = 409 ]; do sleep 1; done"]
+    restart: "no"
+
+volumes:
+  rustfs-data:

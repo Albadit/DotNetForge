@@ -7,6 +7,10 @@ body.public { display: flex; flex-direction: column; background: var(--color-sur
 .site-brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text); font-weight: var(--weight-bold); font-size: var(--text-lg); }
 .site-brand:hover { text-decoration: none; }
 .site-brand img { width: 1.75rem; height: 1.75rem; }
+.site-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); margin-left: auto; }
+.site-nav a { color: var(--color-text-muted); font-size: var(--text-sm); }
+.site-nav a:hover, .site-nav a[aria-current="page"] { color: var(--color-text); text-decoration: none; }
+.site-nav a[aria-current="page"] { font-weight: var(--weight-semibold); }
 .site-main { flex: 1 0 auto; display: flex; flex-direction: column; gap: var(--space-10); padding-top: var(--space-12); padding-bottom: var(--space-16); }
 .site-main:focus { outline: none; }
 /* A page builder layout: full width, its sections set their own content width (.docs/features/page-builder.md). */

@@ -1,0 +1,22 @@
+# SQL Server 2022 for development (.docs/database/configuration.md).
+#   docker compose -f docker/databases/sqlserver.yml up -d
+# Only as an additional database (the CMS database is PostgreSQL), e.g. in .env:
+#   DATABASES_<NAME>_PROVIDER=sqlserver
+#   DATABASES_<NAME>_CONNECTION_STRING=Server=localhost,1433;Initial Catalog=dotnetforge;User Id=sa;Password=DotNetForge!2026;TrustServerCertificate=true
+# Development only: the password is public.
+
+name: dotnetforge
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: DotNetForge!2026
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+volumes:
+  sqlserver-data:

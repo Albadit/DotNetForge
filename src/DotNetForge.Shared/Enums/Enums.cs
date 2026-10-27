@@ -100,3 +100,25 @@ public enum EndpointAccess
     /// <summary>Anyone, without a token.</summary>
     Public = 1,
 }
+
+/// <summary>What a Data Management run did (.docs/pages/data-management.md).</summary>
+public enum TransferOperation
+{
+    /// <summary>The data downloaded as an export file.</summary>
+    Export = 0,
+
+    /// <summary>An export kept in the file storage (manual, automatic, or the safety copy before an import).</summary>
+    Backup = 1,
+
+    /// <summary>An uploaded export replaced the data (Development only).</summary>
+    Import = 2,
+
+    /// <summary>A stored backup replaced the data (Development only).</summary>
+    Restore = 3,
+}
+
+public enum TransferStatus
+{
+    Success = 0,
+    Failed = 1,
+}

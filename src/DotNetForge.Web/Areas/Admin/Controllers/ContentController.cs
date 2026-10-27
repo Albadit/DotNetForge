@@ -422,7 +422,7 @@ public sealed class ContentController : AdminControllerBase
             return BadRequest(new { message = "Choose a file to upload." });
         }
 
-        var (stored, error) = await _media.UploadAsync(file, isPublic, CurrentUserId, HttpContext.RequestAborted);
+        var (stored, error) = await _media.UploadAsync(file, isPublic, CurrentUserId, reuseDuplicate: true, ct: HttpContext.RequestAborted);
         if (stored is null)
         {
             return BadRequest(new { message = error });

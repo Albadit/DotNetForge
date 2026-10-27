@@ -1,0 +1,156 @@
+@model EmailTemplatesController.EmailTemplateEditViewModel
+@{
+    var definition = Model.State.Definition;
+    ViewData["Title"] = definition.Name;
+    ViewData["Description"] = "Sent when: " + definition.Trigger;
+    var action = "/admin/email/templates/" + definition.Key;
+    // For the code editor (email-templates.js): IntelliSense, validation and highlighting of {{variables}}.
+    var variablesJson = System.Text.Json.JsonSerializer.Serialize(definition.Variables.Select(v => new
+    {
+        name = v,
+        required = definition.Required.Contains(v),
+        sample = definition.SampleValues.GetValueOrDefault(v) ?? string.Empty,
+    }));
+}
+
+@section Actions {
+    <a class="btn btn-ghost" href="/admin/email/templates"><icon name="arrow-left" /> All templates</a>
+}
+
+<div class="editor">
+    <div class="editor-main">
+        <form method="post" action="@action" id="templateForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="version" value="@Model.Version" />
+            <section class="card" aria-labelledby="template-title">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" id="template-title">Message</h2>
+                        <p class="card-description">
+                            @if (Model.State.IsCustomized)
+                            {
+                                <badge tone="Info" dot="true">Customized</badge> <span>Saved <timestamp value="@Model.State.UpdatedDate" /></span>
+                            }
+                            else
+                            {
+                                <badge tone="Neutral" dot="true">Default</badge>
+                            }
+                        </p>
+                    </div>
+                </div>
+                <fieldset class="fieldset card-body stack" disabled="@(Model.CanEdit ? null : "disabled")">
+                    <legend class="sr-only">Message</legend>
+                    <form-errors />
+                    <div class="field">
+                        <label class="field-label" for="subject">Subject<span class="field-required" aria-hidden="true">*</span></label>
+                        <input id="subject" name="subject" value="@Model.Subject" required maxlength="500" />
+                    </div>
+                    <div class="field">
+                        <label class="field-label" for="body">Body (HTML)<span class="field-required" aria-hidden="true">*</span></label>
+                        @* Replaced by the Monaco editor when its scripts load; it stays the form field either way. *@
+                        <textarea id="body" name="body" rows="14" required maxlength="20000" class="text-mono template-body" spellcheck="false" aria-describedby="body-hint"
+                                  data-code-editor="html" data-template-variables="@variablesJson">@Model.Body</textarea>
+                        <div class="code-editor" data-code-editor-frame hidden>
+                            <div class="code-editor-surface" data-code-editor-host></div>
+                            @* Filled by email-templates.js from the editor. *@
+                            <div class="code-editor-status" role="group" aria-label="Editor status">
+                                <button type="button" class="code-status-item" data-status-problems
+                                        aria-label="Go to the next problem" data-tooltip="Go to the next problem (F8)">
+                                    <span class="code-status-count code-status-errors"><icon name="circle-x" size="sm" /><span data-status-errors>0</span></span>
+                                    <span class="code-status-count code-status-warnings"><icon name="triangle-alert" size="sm" /><span data-status-warnings>0</span></span>
+                                </button>
+                                <span class="code-status-spacer"></span>
+                                <span class="code-status-item" data-status-position>Ln 1, Col 1</span>
+                                <span class="code-status-item" data-status-length data-max="@DotNetForge.Core.Email.EmailTemplateRenderer.MaxBodyLength"></span>
+                                <span class="code-status-item">Spaces: 2</span>
+                                <span class="code-status-item">HTML</span>
+                                <button type="button" class="code-status-item" data-status-wrap aria-pressed="true"
+                                        data-tooltip="Wrap long lines (Alt+Z)">
+                                    <icon name="wrap-text" size="sm" /> Wrap
+                                </button>
+                            </div>
+                        </div>
+                        <span class="field-hint" id="body-hint">Use the variables on the right as <code>{{name}}</code>. Their values are HTML-encoded; scripts don't run in email clients.</span>
+                    </div>
+                </fieldset>
+                @if (Model.CanEdit)
+                {
+                    <div class="card-footer">
+                        @if (Model.State.IsCustomized)
+                        {
+                            <button type="submit" form="restoreForm" class="btn btn-ghost"
+                                    data-confirm="Replace your version of '@definition.Name' with the default? Your changes are lost."
+                                    data-confirm-title="Restore default" data-confirm-action="Restore">
+                                <icon name="rotate-ccw" /> Restore default
+                            </button>
+                        }
+                        <button type="submit" class="btn btn-primary"><icon name="check" /> Save template</button>
+                    </div>
+                }
+            </section>
+        </form>
+        <form method="post" action="@action/restore" id="restoreForm">
+            @Html.AntiForgeryToken()
+        </form>
+        @* email-templates.js copies the editor's text here and posts it into the preview frame while you type. *@
+        <form method="post" action="@action/preview" target="email-preview" id="previewForm" hidden>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="subject" />
+            <input type="hidden" name="body" />
+        </form>
+
+        <section class="card" aria-labelledby="preview-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="preview-title">Preview</h2>
+                    <p class="card-description">The email as it is sent, with sample data. Follows your changes as you type; nothing is sent.</p>
+                </div>
+                @* Renders the editor's text again, e.g. after a link in the preview navigated the frame away (email-templates.js). *@
+                <button type="button" class="btn btn-ghost btn-sm" data-preview-refresh data-js-only hidden
+                        aria-controls="email-preview" data-tooltip="Render the preview again">
+                    <icon name="refresh-cw" size="sm" /> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                @* Administrator-written HTML: sandboxed (no scripts, no forms) and served with its own strict policy. *@
+                <iframe id="email-preview" name="email-preview" class="email-preview" title="Email preview" sandbox src="@action/preview"></iframe>
+            </div>
+        </section>
+    </div>
+
+    <aside class="editor-aside">
+        <section class="card" aria-labelledby="variables-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="variables-title">Variables</h2>
+                    <p class="card-description">Only these work in this template.</p>
+                </div>
+            </div>
+            <ul class="card-body template-variables">
+                @foreach (var variable in definition.Variables)
+                {
+                    var token = "{{" + variable + "}}";
+                    <li>
+                        <div class="template-variable">
+                            <code>@token</code>
+                            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-copy-text="@token" aria-label="Copy @token" data-tooltip="Copy"><icon name="copy" size="sm" /></button>
+                        </div>
+                        <div class="template-sample">
+                            @if (definition.Required.Contains(variable))
+                            {
+                                <badge tone="Warning">Required</badge>
+                            }
+                            <span>e.g. @definition.SampleValues.GetValueOrDefault(variable)</span>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </section>
+    </aside>
+</div>
+
+@section Scripts {
+    @* Monaco (self-hosted, wwwroot/lib/monaco, MIT) - its AMD loader first; email-templates.js starts the editor. *@
+    <script src="~/lib/monaco/vs/loader.js" defer></script>
+    <script src="~/js/forge/email-templates.js" asp-append-version="true" defer></script>
+}

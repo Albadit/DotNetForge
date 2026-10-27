@@ -165,7 +165,7 @@ public sealed class ExtensionTests
         await EnableAsync(admin, "tests.plugin.kit");
 
         var failed = factory.CreateNoRedirectClient();
-        await DotNetForgeWebFactory.PostFormAsync(failed, "/account/login", "/account/login",
+        await DotNetForgeWebFactory.PostFormAsync(failed, "/login", "/login",
             new Dictionary<string, string> { ["email"] = "nobody@example.com", ["password"] = "wrong" });
 
         // Handlers run in the background: wait (bounded) for the event.
@@ -186,15 +186,15 @@ public sealed class ExtensionTests
         var (factory, admin) = await StartAsync();
         using var _ = factory;
         var visitor = factory.CreateNoRedirectClient();
-        Assert.DoesNotContain("Sign in with Test Kit", await visitor.GetStringAsync("/account/login"));
+        Assert.DoesNotContain("Sign in with Test Kit", await visitor.GetStringAsync("/login"));
 
         await EnableAsync(admin, "tests.plugin.kit");
-        Assert.Contains("Sign in with Test Kit", await visitor.GetStringAsync("/account/login"));
+        Assert.Contains("Sign in with Test Kit", await visitor.GetStringAsync("/login"));
 
         // Unknown email: back to the sign-in screen with a message, nothing signed in.
         var unknown = await ExternalSignInAsync(visitor, "stranger@example.com");
-        Assert.Contains("/account/login", unknown.Headers.Location?.OriginalString);
-        Assert.Contains("No account here uses the email", WebUtility.HtmlDecode(await visitor.GetStringAsync("/account/login")));
+        Assert.Contains("/login", unknown.Headers.Location?.OriginalString);
+        Assert.Contains("No account here uses the email", WebUtility.HtmlDecode(await visitor.GetStringAsync("/login")));
         Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync("/admin")).StatusCode);
 
         var known = await ExternalSignInAsync(visitor, DotNetForgeWebFactory.AdminEmail);
@@ -208,7 +208,7 @@ public sealed class ExtensionTests
     /// <summary>Clicks "Sign in with Test Kit" and follows the provider round trip to the host callback.</summary>
     private static async Task<HttpResponseMessage> ExternalSignInAsync(HttpClient client, string email)
     {
-        var challenge = await DotNetForgeWebFactory.PostFormAsync(client, "/account/login", "/account/external/testkit",
+        var challenge = await DotNetForgeWebFactory.PostFormAsync(client, "/login", "/account/external/testkit",
             new Dictionary<string, string> { ["email"] = email });
         Assert.Equal(HttpStatusCode.Redirect, challenge.StatusCode);
         return await client.GetAsync(challenge.Headers.Location);

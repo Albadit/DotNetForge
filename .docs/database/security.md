@@ -20,9 +20,9 @@ What the database layer does so that commands are safe by default, and what call
 - Commands never accept JSON or BSON from callers.
 
 **Identifiers are validated.**
-- For the main database, collection and field names must exist in the CMS model (`DatabaseNotFoundException`
+- For the CMS database, collection and field names must exist in the CMS model (`DatabaseNotFoundException`
   otherwise).
-- For databases without a model, names must match `^[A-Za-z_][A-Za-z0-9_]{0,127}$`. That rules out SQL syntax,
+- For additional databases (no model), names must match `^[A-Za-z_][A-Za-z0-9_]{0,127}$`. That rules out SQL syntax,
   quotes, MongoDB operators (`$where`) and dotted paths.
 
 **Text search is literal.**
@@ -42,7 +42,7 @@ database, including `Users.PasswordHash`, `ApiTokens` and the Data Protection ke
   - If users choose fields, sorting or filters (a report builder, an API), map their choices to a fixed set of
     collections and fields, and apply any row restrictions (for example, only published rows) yourself.
   - The service validates names; it does not authorize them.
-- **Use read-only database accounts** for named databases that are only queried.
+- **Use read-only database accounts** for additional databases that are only queried.
 
 ## Connections and secrets
 

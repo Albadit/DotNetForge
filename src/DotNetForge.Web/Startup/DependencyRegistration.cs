@@ -13,6 +13,7 @@ using DotNetForge.Data;
 using DotNetForge.Data.Database;
 using DotNetForge.Extensions;
 using DotNetForge.Infrastructure.Configuration;
+using DotNetForge.Infrastructure.Messaging;
 using DotNetForge.Infrastructure.Security;
 using DotNetForge.Infrastructure.Storage;
 using DotNetForge.Sdk;
@@ -98,10 +99,22 @@ public static class DependencyRegistration
         services.AddSingleton<InstallationStatusCache>();
         services.AddHttpContextAccessor();
         services.AddScoped<AuthService>();
+        // Self-service accounts and the Advanced User Settings (.docs/features/authentication.md). Email over SMTP with
+        // SMTP_* from .env (.docs/features/email.md); every send goes through LoggingEmailSender (the email log).
+        services.AddScoped<EmailConfigurationService>();
+        services.AddScoped<EmailTemplateService>();
+        services.AddScoped<IEmailSettingsSource>(sp => sp.GetRequiredService<EmailConfigurationService>());
+        services.AddKeyedScoped<DotNetForge.Abstractions.Messaging.IEmailSender, SmtpEmailSender>(LoggingEmailSender.TransportKey);
+        services.AddScoped<DotNetForge.Abstractions.Messaging.IEmailSender, LoggingEmailSender>();
+        services.AddScoped<UserAccountSettingsService>();
+        services.AddScoped<AccountService>();
+        // Data Management: export, backups (stored with IFileStorage) and the Development-only import (.docs/pages/data-management.md).
+        services.AddScoped<DatabaseTransferService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IPageService, PageService>();
         services.AddScoped<IPublishedPages, PublishedPageService>();
         services.AddScoped<MediaService>();
+        services.AddScoped<MediaFolderService>();
         services.AddScoped<UserManagementService>();
         services.AddScoped<RoleManagementService>();
         services.AddScoped<ProfileService>();
@@ -133,7 +146,7 @@ public static class DependencyRegistration
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(options =>
             {
-                options.LoginPath = "/account/login";
+                options.LoginPath = "/login";
                 options.LogoutPath = "/account/logout";
                 options.AccessDeniedPath = "/account/denied";
                 options.ExpireTimeSpan = TimeSpan.FromHours(8);
@@ -178,6 +191,8 @@ public static class DependencyRegistration
 
         // Background job that applies page publish/unpublish schedules.
         services.AddHostedService<ScheduledPublishingService>();
+        // Background job that stores automatic backups on the Data Management schedule (off by default).
+        services.AddHostedService<AutomaticBackupService>();
 
         // MVC + the API controllers (the API project is mounted as an application part). Runtime Razor
         // compilation lets extensions ship views under extensions/ that are compiled in memory and rendered on

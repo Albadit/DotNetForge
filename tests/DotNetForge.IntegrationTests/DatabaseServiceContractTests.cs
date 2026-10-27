@@ -9,8 +9,8 @@ using Xunit;
 namespace DotNetForge.IntegrationTests;
 
 /// <summary>
-/// The same contract on every provider (.docs/database/providers.md#contract): run on SQLite by default and on each
-/// database server in CI (<see cref="TestDatabaseServer"/>). Each test uses its own keys, so they share one host.
+/// The <see cref="DotNetForge.Abstractions.Database.IDatabaseService"/> contract on the CMS database (PostgreSQL,
+/// <see cref="TestDatabaseServer"/>; .docs/database/providers.md#testing). Each test uses its own keys, so they share one host.
 /// </summary>
 public sealed class DatabaseServiceContractTests : IClassFixture<DatabaseServiceContractTests.Host>
 {
@@ -225,15 +225,7 @@ public sealed class DatabaseServiceContractTests : IClassFixture<DatabaseService
 
         var connection = await _db.TestConnectionAsync();
         Assert.True(connection.Success, connection.Error?.ToString());
-        Assert.Equal(_factory.Provider, _db.Databases.Single(d => d.IsMain).Provider switch
-        {
-            "SQLite" => "sqlite",
-            "PostgreSQL" => "postgresql",
-            "SQL Server" => "sqlserver",
-            "MySQL" => "mysql",
-            "MongoDB" => "mongodb",
-            var other => other,
-        });
+        Assert.Equal("PostgreSQL", _db.Databases.Single(d => d.IsMain).Provider);
     }
 }
 

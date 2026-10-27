@@ -30,11 +30,41 @@ public sealed class AppEnvironment
     /// <summary>Where uploaded media is stored (.docs/features/media-storage.md).</summary>
     public StorageSettings Storage { get; set; } = new();
 
+    /// <summary>Outgoing email over SMTP (<c>SMTP_*</c>, .docs/features/email.md); not configured = no email is sent.</summary>
+    public EmailSettings Email { get; set; } = new();
+
     /// <summary>
     /// Any deployment value by name - process environment first, then <c>.env</c> - for settings that are not part of
     /// the core contract, such as an extension's secrets (<c>ExtensionContext.GetEnvironmentValue</c>).
     /// </summary>
     public Func<string, string?> Lookup { get; set; } = Environment.GetEnvironmentVariable;
+}
+
+/// <summary>
+/// SMTP settings for transactional email (password reset, email confirmation). All optional: without
+/// <see cref="Host"/> and <see cref="FromAddress"/> no email is sent and the features that need it stay hidden.
+/// </summary>
+public sealed class EmailSettings
+{
+    public string? Host { get; set; }
+
+    public int Port { get; set; } = 587;
+
+    public string? Username { get; set; }
+
+    /// <summary>Secret - never logged or rendered.</summary>
+    public string? Password { get; set; }
+
+    /// <summary>The sender address, e.g. <c>no-reply@example.com</c>.</summary>
+    public string? FromAddress { get; set; }
+
+    /// <summary>The sender name shown by mail clients; defaults to the app name.</summary>
+    public string? FromName { get; set; }
+
+    /// <summary>STARTTLS / TLS (<c>SMTP_TLS</c>, default on).</summary>
+    public bool UseTls { get; set; } = true;
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(Host) && !string.IsNullOrWhiteSpace(FromAddress);
 }
 
 /// <summary>

@@ -1,10 +1,13 @@
+using DotNetForge.Data.Database.Providers.PostgreSql;
 using MongoDB.Driver;
 
 namespace DotNetForge.IntegrationTests;
 
 /// <summary>
-/// Which database the integration tests run on (.docs/guides/testing.md#databases). Each variable holds a server
-/// connection string without a database; the first one that is set wins, otherwise SQLite in a temp folder.
+/// The database servers of the integration tests (.docs/guides/testing.md#databases). The CMS runs on PostgreSQL:
+/// <c>DNF_TEST_POSTGRES</c> holds a server connection string without a database (default: the server of
+/// <c>docker/databases/postgres.yml</c> on localhost:5432), and every factory creates and drops its own database there.
+/// The other variables are optional servers for additional-database tests (<see cref="AdditionalDatabase"/>).
 /// </summary>
 /// <example>
 /// <code>
@@ -16,33 +19,33 @@ namespace DotNetForge.IntegrationTests;
 /// </example>
 public static class TestDatabaseServer
 {
-    public static (string Provider, string ConnectionString) For(string workDir, string database)
+    /// <summary>The PostgreSQL server of the CMS test databases.</summary>
+    public static string Postgres =>
+        (Get("DNF_TEST_POSTGRES") ?? "Host=localhost;Port=5432;Username=postgres;Password=postgres;GSS Encryption Mode=Disable").TrimEnd(';');
+
+    /// <summary>A connection string for a new CMS database named <paramref name="database"/>.</summary>
+    public static string CmsDatabase(string database) => $"{Postgres};Database={database}";
+
+    /// <summary>
+    /// A connection string for an additional database of <paramref name="provider"/> named <paramref name="database"/>,
+    /// or null when that provider's server isn't configured. SQLite needs no server (a file in <paramref name="folder"/>).
+    /// </summary>
+    public static string? AdditionalDatabase(string provider, string database, string folder) => provider switch
     {
-        if (Get("DNF_TEST_POSTGRES") is { } postgres)
-        {
-            return ("postgresql", $"{postgres.TrimEnd(';')};Database={database}");
-        }
+        "sqlite" => $"Data Source={Path.Combine(folder, database + ".db")}",
+        "postgresql" => $"{Postgres};Database={database}",
+        "sqlserver" => Get("DNF_TEST_SQLSERVER") is { } sqlServer ? $"{sqlServer.TrimEnd(';')};Initial Catalog={database}" : null,
+        "mysql" => Get("DNF_TEST_MYSQL") is { } mySql ? $"{mySql.TrimEnd(';')};Database={database}" : null,
+        "mongodb" => Get("DNF_TEST_MONGODB") is { } mongo ? new MongoUrlBuilder(mongo) { DatabaseName = database }.ToString() : null,
+        _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, null),
+    };
 
-        if (Get("DNF_TEST_SQLSERVER") is { } sqlServer)
-        {
-            return ("sqlserver", $"{sqlServer.TrimEnd(';')};Initial Catalog={database}");
-        }
+    /// <summary>The provider name the tests' CMS database uses.</summary>
+    public const string CmsProvider = "postgresql";
 
-        if (Get("DNF_TEST_MYSQL") is { } mySql)
-        {
-            return ("mysql", $"{mySql.TrimEnd(';')};Database={database}");
-        }
-
-        if (Get("DNF_TEST_MONGODB") is { } mongo)
-        {
-            return ("mongodb", new MongoUrlBuilder(mongo) { DatabaseName = database }.ToString());
-        }
-
-        return ("sqlite", $"Data Source={Path.Combine(workDir, "cms.db")}");
-    }
-
-    /// <summary>Whether the tests run on MongoDB (no SQL: custom endpoints answer 501 there).</summary>
-    public static bool IsMongoDb => For(Path.GetTempPath(), "probe").Provider == "mongodb";
+    /// <summary>For tests that build the CMS context directly (migrations of <see cref="PostgreSqlDatabaseProvider"/>).</summary>
+    public static void Configure(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder options, string connectionString) =>
+        PostgreSqlDatabaseProvider.Configure(options, connectionString);
 
     private static string? Get(string name) =>
         Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : null;

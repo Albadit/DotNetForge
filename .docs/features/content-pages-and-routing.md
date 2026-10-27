@@ -26,11 +26,12 @@ content page. The editing screen is [Pages](../pages/pages.md); the public scree
 | `SeoKeywords` | comma-separated keywords | ✔ | ✘ |
 | `NoIndex` | `<meta name="robots" content="noindex">`, left out of sitemaps (`PublishedPage.NoIndex`) | ✔ (SEO tab) | ✔ |
 | `SocialImageUrl` | `og:image` (https URL or site path, max 2000) | ✔ (SEO tab) | ✔ |
-| `ThemeId` | theme extension for this page, `null` = the site's theme (max 100) | ✔ (Theme tab) | ✔ ([themes](themes.md#which-theme-is-active)) |
+| `ThemeId` | theme extension for this page, `null` = the site's theme or one a parent hands down (max 100) | ✔ (Theme tab) | ✔ ([themes](themes.md#which-theme-is-active)) |
+| `ThemeForChildren` | child pages without a theme of their own use `ThemeId` too, down to the next page with its own theme; stored only with a `ThemeId` (`PageService.ApplyAsync`), default `false` | ✔ (Theme tab switch) | ✔ ([theme inheritance](themes.md#theme-inheritance)) |
 | `LayoutJson`, `DraftLayoutJson`, `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate` | the [page builder](page-builder.md#drafts-and-publishing) layout: published, draft and conflict detection | via the page builder | `LayoutJson` ✔ |
 | `Published` | the page's one switch: on = published, off = **disabled** | ✔ | ✔ part of *live* |
 | `Disabled` | legacy off switch, no longer set or shown: pages saved with it stay hidden and show as disabled; saving a page clears it (`PageService.ApplyAsync`) | ✘ | ✔ part of *live* |
-| `DisplayInMenu` | menu flag | ✔ | ✘ there is no public menu |
+| `DisplayInMenu` | menu flag | ✔ | ✔ top-level live pages in the header menu (built-in `_Layout` and themes, `ViewData["Menu"]`) |
 | `ScheduledPublishDate` / `ScheduledUnpublishDate` | UTC schedule window | ✔ | ✔ part of *live* |
 | `CreatedById`, `CreatedDate`, `UpdatedDate` | audit fields; `CreatedById` also decides "own page" [permissions](#permissions) (set by `PagesController.Create`, `null` for seeded and API-created pages) | - | ✘ |
 
@@ -75,8 +76,9 @@ Validates a `PageInput` against the target `Page` and, if valid, copies every fi
 | 10 | `UrlRedirect` needs `TargetUrl` | `Target URL is required for a URL redirect page.` |
 | 11 | `File` needs `FileReference` | `File reference is required for a File page.` |
 
-Field mapping: `Title` trimmed; optional strings trimmed and blank → `null`; dates through `ToUtc`. Rule 2 keeps
-over-long input from failing at save time (PostgreSQL enforces column lengths; SQLite does not).
+Field mapping: `Title` trimmed; optional strings trimmed and blank → `null`; dates through `ToUtc`;
+`ThemeForChildren` only when the page keeps a `ThemeId` (otherwise `false`). Rule 2 keeps
+over-long input from failing at save time (PostgreSQL enforces column lengths).
 
 ### `ReorderAsync` - drag-and-drop
 
@@ -155,7 +157,7 @@ Changing them needs `Collection types` / `update` (on every page); each change i
 
 | Permission | Who may |
 | --- | --- |
-| **view** | 1. Super Admins - always. 2. A user **blocked** from viewing - never (404). 3. A user **allowed** to view - yes. 4. When nobody is allowed explicitly (no role and no user view grant, the default), everyone. 5. Otherwise holders of a granted role (`Public` = everyone, `Authenticated` = any signed-in user), users allowed to edit the page, and users with `Collection types` / `update`. Anonymous visitors who may not see it are redirected to `/account/login?returnUrl=…`; signed-in users get **404** (the page's existence is not revealed). |
+| **view** | 1. Super Admins - always. 2. A user **blocked** from viewing - never (404). 3. A user **allowed** to view - yes. 4. When nobody is allowed explicitly (no role and no user view grant, the default), everyone. 5. Otherwise holders of a granted role (`Public` = everyone, `Authenticated` = any signed-in user), users allowed to edit the page, and users with `Collection types` / `update`. Anonymous visitors who may not see it are redirected to `/login?returnUrl=…`; signed-in users get **404** (the page's existence is not revealed). |
 | **edit** | 1. Super Admins - always. 2. A user **blocked** from editing - never: no saving, no page builder, no deleting, whatever their roles grant. 3. A user **allowed** to edit, or holding a role with an edit grant - yes. 4. Otherwise the `Collection types` grants (`update`, or `update.own` on pages they created). Publishing still needs `publish`. Edit grants and blocks are not for `Public` / `Authenticated`. |
 
 Safety rules: nobody can block their own access, and Super Admins can't be blocked. The Super Admin role and its users are not offered on the Permissions tab, and a grant to the Super Admin role is ignored on save. A block on one user doesn't make
@@ -188,7 +190,7 @@ runs a single-table query of the live pages (and one of the view grants) and bui
 the parents: a top-level `/` or `home` slug is `/`, a top-level page is `/<slug>`, a child is `<parent path>/<slug>`.
 Pages below a page that is not live, dynamic `[param]` pages and pages restricted by [view grants](#page-permissions)
 (and their descendants) are left out. Order: depth, then `SortOrder`, then path.
-Used for the theme menu ([themes](themes.md#theme-views)) and by
+Used for the header menu of themes and the built-in `_Layout` ([themes](themes.md#theme-views)) and by
 extensions (the SEO Toolkit sample's `/sitemap.xml`).
 
 ```mermaid
@@ -230,7 +232,7 @@ other route matched - including endpoints mapped by extensions (`await app.MapDo
 4. When a dynamic child matched, store `routeValues[<name without brackets>] = segment`.
 5. Load the matched page in full by `Id` (gone in between → 404), check its [view grants](#page-permissions)
    (`HomeController.ViewPageAsync`; the root page in step 2 of `GET /` too) and render `Page` (the page's own theme,
-   else the site theme, else built-in) with `ViewData["RouteValues"]`. A page with a published layout renders it with
+   else one a parent hands down (`ThemeResolver.PageThemeIdAsync`), else the site theme, else built-in) with `ViewData["RouteValues"]`. A page with a published layout renders it with
    the `PageLayout` view component ([page builder → Rendering](page-builder.md#rendering)). Before rendering,
    `ViewPageAsync` resolves the layout's content lists (`ContentRenderService`): a list showing the entry its URL
    names (`/news/[slug]`) whose entry doesn't exist or isn't published makes the page a **404**, and that entry's title
@@ -258,7 +260,7 @@ Consequences worth knowing:
 - Slugs that collide with real routes (`admin`, `setup`, `account`, `api`, `error`, `health`, `ext`) and paths mapped
   by a loaded extension (enabled or not) never reach `RenderPage`.
 - `PageType`, `TargetUrl`, `FileReference` and `SeoKeywords` have no effect on rendering; `DisplayInMenu` only feeds
-  the theme menu.
+  the header menu.
 - No caching: every public request runs a narrow tree query, walks the list, then loads the one matched page.
 
 ## Planned (not implemented)
@@ -277,13 +279,13 @@ topics are owned elsewhere: roles and permissions → [authorization](authorizat
 | --- | --- | --- |
 | Structured content | collection types and single types with admin-defined schemas, edited in the Content Manager | ✔ [structured content](structured-content.md) (Content types, Content Manager, content lists in layouts) |
 | Page tree | tree of the content pages, create child, re-parent, reorder | ✔ (see above) |
-| Page body | built visually with the page builder | ✘ no body field |
-| Drafts and preview | edits accumulate in a draft; publish promotes the draft to the live version; preview renders the draft | ✘ one row per page, `Published` flag only |
+| Page body | built visually with the page builder | ✔ the page builder layout (`LayoutJson`) ([page builder](page-builder.md)) |
+| Drafts and preview | edits accumulate in a draft; publish promotes the draft to the live version; preview renders the draft | partial: the layout has a draft (`DraftLayoutJson`), preview and publish ([page builder](page-builder.md)); page settings save directly |
 | Content history | every change to a page or entry versioned; view, compare, restore | ✘ placeholder screen `/admin/content-history` only |
 | Review workflow | submit, assign reviewers, approve and publish, reject, request revision, full review history | ✘ |
 | Tags | a shared vocabulary on pages and tag-typed entry fields | ✘ |
-| Per-page view permissions | view roles, view users, public vs private | ✘ every live page is anonymous |
-| Per-page theme | theme, layout, page-specific layout settings ([themes](themes.md)) | ✘ |
+| Per-page view permissions | view roles, view users, public vs private | ✔ [page permissions](#page-permissions) (role and user grants) |
+| Per-page theme | theme, layout, page-specific layout settings ([themes](themes.md)) | ✔ theme (`ThemeId`, handed down with `ThemeForChildren`); ✘ layout of a theme, layout settings |
 | Page-type behaviour | `ExistingPage` aliases another page, `UrlRedirect` redirects, `File` serves/links an asset | ✘ stored only |
 | Dynamic routes | pattern records with targets, SEO templates, priority, permissions ([below](#dynamic-routes)) | partial: `[name]` slugs in the tree |
 | Concurrency | optimistic concurrency on every content item | ✘ last write wins |

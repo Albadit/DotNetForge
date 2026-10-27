@@ -27,9 +27,9 @@ src/DotNetForge.Web/Services/ThemeResolver.cs         the active theme
 src/DotNetForge.Web/Views/Home/Page.cshtml            used when a root page is live (variant A, inside _Layout)
 src/DotNetForge.Web/Views/Home/Index.cshtml           fallback list (variant B, inside _Layout)
 src/DotNetForge.Web/Views/_ViewStart.cshtml           Layout = "_Layout" for both
-src/DotNetForge.Web/Views/Shared/_Layout.cshtml       public fallback layout: skip link, header (brand, Admin), main, footer; SEO meta from ViewData; theme.js + public.css (no ui.js, no _Feedback, no theme menu)
+src/DotNetForge.Web/Views/Shared/_Layout.cshtml       public fallback layout: skip link, header (brand, page menu, Admin for admin users), main, footer; SEO meta from ViewData; theme.js + public.css (no ui.js, no _Feedback, no theme menu)
 src/DotNetForge.Web/Ui/UiTagHelpers.cs                <empty-state>, <icon>
-src/DotNetForge.Web/wwwroot/css/forge/public.css      .site-header, .site-hero, .site-lead, .site-page-list, .site-footer
+src/DotNetForge.Web/wwwroot/css/forge/public.css      .site-header, .site-nav, .site-hero, .site-lead, .site-page-list, .site-footer
 src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs   CSP and other security headers on every response
 ```
 
@@ -44,7 +44,9 @@ same model):
 ```text
 <APP_NAME> (_Layout; ViewData["Title"] = null, so the <title> is just <APP_NAME>)
 ├── "Skip to content" link
-├── header.site-header: logo mark + <APP_NAME> (→ /) · [Admin →] (/admin)
+├── header.site-header: logo mark + <APP_NAME> (→ /)
+│   ├── nav.site-nav "Site": a link per Menu page    only when ViewData["Menu"] has pages; the current one aria-current="page"
+│   └── [Admin →] (/admin)                           only for signed-in users who may enter the admin (Roles.CanEnterAdmin)
 ├── main#main.site-main
 │   ├── section.site-hero
 │   │   ├── h1 <APP_NAME>
@@ -62,7 +64,7 @@ Layout: [design system → public fallback](../architecture/design-system.md#pub
 
 | Component | Inputs | Appears |
 | --- | --- | --- |
-| Header / footer (`_Layout`) | `ViewData["AppName"]` | both variants |
+| Header / footer (`_Layout`) | `ViewData["AppName"]`, `ViewData["Menu"]` (top-level live pages marked "display in menu", `IPublishedPages`), the signed-in user's roles (**Admin →**) | both variants |
 | Hero (`section.site-hero`, the page's only `<h1>`) | `ViewData["AppName"]` | variant B |
 | Published pages list (`ul.card.site-page-list`) | model `List<(string Title, string Slug)>`, `ViewData["PublishedCount"]` | variant B, when count > 0 |
 | `<empty-state icon="pages">` with **Open Pages** | - | variant B, when no live pages |
@@ -72,15 +74,19 @@ Layout: [design system → public fallback](../architecture/design-system.md#pub
 ### Render the root
 
 1. Query live pages with slug `/` or `home`, ordering `/` first.
-2. Found → `ThemedViewAsync("Page", home)`: the active theme's `Views/Page.cshtml`, else the built-in `Page.cshtml`
-   inside `_Layout` (header brand from `ViewData["AppName"]`).
-3. Not found → query all live pages (title, slug) by `SortOrder` → `ThemedViewAsync("Index", list)`.
+2. Found → `ThemedViewAsync("Page", home)` with the theme the page asks for (`ThemeResolver.PageThemeIdAsync`): the
+   active theme's `Views/Page.cshtml`, else the built-in `Page.cshtml` inside `_Layout` (header brand from
+   `ViewData["AppName"]`).
+3. Not found → query all live pages (title, slug) by `SortOrder` → `ThemedViewAsync("Index", list)` (site theme).
+
+`ThemedViewAsync` sets `ViewData["AppName"]` and `ViewData["Menu"]` for the built-in and the theme views alike.
 
 No other actions.
 
 ## Data used by the page
 
-`Page` rows, `AppEnvironment.AppName`, `DateTime.UtcNow` for the liveness window.
+`Page` rows, `AppEnvironment.AppName`, `DateTime.UtcNow` for the liveness window, the menu pages
+(`IPublishedPages`).
 
 ## State
 
@@ -101,7 +107,7 @@ Database errors → global error handling. No custom states.
 
 ## Loading behaviour
 
-Server-rendered; one or two queries per request, plus the theme lookup and the menu query when a theme is active;
+Server-rendered; one or two queries per request, plus the menu query (`IPublishedPages`) and the theme lookup;
 no caching.
 
 ## Empty states
@@ -118,7 +124,7 @@ On a fresh install the seeded `Home` page (slug `/`, published) is live, so vari
 
 ## User interactions
 
-Links only (brand, **Admin**, page links, **Plugins**, **Open Pages**) and the "Skip to content" link.
+Links only (brand, menu pages, **Admin** for admin users, page links, **Plugins**, **Open Pages**) and the "Skip to content" link.
 No scripts beyond `theme.js`.
 
 ## Dependencies
@@ -160,15 +166,16 @@ flowchart TD
 - The built-in `_Layout` does not render `_Feedback` (no toasts, no confirm dialog) and does not load `ui.js`, so
   `data-*` behaviours from the [design system](../architecture/design-system.md#behaviours) do not work in public
   views.
-- The **Admin** header link and the hero's **Plugins** / empty state's **Open Pages** links are shown to
-  every visitor; anonymous visitors are sent to [Sign in](login.md).
+- The **Admin** header link is rendered only for signed-in users who may enter the admin (`Roles.CanEnterAdmin`;
+  `PublicSiteTests`). The hero's **Plugins** / empty state's **Open Pages** links are shown to every visitor;
+  anonymous visitors are sent to [Sign in](login.md).
 - The root lookup ignores `ParentPageId`: a nested page with slug `home` would be used as the root.
 - The fallback list includes nested pages but links them as `/<slug>`, which 404s for anything below the top level
   (e.g. `Team` under `About` should be `/about/team`).
 
 ## Known limitations
 
-- The built-in views have no menu (themes get one) and no page content.
+- The built-in header menu lists top-level pages only (no submenus); the built-in views have no page content.
 - Fallback list links are wrong for nested pages (above).
 
 ## Planned (not implemented)
@@ -180,9 +187,9 @@ Target behaviour from the original product specification. Nothing in this sectio
 - The root page follows the same rules as any content page: published builder content, per-page view permissions,
   page type behaviour, preview ([public content page → Planned](public-page.md#planned-not-implemented)).
 - Public screens render with the page's theme/layout or the site's default theme (✔ the page's own theme when
-  enabled, else `ThemeResolver.DefaultThemeId` (`dotnetforge.theme.default`) when enabled, else the first enabled
+  enabled, else one a parent hands down, else `ThemeResolver.DefaultThemeId` (`dotnetforge.theme.default`) when enabled, else the first enabled
   theme; per-page layouts ✘, [themes](../features/themes.md#planned-not-implemented)).
-- Generated menus list `DisplayInMenu` pages (✔ in themes, top level only).
+- Generated menus list `DisplayInMenu` pages (✔ in themes and the built-in header, top level only).
 - With no matching content, the site's fallback/404 page is used.
 
 Acceptance criteria: [content pages and routing](../features/content-pages-and-routing.md#acceptance-criteria),
@@ -192,5 +199,6 @@ Acceptance criteria: [content pages and routing](../features/content-pages-and-r
 
 - Root selection and the list query: `HomeController.Index`. Keep visibility rules in `PageVisibility.Live`
   (`src/DotNetForge.Shared/Content/PublishedPages.cs`).
-- A different home look: a theme extension's `Views/Index.cshtml` / `Views/Page.cshtml` (no core change). A menu for
-  the built-in `_Layout` would read `IPublishedPages` via a view component, not per view.
+- A different home look: a theme extension's `Views/Index.cshtml` / `Views/Page.cshtml` (no core change). The
+  built-in header menu reads `ViewData["Menu"]`, set once in `HomeController.ThemedViewAsync` (and the page
+  builder's `SitePageViewAsync`).

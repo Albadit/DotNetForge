@@ -1,0 +1,78 @@
+@model AdvancedSettingsViewModel
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = "Advanced Settings";
+    ViewData["Description"] = "How people get an account on the site: sign-ups, the role they get, and email confirmation.";
+    var authenticatedId = Model.Roles.FirstOrDefault(r => r.Name == DotNetForge.Shared.Constants.Roles.Authenticated).Id;
+    var selectedRole = Model.DefaultRoleId ?? authenticatedId;
+}
+
+<form method="post" action="/admin/advanced-settings" class="stack">
+    @Html.AntiForgeryToken()
+    <form-errors />
+    <fieldset class="fieldset stack" disabled="@(Model.CanEdit ? null : "disabled")">
+        <legend class="sr-only">Advanced user settings</legend>
+
+        <section class="card" aria-labelledby="signups-title">
+            <div class="card-header"><h2 class="card-title" id="signups-title">Sign-ups</h2></div>
+            <div class="card-body stack">
+                <label class="switch-row">
+                    <span class="check-text">
+                        <span>Enable sign-ups</span>
+                        <span class="check-hint">Visitors can create an account at <code>/register</code>, and the sign-in page links to it. When off, <code>/register</code> answers 404.</span>
+                    </span>
+                    @* The checkbox first: a bound bool takes the first posted value. *@
+                    <input type="checkbox" class="switch" role="switch" name="SignUps" value="true" checked="@(Model.SignUps ? "checked" : null)" />
+                    <input type="hidden" name="SignUps" value="false" />
+                </label>
+                <div class="field">
+                    <label class="field-label" for="DefaultRoleId">Default role for new accounts</label>
+                    <select id="DefaultRoleId" name="DefaultRoleId" aria-describedby="role-hint">
+                        @foreach (var role in Model.Roles)
+                        {
+                            <option value="@role.Id" selected="@(role.Id == selectedRole ? "selected" : null)">@role.Name@(role.OpensAdmin ? " (opens the admin)" : "")</option>
+                        }
+                    </select>
+                    <span class="field-hint" id="role-hint">Authenticated is a site-only role: signed in, but no admin. Only a Super Admin can choose a role that opens the admin.</span>
+                </div>
+                <p class="text-sm text-muted"><icon name="info" size="sm" /> One account per email address - always on: a sign-up with an email that already has an account is refused.</p>
+            </div>
+        </section>
+
+        <section class="card" aria-labelledby="email-title">
+            <div class="card-header"><h2 class="card-title" id="email-title">Confirmation and password reset</h2></div>
+            <div class="card-body stack">
+                @if (!Model.EmailConfigured)
+                {
+                    <alert tone="Warning" title="Email is not configured">Set the SMTP server with <code>SMTP_*</code> in <code>.env</code> (see <a href="/admin/email/configuration">Email → Configuration</a>). Until then email confirmation stays off and the sign-in page has no "Forgot password?" link.</alert>
+                }
+                <label class="switch-row">
+                    <span class="check-text">
+                        <span>Enable email confirmation</span>
+                        <span class="check-hint">New accounts get a confirmation link and can't sign in until they open it. Accounts created on the Users screen are confirmed already.</span>
+                    </span>
+                    <input type="checkbox" class="switch" role="switch" name="EmailConfirmation" value="true"
+                           checked="@(Model.EmailConfirmation ? "checked" : null)" disabled="@(Model.EmailConfigured ? null : "disabled")" />
+                    <input type="hidden" name="EmailConfirmation" value="false" />
+                </label>
+                <div class="field">
+                    <label class="field-label" for="ResetPasswordUrl">Reset password page<span class="field-optional">optional</span></label>
+                    <input id="ResetPasswordUrl" name="ResetPasswordUrl" type="url" value="@Model.ResetPasswordUrl" placeholder="https://app.example.com/reset-password" aria-describedby="reset-hint" />
+                    <span class="field-hint" id="reset-hint">For a front end with its own page: reset links point there with <code>?token=</code>, and it posts a form with <code>token</code>, <code>password</code> and <code>confirmPassword</code> to <code>/reset-password</code>. Empty: the built-in page.</span>
+                </div>
+                <div class="field">
+                    <label class="field-label" for="ConfirmationRedirectUrl">Redirection after email confirmation<span class="field-optional">optional</span></label>
+                    <input id="ConfirmationRedirectUrl" name="ConfirmationRedirectUrl" type="url" value="@Model.ConfirmationRedirectUrl" placeholder="https://app.example.com/welcome" aria-describedby="confirm-hint" />
+                    <span class="field-hint" id="confirm-hint">Where people land after opening the confirmation link. Empty: the sign-in page.</span>
+                </div>
+            </div>
+            @if (Model.CanEdit)
+            {
+                @* One form across both cards: this saves the sign-up settings too. *@
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary"><icon name="check" /> Save settings</button>
+                </div>
+            }
+        </section>
+    </fieldset>
+</form>

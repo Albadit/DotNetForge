@@ -73,6 +73,8 @@
                 </div>
             </div>
         </aside>
+        @* Synchronous on purpose, right after the complete sidebar: restores its open groups and scroll position before the first paint. *@
+        <script src="~/js/forge/nav-state.js" asp-append-version="true"></script>
         <div class="sidebar-backdrop" data-drawer-close hidden></div>
 
         <div class="main">

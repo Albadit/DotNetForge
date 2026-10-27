@@ -2,25 +2,45 @@
 
 A theme is an extension (manifest `type: "theme"`) that controls how the **public site** looks: Razor views, a
 layout, static assets and manifest settings. Themes never touch the admin area, setup, sign-in or the error screen.
-The site-wide theme slot and per-page themes are built; a selectable default theme, preview and settings editing
-are [planned](#planned-not-implemented). Extension mechanics (enabling, view data, resources): [extensions](extensions.md).
+The site-wide theme slot, per-page themes and theme inheritance down the page tree are built; a selectable default
+theme, preview and settings editing are [planned](#planned-not-implemented). Extension mechanics (enabling, view data, resources): [extensions](extensions.md).
 Per-page theme fields: [content pages and routing](content-pages-and-routing.md#page-model-additions).
 
 ## Which theme is active
 
 `ThemeResolver.GetActiveThemeAsync` (`src/DotNetForge.Web/Services/ThemeResolver.cs`, scoped; it reads only
-`ExtensionCatalog`, not the database) decides per request:
+`ExtensionCatalog` - the page tree for inheritance is read by `PageThemeIdAsync` through `DotNetForgeDbContext`)
+decides per request:
 
 1. The active `theme` extensions (`ExtensionCatalog.GetActiveAsync("theme")`: valid manifest, enabled on the
    [Plugins screen](../pages/plugins.md), code loaded if it has any). None → the built-in views.
-2. For a content page with a `ThemeId` (chosen on the Pages screen's **Theme** tab) that names one of them, that
-   theme. A page theme that is not enabled is ignored.
+2. For a content page, the theme it asks for (`ThemeResolver.PageThemeIdAsync`, see [theme
+   inheritance](#theme-inheritance)) when that names one of them: the page's own `ThemeId` (chosen on the Pages
+   screen's **Theme** tab), else the theme a parent page hands down. A page theme that is not enabled is ignored.
 3. `ThemeResolver.DefaultThemeId` = `dotnetforge.theme.default` (the bundled sample) when it is one of them
    (case-insensitive). The default is a constant; no setting or screen changes it.
 4. Otherwise the first active theme by name.
 
 Disabling the active theme therefore falls back to the next enabled theme, then to the built-in views, without a
 restart (other instances follow within 30 s, `ExtensionState.Lifetime`).
+
+### Theme inheritance
+
+A page with a theme of its own can hand it down: the **Use this theme for child pages too** switch on its Theme tab
+sets `Page.ThemeForChildren` (stored only together with a `ThemeId`; `PageService.ApplyAsync` clears it otherwise).
+`PageThemeIdAsync(page)` returns:
+
+1. the page's own `ThemeId`, when it has one;
+2. else, for a child page, `ThemeResolver.InheritedFrom(tree, page.ParentPageId)`: walks up the parents and stops at
+   the first one with its own `ThemeId` - that ancestor hands its theme down when `ThemeForChildren` is on, otherwise
+   the walk ends with nothing (a page that keeps its theme to itself also stops a theme from higher up);
+3. else null - the site theme (steps 3-4 above).
+
+The tree (`ThemeNode`: id, parent, title, `ThemeId`, `ThemeForChildren`) comes from one single-table query over all
+pages, live or not, and is walked in memory (cycle-guarded). Only content pages use it - `HomeController` and the page
+builder's canvas/preview; the fallback list of the [public home](../pages/public-home.md) has no page and uses the site
+theme. On the Pages screen the same `InheritedFrom` labels a child page's first theme option **Parent's theme**
+([pages → page editor](../pages/pages.md#page-editor)).
 
 ## Theme views
 
@@ -35,7 +55,7 @@ else the built-in view:
 A theme may ship either file or both; its `_ViewStart.cshtml` / `Shared/_Layout.cshtml` are found by normal Razor
 lookup from the view's folder (the views are compiled in memory from `~/extensions/...`). Theme views get, besides the
 standard [extension view data](extensions.md#slots) (`Extension`, `Settings`, `ResourceBase` =
-`/ext/{id}/resources`):
+`/ext/{id}/resources`), these keys (set for the built-in views too, whose `_Layout` shows the menu):
 
 | `ViewData` key | Value |
 | --- | --- |
@@ -68,7 +88,8 @@ classes rather than writing styles.
 
 The built-in fallback is the public layout of the [design system](../architecture/design-system.md#public-fallback):
 `Views/Shared/_Layout.cshtml` with `wwwroot/css/forge/{tokens,base,components,public}.css` (light/dark by system
-preference or the saved `dnf-theme` choice).
+preference or the saved `dnf-theme` choice). Its header lists the `Menu` pages (`nav.site-nav`, the current page
+`aria-current="page"`) and shows **Admin →** only to signed-in users who may enter the admin (`Roles.CanEnterAdmin`).
 
 **Isolation.** Only `HomeController.Index` and `RenderPage` use themes, plus the page builder's canvas and draft
 preview (`PageBuilderController`), which show the page as the site does. Admin screens keep `_AdminLayout`
@@ -183,6 +204,8 @@ Role defaults (permission areas `Extensions`, `Settings`; see [authorization](au
 - **Incompatible after a core upgrade:** marked `incompatible`, not applied; dependent pages and settings fall back to
   the default theme.
 - **Page override vs site default:** the override applies to that page only; clearing it returns to the default.
+  (✔ today; with **Use this theme for child pages too** it also applies to child pages without their own theme -
+  [theme inheritance](#theme-inheritance).)
 - **Preview leakage:** previewing never changes the live default, per-page assignments or another user's session.
 - **Setup and sign-in:** unchanged when the default theme changes (sign-in only themed when explicitly configured).
 
@@ -214,6 +237,7 @@ Role defaults (permission areas `Extensions`, `Settings`; see [authorization](au
 | Change | Place |
 | --- | --- |
 | Which theme is active | `ThemeResolver` (never ask `IExtensionLoader` or the state directly - go through `ExtensionCatalog`) |
+| Theme inheritance | `ThemeResolver.PageThemeIdAsync` / `InheritedFrom`; storing the switch: `PageService.ApplyAsync`; tests: `PublicSiteTests` |
 | Which view is rendered, theme view data | `HomeController.ThemedViewAsync`; data every extension view gets: `ExtensionViewRenderer.AddExtensionViewData` |
 | Theme-specific manifest checks (layouts, assets, compatibility) | `ManifestValidator` + `tests/DotNetForge.Tests/ManifestValidationTests.cs` |
 | Edit the default theme | today the constant `ThemeResolver.DefaultThemeId`; a selectable default needs a stored setting read by `ThemeResolver` and an edit on a Settings screen ([admin screens](../architecture/pages.md)) |

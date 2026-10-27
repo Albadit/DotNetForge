@@ -25,16 +25,10 @@
 
 <form id="endpointForm" method="post" action="@action" class="editor" novalidate data-endpoint-form
       data-methods="@System.Text.Json.JsonSerializer.Serialize(EndpointRules.Methods)"
-      data-types="@System.Text.Json.JsonSerializer.Serialize(EndpointRules.Types)"
-      data-supported="@(Model.Supported ? "true" : "false")">
+      data-types="@System.Text.Json.JsonSerializer.Serialize(EndpointRules.Types)">
     @Html.AntiForgeryToken()
     <div class="editor-main">
         <form-errors />
-        @if (!Model.Supported)
-        {
-            <alert tone="Warning" title="Needs a SQL database">This site runs on MongoDB, which has no SQL: you can save endpoints, but they answer 501 and can't be test-run.</alert>
-        }
-
         <section class="card" aria-labelledby="path-title">
             <div class="card-header">
                 <div>
@@ -87,6 +81,24 @@
                     <label class="field-label" for="Description">Description<span class="field-optional">optional</span></label>
                     <textarea id="Description" name="Description" rows="2" maxlength="500">@input.Description</textarea>
                 </div>
+                @if (Model.Databases.Count > 1 || input.Database is not null)
+                {
+                    @* Additional databases come from DATABASES_<NAME>_* (.docs/database/configuration.md#more-databases). *@
+                    <div class="field">
+                        <label class="field-label" for="Database">Database</label>
+                        <select id="Database" name="Database" aria-describedby="database-hint">
+                            @foreach (var database in Model.Databases)
+                            {
+                                <option value="@database.Name" selected="@(database.Name == input.Database ? "selected" : null)">@database.Label</option>
+                            }
+                            @if (input.Database is not null && Model.Databases.All(d => d.Name != input.Database))
+                            {
+                                <option value="@input.Database" selected>@input.Database (not configured)</option>
+                            }
+                        </select>
+                        <span class="field-hint" id="database-hint">Where the SQL runs. More databases: <code>DATABASES_&lt;NAME&gt;_*</code> in the configuration.</span>
+                    </div>
+                }
                 <fieldset class="fieldset">
                     <legend>Who may call it</legend>
                     <div class="choice-cards">

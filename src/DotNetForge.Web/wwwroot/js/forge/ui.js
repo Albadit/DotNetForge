@@ -214,23 +214,31 @@
     });
     window.matchMedia("(min-width: 64.0625rem)").addEventListener("change", function (mq) { if (mq.matches) { setDrawer(false); } });
 
-    // ---- Sidebar groups stay open or closed across screens until the user toggles them --------------------
-    // The group holding the active screen is open and counts as opened, so it stays open after leaving it.
-    var navState = {};
-    try { navState = JSON.parse(storage.get("dnf-nav") || "{}") || {}; } catch (e) { navState = {}; }
-    $all("details[data-nav-group]").forEach(function (group) {
-        var key = group.getAttribute("data-nav-group");
-        if (group.getAttribute("data-nav-active") === "true") {
-            navState[key] = true;
-        } else if (Object.prototype.hasOwnProperty.call(navState, key)) {
-            group.open = !!navState[key];
-        }
-        group.addEventListener("toggle", function () {
-            navState[key] = group.open;
-            storage.set("dnf-nav", JSON.stringify(navState));
+    // Sidebar groups and scroll position: nav-state.js (runs before the first paint, not deferred like this file).
+
+    // ---- A form that posts back to the same screen keeps its scroll position ----------------------------------
+    // Every POST redirects back (post/redirect/get), which would start the screen at the top again. Only a POST
+    // that lands on the same URL within a short time restores; links, reloads and Back behave as usual.
+    (function () {
+        var key = "dnf-scroll";
+        var here = window.location.pathname + window.location.search;
+        try {
+            var saved = JSON.parse(window.sessionStorage.getItem(key) || "null");
+            window.sessionStorage.removeItem(key);
+            if (saved && saved.url === here && Date.now() - saved.at < 30000) {
+                // After every deferred screen script: those can still change the layout (media.js moves Upload out).
+                doc.addEventListener("DOMContentLoaded", function () { window.scrollTo(0, saved.y); });
+            }
+        } catch (e) { /* storage blocked */ }
+        // On window, so data-confirm (which cancels the first submit and resubmits after Yes) has already run.
+        window.addEventListener("submit", function (event) {
+            var form = event.target;
+            if (event.defaultPrevented || (form.getAttribute("method") || "").toLowerCase() !== "post") { return; }
+            try {
+                window.sessionStorage.setItem(key, JSON.stringify({ url: here, y: window.scrollY, at: Date.now() }));
+            } catch (e) { /* storage blocked */ }
         });
-    });
-    storage.set("dnf-nav", JSON.stringify(navState));
+    })();
 
     // ---- Toasts --------------------------------------------------------------------------------------------
     var region = doc.querySelector("[data-toasts]");

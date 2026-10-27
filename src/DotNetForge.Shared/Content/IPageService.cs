@@ -56,6 +56,9 @@ public sealed class PageInput
     /// <summary>Theme extension id for this page; empty = the site's theme.</summary>
     public string? ThemeId { get; set; }
 
+    /// <summary>Child pages without a theme of their own use this page's theme too.</summary>
+    public bool ThemeForChildren { get; set; }
+
     /// <summary>The editable fields of an existing page.</summary>
     public static PageInput From(Page page) => new()
     {
@@ -78,5 +81,6 @@ public sealed class PageInput
         NoIndex = page.NoIndex,
         SocialImageUrl = page.SocialImageUrl,
         ThemeId = page.ThemeId,
+        ThemeForChildren = page.ThemeForChildren,
     };
 }

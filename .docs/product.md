@@ -34,8 +34,8 @@ without breaking customisations ([extensions](features/extensions.md)).
 | --- | --- |
 | ASP.NET Core MVC, C#, Razor views | ✔ .NET 10 |
 | Entity Framework Core | ✔ |
-| SQLite (default) | ✔ |
-| PostgreSQL | ✔ with its own migration set (`PostgreSqlDbContext`) ([database](architecture/database.md)); SQL Server, MySQL and MongoDB too ([database layer](database/providers.md)) |
+| SQLite (default) | changed: SQLite is only an additional database ([database configuration](database/configuration.md)) |
+| PostgreSQL | ✔ the CMS database, with one migration set (`PostgreSqlDbContext`) ([database](architecture/database.md)); SQLite, SQL Server, MySQL and MongoDB as additional databases ([database layer](database/providers.md)) |
 | Environment-based configuration in `.env`; secrets only there, never committed | ✔ ([configuration](features/configuration.md)) |
 | Unit testing | ✔ xUnit ([testing](guides/testing.md)) |
 | Frontend linting (ESLint) | ✘ |
@@ -60,8 +60,8 @@ deliverables and the generated-solution deliverables of the specification.
 | API token foundation | ✔ | | [headless API](features/headless-api.md) |
 | Extension manifest system | ✔ | | [extensions](features/extensions.md) |
 | Extension loading foundation | ✔ | discovery, code loading per extension (`DotNetForge.Sdk`), enable/disable, slots for every extension type; no install/update/remove or marketplace | [extensions](features/extensions.md) |
-| SQLite and PostgreSQL support | ✔ | plus SQL Server, MySQL, MongoDB | [database providers](database/providers.md) |
-| Import/export foundation | ✘ | placeholder screen only | [transfer and updates](features/transfer-and-updates.md) |
+| SQLite and PostgreSQL support | ✔ | the CMS on PostgreSQL only; SQLite, SQL Server, MySQL, MongoDB as additional databases | [database providers](database/providers.md) |
+| Import/export foundation | ✔ | Data Management: export, backups, import in Development | [transfer and updates](features/transfer-and-updates.md) |
 | Webhook foundation | ✘ | tables, event names and an unused signer; no CRUD or delivery | [webhooks](features/webhooks.md) |
 | Audit logging foundation | ✔ | | [audit logging](features/audit-logging.md) |
 | Theme foundation | ✔ | one site-wide active theme (views, layout, assets, menu) and an optional per-page theme | [themes](features/themes.md) |
@@ -125,8 +125,9 @@ private content pages ([authorization](features/authorization.md)).
 
 ### Rules and validation
 
-- `DATABASE_PROVIDER` selects a registered provider (`sqlite`, `postgresql`, `sqlserver`, `mysql`, `mongodb`), or it
-  is detected from the connection string; anything else is rejected at startup (✔ `DatabaseProviderRegistry`).
+- The CMS database is always PostgreSQL - there is no provider setting (a leftover `DATABASE_PROVIDER` value is rejected at startup, ✔ `EnvConfigurationLoader`).
+  Other databases are configured as `DATABASES_<NAME>_PROVIDER` (any registered provider, or detected from the
+  connection string).
 - `.env.example`, `.gitignore`, `README.md` and `ARCHITECTURE.md` exist at the repository root (✔, except the
   architecture summary, kept as `.docs/architecture/overview.md`).
 - Secrets come only from `.env`, which is git-ignored (✔); generated files, logs, uploads, cache and build output are
@@ -160,8 +161,8 @@ private content pages ([authorization](features/authorization.md)).
   (`EnvConfigurationLoader`).
 - [x] First start redirects to setup; setup creates a Super Admin, marks the CMS installed and redirects to the
   dashboard (`InstallationMiddleware`, `InstallationService`, `SetupController`).
-- [x] SQLite (default) and PostgreSQL are both selectable and functional (database providers; both migrate at startup,
-  integration tests pass on both).
+- [ ] SQLite (default) and PostgreSQL are both selectable and functional - changed: the CMS runs on PostgreSQL only
+  (migrated at startup, integration tests on it); SQLite is an additional database.
 - [x] The admin area renders correctly regardless of the active public theme (only `HomeController` uses theme
   views; the admin keeps `_AdminLayout`).
 - [x] A scoped API token can read content and media, and only its hash is persisted (`ApiTokenFactory`,

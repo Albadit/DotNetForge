@@ -72,6 +72,8 @@ public sealed class UserManagementService
             PasswordHash = _hasher.Hash(input.Password!),
             // A new user is always enabled; they are disabled later from the edit screen.
             Status = UserStatus.Enabled,
+            // An administrator created it: no email confirmation needed (.docs/features/authentication.md).
+            EmailConfirmed = true,
             CreatedDate = DateTime.UtcNow,
         };
         _db.Users.Add(user);

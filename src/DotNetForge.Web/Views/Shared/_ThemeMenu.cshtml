@@ -1,8 +1,9 @@
 @*
     Light / dark / system switch (.docs/architecture/design-system.md#themes). Needs JS (ui.js stores the choice and
-    sets <html data-theme>), so it stays hidden until ui.js reveals it; without JS the system preference applies.
+    sets <html data-theme>): shown from the first paint when theme.js has marked <html class="js">, hidden without
+    JavaScript (the system preference applies). Not data-js-only, which would only appear after the deferred ui.js.
 *@
-<div class="menu theme-menu" data-js-only hidden>
+<div class="menu theme-menu">
     <button type="button" class="btn btn-ghost btn-icon" popovertarget="theme-menu" aria-haspopup="menu" aria-label="Colour theme">
         <icon name="sun" class="theme-icon-light" />
         <icon name="moon" class="theme-icon-dark" />

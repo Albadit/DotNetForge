@@ -13,7 +13,8 @@ namespace DotNetForge.Tests;
 
 /// <summary>
 /// Provider registration and resolution (.docs/database/providers.md): explicit names, aliases, detection from the
-/// connection string, per-provider validation, multiple databases and registering an extra provider.
+/// connection string, per-provider validation - all for additional databases (<c>DATABASES_EXTRA_*</c>); the CMS
+/// database is always PostgreSQL - multiple databases and registering an extra provider.
 /// </summary>
 public sealed class DatabaseProviderTests
 {
@@ -37,7 +38,7 @@ public sealed class DatabaseProviderTests
     }
 
     private static ResolvedDatabase Resolve(string? provider, string? connectionString, DatabaseHostContext? host = null) =>
-        DefaultRegistry().Resolve(new DatabaseSettings { Provider = provider, ConnectionString = connectionString }, host ?? Development);
+        DefaultRegistry().Resolve(new DatabaseSettings { Name = "extra", Provider = provider, ConnectionString = connectionString }, host ?? Development);
 
     [Theory]
     [InlineData("sqlite", "Data Source=/data/cms.db", "SQLite")]
@@ -89,20 +90,20 @@ public sealed class DatabaseProviderTests
     [Theory]
     [InlineData("Server=db;Database=cms;Uid=root;Pwd=x")] // MySQL style: never guessed
     [InlineData("whatever")]
-    public void Undetectable_connection_strings_ask_for_DATABASE_PROVIDER(string connectionString)
+    public void Undetectable_connection_strings_ask_for_the_provider(string connectionString)
     {
         var ex = Assert.Throws<DatabaseConfigurationException>(() => Resolve(null, connectionString));
-        Assert.Contains("DATABASE_PROVIDER", ex.Message);
+        Assert.Contains("DATABASES_EXTRA_PROVIDER", ex.Message);
     }
 
     [Fact]
     public void Sqlite_defaults_to_a_development_file_and_is_required_elsewhere()
     {
         var development = Resolve(null, null);
-        Assert.Equal($"Data Source={Path.Combine(Development.DevelopmentDataRoot, "storage", "dotnetforge.db")}", development.Settings.ConnectionString);
+        Assert.Equal($"Data Source={Path.Combine(Development.DevelopmentDataRoot, "storage", "extra.db")}", development.Settings.ConnectionString);
 
         var ex = Assert.Throws<DatabaseConfigurationException>(() => Resolve(null, null, Production));
-        Assert.Contains("DATABASE_CONNECTION_STRING is required outside Development", ex.Message);
+        Assert.Contains("DATABASES_EXTRA_CONNECTION_STRING is required outside Development", ex.Message);
     }
 
     [Fact]
@@ -156,14 +157,14 @@ public sealed class DatabaseProviderTests
     {
         var registry = DefaultRegistry();
         var catalog = new DatabaseCatalog(
-            registry.Resolve(new DatabaseSettings(), Development),
+            registry.Resolve(new DatabaseSettings { ConnectionString = "Host=db;Database=cms" }, Development),
             new[]
             {
                 registry.Resolve(new DatabaseSettings { Name = "reports", ConnectionString = "Host=r;Database=reports" }, Development),
                 registry.Resolve(new DatabaseSettings { Name = "events", ConnectionString = "mongodb://e:27017/events" }, Development),
             });
 
-        Assert.Equal("SQLite", catalog.Get(null).Provider.DisplayName);
+        Assert.Equal("PostgreSQL", catalog.Get(null).Provider.DisplayName);
         Assert.Equal("PostgreSQL", catalog.Get("reports").Provider.DisplayName);
         Assert.Equal("MongoDB", catalog.Get("EVENTS").Provider.DisplayName);
         Assert.Equal(new[] { "main", "events", "reports" }, catalog.All.Select(d => d.Name));
@@ -183,11 +184,11 @@ public sealed class DatabaseProviderTests
         var services = new ServiceCollection()
             .AddDefaultDatabaseProviders()
             .AddDatabaseProvider<FakeDatabaseProvider>("fake");
-        services.AddDotNetForgeDatabases(new DatabaseSettings { Provider = "fake", ConnectionString = "fake://main" },
-            Array.Empty<DatabaseSettings>(), Development);
+        services.AddDotNetForgeDatabases(CmsDatabase,
+            [new DatabaseSettings { Name = "extra", Provider = "fake", ConnectionString = "fake://extra" }], Development);
 
         var catalog = services.BuildServiceProvider().GetRequiredService<DatabaseCatalog>();
-        Assert.Equal("Fake", catalog.Main.Provider.DisplayName);
+        Assert.Equal("Fake", catalog.Get("extra").Provider.DisplayName);
     }
 
     [Fact]
@@ -196,9 +197,35 @@ public sealed class DatabaseProviderTests
         var services = new ServiceCollection()
             .AddDefaultDatabaseProviders()
             .AddDatabaseProvider<FakeDatabaseProvider>("sqlite");
-        services.AddDotNetForgeDatabases(new DatabaseSettings { Provider = "sqlite", ConnectionString = "fake://main" },
-            Array.Empty<DatabaseSettings>(), Development);
+        services.AddDotNetForgeDatabases(CmsDatabase,
+            [new DatabaseSettings { Name = "reports", Provider = "sqlite", ConnectionString = "fake://reports" }], Development);
 
-        Assert.Equal("Fake", services.BuildServiceProvider().GetRequiredService<DatabaseCatalog>().Main.Provider.DisplayName);
+        Assert.Equal("Fake", services.BuildServiceProvider().GetRequiredService<DatabaseCatalog>().Get("reports").Provider.DisplayName);
     }
+
+    [Theory]
+    [InlineData("sqlite")]
+    [InlineData("sqlserver")]
+    [InlineData("mysql")]
+    [InlineData("mongodb")]
+    public void Only_postgresql_hosts_the_cms(string provider)
+    {
+        var ex = Assert.Throws<DatabaseConfigurationException>(() =>
+            DefaultRegistry().Resolve(new DatabaseSettings { Provider = provider, ConnectionString = "Data Source=/data/x.db" }, Development));
+        Assert.Contains("can't host the CMS", ex.Message);
+    }
+
+    [Fact]
+    public void The_cms_database_needs_a_connection_string_also_in_development()
+    {
+        var ex = Assert.Throws<DatabaseConfigurationException>(() => DefaultRegistry().Resolve(new DatabaseSettings(), Development));
+        Assert.Contains("DATABASE_CONNECTION_STRING is required", ex.Message);
+        Assert.Contains("docker/compose.dev.yml", ex.Message);
+
+        var main = DefaultRegistry().Resolve(new DatabaseSettings { ConnectionString = "Host=db;Database=cms" }, Development);
+        Assert.Equal("postgresql", main.ProviderName);
+    }
+
+    /// <summary>A CMS database for registration tests (never connected).</summary>
+    private static readonly DatabaseSettings CmsDatabase = new() { Provider = "postgresql", ConnectionString = "Host=localhost;Database=cms" };
 }

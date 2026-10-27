@@ -34,6 +34,34 @@ public sealed class SecurityHeadersMiddleware
             .Replace("script-src 'self';", $"script-src 'self' 'nonce-{nonce}';", StringComparison.Ordinal)
             .Replace("style-src 'self';", "style-src 'self' 'unsafe-inline';", StringComparison.Ordinal);
 
+    /// <summary>
+    /// <c>HttpContext.Items</c> key: a screen that needs a different policy puts it here; it replaces the default under
+    /// the usual header (report-only in Development).
+    /// </summary>
+    public const string PagePolicyItemKey = "dnf:csp-page";
+
+    /// <summary>
+    /// The policy of screens with the Monaco code editor (the email template editor): Monaco injects its styles at
+    /// runtime and has no nonce support, so styles may be inline there. Scripts stay <c>'self'</c> - Monaco is
+    /// self-hosted under <c>/lib/monaco/</c> and its workers load from the same origin.
+    /// </summary>
+    public static readonly string CodeEditorPolicy =
+        ContentSecurityPolicy.Replace("style-src 'self';", "style-src 'self' 'unsafe-inline';", StringComparison.Ordinal);
+
+    /// <summary>
+    /// <c>HttpContext.Items</c> key: an action that serves untrusted HTML (the email template preview) puts its own
+    /// policy here; it is sent as an <b>enforced</b> <c>Content-Security-Policy</c> even in Development.
+    /// </summary>
+    public const string PolicyOverrideItemKey = "dnf:csp-override";
+
+    /// <summary>
+    /// The policy of an email template preview (.docs/pages/email-templates.md): administrator-written HTML in a
+    /// sandbox - no script, no form, no plugin; only inline styles and images, as emails use them.
+    /// </summary>
+    public const string EmailPreviewPolicy =
+        "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; frame-ancestors 'self'; " +
+        "form-action 'none'; base-uri 'none'; sandbox";
+
     public Task InvokeAsync(HttpContext context)
     {
         var headers = context.Response.Headers;
@@ -43,6 +71,15 @@ public sealed class SecurityHeadersMiddleware
             if (context.Items[Scalar.AspNetCore.ScalarOptions.NonceHttpContextItemKey] is string nonce)
             {
                 context.Response.Headers[_cspHeaderName] = ApiReferencePolicy(nonce);
+            }
+            else if (context.Items[PolicyOverrideItemKey] is string policy)
+            {
+                context.Response.Headers.Remove("Content-Security-Policy-Report-Only");
+                context.Response.Headers["Content-Security-Policy"] = policy;
+            }
+            else if (context.Items[PagePolicyItemKey] is string pagePolicy)
+            {
+                context.Response.Headers[_cspHeaderName] = pagePolicy;
             }
 
             return Task.CompletedTask;

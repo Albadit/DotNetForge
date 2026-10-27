@@ -125,8 +125,8 @@ menu's items are `<menu-post>` forms with their own antiforgery token, so every 
 POST + antiforgery.
 
 **Duplicate** (`PagesController.Duplicate`, needs `create`; a user blocked from editing the page can't copy it):
-copies the page's settings, SEO, theme, page type and layout (published and draft) and its view/edit grants, titles
-it "<title> (copy)" with a short free slug among the siblings (`about-copy`, `about-copy-2`, ...; the root page
+copies the page's settings, SEO, theme (with its **Use this theme for child pages too** switch), page type and
+layout (published and draft) and its view/edit grants, titles it "<title> (copy)" with a short free slug among the siblings (`about-copy`, `about-copy-2`, ...; the root page
 copies as `home-copy`), places it right below the original (later siblings move down) and leaves it switched off.
 Child pages are not copied. Audit `content.created` with details "Duplicate of '<title>'"; toast, then the copy is
 selected.
@@ -141,7 +141,7 @@ five panels are shown one below the other.
 | --- | --- |
 | **Page settings** | Title, Slug, Page type, Parent page, Target URL / File reference (by type), Sort order |
 | **SEO** | a search result preview; Meta title, Meta description, Keywords, Canonical URL, Social image (`og:image`), **Hide from search engines** (`noindex`, left out of sitemaps) |
-| **Theme** | Site theme (default) or one installed theme extension for this page; not enabled themes are marked and fall back to the site theme |
+| **Theme** | Site theme (default) or one installed theme extension for this page; not enabled themes are marked and fall back to the site theme. On a child page whose parent hands a theme down, the first option reads **Parent's theme** - "Follows <Theme>, which "<Parent>" hands down to its child pages." - instead of **Site theme**. With theme extensions installed, a switch **Use this theme for child pages too** ("Child pages without a theme of their own follow this page's theme, down to the next page that picks its own."); it is saved only together with a theme of the page's own ([theme inheritance](../features/themes.md#theme-inheritance)) |
 | **Permissions** | a role table: **View** (no box = everyone; else only those roles - `Public` = everyone, `Authenticated` = any signed-in user) and **Edit** (extra roles that may edit this page; not for `Public` / `Authenticated`); a **Users** table: per user View and Edit = *Not set* / *Allow* / *Block* (a block wins over the user's roles), added with the last row's user picker, removed with the bin button (JS) or by setting both to *Not set*. Super Admins (the role and its users) are not listed - they always have full access. Read-only without `update` on every page. Rules: [page permissions](../features/content-pages-and-routing.md#page-permissions) |
 | **Layout** | the layout's status (none / draft / published, unpublished changes), **Open page builder** ([page builder](page-builder.md)), **Preview draft** |
 
@@ -150,7 +150,8 @@ every tab; **Save changes** saves all tabs at once.
 
 - **Purpose:** edit every editable field of the selected page.
 - **Inputs:** `PageInput` (model), `ViewData["Extras"]` (`PageEditorExtras`: roles and grants, installed themes,
-  layout status), `ViewData["SelectedId"]` (posted to `update/{id}`),
+  `InheritedTheme` - the theme name and page title a parent hands down, from `ThemeResolver.InheritedFrom` over the
+  stored tree - and layout status), `ViewData["SelectedId"]` (posted to `update/{id}`),
   `ViewData["ParentOptions"]` (every page except the selected one, labelled `Title (/slug)`; first option
   "None (top level)").
 - **Output:** `POST /admin/pages/update/{id}` bound to `PageInput`, plus `viewRoles` / `editRoles` (role ids),

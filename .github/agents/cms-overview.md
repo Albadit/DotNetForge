@@ -6,8 +6,9 @@ same data. Full documentation: [`.docs/README.md`](../../.docs/README.md).
 
 ## Orientation
 
-- Configuration: `.env` (copy `.env.example`). `DATABASE_CONNECTION_STRING` decides the database: empty or
-  `Data Source=…` is SQLite, `Host=…` is PostgreSQL.
+- Configuration: `.env` (copy `.env.example`). The CMS database is PostgreSQL: `DATABASE_CONNECTION_STRING` (required; local
+  server: `docker compose -f docker/databases/postgres.yml up -d`). Additional databases:
+  `DATABASES_<NAME>_*`.
   See [configuration](../../.docs/features/configuration.md).
 - First run: every request redirects to `/setup`; it creates the first **Super Admin** and sets
   `SystemState.Installed`. Afterwards `/setup` redirects to `/admin`. See [installation](../../.docs/features/installation.md).

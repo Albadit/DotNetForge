@@ -17,7 +17,11 @@ public sealed class ConfigurationException : Exception
 /// </summary>
 public static class EnvConfigurationLoader
 {
-    public const string ProviderKey = "DATABASE_PROVIDER";
+    /// <summary>No longer read: the CMS database is always PostgreSQL. A value stops startup so it isn't mistaken for a choice.</summary>
+    public const string RemovedProviderKey = "DATABASE_PROVIDER";
+
+    /// <summary>Optional path of the file to read instead of <c>.env</c> (environment variable only).</summary>
+    public const string EnvFileKey = "DOTNETFORGE_ENV_FILE";
     public const string ConnectionKey = "DATABASE_CONNECTION_STRING";
     public const string AdditionalDatabasePrefix = "DATABASES_";
     public const string AppNameKey = "APP_NAME";
@@ -29,6 +33,13 @@ public static class EnvConfigurationLoader
     public const string S3RegionKey = "STORAGE_S3_REGION";
     public const string S3ForcePathStyleKey = "STORAGE_S3_FORCE_PATH_STYLE";
     public const string ExtensionsPathKey = "EXTENSIONS_PATH";
+    public const string SmtpHostKey = "SMTP_HOST";
+    public const string SmtpPortKey = "SMTP_PORT";
+    public const string SmtpUsernameKey = "SMTP_USERNAME";
+    public const string SmtpPasswordKey = "SMTP_PASSWORD";
+    public const string SmtpFromKey = "SMTP_FROM";
+    public const string SmtpFromNameKey = "SMTP_FROM_NAME";
+    public const string SmtpTlsKey = "SMTP_TLS";
 
     /// <summary>Suffixes of <c>DATABASES_&lt;NAME&gt;_*</c> keys.</summary>
     private static readonly string[] AdditionalDatabaseSuffixes = { "_CONNECTION_STRING", "_PROVIDER" };
@@ -48,7 +59,11 @@ public static class EnvConfigurationLoader
     /// </param>
     public static AppEnvironment Load(string contentRoot, bool isDevelopment = true)
     {
-        var envPath = AppPaths.Resolve(contentRoot, ".env");
+        // DOTNETFORGE_ENV_FILE points at another file (the integration tests use an empty one, so a developer's .env never
+        // leaks into them); a missing file means no file values.
+        var envPath = Environment.GetEnvironmentVariable(EnvFileKey) is { Length: > 0 } custom
+            ? custom
+            : AppPaths.Resolve(contentRoot, ".env");
         var fileValues = File.Exists(envPath)
             ? DotEnvParser.Parse(File.ReadAllText(envPath))
             : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -64,6 +79,13 @@ public static class EnvConfigurationLoader
             throw new ConfigurationException($"{AppUrlKey} must be a valid absolute URL. Got '{appUrl}'.");
         }
 
+        if (!string.IsNullOrWhiteSpace(Get(RemovedProviderKey)))
+        {
+            throw new ConfigurationException(
+                $"{RemovedProviderKey} is no longer used: the CMS database is always PostgreSQL. Remove it from .env " +
+                $"(additional databases use DATABASES_<NAME>_PROVIDER).");
+        }
+
         var keys = fileValues.Keys
             .Concat(Environment.GetEnvironmentVariables().Keys.Cast<string>())
             .Distinct(StringComparer.OrdinalIgnoreCase);
@@ -73,15 +95,58 @@ public static class EnvConfigurationLoader
             Database = new DatabaseSettings
             {
                 Name = DatabaseSettings.MainName,
-                Provider = Get(ProviderKey)?.Trim(),
                 ConnectionString = Get(ConnectionKey)?.Trim(),
             },
             AdditionalDatabases = LoadAdditionalDatabases(keys, Get),
             AppName = Get(AppNameKey) ?? AppEnvironment.DefaultAppName,
             AppUrl = appUrl,
             Storage = LoadStorage(Get, contentRoot, isDevelopment),
+            Email = LoadEmail(Get),
             ExtensionsPath = ResolveExtensionsPath(Get(ExtensionsPathKey), contentRoot),
             Lookup = Get,
+        };
+    }
+
+    /// <summary>
+    /// SMTP for transactional email (.docs/features/email.md). Everything optional; once a host, sender or credential
+    /// is set, <c>SMTP_HOST</c> and a valid <c>SMTP_FROM</c> are required, so a half configuration fails at startup, not
+    /// when the first reset email is sent. Port, sender name and TLS alone don't count (they have defaults).
+    /// </summary>
+    private static EmailSettings LoadEmail(Func<string, string?> get)
+    {
+        var host = get(SmtpHostKey)?.Trim();
+        var from = get(SmtpFromKey)?.Trim();
+        var anySet = new[] { SmtpHostKey, SmtpUsernameKey, SmtpPasswordKey, SmtpFromKey }.Any(k => get(k) is not null);
+        if (!anySet)
+        {
+            return new EmailSettings();
+        }
+
+        if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(from))
+        {
+            throw new ConfigurationException($"Set both {SmtpHostKey} and {SmtpFromKey} to send email, or leave every SMTP_* value empty.");
+        }
+
+        if (!System.Net.Mail.MailAddress.TryCreate(from, out _))
+        {
+            throw new ConfigurationException($"{SmtpFromKey} must be an email address. Got '{from}'.");
+        }
+
+        var port = 587;
+        if (get(SmtpPortKey) is { } portText && (!int.TryParse(portText, out port) || port is < 1 or > 65535))
+        {
+            throw new ConfigurationException($"{SmtpPortKey} must be a port number (1-65535). Got '{portText}'.");
+        }
+
+        return new EmailSettings
+        {
+            Host = host,
+            Port = port,
+            Username = get(SmtpUsernameKey)?.Trim(),
+            Password = get(SmtpPasswordKey),
+            FromAddress = from,
+            FromName = get(SmtpFromNameKey)?.Trim(),
+            UseTls = !string.Equals(get(SmtpTlsKey)?.Trim(), "false", StringComparison.OrdinalIgnoreCase),
         };
     }
 
@@ -107,8 +172,7 @@ public static class EnvConfigurationLoader
             if (name.Equals(DatabaseSettings.MainName, StringComparison.OrdinalIgnoreCase))
             {
                 throw new ConfigurationException(
-                    $"'{key}': the name '{DatabaseSettings.MainName}' is reserved for the database configured by " +
-                    $"{ProviderKey} and {ConnectionKey}.");
+                    $"'{key}': the name '{DatabaseSettings.MainName}' is reserved for the CMS database ({ConnectionKey}).");
             }
 
             names.Add(name);

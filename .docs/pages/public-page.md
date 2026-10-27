@@ -14,7 +14,7 @@ Rules: [content pages and routing](../features/content-pages-and-routing.md); th
 | Route | fallback `{*path:nonfile}` → `HomeController.RenderPage` (any path without a file extension not matched by another route, including routes mapped by enabled extensions) |
 | Route parameters | the URL segments; values captured by `[name]` slugs appear as `RouteValues` |
 | Query parameters | none used |
-| Navigation entry | links on the [public home](public-home.md) list; direct URLs |
+| Navigation entry | the header menu (pages marked "display in menu"); links on the [public home](public-home.md) list; direct URLs |
 
 ## Relevant source files
 
@@ -22,13 +22,13 @@ Rules: [content pages and routing](../features/content-pages-and-routing.md); th
 Program.cs                      app.MapFallbackToController("RenderPage", "Home")
 src/DotNetForge.Web/Controllers/HomeController.cs   RenderPage(), ThemedViewAsync()
 src/DotNetForge.Shared/Content/PublishedPages.cs    PageVisibility.Live (the live rule)
-src/DotNetForge.Web/Services/ThemeResolver.cs       the active theme
+src/DotNetForge.Web/Services/ThemeResolver.cs       the active theme; PageThemeIdAsync (the page's own or inherited theme)
 src/DotNetForge.Web/Components/ExtensionModulesViewComponent.cs   modules placed on the page
 src/DotNetForge.Web/Views/Home/Page.cshtml          built-in view: article + modules + info alert; sets Title / MetaDescription / CanonicalUrl ViewData
 src/DotNetForge.Web/Views/_ViewStart.cshtml         Layout = "_Layout"
-src/DotNetForge.Web/Views/Shared/_Layout.cshtml     public fallback layout: <title>, description + canonical meta, header, footer; theme.js + public.css (no ui.js, no _Feedback)
+src/DotNetForge.Web/Views/Shared/_Layout.cshtml     public fallback layout: <title>, description + canonical meta, header (menu, Admin for admin users), footer; theme.js + public.css (no ui.js, no _Feedback)
 src/DotNetForge.Web/Ui/UiTagHelpers.cs              <alert>, <icon>
-src/DotNetForge.Web/wwwroot/css/forge/public.css    .site-article, .site-header, .site-main, .site-footer
+src/DotNetForge.Web/wwwroot/css/forge/public.css    .site-article, .site-header, .site-nav, .site-main, .site-footer
 src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs   CSP and other security headers on every response
 ```
 
@@ -40,7 +40,9 @@ _Layout
 ├── <meta name="description">        only when MetaDescription is set (ViewData["MetaDescription"])
 ├── <link rel="canonical">           only when CanonicalUrl is set (ViewData["CanonicalUrl"])
 ├── "Skip to content" link
-├── header.site-header: logo mark + <APP_NAME> (→ /) · [Admin →] (/admin)
+├── header.site-header: logo mark + <APP_NAME> (→ /)
+│   ├── nav.site-nav "Site": a link per Menu page    only when ViewData["Menu"] has pages; the current one aria-current="page"
+│   └── [Admin →] (/admin)                           only for signed-in users who may enter the admin (Roles.CanEnterAdmin)
 ├── main#main.site-main
 │   └── article.site-article
 │       ├── header
@@ -61,10 +63,16 @@ Layout: [design system → public fallback](../architecture/design-system.md#pub
 ## Components
 
 The built-in view renders inside the public `_Layout` (via `_ViewStart`). Inputs: model `Page`,
-`ViewData["RouteValues"]` (`Dictionary<string,string>`), `ViewData["AppName"]` (header brand and `<title>` suffix).
-It hands its SEO values to the layout: `ViewData["Title"]` (`MetaTitle`, else `Title`), `ViewData["MetaDescription"]`
-and `ViewData["CanonicalUrl"]`. A theme view also gets `Extension`, `Settings`, `ResourceBase` (`/ext/{id}/resources`),
-`AppName` and `Menu` ([themes](../features/themes.md)).
+`ViewData["RouteValues"]` (`Dictionary<string,string>`), `ViewData["AppName"]` (header brand and `<title>` suffix),
+`ViewData["Menu"]` (`IReadOnlyList<PublishedPage>`: the top-level live pages marked "display in menu", from
+`IPublishedPages` - set by `ThemedViewAsync` for built-in and theme views alike). It hands its SEO values to the
+layout: `ViewData["Title"]` (`MetaTitle`, else `Title`), `ViewData["MetaDescription"]` and `ViewData["CanonicalUrl"]`.
+A theme view also gets `Extension`, `Settings`, `ResourceBase` (`/ext/{id}/resources`) ([themes](../features/themes.md)).
+
+The header (`_Layout`) shows `nav.site-nav` (`aria-label="Site"`) with one link per `Menu` page when there is one;
+the link whose path equals the request path (trailing slash trimmed, case-insensitive) gets `aria-current="page"`
+(bold). **Admin →** is rendered only for a signed-in user with a role that may enter the admin
+(`Roles.CanEnterAdmin`: any role except the site-only ones); anonymous visitors and site-only users don't see it.
 
 The **No content yet** `<alert>` (Info tone, `role="status"`) is always shown in the built-in view; its text links the
 [Pages](pages.md) (`/admin/pages`).
@@ -83,13 +91,16 @@ throws is replaced by "<name> could not be displayed.".
 3. Walk segments from the root level: exact slug (case-insensitive) first, else the `[...]` sibling; capture dynamic
    values.
 4. Any segment without a match → `404` (empty body).
-5. Load the matched (deepest) page in full by id (second query) and render `Page` through `ThemedViewAsync`: the
-   active theme's `Views/Page.cshtml` when it has one, else the built-in view.
+5. Load the matched (deepest) page in full by id (second query) and render `Page` through `ThemedViewAsync` with the
+   theme the page asks for (`ThemeResolver.PageThemeIdAsync`: its own `ThemeId`, else one a parent hands down -
+   [theme inheritance](../features/themes.md#theme-inheritance)): the active theme's `Views/Page.cshtml` when it has
+   one, else the built-in view.
 
 ## Data used by the page
 
-`Page` (title, slug, meta title/description, canonical URL), captured route values. `SeoKeywords`, `PageType`,
-`TargetUrl`, `FileReference`, `DisplayInMenu` are ignored.
+`Page` (title, slug, meta title/description, canonical URL, `ThemeId`), captured route values, the `ThemeId` /
+`ThemeForChildren` of its ancestors (theme inheritance) and the menu pages (`IPublishedPages`). The page's own
+`SeoKeywords`, `PageType`, `TargetUrl`, `FileReference`, `DisplayInMenu` are ignored.
 
 ## State
 
@@ -97,8 +108,10 @@ None.
 
 ## Permissions
 
-Anonymous. Visibility is governed solely by liveness (`Published && !Disabled` + schedule window). No per-page
-permissions.
+Anonymous by default: a live page (`Published && !Disabled` + schedule window) is open to everyone unless it has
+view grants ([page permissions](../features/content-pages-and-routing.md#page-permissions)). Then `HomeController.ViewPageAsync`
+sends anonymous visitors to sign in and answers 404 to signed-in users without a granted role or user grant; admins who
+may update pages always see it.
 
 ## Validation
 
@@ -115,8 +128,9 @@ Not applicable (read-only). Slugs were normalized when saved.
 ## Loading behaviour
 
 Server-rendered; two queries per request: the `(Id, ParentPageId, Slug)` projection of every live page, then the
-matched row - plus, with an active theme, the live-page list for the menu. No
-caching (enabled state is cached up to 30 s).
+matched row - plus the live-page list for the menu (`IPublishedPages`) and, for a child page without a theme of its
+own, one projection of every page's theme settings (`ThemeResolver.PageThemeIdAsync`). No caching (enabled state is
+cached up to 30 s).
 
 ## Empty states
 
@@ -124,12 +138,12 @@ Not applicable (a page always has a title).
 
 ## User interactions
 
-Links only: brand (`/`), **Admin** (`/admin`), the "Pages" link in the alert (`/admin/pages?selected={id}#layout`) and the
+Links only: brand (`/`), the menu pages, **Admin** (`/admin`, admin users only), the "Pages" link in the alert (`/admin/pages?selected={id}#layout`) and the
 "Skip to content" link. No scripts beyond `theme.js` (no `ui.js`).
 
 ## Dependencies
 
-`HomeController` → `DotNetForgeDbContext`, `AppEnvironment`, `ThemeResolver` (→ `ExtensionCatalog`),
+`HomeController` → `DotNetForgeDbContext`, `AppEnvironment`, `ThemeResolver` (→ `ExtensionCatalog`, `DotNetForgeDbContext`),
 `IPublishedPages`, `ExtensionViewRenderer`. `ExtensionModulesViewComponent` → `ExtensionCatalog`,
 `ExtensionViewRenderer`. Every response passes `SecurityHeadersMiddleware` (first in the pipeline).
 
@@ -167,6 +181,8 @@ flowchart TD
 - The built-in `_Layout` renders no toasts or confirm dialog (`_Feedback` is not included) and does not load `ui.js`,
   so module views cannot rely on the [design system's behaviours](../architecture/design-system.md#behaviours); they
   can use its CSS classes (`components.css` is loaded).
+- `PublicSiteTests` checks the built-in header (menu links, `aria-current`, no unpublished page, **Admin** only after
+  sign-in) and theme inheritance.
 - Security headers on every response (`SecurityHeadersMiddleware`): `Content-Security-Policy` with
   `script-src 'self'; style-src 'self'` (report-only in Development), `X-Content-Type-Options: nosniff`,
   `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy:
@@ -194,12 +210,12 @@ Model, rules and acceptance criteria: [content pages and routing → Planned](..
 | Resolution order | static content page → dynamic route (priority, sort order, specificity) → extension route → fallback/404 page | tree walk with `[name]` fallback per segment, empty `404` |
 | Page types | `UrlRedirect` redirects to `TargetUrl`; `File` serves or links the File Manager asset; `ExistingPage` renders the referenced page | all render `Page.cshtml` |
 | Body | the published version's page-builder modules | fixed note |
-| Theme | page theme/layout, else the site's default theme; admin, setup and login never themed | ✔ the page's own theme (`Page.ThemeId`) when enabled, else `ThemeResolver.DefaultThemeId` when enabled, else the first enabled theme ([themes](../features/themes.md)); ✘ per-page layout |
-| Access | public pages for everyone; private pages only for the granted roles/users | liveness only |
+| Theme | page theme/layout, else the site's default theme; admin, setup and login never themed | ✔ the page's own theme (`Page.ThemeId`) when enabled, else the theme a parent hands down (`ThemeForChildren`) when enabled, else `ThemeResolver.DefaultThemeId` when enabled, else the first enabled theme ([themes](../features/themes.md)); ✘ per-page layout |
+| Access | public pages for everyone; private pages only for the granted roles/users | ✔ liveness + view grants (roles and users) |
 | SEO | meta title (fallback title ✔), meta description ✔, canonical ✔, keywords; dynamic routes render title/meta/keywords/canonical templates with parameter values, entry-level values override | keywords not rendered |
 | Dynamic route values | resolve the target content, module or handler from the extracted parameters | values only displayed |
 | Preview | the draft of a page or route renders for authorized users; never for anonymous visitors | ✘ |
-| Menu | generated from `DisplayInMenu` pages | ✔ in themes (`ViewData["Menu"]`: top-level live pages); the built-in view has none |
+| Menu | generated from `DisplayInMenu` pages | ✔ top level only (`ViewData["Menu"]`: top-level live pages), in themes and in the built-in `_Layout` header |
 
 ### Rules and validation
 

@@ -44,6 +44,12 @@ public interface IDatabaseService
     /// <summary>Opens a connection and runs a trivial command. Never throws for database errors.</summary>
     Task<DatabaseResult<DatabaseConnectionInfo>> TestConnectionAsync(
         string? database = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The tables or collections of a database (system ones left out), sorted by name - e.g. to read an additional
+    /// database completely. Throws <see cref="DatabaseException"/> on failure.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListCollectionsAsync(string? database = null, CancellationToken cancellationToken = default);
 }
 
 /// <summary>A transaction on one configured database. Disposing without committing rolls back.</summary>

@@ -41,17 +41,45 @@ public sealed class ReadOnlyDeploymentTests
 
     [Theory]
     [InlineData("Data Source=relative.db", "absolute path")]
-    [InlineData(null, "DATABASE_CONNECTION_STRING is required outside Development")]
+    [InlineData(null, "DATABASES_REPORTS_CONNECTION_STRING is required outside Development")]
     public void Production_refuses_database_paths_inside_the_deployment_directory(string? connectionString, string expected)
     {
-        // The same registration the host performs at startup (DependencyRegistration), with a production host.
+        // The same registration the host performs at startup (DependencyRegistration), with a production host: an
+        // additional SQLite database may not default into (or point relative to) the read-only deployment directory.
         var services = new ServiceCollection().AddDefaultDatabaseProviders();
 
         var ex = Assert.Throws<DatabaseConfigurationException>(() => services.AddDotNetForgeDatabases(
-            new DatabaseSettings { Provider = "sqlite", ConnectionString = connectionString },
-            Array.Empty<DatabaseSettings>(),
+            new DatabaseSettings { Provider = "postgresql", ConnectionString = "Host=db;Database=cms" },
+            [new DatabaseSettings { Name = "reports", Provider = "sqlite", ConnectionString = connectionString }],
             new DatabaseHostContext(IsDevelopment: false, DevelopmentDataRoot: Path.GetTempPath())));
         Assert.Contains(expected, ex.Message);
+    }
+
+    [Theory]
+    [InlineData("sqlite")]
+    [InlineData("sqlserver")]
+    [InlineData("mysql")]
+    [InlineData("mongodb")]
+    public void The_cms_database_is_postgresql_and_other_providers_are_only_additional(string provider)
+    {
+        var services = new ServiceCollection().AddDefaultDatabaseProviders();
+
+        var ex = Assert.Throws<DatabaseConfigurationException>(() => services.AddDotNetForgeDatabases(
+            new DatabaseSettings { Provider = provider, ConnectionString = "Data Source=/data/cms.db" },
+            Array.Empty<DatabaseSettings>(),
+            new DatabaseHostContext(IsDevelopment: true, DevelopmentDataRoot: Path.GetTempPath())));
+        Assert.Contains("can't host the CMS", ex.Message);
+    }
+
+    [Fact]
+    public void Outside_development_the_cms_database_needs_a_connection_string()
+    {
+        var services = new ServiceCollection().AddDefaultDatabaseProviders();
+
+        var ex = Assert.Throws<DatabaseConfigurationException>(() => services.AddDotNetForgeDatabases(
+            new DatabaseSettings(), Array.Empty<DatabaseSettings>(),
+            new DatabaseHostContext(IsDevelopment: false, DevelopmentDataRoot: Path.GetTempPath())));
+        Assert.Contains("DATABASE_CONNECTION_STRING", ex.Message);
     }
 
     private static async Task RunFullSessionAsync(DotNetForgeWebFactory factory)

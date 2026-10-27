@@ -1,7 +1,7 @@
 # Architecture overview
 
-DotNetForge CMS is a server-rendered **ASP.NET Core MVC** CMS (C#, EF Core, Razor) on **.NET 10**, with **SQLite**
-(default) or **PostgreSQL**, configured through `.env`. It serves a role-gated admin area, a public site resolved from
+DotNetForge CMS is a server-rendered **ASP.NET Core MVC** CMS (C#, EF Core, Razor) on **.NET 10**, with **PostgreSQL** as
+its database (more databases can be added for your own data), configured through `.env`. It serves a role-gated admin area, a public site resolved from
 a page tree, structured content (content types and their entries, shown on pages through the page builder's content
 lists), and a token-secured headless API over the same data, and keeps the core (`src/`) separate from
 user extensions (`extensions/`): a CMS user customizes the site only there - code, views and assets that plug into
@@ -31,14 +31,14 @@ src/
   DotNetForge.Core/            installation, permission matrix evaluation, validators, structured content rules (no EF Core)
   DotNetForge.Content/         structured content over the database: content types, entries, queries (admin + API)
   DotNetForge.PageBuilder/     page builder document model, validation and HTML/CSS renderer
-  DotNetForge.Data/            EF Core contexts, migrations (SQLite + PostgreSQL), seeding, provider selection
+  DotNetForge.Data/            EF Core model, PostgreSQL context + migrations, seeding, database providers
   DotNetForge.Infrastructure/  BCL implementations: hashing, tokens, signing, .env, paths, file storage
   DotNetForge.Extensions/      manifest validation, discovery, code loading, ExtensionCatalog
   DotNetForge.Sdk/             the extension SDK (what extensions compile against)
   DotNetForge.Api/             headless API controllers, token auth, permission filter
 tests/        DotNetForge.Tests (unit), DotNetForge.IntegrationTests (real host), fixtures/extensions
 extensions/   extensions by type (one manifest per folder, optional .csproj → bin/); copied next to the app on publish
-docker/       Dockerfile (read-only friendly production image) and compose.dev.yml (local PostgreSQL + S3)
+docker/       Dockerfile (read-only friendly production image), compose.dev.yml (PostgreSQL + RustFS + Mailpit), compose.app.yml (the app in Docker), databases/ s3/ mail/ (one compose file per service)
 .docs/        technical documentation, incl. planned work per topic
 ```
 
@@ -86,7 +86,7 @@ flowchart BT
   permission matrix for content and media actions; granular permission keys for API tokens.
 - **Install gate** middleware until the first Super Admin exists.
 - **Structured content is separate from pages:** content types define fields, entries hold values as JSON with a
-  single-table value index for filtering and sorting (MongoDB-compatible), and pages show entries through content
+  single-table value index for filtering and sorting, and pages show entries through content
   lists resolved per request - the layout stores bindings, never content
   ([structured content](../features/structured-content.md)).
 - **Liveness of content pages is computed per request** from `Published`, `Disabled` and the schedule; a background
@@ -99,9 +99,9 @@ flowchart BT
 - **Read-only deployment directory.** Runtime data goes to the database (incl. the Data Protection key ring) and to
   object storage behind `IFileStorage` (local directory in development, S3-compatible - Cloudflare R2 recommended - in
   production). Production configuration may not default into the app's folder ([deployment](../guides/deployment.md)).
-- **Five databases through providers:** SQLite, PostgreSQL, SQL Server, MySQL and MongoDB, each an `IDatabaseProvider`
-  registered by name. SQL providers apply their own migration set at startup (one context type each); MongoDB creates
-  its collections and indexes. `IDatabaseService` runs structured commands on any configured database
-  ([database layer](../database/architecture.md)).
+- **PostgreSQL for the CMS, five databases for your own data:** the CMS runs on PostgreSQL and applies its one
+  migration set at startup. SQLite, PostgreSQL, SQL Server, MySQL and MongoDB are `IDatabaseProvider`s registered by
+  name for additional databases (`DATABASES_<NAME>_*`): `IDatabaseService` runs structured commands on any of them,
+  and custom API endpoints run SQL on the SQL ones ([database layer](../database/architecture.md)).
 - **Defence in depth on the web layer:** CSP and security headers, rate limiting, session re-validation, content and
   media permission checks from the role permission matrix.

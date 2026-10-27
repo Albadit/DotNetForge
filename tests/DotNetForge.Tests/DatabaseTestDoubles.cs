@@ -90,6 +90,11 @@ public sealed class FakeExecutor : IDatabaseExecutor
     public Task<IDatabaseTransaction> BeginTransactionAsync(string database, CancellationToken cancellationToken) =>
         Task.FromResult<IDatabaseTransaction>(new FakeTransaction(database));
 
+    /// <summary>What <see cref="ListCollectionsAsync"/> returns.</summary>
+    public IReadOnlyList<string> Collections { get; set; } = Array.Empty<string>();
+
+    public Task<IReadOnlyList<string>> ListCollectionsAsync(CancellationToken cancellationToken) => Task.FromResult(Collections);
+
     public Task TestConnectionAsync(CancellationToken cancellationToken) =>
         Connected ? Task.CompletedTask : throw new FakeDriverException("connection refused by fake://secret-host");
 

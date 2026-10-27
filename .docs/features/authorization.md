@@ -212,7 +212,8 @@ action)`:
 
 **Areas added later** reach databases seeded before them through a one-time update: `DataSeeder.UpgradeAsync` runs on
 every start, compares `SystemState.SeedVersion` with `DataSeeder.CurrentSeedVersion` and applies each missing step once.
-Step 1 gives every built-in role without any grant in `Content types` or `Entries` the matrix defaults of those areas.
+Step 1 gives every built-in role without any grant in `Content types` or `Entries` the matrix defaults of those areas
+(step 2 marks existing users as email-confirmed - [authentication](authentication.md#self-service-accounts)).
 Because the step runs only once, a grant an administrator removes afterwards is not put back. Unit tests:
 `tests/DotNetForge.Tests/PermissionTests.cs`; enforcement tests: `SecurityTests` (Author content rules, Editors
 denied Settings), `MediaTests` (Author cannot delete others' media) and `UserAndRoleManagementTests` (custom roles,
@@ -251,7 +252,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 - ✔ **Built-in roles** cannot be deleted; their descriptions are editable; their grants are editable except for
   `Super Admin` (always full access) and `Public` (always read-only public content).
 - The role given to newly registered users is configurable:
-  [authentication → Advanced settings screen](authentication.md#advanced-settings-screen).
+  ✔ [Advanced Settings](../pages/advanced-settings.md) (only a Super Admin may pick a role that opens the admin).
 - Extension-requested permission keys are reconciled against this model ([extensions](extensions.md#planned-not-implemented)).
 
 ### Built-in roles (target descriptions)
@@ -338,8 +339,8 @@ only; Editor publish; Author no publish) matches.
 The user and role rules are built ([safety rules](#safety-rules-for-users-and-roles), [Users](../pages/users.md),
 [Roles](../pages/roles.md)). Still planned:
 
-- The "one account per email address" setting extending email uniqueness across providers
-  ([authentication](authentication.md#advanced-settings-screen)).
+- One account per email address across sign-in providers (email/password sign-up already refuses a used email;
+  [authentication](authentication.md#planned-not-implemented)).
 
 ### Edge cases
 

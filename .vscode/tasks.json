@@ -98,24 +98,8 @@
       "problemMatcher": []
     },
     {
-      "label": "ef: add migration (SQLite)",
-      "detail": "dotnet ef migrations add <name> for DotNetForgeDbContext - run the PostgreSQL, SQL Server and MySQL tasks with the same name too",
-      "type": "process",
-      "command": "dotnet",
-      "args": [
-        "ef", "migrations", "add", "${input:migrationName}",
-        "--project", "src/DotNetForge.Data",
-        "--startup-project", "src/DotNetForge.Data",
-        "--context", "DotNetForgeDbContext",
-        "--output-dir", "Database/Providers/Sqlite/Migrations"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "group": "build",
-      "problemMatcher": "$msCompile"
-    },
-    {
-      "label": "ef: add migration (PostgreSQL)",
-      "detail": "dotnet ef migrations add <name> for PostgreSqlDbContext (Database/Providers/PostgreSql/Migrations)",
+      "label": "ef: add migration",
+      "detail": "dotnet ef migrations add <name> for PostgreSqlDbContext (Database/Providers/PostgreSql/Migrations) - the CMS database is PostgreSQL only",
       "type": "process",
       "command": "dotnet",
       "args": [
@@ -124,38 +108,6 @@
         "--startup-project", "src/DotNetForge.Data",
         "--context", "PostgreSqlDbContext",
         "--output-dir", "Database/Providers/PostgreSql/Migrations"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "group": "build",
-      "problemMatcher": "$msCompile"
-    },
-    {
-      "label": "ef: add migration (SQL Server)",
-      "detail": "dotnet ef migrations add <name> for SqlServerDbContext (Database/Providers/SqlServer/Migrations)",
-      "type": "process",
-      "command": "dotnet",
-      "args": [
-        "ef", "migrations", "add", "${input:migrationName}",
-        "--project", "src/DotNetForge.Data",
-        "--startup-project", "src/DotNetForge.Data",
-        "--context", "SqlServerDbContext",
-        "--output-dir", "Database/Providers/SqlServer/Migrations"
-      ],
-      "options": { "cwd": "${workspaceFolder}" },
-      "group": "build",
-      "problemMatcher": "$msCompile"
-    },
-    {
-      "label": "ef: add migration (MySQL)",
-      "detail": "dotnet ef migrations add <name> for MySqlDbContext (Database/Providers/MySql/Migrations)",
-      "type": "process",
-      "command": "dotnet",
-      "args": [
-        "ef", "migrations", "add", "${input:migrationName}",
-        "--project", "src/DotNetForge.Data",
-        "--startup-project", "src/DotNetForge.Data",
-        "--context", "MySqlDbContext",
-        "--output-dir", "Database/Providers/MySql/Migrations"
       ],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",

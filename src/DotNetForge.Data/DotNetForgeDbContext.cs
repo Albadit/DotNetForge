@@ -5,9 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Data;
 
 /// <summary>
-/// The single EF Core context for DotNetForge CMS. Provider selection (SQLite default / PostgreSQL) is configured by
-/// the host; all schema changes flow through migrations (.docs/architecture/database.md). This type owns the SQLite
-/// migrations in <c>Migrations/</c>; <see cref="PostgreSqlDbContext"/> owns the PostgreSQL set.
+/// The CMS model (EF Core). The CMS database is PostgreSQL: it runs as <see cref="PostgreSqlDbContext"/>, which owns the
+/// migrations (.docs/architecture/database.md). The public constructor serves tools and tests that only need the model.
 /// </summary>
 public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
 {
@@ -24,6 +23,7 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<PagePermission> PagePermissions => Set<PagePermission>();
     public DbSet<PageUserPermission> PageUserPermissions => Set<PageUserPermission>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
+    public DbSet<MediaFolder> MediaFolders => Set<MediaFolder>();
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
     public DbSet<Webhook> Webhooks => Set<Webhook>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
@@ -37,6 +37,9 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<ContentEntryValue> ContentEntryValues => Set<ContentEntryValue>();
     public DbSet<CustomEndpoint> CustomEndpoints => Set<CustomEndpoint>();
     public DbSet<CustomEndpointOperation> CustomEndpointOperations => Set<CustomEndpointOperation>();
+    public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
+    public DbSet<TransferRecord> TransferRecords => Set<TransferRecord>();
+    public DbSet<EmailLogEntry> EmailLog => Set<EmailLogEntry>();
 
     /// <summary>ASP.NET Core Data Protection key ring (auth cookies, antiforgery), shared by all instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -121,7 +124,16 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(m => m.OriginalName).HasMaxLength(400);
             e.Property(m => m.ContentType).HasMaxLength(200);
             e.Property(m => m.RelativePath).IsRequired().HasMaxLength(1000);
-            e.Property(m => m.FolderPath).HasMaxLength(1000);
+            e.HasIndex(m => m.FolderId);
+        });
+
+        b.Entity<MediaFolder>(e =>
+        {
+            e.HasKey(f => f.Id);
+            e.Property(f => f.Name).IsRequired().HasMaxLength(100);
+            e.Property(f => f.Path).IsRequired().HasMaxLength(1000);
+            e.HasIndex(f => f.Path).IsUnique();
+            e.HasIndex(f => f.ParentId);
         });
 
         b.Entity<ApiToken>(e =>
@@ -214,12 +226,47 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
         });
 
         // Custom API endpoints (.docs/features/custom-endpoints.md).
+        // Customized email templates only (.docs/pages/email-templates.md); the defaults live in code.
+        b.Entity<EmailTemplate>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Key).IsRequired().HasMaxLength(100);
+            e.Property(x => x.Subject).IsRequired().HasMaxLength(500);
+            e.Property(x => x.Body).IsRequired();
+            e.HasIndex(x => x.Key).IsUnique();
+        });
+
+        b.Entity<EmailLogEntry>(e =>
+        {
+            e.ToTable("EmailLog");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Recipient).IsRequired().HasMaxLength(320);
+            e.Property(x => x.Subject).IsRequired().HasMaxLength(500);
+            e.Property(x => x.Template).HasMaxLength(100);
+            e.Property(x => x.Error).HasMaxLength(300);
+            e.HasIndex(x => x.SentAt);
+        });
+
+        b.Entity<TransferRecord>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Provider).IsRequired().HasMaxLength(50);
+            e.Property(x => x.SourceProvider).HasMaxLength(50);
+            e.Property(x => x.FileName).IsRequired().HasMaxLength(260);
+            e.Property(x => x.StorageKey).HasMaxLength(500);
+            e.Property(x => x.Checksum).HasMaxLength(64);
+            e.Property(x => x.Error).HasMaxLength(2000);
+            e.Property(x => x.Note).HasMaxLength(200);
+            e.HasIndex(x => x.StartedAt);
+        });
+
         b.Entity<CustomEndpoint>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).IsRequired().HasMaxLength(100);
             e.Property(x => x.Path).IsRequired().HasMaxLength(200);
             e.Property(x => x.Description).HasMaxLength(500);
+            e.Property(x => x.Database).HasMaxLength(64);
             e.HasIndex(x => x.Path);
         });
 

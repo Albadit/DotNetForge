@@ -138,7 +138,14 @@
                 <fieldset class="choice-list" aria-label="Theme">
                     <label class="check choice-row">
                         <input type="radio" name="ThemeId" value="" checked="@(string.IsNullOrEmpty(Model.ThemeId) ? "checked" : null)" />
-                        <span class="check-text"><span class="weight-semibold">Site theme</span><span class="check-hint">Use whatever theme the site uses (recommended).</span></span>
+                        @if (extras.InheritedTheme is { } inherited)
+                        {
+                            <span class="check-text"><span class="weight-semibold">Parent's theme</span><span class="check-hint">Follows <strong>@inherited.Theme</strong>, which "@inherited.FromPage" hands down to its child pages.</span></span>
+                        }
+                        else
+                        {
+                            <span class="check-text"><span class="weight-semibold">Site theme</span><span class="check-hint">Use whatever theme the site uses (recommended).</span></span>
+                        }
                     </label>
                     @foreach (var theme in extras.Themes)
                     {
@@ -157,6 +164,18 @@
                         </label>
                     }
                 </fieldset>
+                @if (extras.Themes.Count > 0)
+                {
+                    <label class="switch-row">
+                        <span class="check-text">
+                            <span>Use this theme for child pages too</span>
+                            <span class="check-hint">Child pages without a theme of their own follow this page's theme, down to the next page that picks its own.</span>
+                        </span>
+                        @* The checkbox first: a bound bool takes the first posted value. *@
+                        <input type="checkbox" class="switch" role="switch" name="ThemeForChildren" value="true" checked="@(Model.ThemeForChildren ? "checked" : null)" />
+                        <input type="hidden" name="ThemeForChildren" value="false" />
+                    </label>
+                }
                 @if (extras.Themes.Count == 0)
                 {
                     <p class="text-sm text-muted">No theme extensions are installed, so the built-in look is used.</p>

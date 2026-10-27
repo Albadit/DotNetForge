@@ -10,11 +10,6 @@
     <a class="btn btn-primary" href="/admin/api-endpoints/new"><icon name="plus" /> New endpoint</a>
 }
 
-@if (!Model.Supported)
-{
-    <alert tone="Warning" title="Needs a SQL database">This site runs on MongoDB, which has no SQL: endpoints can be edited but answer 501 until the site uses SQLite, PostgreSQL, SQL Server or MySQL.</alert>
-}
-
 <section class="card" aria-labelledby="endpoints-title" data-collection data-page-size="25">
     <div class="card-header">
         <div>
@@ -53,7 +48,13 @@
                                     <span class="cell-sub">@e.Description</span>
                                 }
                             </td>
-                            <td data-label="Path" data-sort-value="@e.Path"><code>/api/custom/@e.Path</code></td>
+                            <td data-label="Path" data-sort-value="@e.Path">
+                                <code>/api/custom/@e.Path</code>
+                                @if (e.Database is not null)
+                                {
+                                    <span class="cell-sub">on database <code>@e.Database</code></span>
+                                }
+                            </td>
                             <td data-label="Operations">
                                 <span class="cluster">
                                     @foreach (var operation in Model.Operations[e.Id])

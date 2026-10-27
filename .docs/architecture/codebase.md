@@ -39,18 +39,18 @@ behaviour under **Planned (not implemented)**; the gap is tracked in
 | Web framework | ASP.NET Core MVC: controllers + Razor views, one MVC **Area** (`Admin`), view components, tag helpers | `src/DotNetForge.Web` |
 | Runtime view compilation | `Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation` (always on) - compiles extension views from `extensions/` **in memory** | `DependencyRegistration` |
 | Extension code | one non-collectible `AssemblyLoadContext` per extension (`ExtensionLoadContext`), host assemblies shared; extensions compile against `DotNetForge.Sdk` | `src/DotNetForge.Extensions`, `src/DotNetForge.Sdk` |
-| ORM | EF Core 10 on SQLite (default), PostgreSQL, SQL Server, MySQL or MongoDB; one migration set per SQL provider; provider registry + `IDatabaseService` ([database layer](../database/architecture.md)) | `src/DotNetForge.Data` |
+| ORM | EF Core 10 on PostgreSQL (the CMS database, one migration set); provider registry + `IDatabaseService` for additional SQLite, PostgreSQL, SQL Server, MySQL or MongoDB databases ([database layer](../database/architecture.md)) | `src/DotNetForge.Data` |
 | Auth | ASP.NET Core cookie authentication + a custom `ApiToken` bearer scheme; Data Protection key ring persisted to the database | `DependencyRegistration`, `ApiTokenAuthenticationHandler` |
 | File storage | `IFileStorage`: local directory or any S3-compatible service (`AWSSDK.S3`) | `src/DotNetForge.Infrastructure/Storage` |
 | Request hardening | `SecurityHeadersMiddleware` (CSP and friends), built-in rate limiter (`AddRateLimiter`) | `src/DotNetForge.Web/Middleware/`, `DependencyRegistration` |
 | API docs | `Microsoft.AspNetCore.OpenApi` builds the OpenAPI document of `/api/*` and the custom endpoints; `Scalar.AspNetCore` renders it at `/admin/api-docs/reference/` ([API docs](../features/api-docs.md)) | `src/DotNetForge.Web/ApiDocs/`, `DependencyRegistration` (`AddOpenApi`) |
 | Crypto | BCL only: PBKDF2-SHA256 (`Rfc2898DeriveBytes.Pbkdf2`), HMAC-SHA256, SHA-256, `RandomNumberGenerator` | `src/DotNetForge.Infrastructure/Security`, `ApiTokenAuthenticationHandler` |
 | Configuration | In-house `.env` parser + environment variables, typed as `AppEnvironment` | `src/DotNetForge.Infrastructure/Configuration` |
-| Frontend | The Forge design system ([design-system.md](design-system.md)): hand-written CSS (`wwwroot/css/forge/`), Razor tag helpers (`src/DotNetForge.Web/Ui/`), an SVG icon sprite and vanilla JS files (`wwwroot/js/forge/theme.js`, `ui.js`, and one script per screen that needs one: `pages.js`, `entries.js`, `content-types.js`). Light and dark themes. No inline script or style. No bundler, no Node build, no front-end packages. | `src/DotNetForge.Web/wwwroot/`, `src/DotNetForge.Web/Ui/` |
+| Frontend | The Forge design system ([design-system.md](design-system.md)): hand-written CSS (`wwwroot/css/forge/`), Razor tag helpers (`src/DotNetForge.Web/Ui/`), an SVG icon sprite and vanilla JS files (`wwwroot/js/forge/theme.js`, `ui.js`, `nav-state.js`, and one script per screen that needs one: `pages.js`, `entries.js`, `content-types.js`). Light and dark themes. No inline script or style. No bundler, no Node build, no front-end packages. | `src/DotNetForge.Web/wwwroot/`, `src/DotNetForge.Web/Ui/` |
 | Page builder | Layout documents, validation and HTML/CSS rendering in `DotNetForge.PageBuilder`; the editor as plain ES modules (`wwwroot/js/builder/`) with its own styles (`wwwroot/builder/`). Ported from the Dnn.Libraries.PageEditor project ([page builder](../features/page-builder.md)). | `src/DotNetForge.PageBuilder`, `src/DotNetForge.Web/wwwroot/{js/,}builder` |
-| Container | `docker/Dockerfile` (`sdk:10.0` build → `aspnet:10.0`, non-root `$APP_UID`, port 8080); `docker/compose.dev.yml` for local PostgreSQL + S3 | `docker/` |
+| Container | `docker/Dockerfile` (`sdk:10.0` build → `aspnet:10.0`, non-root `$APP_UID`, port 8080); `docker/compose.dev.yml` (PostgreSQL + RustFS + Mailpit), `docker/compose.app.yml` (the app built and run in Docker), one compose file per service in `docker/databases/`, `docker/s3/`, `docker/mail/` | `docker/` |
 | Tests | xUnit 2.9, `Microsoft.AspNetCore.Mvc.Testing` (`WebApplicationFactory<Program>`) | `tests/` |
-| CI | GitHub Actions: build + tests on Ubuntu/Windows/macOS, `dotnet format` check, PostgreSQL + S3 job, read-only container job; Dependabot | `.github/` |
+| CI | GitHub Actions: build + unit tests on Ubuntu/Windows/macOS, `dotnet format` check, integration tests on PostgreSQL + S3, additional-database jobs (SQL Server, MySQL, MongoDB), read-only container job; Dependabot | `.github/` |
 
 ## Solution shape at a glance
 
@@ -108,7 +108,7 @@ host at runtime; the host shares its own copies of those assemblies with them.
 | `src/DotNetForge.Web/Services/ScheduledPublishingService` | `BackgroundService` started by the host. |
 | `src/DotNetForge.Web/Services/AuditEventDispatcher` | `BackgroundService` delivering audit events to extension handlers ([audit logging](../features/audit-logging.md#extension-handlers)). |
 | `IExtension.ConfigureServices` / `MapEndpoints` of each extension | called once at startup by `DependencyRegistration.AddExtensionHost` and `await app.MapDotNetForgeExtensionsAsync()` ([extensions → Loading code](../features/extensions.md#loading-code)). |
-| `src/DotNetForge.Data/DesignTimeDbContextFactory.cs` | `DesignTimeDbContextFactory` (SQLite) and `PostgreSqlDesignTimeDbContextFactory` - entry points for `dotnet ef` design-time tooling (do not boot the web host or connect). |
+| `src/DotNetForge.Data/DesignTimeDbContextFactory.cs` | `PostgreSqlDesignTimeDbContextFactory` - the entry point for `dotnet ef` design-time tooling (does not boot the web host or connect). |
 | `docker/Dockerfile` | `ENTRYPOINT ["dotnet", "DotNetForge.Web.dll"]` with `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=8080`. |
 
 Startup order is detailed in [data-flow.md → Application startup](data-flow.md#application-startup).
@@ -149,7 +149,7 @@ DotNetForge/                         repository root
 │   ├── DotNetForge.Shared/          entities, enums, constants, DTOs, results, manifest model, store/service contracts
 │   ├── DotNetForge.Core/            pure domain logic: installation, permission evaluation, validators, structured content rules (Content/)
 │   ├── DotNetForge.Content/         structured content over the database: content types, entries, queries, API shapes
-│   ├── DotNetForge.Data/            EF Core contexts per provider, four migration sets, database layer (Database/), seeding, stores
+│   ├── DotNetForge.Data/            EF Core model + PostgreSQL context and migrations, database layer (Database/), seeding, stores
 │   ├── DotNetForge.Infrastructure/  hashing, tokens, signing, .env loading, AppPaths, file storage (local, S3)
 │   ├── DotNetForge.PageBuilder/     page builder documents: schema, validator, HTML/CSS renderer (no other references)
 │   ├── DotNetForge.Extensions/      manifest validation, cached on-disk discovery, code loading (load contexts), ExtensionCatalog
@@ -157,7 +157,7 @@ DotNetForge/                         repository root
 │   └── DotNetForge.Api/             headless API controllers, token auth handler, permission filter
 ├── tests/
 │   ├── DotNetForge.Tests/           unit tests (no host, no real DB; live S3 tests opt-in)
-│   ├── DotNetForge.IntegrationTests/ real host over a throwaway SQLite file (or PostgreSQL via DNF_TEST_POSTGRES)
+│   ├── DotNetForge.IntegrationTests/ real host over a fresh PostgreSQL database per factory (DNF_TEST_POSTGRES)
 │   ├── fixtures/extensions/         fixture extensions the integration tests load
 │   ├── fixtures/page-builder/       golden page builder fixtures (input, normalized document, HTML, CSS)
 │   └── js/                          page-builder-fixtures.mjs: the fixtures through the browser modules (Node)
@@ -166,7 +166,11 @@ DotNetForge/                         repository root
 ├── docker/
 │   ├── Dockerfile                   production image (read-only root filesystem capable); build context = repository root
 │   ├── Dockerfile.dockerignore      keeps the build context to what `dotnet publish` needs
-│   └── compose.dev.yml              development only: postgres:17-alpine (5432) + SeaweedFS S3 (8333, bucket dotnetforge)
+│   ├── compose.dev.yml              development: PostgreSQL + RustFS + Mailpit (the services of .env.developer)
+│   ├── compose.app.yml              the app built from Dockerfile, run read-only in Production, with those services
+│   ├── databases/                   postgres.yml, mongodb.yml, sqlserver.yml, mysql.yml (one service each)
+│   ├── s3/                          rustfs.yml, ceph.yml, seaweedfs.yml (S3 servers with a dotnetforge bucket)
+│   └── mail/                        mailpit.yml
 ├── .docs/                           this documentation (current behaviour + planned sections)
 ├── .github/                         CI workflow, Dependabot, AI-agent quick references (agents/)
 ├── .claude/skills/                  project skills for Claude Code
@@ -179,7 +183,7 @@ DotNetForge/                         repository root
 
 `storage/` is **not in the repository** (`.gitignore` ignores `/storage/` - the root folder only, so the
 `Storage/` source folders are not matched on case-insensitive file systems). It appears only in Development, as the
-default location of the SQLite database and local media - see [`storage/`](#storage-development-only).
+default location of local media and of SQLite additional databases - see [`storage/`](#storage-development-only).
 
 ### Folder responsibilities
 
@@ -248,7 +252,7 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 | --- | --- | --- |
 | `HomeController` | `GET /`, fallback `{*path:nonfile}` → `RenderPage`, `/error` (any HTTP method) | Public site and the error screen |
 | `MediaFilesController` | `GET /media/{id:guid}/{fileName?}` | Media downloads: redirect to a presigned URL (S3) or stream (local). Private files only for admin-capable users, else 404. |
-| `AccountController` | `/account/login` (GET/POST, POST rate-limited), `/account/logout` (POST), `/account/denied` | Cookie sign-in/out |
+| `AccountController` | `/login` (GET/POST, POST rate-limited; `/account/login` → 301), `/register`, `/forgot-password`, `/reset-password`, `/confirm-email`, `/confirm-email/resend`, `/account/logout` (POST), `/account/denied` | Cookie sign-in/out, self-service accounts ([authentication](../features/authentication.md#self-service-accounts)) |
 | `SetupController` | `/setup` (GET/POST, POST rate-limited) | Setup wizard; writes `cms.installed` |
 | `ExtensionViewController` | `/admin/ext/{id}/raw`, `/admin/ext/{id}/resources/{**path}` | Renders an admin extension's own Razor document and assets. Lives outside the area so its views resolve from `extensions/` with no admin layout. Protected by the `AdminArea` policy. |
 
@@ -280,6 +284,7 @@ presentation helpers. How these fit together, and how to add a component, token 
 | `wwwroot/css/forge/tokens.css`, `base.css`, `components.css` | every built-in layout |
 | `wwwroot/css/forge/admin.css` / `auth.css` / `public.css` | `_AdminLayout` / `_AuthLayout` / `_Layout` |
 | `wwwroot/js/forge/theme.js` | every built-in layout, synchronously in `<head>` (applies the saved light/dark choice) |
+| `wwwroot/js/forge/nav-state.js` | `_AdminLayout`, synchronously right after the sidebar (restores open sidebar groups and scroll position before the first paint) |
 | `wwwroot/js/forge/ui.js` | `_AdminLayout`, `_AuthLayout` (`defer`) - `data-confirm`, toasts, menus, drawer, list search/filter/sort/paging, copy, theme switch |
 | `wwwroot/js/forge/pages.js` | Pages only (`@section Scripts`) |
 | `wwwroot/js/forge/entries.js` | Content Manager entry list and entry form |
@@ -298,7 +303,7 @@ Interfaces with no implementation and no project references - the surface extens
 | --- | --- |
 | `Authorization/IPermissionService.cs` | `Has(role, area, action)`, `HasAny(roles, area, action)` (reference matrix), `IsGranted(roles, area, action)` (stored grants) |
 | `Security/ISecurityContracts.cs` | `IDateTimeProvider`, `IPasswordHasher`, `IApiTokenFactory` + `GeneratedApiToken`, `IWebhookSigner` |
-| `Messaging/IMessagingContracts.cs` | `EmailMessage`, `IEmailSender` (no implementation exists) |
+| `Messaging/IMessagingContracts.cs` | `EmailMessage`, `IEmailSender` (implemented by `SmtpEmailSender` in Infrastructure) |
 | `Storage/IFileStorage.cs` | `IFileStorage` (`SaveAsync`, `OpenReadAsync` → `StoredFile?`, `DeleteAsync`, `GetDownloadUrlAsync` → `Uri?`), `StoredFile`, `StorageKey` (key validation) |
 | `Database/` | `IDatabaseService`, `DatabaseCommand`, `DatabaseFilter`, `DatabaseResult`, database exceptions ([database layer](../database/architecture.md)) |
 
@@ -313,12 +318,12 @@ The shared kernel referenced by everything above `Abstractions`.
 | Folder | Contents |
 | --- | --- |
 | `Entities/` | `User`, `Role`, `RolePermission`, `UserRole`, `Page`, `MediaFile`, `ApiToken`, `Webhook`, `WebhookDelivery`, `AuditLogEntry`, `InstalledExtension`, `SystemState`, `Setting`, `AuthProvider`, `ContentType`, `ContentEntry`, `ContentEntryValue` (`StructuredContent.cs`) |
-| `Enums/Enums.cs` | `DatabaseProvider`, `StorageProvider`, `UserStatus`, `ExtensionType`, `ExtensionStatus`, `TokenDuration`, `PageType`, `WebhookOutcome`, `ContentTypeKind` |
+| `Enums/Enums.cs` | `StorageProvider`, `UserStatus`, `ExtensionType`, `ExtensionStatus`, `TokenDuration`, `PageType`, `WebhookOutcome`, `ContentTypeKind` |
 | `Media/MediaUrls.cs` | `MediaUrls.For(id, fileName)` - the `/media/{id}/{name}` path (admin, renderer and API) |
 | `Constants/` | `Roles`, `PermissionAreas`, `PermissionActions`, `PermissionKeys`, `AuditActions`, `WebhookEvents`, `RateLimitPolicies`, `AuthorizationPolicies` |
 | `Authorization/PermissionMatrix.cs` | Default `(role, area, action)` grants - consumed by `PermissionService` and `DataSeeder` |
-| `Configuration/AppEnvironment.cs` | Typed `.env` values, `StorageSettings`, `ResolveConnectionString()`, `Lookup` (any key: environment, then `.env` - for extension settings) |
-| `Configuration/SqliteConnectionStrings.cs` | `GetDataSource`, `IsInMemory` - used by `SqliteDatabaseProvider` |
+| `Configuration/AppEnvironment.cs` | Typed `.env` values (`Database`, `AdditionalDatabases`, `StorageSettings`, `EmailSettings`), `Lookup` (any key: environment, then `.env` - for extension settings) |
+| `Configuration/SqliteConnectionStrings.cs` | `GetDataSource`, `IsInMemory` - used by `SqliteDatabaseProvider` (additional databases) |
 | `Content/IPageService.cs` | `IPageService`, `PagePosition`, `PageInput` (+ `PageInput.From(page)`) |
 | `Content/PublishedPages.cs` | `PageVisibility.Live` (the public "live" rule), `IPublishedPages`, `PublishedPage` |
 | `Auditing/IAuditService.cs` | `IAuditService.LogAsync` |
@@ -354,7 +359,7 @@ screens and the headless API so both apply the same rules. References `Abstracti
 | --- | --- |
 | `ContentTypeService` | create (from templates, with linked types), update (validated schema, entries migrated in the same save), delete, reorder; saves and audits |
 | `ContentEntryService` | save (draft / publish), publish, unpublish, duplicate, delete, bulk delete, reorder, uniqueness, conflicts (`Version`), value index rows; saves and audits |
-| `ContentQueryService` | search, filters, sorting and paging over the value index with single-table queries |
+| `ContentQueryService` | search, filters, sorting and paging over the value index (`ContentEntryValues`) |
 | `ContentApiService` | the API's JSON for types and entries (media and relationships resolved) |
 
 All four are scoped, registered in `DependencyRegistration`.
@@ -363,13 +368,13 @@ All four are scoped, registered in `DependencyRegistration`.
 
 | File | Responsibility |
 | --- | --- |
-| `DotNetForgeDbContext.cs` | The EF Core model: 21 `DbSet`s (incl. `DataProtectionKeys`) and all fluent configuration. Implements `IDataProtectionKeyContext`. Owns the SQLite migrations. Not sealed. |
-| `Database/` | The database layer ([architecture](../database/architecture.md)): `IDatabaseProvider`, registry, catalog, `QueryRouter`, `DatabaseService`, schema mapping, value coercion. `Providers/<Database>/` holds everything specific to one database, with no code shared between databases: provider, context type and migrations; for SQL databases also the dialect, SQL builder and executor; for MongoDB the executor and key generators. |
-| `DatabaseInitializer.cs` | Startup: the main provider's `InitializeSchemaAsync` (migrations, or MongoDB collections and indexes), then `DataSeeder.SeedAsync`. |
+| `DotNetForgeDbContext.cs` | The EF Core model: 24 `DbSet`s (incl. `DataProtectionKeys`) and all fluent configuration. Implements `IDataProtectionKeyContext`. Not sealed; a public constructor for tools and tests that only need the model. |
+| `Database/` | The database layer ([architecture](../database/architecture.md)): `IDatabaseProvider`, registry, catalog, `QueryRouter`, `DatabaseService`, schema mapping, value coercion. `Providers/<Database>/` holds everything specific to one database, with no code shared between databases: the provider; for SQL databases also the dialect, SQL builder and executor; for PostgreSQL the CMS context `PostgreSqlDbContext` and its migrations; for MongoDB the executor and key generators. |
+| `DatabaseInitializer.cs` | Startup: the PostgreSQL provider's `InitializeSchemaAsync` (migrations), then `DataSeeder.SeedAsync`. |
 | `DataSeeder.cs` | Idempotent seed: six built-in roles + grants, starter page tree, auth-provider catalog, `SystemState` row; one-time updates by `SystemState.SeedVersion` (`UpgradeAsync`). |
 | `InstallationStore.cs` | Transactional create-first-admin + installed flag. |
-| `DesignTimeDbContextFactory.cs` | One design-time factory per SQL context (SQLite, PostgreSQL, SQL Server, MySQL) for `dotnet ef`; read `DATABASE_CONNECTION_STRING` from the process environment only. |
-| `Database/Providers/<Database>/Migrations/` | One migration set per SQL database; the list per database is in [database.md → Migrations](database.md#migrations) (latest: `AddStructuredContent` in all four). |
+| `DesignTimeDbContextFactory.cs` | `PostgreSqlDesignTimeDbContextFactory` for `dotnet ef --context PostgreSqlDbContext`; reads `DATABASE_CONNECTION_STRING` from the process environment only. |
+| `Database/Providers/PostgreSql/Migrations/` | The CMS migrations; the list is in [database.md → Migrations](database.md#migrations) (latest: `AddEndpointDatabase`). |
 
 Details: [database.md](database.md).
 
@@ -389,8 +394,8 @@ Implementations of `Abstractions` contracts plus configuration loading. BCL only
 
 The host's own storage is registered as the keyed `IFileStorage` `"core"`, chosen from `AppEnvironment.Storage.Provider`;
 the unkeyed `IFileStorage` is `ExtensionMediaStorage` (Web), which routes to an enabled storage-connector extension or
-to the core one ([storage connectors](../features/media-storage.md#storage-connectors)). There is no `IEmailSender`
-implementation (the former `FileSystemEmailSender` was removed). Provider choice and setup:
+to the core one ([storage connectors](../features/media-storage.md#storage-connectors)). `Messaging/SmtpEmailSender.cs` is the
+`IEmailSender` over SMTP (`SMTP_*`, [email](../features/email.md)). Provider choice and setup:
 [media storage → provider choice](../features/media-storage.md#provider-choice).
 
 #### `src/DotNetForge.Extensions`
@@ -443,11 +448,12 @@ an extension.
 
 #### `storage/` (Development only)
 
-Not in the repository and never written outside Development. In Development, `EnvConfigurationLoader` defaults the
-SQLite database to `<contentRoot>/storage/dotnetforge.db` and local media to `<contentRoot>/storage/media` (anchored
-to the content root, not the process working directory); both folders are created on first use. Outside Development
-`DATABASE_CONNECTION_STRING` (absolute SQLite `Data Source`, or PostgreSQL) and the `STORAGE_S3_*` settings are
-required - see [deployment](../guides/deployment.md#environment-variables).
+Not in the repository and never written outside Development. In Development, `EnvConfigurationLoader` defaults local
+media to `storage/media` and `SqliteDatabaseProvider` defaults a SQLite additional database to `storage/<name>.db`
+(under the repository root in a checkout, [AppPaths](../guides/development.md#where-the-app-finds-its-files)); the
+folders are created on first use. The CMS database is PostgreSQL (in Development `localhost:5432` by default).
+Outside Development `DATABASE_CONNECTION_STRING` and the `STORAGE_S3_*` settings are required - see
+[deployment](../guides/deployment.md#environment-variables).
 
 ## Domain boundaries
 
@@ -488,7 +494,7 @@ persistence of this kind: they go through `IFileStorage`, and the `MediaFile` ro
 
 ### Database access
 
-EF Core LINQ only - no raw SQL anywhere. Read queries use `AsNoTracking()` and project to view models with
+EF Core LINQ only - no raw SQL, except the SQL of custom API endpoints (`SqlEndpointRunner`). Read queries use `AsNoTracking()` and project to view models with
 `Select`. Writes load the tracked entity, mutate, `SaveChangesAsync()`. There are no global query filters. Input is length-checked
 before saving because PostgreSQL enforces column lengths. See [database.md](database.md).
 
@@ -588,10 +594,11 @@ hosted services (they should check `IExtensionState`).
 
 ### External integrations
 
-The database server (PostgreSQL, when selected) and an S3-compatible object store
+The PostgreSQL server, any additional database servers (`DATABASES_<NAME>_*`) and an S3-compatible object store
 (`S3FileStorage`; browsers download directly from it through presigned URLs). Anything else comes from extensions
-(the samples call Open-Meteo, Discord OAuth, Twilio, a second S3 bucket). Webhook delivery and SMTP exist only as
-entities or contracts.
+(the samples call Open-Meteo, Discord OAuth, Twilio, a second S3 bucket). An SMTP server, when `SMTP_*` is
+configured, receives the password-reset and confirmation emails ([email](../features/email.md)). Webhook delivery
+exists only as entities and contracts.
 
 ### Shared utilities
 
@@ -617,15 +624,14 @@ anonymous-object JSON. See [headless API](../features/headless-api.md).
 
 ### Persistence architecture
 
-One model; one context type per provider (SQLite, PostgreSQL, SQL Server, MySQL, MongoDB), registered as
-`DotNetForgeDbContext` by the configured provider; migrations (or MongoDB `EnsureCreated`) + seed on every start.
-Structured commands for any configured database go through `IDatabaseService`. See [database.md](database.md) and
+One model on PostgreSQL: `PostgreSqlDbContext`, registered as `DotNetForgeDbContext`; migrations + seed on every
+start. Structured commands for the CMS database or any additional database go through `IDatabaseService`. See [database.md](database.md) and
 [database layer](../database/architecture.md).
 
 ### Build system
 
 MSBuild with `Directory.Build.props` (target framework, nullable, `ManagePackageVersionsCentrally`,
-`InvariantGlobalization=false` - SQL Server's client needs ICU) and `Directory.Packages.props` (all versions, transitive pinning). Local tool `dotnet-ef`
+`InvariantGlobalization=false` - SQL Server's client, used for additional databases, needs ICU) and `Directory.Packages.props` (all versions, transitive pinning). Local tool `dotnet-ef`
 10.0.12 pinned in `.config/dotnet-tools.json`. `Microsoft.EntityFrameworkCore.Design` is referenced only by `Data`
 with `PrivateAssets="all"`, so it never reaches the published app. `DotNetForge.slnx` at the root lists every
 project, so `dotnet build` and `dotnet test` work without arguments - see
@@ -636,7 +642,7 @@ project, so `dotnet build` and `dotnet test` work without arguments - see
 `.vscode/tasks.json` (build, watch, run, tests, clean, restore tools, add migration) and `.vscode/launch.json`
 (F5 debug of `src/DotNetForge.Web/bin/Debug/net10.0/DotNetForge.Web.dll`). `src/DotNetForge.Web/Properties/launchSettings.json` profiles `http`
 (`http://localhost:5000`) and `https` (`https://localhost:5001`), both `Development`. `docker/compose.dev.yml` starts
-PostgreSQL and an S3-compatible server for production-like local runs. See
+PostgreSQL, RustFS (S3) and Mailpit for production-like local runs. See
 [development guide](../guides/development.md).
 
 ### Production / runtime architecture
@@ -644,12 +650,13 @@ PostgreSQL and an S3-compatible server for production-like local runs. See
 A single ASP.NET Core process (Kestrel); the Docker image runs it as non-root `$APP_UID` on port 8080 with
 `ASPNETCORE_ENVIRONMENT=Production`. Outside Development the **deployment directory is read-only**: the app writes
 nothing under the content root (verified by `ReadOnlyDeploymentTests` and the CI `read-only-container` job, which
-runs `docker run --read-only --tmpfs /tmp` and asserts an empty `docker diff`). Requirements:
+runs `docker/compose.app.yml` - read-only root filesystem, `/tmp` tmpfs - and checks `/health`, `/setup` and that
+`/app` is not writable). Requirements:
 [deployment → read-only deployment requirements](../guides/deployment.md#read-only-deployment-requirements).
 
 | Runtime state | Where it lives |
 | --- | --- |
-| Relational data | PostgreSQL (recommended), or a SQLite file at an absolute `Data Source` on a writable volume |
+| Relational data | PostgreSQL (the CMS database); additional databases wherever they are configured |
 | Data Protection key ring (auth cookie, antiforgery, TempData) | `DataProtectionKeys` table - shared by all instances, survives restarts; unencrypted at rest, so database access = key access |
 | Uploaded media | `IFileStorage`: private objects in an S3-compatible bucket ([storage architecture](../features/media-storage.md#storage-architecture)) |
 | Compiled extension views | memory (runtime Razor compilation reads `extensions/` from the publish output) |
@@ -662,8 +669,8 @@ Pipeline and hosting choices outside Development: `UseExceptionHandler("/error")
 `SecurityHeadersMiddleware` with an enforced CSP; cookie `SecurePolicy = Always`; `UseRateLimiter()` after
 `UseAuthentication()`; no `UseHttpsRedirection` - TLS terminates at a reverse proxy, and
 `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` makes the scheme and client IP (rate limits, audit) come from
-`X-Forwarded-*` ([behind a reverse proxy](../guides/deployment.md#behind-a-reverse-proxy)). Migrations for the
-configured provider run before Kestrel accepts traffic. `/health` returns `{ "status": "ok", "app": "<APP_NAME>" }`
+`X-Forwarded-*` ([behind a reverse proxy](../guides/deployment.md#behind-a-reverse-proxy)). The PostgreSQL
+migrations run before Kestrel accepts traffic. `/health` returns `{ "status": "ok", "app": "<APP_NAME>" }`
 and bypasses the install gate.
 
 ```mermaid
@@ -680,7 +687,7 @@ flowchart LR
         Job["ScheduledPublishingService"] --> Ctx
         MVC -- "runtime Razor compile, in memory" --> ExtFiles[("extensions/ (read-only)")]
     end
-    Ctx --> DB[("PostgreSQL, or SQLite on a volume")]
+    Ctx --> DB[("PostgreSQL")]
     Store --> Obj[("S3-compatible bucket")]
     Browser -. "302 to presigned GET URL" .-> Obj
 ```
@@ -709,7 +716,7 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
 | Project | Target responsibility not yet present |
 | --- | --- |
 | `DotNetForge.Core` | content system, media, themes, settings, extension management, update/rollback orchestration (permission checks used at request time ✔ via `PermissionService`) |
-| `DotNetForge.Data` | repository/data interfaces for `Core` (migrations per SQL provider ✔ - one model, four provider-specific sets; MongoDB ✔) |
+| `DotNetForge.Data` | repository/data interfaces for `Core` (PostgreSQL migrations ✔; other databases as additional databases ✔) |
 | `DotNetForge.Infrastructure` | SMTP email, webhook delivery, background jobs, logging, external connectors (today: file storage providers ✔ used; `HmacWebhookSigner` unregistered) |
 | `DotNetForge.Extensions` | lifecycle install / update / remove (✔ dependency resolution, code loading and DI registration of each extension's services; enable/disable ✔ in `ExtensionLifecycleService` in the web host) |
 | `DotNetForge.Api` | full surface: content, media, users, roles, settings, extensions, dynamic routes, custom extension permissions; no direct `Data` reference |
@@ -720,8 +727,8 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
 - **Extension points:** ✔ extensions implement `DotNetForge.Sdk.IExtension` and register services through DI; slots are
   fixed per type ([extensions → Slots](../features/extensions.md#slots)); marketplace installation through an external
   API ✘ ([extensions](../features/extensions.md)).
-- **Database:** every schema change is an EF Core migration for each SQL provider ✔
-  (`Database/Providers/<Database>/Migrations/`, [database](database.md)); provider-aware
+- **Database:** every schema change is an EF Core migration ✔
+  (`Database/Providers/PostgreSql/Migrations/`, [database](database.md)); model-driven
   import/export ([transfer and updates](../features/transfer-and-updates.md)).
 - **Authentication:** pluggable providers registered through DI and supplied by `authentication` extensions in
   `extensions/authentication/` (✔ `AddLoginProvider`, [external sign-in](../features/authentication.md#external-sign-in-extensions));
@@ -775,9 +782,11 @@ Update/rollback and import/export criteria are tracked in [transfer and updates]
 - [ ] The extension host validates manifests before install and rejects invalid, unsafe or incompatible extensions.
 - [x] The required manifest fields are exactly `id`, `name`, `description`, `version`, `type`, `author`,
   `entryPoint`, `permissions` (`ManifestValidator`).
-- [x] EF Core migrations drive all schema changes for SQLite and PostgreSQL (and SQL Server and MySQL) -
-  `DatabaseInitializer.InitializeAsync` → the provider's `MigrateAsync`; one migration set per context.
-- [x] The database provider is selected from `.env` (`DATABASE_PROVIDER`, resolved by `DatabaseProviderRegistry`).
+- [x] EF Core migrations drive all schema changes - `DatabaseInitializer.InitializeAsync` → `MigrateAsync` of the
+  PostgreSQL set. The spec's SQLite option for the CMS was dropped: the CMS runs on PostgreSQL only, SQLite remains an
+  additional database.
+- [x] The database is configured from `.env` (`DATABASE_CONNECTION_STRING`, always PostgreSQL, resolved by
+  `DatabaseProviderRegistry`; additional databases `DATABASES_<NAME>_*`).
 - [ ] Authentication providers are pluggable via DI and extensions, with Email built in (✔ extensions via
   `AddLoginProvider`, existing users only; no provider management).
 - [ ] RBAC enforces a permission check on every admin and API action with the six default roles (roles ✔ seeded;
@@ -794,7 +803,7 @@ Update/rollback and import/export criteria are tracked in [transfer and updates]
   validation, webhook signing and import/export; integration tests cover setup, authentication and API endpoints
   (see [testing → Planned](../guides/testing.md#planned-not-implemented)).
 - [x] The app builds and runs on Windows, macOS and Linux and applies migrations before serving traffic - CI
-  `build-and-test` matrix on all three; `Program.cs` runs `DatabaseInitializer.InitializeAsync` (every provider)
+  `build-and-test` matrix on all three; `Program.cs` runs `DatabaseInitializer.InitializeAsync`
   before `app.Run()`.
 - [ ] The architecture overview ([overview.md](overview.md); the spec's root `ARCHITECTURE.md`) documents
   structure, core, extension, database, authentication, authorization, content, media, theme, API, update/rollback,
@@ -847,10 +856,9 @@ update this document in the same change).
     and enabled state in a caller, never scan `extensions/` directly, and never build file paths from request input
     (see `ExtensionResources.Serve` for the traversal guard). A new slot follows the pattern in
     [extensions → Where to change things](../features/extensions.md#where-to-change-things).
-14. **Schema changes go through migrations for EVERY SQL provider** - `DotNetForgeDbContext` (SQLite),
-    `PostgreSqlDbContext`, `SqlServerDbContext`, `MySqlDbContext`, each into `Database/Providers/<Database>/Migrations/`; MongoDB needs none. Strip
-    the UTF-8 BOM EF writes into generated files (`.editorconfig` `charset = utf-8`) and check each snapshot landed in
-    its folder ([database → migrations](database.md#migrations), the
+14. **Schema changes go through one migration** for `PostgreSqlDbContext`, into
+    `Database/Providers/PostgreSql/Migrations/` (the only CMS database). Strip the UTF-8 BOM EF writes into generated
+    files (`.editorconfig` `charset = utf-8`) and check the snapshot landed in the folder ([database → migrations](database.md#migrations), the
     [database change skill](../../.claude/skills/database-change/SKILL.md)). Seed data goes in `DataSeeder` and must
     be idempotent.
 15. **No new dependencies for things the platform does** (the hasher, token factory, signer and `.env` parser are

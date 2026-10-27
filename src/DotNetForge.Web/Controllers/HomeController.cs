@@ -141,7 +141,7 @@ public sealed class HomeController : Controller
         {
             return User.Identity?.IsAuthenticated == true
                 ? NotFound()
-                : Redirect("/account/login?returnUrl=" + Uri.EscapeDataString(Request.Path + Request.QueryString));
+                : Redirect("/login?returnUrl=" + Uri.EscapeDataString(Request.Path + Request.QueryString));
         }
 
         // Content lists (.docs/features/structured-content.md#content-lists): resolved here, not only in the view, so a
@@ -159,7 +159,7 @@ public sealed class HomeController : Controller
             ViewData["ContentTitle"] = content.EntryTitle;
         }
 
-        return await ThemedViewAsync("Page", page, page.ThemeId);
+        return await ThemedViewAsync("Page", page, await _themes.PageThemeIdAsync(page, HttpContext.RequestAborted));
     }
 
     /// <summary>Admins who may edit content pages always see restricted pages.</summary>
@@ -174,12 +174,16 @@ public sealed class HomeController : Controller
     public IActionResult Error() => View();
 
     /// <summary>
-    /// The active theme's <c>Views/{name}.cshtml</c> when it has one, else the built-in view. Theme views also get the
-    /// extension view data (<c>Extension</c>, <c>Settings</c>, <c>ResourceBase</c>) and <c>Menu</c>: the live pages
-    /// marked "display in menu" at the top level, as <see cref="PublishedPage"/>s.
+    /// The active theme's <c>Views/{name}.cshtml</c> when it has one, else the built-in view. Both get <c>Menu</c>: the
+    /// live pages marked "display in menu" at the top level, as <see cref="PublishedPage"/>s; theme views also get the
+    /// extension view data (<c>Extension</c>, <c>Settings</c>, <c>ResourceBase</c>).
     /// </summary>
     private async Task<IActionResult> ThemedViewAsync(string name, object model, string? pageThemeId = null)
     {
+        ViewData["AppName"] = _env.AppName;
+        ViewData["Menu"] = (await _published.ListAsync(HttpContext.RequestAborted))
+            .Where(p => p.DisplayInMenu && p.ParentPageId is null)
+            .ToList();
         var theme = await _themes.GetActiveThemeAsync(HttpContext.RequestAborted, pageThemeId);
         if (theme?.FindView(name + ".cshtml") is not { } themeView)
         {
@@ -187,10 +191,6 @@ public sealed class HomeController : Controller
         }
 
         ExtensionViewRenderer.AddExtensionViewData(ViewData, theme, admin: false);
-        ViewData["AppName"] = _env.AppName;
-        ViewData["Menu"] = (await _published.ListAsync(HttpContext.RequestAborted))
-            .Where(p => p.DisplayInMenu && p.ParentPageId is null)
-            .ToList();
         return View(_renderer.ToViewPath(themeView), model);
     }
 }

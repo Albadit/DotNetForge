@@ -1,7 +1,7 @@
 # DotNetForge CMS - technical documentation
 
 The main technical reference for DotNetForge CMS: a server-rendered ASP.NET Core MVC content-management system on
-.NET 10 with EF Core (SQLite, PostgreSQL, SQL Server, MySQL or MongoDB), a role-gated admin area, a public site that resolves URLs from a page
+.NET 10 with EF Core on PostgreSQL (plus additional SQLite, PostgreSQL, SQL Server, MySQL or MongoDB databases for your own data), a role-gated admin area, a public site that resolves URLs from a page
 tree, a token-secured headless API, an extension system (code, views and assets under `extensions/`, enabled on the
 Plugins screen), and media in S3-compatible object storage. It is
 built to run from a **read-only deployment directory** ([deployment](guides/deployment.md)). Everything here is verified against the code;
@@ -62,11 +62,11 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 
 | Document | Answers |
 | --- | --- |
-| [architecture.md](database/architecture.md) | How do the CMS (EF Core) and `IDatabaseService` reach five databases? Errors, results, logging, performance |
-| [providers.md](database/providers.md) | Which databases are supported, what a provider implements, how providers are registered and tested |
+| [architecture.md](database/architecture.md) | How do the CMS (EF Core on PostgreSQL) and `IDatabaseService` reach the CMS database and additional databases? Errors, results, logging, performance |
+| [providers.md](database/providers.md) | Which databases are supported (PostgreSQL for the CMS, five for additional databases), what a provider implements, how providers are registered and tested |
 | [query-routing.md](database/query-routing.md) | How to use `IDatabaseService` and `DatabaseCommand`; how a command reaches the right database |
-| [configuration.md](database/configuration.md) | `DATABASE_PROVIDER`, connection strings per database, detection, named databases, startup errors |
-| [mongodb.md](database/mongodb.md) | MongoDB requirements (replica set), schema without migrations, keys, query rules |
+| [configuration.md](database/configuration.md) | The PostgreSQL CMS database (Development default), additional databases (`DATABASES_<NAME>_*`), detection, startup errors |
+| [mongodb.md](database/mongodb.md) | MongoDB as an additional database: requirements (replica set for transactions), the native executor, no SQL |
 | [security.md](database/security.md) | Injection protection, safe use of the service, secrets, logging, timeouts |
 | [adding-a-provider.md](database/adding-a-provider.md) | Step by step: a new database without changing the rest of the system |
 
@@ -92,16 +92,17 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Logging and error handling | [logging-and-error-handling.md](features/logging-and-error-handling.md) |
 | Themes (site-wide and per-page theme) | [themes.md](features/themes.md) |
 | Webhooks (planned) | [webhooks.md](features/webhooks.md) |
-| Email (planned) | [email.md](features/email.md) |
+| Email (SMTP, templates) | [email.md](features/email.md) |
 | Internationalization (planned) | [internationalization.md](features/internationalization.md) |
-| Transfer, updates and backups (planned) | [transfer-and-updates.md](features/transfer-and-updates.md) |
+| Data Management: export (CMS or additional database), backups, import in Development; updates (planned) | [transfer-and-updates.md](features/transfer-and-updates.md) |
 
 ## Screens
 
 | Area | Screen | Route | Document |
 | --- | --- | --- | --- |
 | First run | Setup wizard | `/setup` | [setup.md](pages/setup.md) |
-| Account | Sign in | `/account/login` | [login.md](pages/login.md) |
+| Account | Sign in | `/login` | [login.md](pages/login.md) |
+| Account | Register, forgot / reset password, confirm email | `/register`, `/forgot-password`, `/reset-password`, `/confirm-email` | [account-self-service.md](pages/account-self-service.md) |
 | Account | Access denied | `/account/denied` | [access-denied.md](pages/access-denied.md) |
 | Public | Home | `/` | [public-home.md](pages/public-home.md) |
 | Public | Content page | `/{slug}/...` (fallback) | [public-page.md](pages/public-page.md) |
@@ -114,6 +115,10 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Admin | Profile | `/admin/profile` | [profile.md](pages/profile.md) |
 | Admin | Media | `/admin/media` | [media.md](pages/media.md) |
 | Admin | Settings | `/admin/settings` | [settings.md](pages/settings.md) |
+| Admin | Advanced Settings (Advanced User Settings) | `/admin/advanced-settings` | [advanced-settings.md](pages/advanced-settings.md) |
+| Admin | Email Configuration (SMTP from .env read-only, connection test, test sends, email log) | `/admin/email/configuration` | [email-configuration.md](pages/email-configuration.md) |
+| Admin | Email Templates | `/admin/email/templates` | [email-templates.md](pages/email-templates.md) |
+| Admin | Data Management (export, backups, import) | `/admin/data` | [data-management.md](pages/data-management.md) |
 | Admin | API Tokens | `/admin/api-tokens` | [api-tokens.md](pages/api-tokens.md) |
 | Admin | API Endpoints | `/admin/api-endpoints` | [api-endpoints.md](pages/api-endpoints.md) |
 | Admin | API Docs (Scalar) | `/admin/api-docs` | [api-docs.md](features/api-docs.md) |
@@ -138,7 +143,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 There is no separate specification folder. Each document that owns a topic ends with a
 **Planned (not implemented)** section holding the remaining requirements, user flows, rules, edge cases and
 acceptance criteria for that topic (criteria already met are ticked). Modules that do not exist yet at all
-(webhooks, email, internationalization, transfer/updates) have a feature document with a short
+(webhooks, internationalization, core updates) have a feature document with a short
 *Current state* and a *Planned* section. [implementation-status.md](implementation-status.md) links every module to
 its planned section; [product.md](product.md) holds the product goals and MVP scope.
 

@@ -12,13 +12,11 @@ namespace DotNetForge.Data.Database.Providers.SqlServer;
 
 /// <summary>
 /// SQL Server through Microsoft.Data.SqlClient. Detected from <c>Initial Catalog</c>, <c>Trusted_Connection</c>,
-/// <c>Integrated Security</c> or <c>TrustServerCertificate</c>. Context: <see cref="SqlServerDbContext"/>; migrations in
-/// <c>Migrations/</c> next to this file.
+/// <c>Integrated Security</c> or <c>TrustServerCertificate</c>. For additional databases only (the CMS runs on PostgreSQL).
 /// Self-contained: no code is shared with the other SQL providers, so a change here never affects them.
 /// </summary>
 public sealed class SqlServerDatabaseProvider : IDatabaseProvider
 {
-    private static readonly string MigrationsAssembly = typeof(SqlServerDatabaseProvider).Assembly.FullName!;
     private static readonly string[] Markers = { "Initial Catalog", "Trusted_Connection", "Integrated Security", "TrustServerCertificate" };
 
     public string DisplayName => "SQL Server";
@@ -29,21 +27,24 @@ public sealed class SqlServerDatabaseProvider : IDatabaseProvider
 
     public string Describe(DatabaseSettings settings) => DescribeConnection(settings.ConnectionString);
 
+    /// <summary>The CMS runs on PostgreSQL only; SQL Server serves additional databases (<c>DATABASES_&lt;NAME&gt;_*</c>).</summary>
     public void AddDbContext(IServiceCollection services, DatabaseSettings settings) =>
-        services.AddDbContext<DotNetForgeDbContext, SqlServerDbContext>(options => Configure(options, settings.ConnectionString!));
+        throw new DatabaseConfigurationException(
+            "The CMS database must be PostgreSQL; SQL Server can only be an additional database (DATABASES_<NAME>_PROVIDER=sqlserver).");
 
     public Task InitializeSchemaAsync(DotNetForgeDbContext db, CancellationToken cancellationToken) =>
-        db.Database.MigrateAsync(cancellationToken);
+        throw new NotSupportedException("SQL Server does not host the CMS model.");
 
     public IDatabaseExecutor CreateExecutor(DatabaseSettings settings, IModel? model, ILoggerFactory loggerFactory) =>
         new SqlServerExecutor(settings, model is null ? DatabaseSchema.Unmapped : Schema(model));
 
-    /// <summary>
-    /// Also used by <c>DesignTimeDbContextFactory</c>. No retrying execution strategy: it can't be combined with the
-    /// explicit transactions the CMS uses.
-    /// </summary>
-    public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
-        options.UseSqlServer(connectionString, sql => sql.MigrationsAssembly(MigrationsAssembly));
+    public System.Data.Common.DbConnection? CreateConnection(DatabaseSettings settings)
+    {
+        var connection = Microsoft.Data.SqlClient.SqlClientFactory.Instance.CreateConnection()
+            ?? throw new DatabaseProviderException("The database driver could not create a connection.");
+        connection.ConnectionString = settings.ConnectionString;
+        return connection;
+    }
 
     public DatabaseException? TranslateException(Exception exception) => exception switch
     {

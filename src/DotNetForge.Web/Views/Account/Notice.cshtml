@@ -1,0 +1,16 @@
+@*
+    A one-message screen for the self-service account flows: "check your email", invalid or expired links
+    (.docs/features/authentication.md#self-service-accounts).
+*@
+@{
+    Layout = "_AuthLayout";
+    var problem = ViewData["Problem"] as bool? == true;
+}
+
+<div class="auth-heading auth-state">
+    <span class="dialog-icon@(problem ? " danger" : "")" aria-hidden="true"><icon name="@(problem ? "circle-alert" : "mail")" /></span>
+    <h1>@ViewData["Title"]</h1>
+    <p class="text-muted">@ViewData["Text"]</p>
+</div>
+
+<a class="btn btn-primary btn-lg btn-block" href="/login"><icon name="arrow-left" /> Back to sign in</a>

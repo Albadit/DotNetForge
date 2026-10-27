@@ -38,7 +38,6 @@ public sealed class ApiEndpointsController : AdminControllerBase
         {
             Endpoints = endpoints,
             Operations = await _endpoints.OperationsAsync(endpoints.Select(e => e.Id).ToList(), HttpContext.RequestAborted),
-            Supported = _runner.Supported,
         });
     }
 
@@ -113,11 +112,6 @@ public sealed class ApiEndpointsController : AdminControllerBase
             return Json(new { ok = false, errors });
         }
 
-        if (!_runner.Supported)
-        {
-            return Json(new { ok = false, errors = new[] { "Custom endpoints need a SQL database; this site runs on MongoDB." } });
-        }
-
         var parameters = tested.Parameters;
         var given = ReadTestValues(testValues);
         var route = parameters.Where(p => p.Source == "route" && given.ContainsKey(p.Name))
@@ -135,7 +129,7 @@ public sealed class ApiEndpointsController : AdminControllerBase
             CustomEndpointService.Route(draft, tested.Operation), details: rollback ? "Changes rolled back" : "Changes kept", cancellationToken: HttpContext.RequestAborted);
         try
         {
-            var result = await _runner.RunAsync(tested.Operation, values, rollback, HttpContext.RequestAborted);
+            var result = await _runner.RunAsync(tested.Operation, draft.Database, values, rollback, HttpContext.RequestAborted);
             var (status, response) = CustomEndpointService.Response(tested.Operation, result);
             return Json(new { ok = true, status, body = response, ms = Math.Round(result.Duration.TotalMilliseconds, 1), rolledBack = rollback });
         }
@@ -170,7 +164,7 @@ public sealed class ApiEndpointsController : AdminControllerBase
         {
             Id = id,
             Input = input,
-            Supported = _runner.Supported,
+            Databases = _runner.Databases,
             Token = token,
             Calls = saved is null || savedOperations is null
             ? Array.Empty<(CustomEndpointOperation, string)>()

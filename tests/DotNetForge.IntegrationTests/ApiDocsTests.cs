@@ -34,7 +34,7 @@ public sealed class ApiDocsTests
         var anonymous = factory.CreateNoRedirectClient();
         foreach (var path in new[] { Docs, Reference, OpenApi })
         {
-            Assert.Contains("/account/login", (await anonymous.GetAsync(path)).Headers.Location?.OriginalString);
+            Assert.Contains("/login", (await anonymous.GetAsync(path)).Headers.Location?.OriginalString);
         }
 
         var editor = await factory.SignInAsync("editor@example.com", "Edit0rPass1");

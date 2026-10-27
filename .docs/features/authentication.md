@@ -24,7 +24,7 @@ Screens: [Sign in](../pages/login.md), [Access denied](../pages/access-denied.md
 
 | Option | Value |
 | --- | --- |
-| `LoginPath` | `/account/login` |
+| `LoginPath` | `/login` |
 | `LogoutPath` | `/account/logout` |
 | `AccessDeniedPath` | `/account/denied` |
 | `ExpireTimeSpan` | 8 hours, `SlidingExpiration = true`; **Remember me**: persistent cookie, 30 days (`AccountController.RememberMeLifetime`), also sliding |
@@ -37,27 +37,30 @@ Screens: [Sign in](../pages/login.md), [Access denied](../pages/access-denied.md
 `Always` means the browser never sends the cookie over plain HTTP, so production must be served over HTTPS (directly
 or through a TLS-terminating proxy with forwarded headers - [deployment](../guides/deployment.md#behind-a-reverse-proxy)).
 
-### Sign-in request (`POST /account/login`)
+### Sign-in request (`POST /login`)
 
 1. Rate limit `credentials` (10 per minute per client IP, `429` beyond) - see [Rate limiting](#rate-limiting).
 2. Antiforgery check.
 3. `AuthService.ValidateAsync(email, password)` (below).
 4. Success → `SignInAsync` (cookie; `IsPersistent` + `ExpiresUtc` when **Remember me** is ticked), then `HttpContext.User` is set to the new principal so the `user.login` audit
-   entry carries the user, then `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - a
-   missing or external `returnUrl` goes to the dashboard.
+   entry carries the user, then `LocalRedirect(returnUrl)` when it is local, else `/admin` - or `/` for a
+   site-only account (`Roles.CanEnterAdmin` false, e.g. one that signed up) - so a missing or external `returnUrl`
+   never leaves the site.
 5. Failure → message per status as an error toast (`TempData["Error"]`), `user.login.failed` with the typed email
    ([audit logging](audit-logging.md)).
 
 ### `AuthService.ValidateAsync(email, password)`
 
 1. Trim the email and find the user by **exact** `Email` (unique) - the comparison is whatever the database
-   collation does (case-sensitive on SQLite's default `BINARY` and on PostgreSQL), so `Admin@x.com` ≠ `admin@x.com`.
+   collation does (case-sensitive on PostgreSQL), so `Admin@x.com` ≠ `admin@x.com`.
 2. Not found → `InvalidCredentials` (no counter change - neutral response against enumeration).
 3. `Status == Disabled` → `Disabled`.
 4. `LockoutEndUtc > now` → `LockedOut`.
 5. Wrong password → `FailedLoginCount++`; at `MaxFailedAttempts` (5) set `LockoutEndUtc = now + LockoutWindow`
    (15 min) and reset the count to 0 → `InvalidCredentials`.
-6. Success → reset counters, set `LastLoginDate`, load role names, build the principal.
+6. Correct password → reset counters. When **Enable email confirmation** is on and `EmailConfirmed` is false →
+   `EmailNotConfirmed` (no session; [self-service accounts](#self-service-accounts)).
+7. Success → set `LastLoginDate`, load role names, build the principal.
 
 The status order means a disabled or locked account reports so even when the password is wrong; the UI shows a
 different message for each ([login screen](../pages/login.md#error-handling)).
@@ -98,8 +101,10 @@ flowchart TD
 
 ### Sign-out
 
-`POST /account/logout` (antiforgery-protected) writes `user.logout`, signs out and redirects to `/account/login`.
-Triggered by the **Sign out** button in `_AdminLayout` and the **Sign out** button (a POST form) on the denied screen.
+`POST /account/logout` (antiforgery-protected) writes `user.logout`, signs out and redirects to `/login`.
+Triggered by the **Sign out** button in `_AdminLayout`, the **Sign out** button (a POST form) on the denied screen and
+the public header's **Sign out** for a signed-in site-only account. The old sign-in address `GET /account/login`
+answers `301` to `/login` (query string kept).
 
 ## External sign-in extensions
 
@@ -112,7 +117,7 @@ registers its own remote scheme (OAuth/OIDC) with `SignInScheme = ExternalLogin.
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant L as /account/login
+    participant L as /login
     participant X as ExternalLoginController
     participant P as Provider (extension's scheme)
     participant A as AuthService
@@ -135,7 +140,7 @@ sequenceDiagram
 | Matching | the **existing** user with exactly that email (trimmed, same collation rules as password sign-in). No account is ever created |
 | Account state | `Disabled` and locked-out (`LockoutEndUtc > now`) accounts are refused, as for a password sign-in. Failed-attempt counters are not changed |
 | Success | `LastLoginDate`, same principal as a password sign-in (`AuthService`), cookie `dnf.auth`, audit `user.login` with details `via <DisplayName>`, `LocalRedirect` to a local `returnUrl` or `/admin` |
-| Failure | audit `user.login.failed` (`success: false`, the email if known, details `via <DisplayName>` or `external sign-in`), message in `TempData["Error"]` (an error toast), redirect to `/account/login` ([messages](../pages/login.md#error-handling)) |
+| Failure | audit `user.login.failed` (`success: false`, the email if known, details `via <DisplayName>` or `external sign-in`), message in `TempData["Error"]` (an error toast), redirect to `/login` ([messages](../pages/login.md#error-handling)) |
 
 Trust: the host believes the email claim the extension produces, so a sign-in extension must only pass on emails the
 provider has verified (the Discord sample adds the claim only when Discord reports `verified: true`). Like all
@@ -149,7 +154,7 @@ after `UseAuthentication()` in `Program.cs`). Policy names are constants in
 
 | Policy | Applied to | Limit | Partition |
 | --- | --- | --- | --- |
-| `credentials` | `POST /account/login`, `POST /setup`, `POST /account/external/{scheme}`, `GET /account/external/callback` | 10 requests per 1-minute fixed window, no queue | `Connection.RemoteIpAddress` |
+| `credentials` | `POST /login`, `POST /register`, `POST /forgot-password`, `POST /reset-password`, `POST /confirm-email/resend`, `POST /setup`, `POST /account/external/{scheme}`, `GET /account/external/callback` | 10 requests per 1-minute fixed window, no queue | `Connection.RemoteIpAddress` |
 | `api` | every API controller (`ApiControllerBase`) | 300 requests per 1-minute fixed window, no queue | `Connection.RemoteIpAddress` |
 | `forms` | anonymous public form posts of extensions that opt in (`.RequireRateLimiting(RateLimitPolicies.Forms)`, e.g. the Contact Form sample's `POST /ext/contact-form/submit`) | 5 requests per 1-minute fixed window, no queue | `Connection.RemoteIpAddress` |
 
@@ -200,13 +205,63 @@ Performance and resilience:
 Both verify with `CryptographicOperations.FixedTimeEquals` and read the iteration count from the stored value, so
 iterations can be raised without invalidating existing hashes.
 
+## Self-service accounts
+
+Screens: [register, forgot / reset password, confirm email](../pages/account-self-service.md). Code:
+`AccountController` (routes) → `AccountService` (rules, tokens, emails) and `UserAccountSettingsService` (the
+[Advanced User Settings](#advanced-user-settings)); email goes through `IEmailSender` = `SmtpEmailSender`
+([email](email.md)).
+
+| Flow | Route | Available when | What happens |
+| --- | --- | --- | --- |
+| Registration | `GET/POST /register` | **Enable sign-ups** on (else `404`) | validate (email format and length, `PasswordPolicy`, confirmation match, name length, **one account per email** case-insensitive, default role exists) → create the user with the default role (`user.registered`) → confirmation off: confirmed and signed in (`/admin` for an admin-capable role, else `/`); confirmation on: unconfirmed, confirmation email, "check your email" |
+| Password reset request | `GET/POST /forgot-password` | SMTP configured (else `404`) | always the same neutral answer; for an enabled account with that email a reset email (`user.password.reset.requested`, `success` = whether an account matched) |
+| Reset | `GET/POST /reset-password?token=` | valid token | new password (`PasswordPolicy` + confirmation) → hash updated, lockout cleared, email marked confirmed, `user.password.reset` → `/login`. No antiforgery check: the token is the proof, so a front end's own reset page can post `token`, `password`, `confirmPassword` here |
+| Email confirmation | `GET /confirm-email?token=` | valid token | marks the account confirmed (`user.email.confirmed`) → **Redirection after email confirmation** URL or `/login` |
+| Resend confirmation | `POST /confirm-email/resend` | email confirmation on | new link for an enabled, unconfirmed account; neutral answer |
+
+Tokens and links:
+
+- ASP.NET Data Protection time-limited tokens (`ITimeLimitedDataProtector`, purpose `DotNetForge.Account.Links.v1`,
+  the same database key ring as the cookie - [Data Protection keys](#data-protection-keys)); no token table.
+- Reset: `reset|<userId>|<fingerprint>`, valid **1 hour** (`AccountService.ResetLinkLifetime`); the fingerprint is a
+  SHA-256 prefix of the current password hash, so the link is **single use** - it stops working once the password
+  changes. Only `Enabled` accounts.
+- Confirmation: `confirm|<userId>|<email>`, valid **2 days** (`ConfirmationLinkLifetime`); stops working if the email
+  changes.
+- Links are built from `APP_URL` (or the configured **Reset password page** URL), never from the request's `Host`
+  header (no host-header poisoning).
+- A failed send never changes the answer; only the exception type is logged (SMTP errors can echo addresses).
+
+Sign-in with email confirmation on: a correct password for an unconfirmed account returns
+`SignInStatus.EmailNotConfirmed` (counters reset, no session) - see
+[`AuthService.ValidateAsync`](#authservicevalidateasyncemail-password). External sign-in does not check it (the
+provider vouches for the email). Accounts are confirmed when created by setup or on the Users screen, by a password
+reset, and - for accounts that existed before this feature - by the data upgrade `DataSeeder` seed version 2.
+
+## Advanced user settings
+
+Screen: [Advanced Settings](../pages/advanced-settings.md) (`/admin/advanced-settings`, Settings read to open,
+Settings update to save). Stored as `Settings` rows (`users.*`), read by `UserAccountSettingsService.GetAsync`.
+
+| Setting | Key | Default | Rule |
+| --- | --- | --- | --- |
+| Enable sign-ups | `users.signUps` | off | off → `/register` answers `404` and the sign-in screen has no **Create an account** link |
+| Default role for new accounts | `users.defaultRole` | `Authenticated` | must exist; never `Super Admin` or `Public`; a role that opens the admin (anything but `Authenticated`) only by a Super Admin. Deleted later → registration stops ("not available right now") until a valid role is set |
+| Enable email confirmation | `users.emailConfirmation` | off | needs SMTP (`SMTP_*` in `.env`, [Email Configuration](../pages/email-configuration.md)) to be saved and counts as off while SMTP is not configured |
+| Reset password page URL | `users.resetPasswordUrl` | built-in `/reset-password` | optional absolute `http(s)` URL; reset links point there with `?token=` |
+| Email confirmation redirection URL | `users.confirmationRedirectUrl` | `/login` | optional absolute `http(s)` URL (the specification made it required while confirmation is on; the built-in sign-in page is the default instead) |
+| One account per email address | - | always on | not a setting: registration refuses an email any account already uses (case-insensitive) |
+
+Saving audits `settings.changed` ("Advanced User Settings").
+
 ## Not implemented
 
-Sign-up, password reset, email confirmation, built-in OAuth/social providers and per-provider settings
+Built-in OAuth/social providers, per-provider settings and sign-up through a provider
 ([Planned](#planned-not-implemented)) are not built; social sign-in exists only through
 [extensions](#external-sign-in-extensions), for existing users. `AuthProvider` rows are seeded (Email
-enabled, 16 OAuth providers disabled) but nothing reads them; **Providers** and **Advanced Settings** are
-[placeholders](../pages/module-placeholders.md). There is no way to create additional users in the UI.
+enabled, 16 OAuth providers disabled) but nothing reads them; **Providers** is a
+[placeholder](../pages/module-placeholders.md). No login API for headless front ends (`/api` takes API tokens only).
 
 ## Planned (not implemented)
 
@@ -230,8 +285,9 @@ Target behaviour from the original product specification. Nothing in this sectio
   ([External sign-in extensions](#external-sign-in-extensions)); ✘ no providers list.
 - Sign-in in all three CMS modes ([product](../product.md)): the login screen (Traditional/Hybrid) and a login API
   (Headless; today `/api` accepts only API tokens - [headless API](headless-api.md)).
-- Self sign-up, password reset, email confirmation and social login, governed by the **Advanced User Settings**.
-- New users get the configured default role (role model: [authorization](authorization.md#planned-not-implemented)).
+- Self sign-up ✔, password reset ✔, email confirmation ✔ and social login (✘ sign-up through a provider), governed
+  by the **Advanced User Settings** ✔ ([Self-service accounts](#self-service-accounts)).
+- ✔ New users get the configured default role ([Advanced user settings](#advanced-user-settings)).
 - Security integration: lockout ✔ (`AuthService`), endpoint rate limiting ✔ ([Rate limiting](#rate-limiting)),
   `Account locked` email ([email](email.md#planned-not-implemented)), session cookie `Secure` in production ✔
   ([Cookie options](#cookie-options)).
@@ -256,31 +312,20 @@ email      Enabled       Edit
 - Enable / disable a provider. A disabled provider is hidden from the login screen and blocks new logins through it;
   accounts created through it are kept.
 
-### Advanced settings screen
+### Advanced settings across providers
 
-`/admin/advanced-settings` (sidebar **Settings → Users & Permissions Plugin**), today a
-[placeholder](../pages/module-placeholders.md). No entity or setting keys exist for these values.
-
-| Setting | Type | Rule |
-| --- | --- | --- |
-| Default role for authenticated users | role reference | required; must reference an existing role (`Authenticated` is described as the default end-user role) |
-| One account per email address | bool | `true` → no second account with the same email through another provider |
-| Enable sign-ups | bool | `false` → registration is forbidden for **all** providers |
-| Reset password page URL | URL | frontend page where users reset their password; valid URL; required when password reset is used |
-| Enable email confirmation | bool | `true` → new users get a confirmation email and cannot sign in until confirmed |
-| Email confirmation redirection URL | URL | where users land after confirming; valid URL; required when email confirmation is on |
-
-`User.EmailConfirmed` ✔ exists (set `true` by setup) but is never checked.
+✔ Built for email/password: [Advanced user settings](#advanced-user-settings). Still planned: **Enable sign-ups** and
+**One account per email address** applied to sign-up through social/OAuth providers (which itself is not built).
 
 ### User flows
 
 | Flow | Steps |
 | --- | --- |
-| Email login (delta to today) | As [Cookie sign-in](#cookie-sign-in), plus: email confirmation on and account unconfirmed → reject with "confirm your email" and offer to resend; Headless mode uses a login API instead of the form. |
+| Email login (delta to today) | ✔ As [Cookie sign-in](#cookie-sign-in), with email confirmation on an unconfirmed account is rejected with "confirm your email" and an offer to resend; ✘ Headless mode uses a login API instead of the form. |
 | Social / OAuth login | Pick an **Enabled** provider → redirect to its authorization endpoint (client credentials + callback URL) → user authenticates there → callback with code → exchange code, read profile incl. email, validate → existing account: sign in (✔ for extension providers); none: registration sub-flow (subject to **Enable sign-ups** and **One account per email address**; ✘ today refused) → session/token → redirect to destination. |
-| Registration | Start via email form or a provider → **Enable sign-ups** `false` → stop → validate input (email format; for email: `PasswordPolicy` + confirmation match) → **One account per email address** and email exists under any provider → reject → create account with the default role → confirmation on: send the *Email confirmation* template ([email](email.md#planned-not-implemented)), mark unconfirmed → tell the user the next step. |
-| Password reset | Submit email → always a neutral response → if the account exists: single-use, time-limited token, *Password reset* email linking to the **Reset password page URL** → user submits new password + confirmation → validate token (unexpired, unused) and password → update hash, invalidate token → redirect to login. |
-| Email confirmation | Single-use, time-limited link in the confirmation email → validate token → mark confirmed, invalidate token → redirect to the **Email confirmation redirection URL**. |
+| Registration | ✔ for the email form ([Self-service accounts](#self-service-accounts)); ✘ through a provider. Start via email form or a provider → **Enable sign-ups** `false` → stop → validate input (email format; for email: `PasswordPolicy` + confirmation match) → **One account per email address** and email exists under any provider → reject → create account with the default role → confirmation on: send the *Email confirmation* template ([email](email.md#planned-not-implemented)), mark unconfirmed → tell the user the next step. |
+| Password reset | ✔ Submit email → always a neutral response → if the account exists: single-use, time-limited token, *Password reset* email linking to the **Reset password page URL** → user submits new password + confirmation → validate token (unexpired, unused) and password → update hash, invalidate token → redirect to login. |
+| Email confirmation | ✔ Single-use, time-limited link in the confirmation email → validate token → mark confirmed, invalidate token → redirect to the **Email confirmation redirection URL**. |
 
 The first Super Admin is created by the setup wizard, not by registration ✔ ([installation](installation.md)).
 
@@ -337,24 +382,26 @@ These settings belong to the **Users** and **Settings** permission areas.
 - [x] A user can sign in with email and a correct password; a wrong password is rejected and increments the lockout counter (`AuthService.ValidateAsync`).
 - [ ] A user can sign in through each enabled social/OAuth provider via the full redirect/callback exchange (✔ for
   providers added by `authentication` extensions, existing users only; no built-in providers).
-- [ ] A new user can register via email when sign-ups are enabled and gets the configured default role.
-- [ ] With **Enable sign-ups** `false`, registration is rejected for every provider, including OAuth-driven account creation.
-- [ ] With **One account per email address** `true`, an email already in use never yields a second account.
-- [ ] With **Enable email confirmation** `true`, registration sends a confirmation email and unconfirmed users cannot sign in.
-- [ ] A valid confirmation link marks the account confirmed and redirects to the Email confirmation redirection URL.
-- [ ] Password reset emails a single-use, time-limited link to the Reset password page URL and updates the password on valid submission.
-- [ ] Password reset requests respond neutrally for unknown emails.
+- [x] A new user can register via email when sign-ups are enabled and gets the configured default role (`AccountTests`).
+- [ ] With **Enable sign-ups** `false`, registration is rejected for every provider, including OAuth-driven account creation (✔ email form: `404`; providers never create accounts).
+- [ ] With **One account per email address** `true`, an email already in use never yields a second account (✔ email registration, always on; no provider sign-up).
+- [x] With **Enable email confirmation** `true`, registration sends a confirmation email and unconfirmed users cannot sign in.
+- [x] A valid confirmation link marks the account confirmed and redirects to the Email confirmation redirection URL (or `/login`).
+- [x] Password reset emails a single-use, time-limited link to the Reset password page URL and updates the password on valid submission.
+- [x] Password reset requests respond neutrally for unknown emails.
 - [ ] Enabling a provider with missing/invalid required credentials is rejected.
-- [ ] An invalid Reset password page URL or Email confirmation redirection URL is rejected; the redirection URL is required when email confirmation is on.
-- [ ] Saving a default role that does not reference an existing role is rejected.
+- [ ] An invalid Reset password page URL or Email confirmation redirection URL is rejected ✔; the redirection URL is required when email confirmation is on (✘ by decision: it defaults to `/login`).
+- [x] Saving a default role that does not reference an existing role is rejected.
 - [x] After the configured number of failed attempts the account is locked and sign-in is refused until the window elapses (`AuthService`: fixed `MaxFailedAttempts` 5, `LockoutWindow` 15 min).
-- [x] Login attempts are rate limited at the endpoint level (`[EnableRateLimiting(RateLimitPolicies.Credentials)]` on `AccountController.Login`: 10/min per client IP → 429).
+- [x] Login attempts are rate limited at the endpoint level (`[EnableRateLimiting(RateLimitPolicies.Credentials)]` on `AccountController.Login` and the self-service POSTs: 10/min per client IP → 429).
 - [ ] Disabling a provider removes it from the login screen and blocks new logins through it without deleting accounts (✔ for extension providers: disabling the extension; ✘ for `AuthProvider` rows).
 - [ ] All authentication forms and APIs enforce input validation and CSRF protection, and passwords are stored only as secure hashes (CSRF on login ✔ and PBKDF2 hashing ✔; no server-side email format check on login).
 
 ## Where to change things
 
 - Credential rules, lockout constants, claims, the active-user check: `src/DotNetForge.Web/Services/AuthService.cs`.
+- Registration, reset and confirmation rules, token lifetimes, email texts: `src/DotNetForge.Web/Services/AccountService.cs`;
+  the Advanced User Settings: `src/DotNetForge.Web/Services/UserAccountSettings.cs`; routes: `AccountController`.
 - Cookie options, schemes, session re-validation (`ValidateSessionAsync`), rate-limit policies (`AddRateLimits`),
   Data Protection: `src/DotNetForge.Web/Startup/DependencyRegistration.cs`. Policy names: `RateLimitPolicies`.
 - Token validation, verification cache, `LastUsedDate` throttle: `ApiTokenAuthenticationHandler`. Token format:

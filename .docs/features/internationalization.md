@@ -110,7 +110,7 @@ Locale management is part of the **Settings** permission area (role model: [auth
   needs ICU), so culture data is available for formatting and `CultureInfo` validation; the `aspnet:10.0` runtime image
   ships ICU.
 - **Locale entity**: a `Locale` (code, display name, is-default, enabled) in `src/DotNetForge.Shared/Entities`,
-  configured in `DotNetForgeDbContext` with a unique `Code` index, plus a migration for each SQL context
+  configured in `DotNetForgeDbContext` with a unique `Code` index, plus a PostgreSQL migration
   (`database-change` skill). The default is the `Locale` row with is-default - keep one source only.
 - **Rules** (one default, default enabled, last locale, atomic switch): one `src/DotNetForge.Web/Services/LocaleService` running the
   switch in a single `SaveChangesAsync`/transaction; pure code validation in `src/DotNetForge.Core/Validation`.

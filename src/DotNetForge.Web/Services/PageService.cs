@@ -118,6 +118,8 @@ public sealed partial class PageService : IPageService
         page.NoIndex = input.NoIndex;
         page.SocialImageUrl = socialImage;
         page.ThemeId = themeId;
+        // Only a page with a theme of its own can hand it down.
+        page.ThemeForChildren = input.ThemeForChildren && themeId is not null;
         return null;
     }
 

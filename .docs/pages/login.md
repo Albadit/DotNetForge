@@ -3,25 +3,30 @@
 ## Purpose
 
 Lets an existing user sign in with email and password - or with an enabled sign-in extension ("Sign in with ...") -
-to reach the admin area. It is the cookie scheme's login page, so every anonymous request to a protected admin screen
-ends up here. Mechanism details: [authentication](../features/authentication.md) and
+to reach the admin area (or, for a site-only account, the site). It is the cookie scheme's login page, so every
+anonymous request to a protected admin screen ends up here. It links to **Forgot password?** (when email is
+configured) and **Create an account** (when sign-ups are on) - those screens:
+[self-service account screens](account-self-service.md). Mechanism details:
+[authentication](../features/authentication.md) and
 [external sign-in extensions](../features/authentication.md#external-sign-in-extensions).
 
 ## Route / Navigation
 
 | Item | Value |
 | --- | --- |
-| Route | `GET /account/login`, `POST /account/login`; sign-out is `POST /account/logout`; external buttons post to `POST /account/external/{scheme}` (callback `GET /account/external/callback`, `ExternalLoginController`) |
+| Route | `GET /login`, `POST /login`; the old `GET /account/login` answers `301` to `/login` (query string kept); sign-out is `POST /account/logout`; external buttons post to `POST /account/external/{scheme}` (callback `GET /account/external/callback`, `ExternalLoginController`) |
 | Query parameter | `returnUrl` (also accepted as `ReturnUrl`, which the cookie middleware sends) |
 | Navigation entry | redirect from any protected admin URL; **Sign out** returns here |
-| Parent / children | none |
-| On success | `returnUrl` when it is a local URL (`Url.IsLocalUrl`), otherwise `/admin` |
-| Rate limit | `POST /account/login`, `POST /account/external/{scheme}`, `GET /account/external/callback`: 10 requests per minute per client IP each (policy `credentials`) → `429` |
+| Parent / children | links to [Forgot password / Register](account-self-service.md) |
+| On success | `returnUrl` when it is a local URL (`Url.IsLocalUrl`), otherwise `/admin` for a user whose roles can enter the admin (`Roles.CanEnterAdmin`) and `/` for a site-only account (`Authenticated`) |
+| Rate limit | `POST /login`, `POST /account/external/{scheme}`, `GET /account/external/callback`: 10 requests per minute per client IP each (policy `credentials`) → `429` |
 
 ## Relevant source files
 
 ```text
-src/DotNetForge.Web/Controllers/AccountController.cs        Login (GET/POST), Logout, Denied; ViewData["LoginProviders"], TempData["Error"], RememberMeLifetime
+src/DotNetForge.Web/Controllers/AccountController.cs        Login (GET/POST), LegacyLogin (301), Logout, Denied; PrepareLoginAsync (providers, SignUps, CanResetPassword), TempData["Error"], RememberMeLifetime
+src/DotNetForge.Web/Services/UserAccountSettings.cs         UserAccountSettingsService: is sign-up / email confirmation on
+src/DotNetForge.Web/Services/AccountService.cs              EmailEnabledAsync (SMTP configured), ResendConfirmationAsync
 src/DotNetForge.Web/Controllers/ExternalLoginController.cs  Challenge (POST /account/external/{scheme}), Callback
 src/DotNetForge.Web/Services/LoginProviders.cs              providers of active authentication extensions
 src/DotNetForge.Web/Views/Account/Login.cshtml              heading, form (password reveal) + "or continue with" provider buttons (Layout = "_AuthLayout")
@@ -49,15 +54,18 @@ Sign in (_AuthLayout, title "Sign in · <APP_NAME>")
     ├── .auth-top: <APP_NAME> mark (→ /, only below 56rem) · theme menu (JS only)
     ├── .auth-card
     │   ├── h1 **Sign in** + "Welcome back. Sign in to manage your site."
-    │   ├── form.form (POST /account/login?returnUrl=..., antiforgery)
+    │   ├── form.form (POST /login?returnUrl=..., antiforgery)
     │   │   ├── <form-errors />                     (model-state errors; sign-in failures are toasts)
     │   │   ├── **Email** (type=email; autofocus, or re-filled after a failure)
+    │   │   ├── .auth-label-row: **Password** label · **Forgot password?** (→ /forgot-password, only when SMTP is configured)
     │   │   ├── **Password** + eye button (data-reveal, JS only; autofocus after a failure)
     │   │   ├── ☐ **Remember me** "Stay signed in on this device for 30 days." (.check)
     │   │   └── [**Sign in**] (.btn-primary.btn-lg.btn-block)
-    │   └── only when a provider is active:
-    │       ├── .auth-divider "or continue with"
-    │       └── per provider: form (POST /account/external/{scheme}, antiforgery, hidden returnUrl) → [**Sign in with <DisplayName>**]
+    │   ├── only after "confirm your email first": form (POST /confirm-email/resend, hidden email) → [**Send the confirmation link again**]
+    │   ├── only when a provider is active:
+    │   │   ├── .auth-divider "or continue with"
+    │   │   └── per provider: form (POST /account/external/{scheme}, antiforgery, hidden returnUrl) → [**Sign in with <DisplayName>**]
+    │   └── only when sign-ups are on: .auth-switch "No account yet? **Create an account**" (→ /register)
     └── footer line "<APP_NAME> · Powered by DotNetForge"
 ```
 
@@ -86,8 +94,8 @@ Layout mechanics (panel, one column below 56rem, theme menu): [design system →
    for 30 days with **Remember me** - see [State](#state)), the
    request's `HttpContext.User` is set to the new principal and `user.login` is audited with that user's `UserId`;
    on failure `user.login.failed` (`success: false`, no user, typed email as entity display).
-5. **Result:** `LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")` - an external or malformed
-   `returnUrl` (e.g. `https://evil.example/`) falls back to `/admin`.
+5. **Result:** `LocalRedirect(returnUrl)` when it is local; otherwise `/admin` (or `/` for a site-only account) -
+   an external or malformed `returnUrl` (e.g. `https://evil.example/`) falls back to that.
 6. **Errors:** an error toast (below); the email field is re-filled (`ViewData["Email"]`) and the password field
    gets the focus, **Remember me** keeps its state.
 
@@ -101,7 +109,7 @@ with a message. Full flow and rules: [authentication → external sign-in](../fe
 ### Sign out
 
 `POST /account/logout` from **Sign out** in the admin sidebar's account menu or **Sign in as someone else** on the
-[denied screen](access-denied.md) → audit `user.logout` → sign out → `302 /account/login`.
+[denied screen](access-denied.md) → audit `user.logout` → sign out → `302 /login`.
 
 ## Data used by the page
 
@@ -133,7 +141,7 @@ Anonymous. No redirect away when already signed in (a signed-in user can sign in
   credentials.
 - Email match is exact after trimming (case-sensitive on default collations).
 - Lockout: 5 consecutive failures → 15 minutes.
-- Rate limit: more than 10 `POST /account/login` per minute from one IP (fixed window, no queue) → `429 Too Many
+- Rate limit: more than 10 `POST /login` per minute from one IP (fixed window, no queue) → `429 Too Many
   Requests` with an empty body, regardless of the credentials. `GET` is not limited.
 
 ## Error handling
@@ -145,6 +153,7 @@ Every message below is shown as an error toast (bottom right, stays until dismis
 | `InvalidCredentials` (unknown email or wrong password) | `Invalid email or password.` |
 | `LockedOut` | `Account is temporarily locked. Try again later.` |
 | `Disabled` | `This account is disabled.` |
+| `EmailNotConfirmed` (correct password, email confirmation on, account not confirmed) | `Confirm your email first: open the link we sent you.` + the **Send the confirmation link again** button |
 | (rate limit exceeded, before `AuthService`) | `429` with an empty body (browser's default error display); wait for the 1-minute window |
 
 External sign-in failures (shown after the redirect back here):
@@ -192,7 +201,7 @@ Rate limiter (credentials policy) · cookie OnValidatePrincipal → AuthService.
 
 ```mermaid
 flowchart TD
-    A["Anonymous GET /admin/..."] --> B["302 /account/login?ReturnUrl=..."]
+    A["Anonymous GET /admin/..."] --> B["302 /login?ReturnUrl=..."]
     B --> C[Login form]
     C --> D[POST credentials]
     D --> RL{"over 10/min from this IP?"}
@@ -222,12 +231,13 @@ flowchart TD
 - Failed-login audit entries record the typed email in `EntityDisplaySnapshot`.
 - `_AuthLayout` is built in and never replaced by a public theme ([themes](../features/themes.md)). The screen has
   no inline script or style (CSP); `AdminUiTests.Every_screen_renders_without_inline_script_or_style` checks
-  `/account/login` for that, exactly one `<h1>`, `lang` and the skip link.
+  `/login` for that, exactly one `<h1>`, `lang` and the skip link.
 
 ## Known limitations
 
-- No password reset, sign-up or email confirmation. External providers only come from extensions and
-  only sign in existing users.
+- External providers only come from extensions and only sign in existing users (sign-up through a provider is
+  not built). **Forgot password?** needs SMTP; **Create an account** needs sign-ups on
+  ([Advanced Settings](advanced-settings.md)).
 - Unknown emails are never locked; the per-IP rate limit is the only throttle for them.
 - Rate limits are per instance (in memory): several instances multiply the limit.
 - Outside Development the cookie is `Secure`-only, so signing in over plain HTTP does not keep the session.
@@ -242,16 +252,16 @@ Mechanisms, settings and acceptance criteria: [authentication](../features/authe
 - One sign-in button per **Enabled** social/OAuth provider (defaults and `authentication` extensions); disabled
   providers are not shown (✔ for extensions; no built-in providers exist).
 - The email/password form only while the **Email** provider is enabled (✔ form exists; it is always shown today).
-- Entry points to request a password reset and - only when **Enable sign-ups** is on - to register.
+- ✔ Entry points to request a password reset and - only when **Enable sign-ups** is on - to register.
 - Server-side email format validation (today: browser `type=email` only) and endpoint rate limiting on
-  `POST /account/login` (✔ rate limiting: 10/min per IP, `RateLimitPolicies.Credentials`).
+  `POST /login` (✔ rate limiting: 10/min per IP, `RateLimitPolicies.Credentials`).
 
 ### User flows
 
 1. **Social sign-in:** click a provider → redirect to the provider → callback → signed in and redirected to
    `returnUrl` or `/admin` ✔, or the registration sub-flow runs for an unknown email (✘ today: refused with a
    message).
-2. **Unconfirmed account:** with email confirmation on, a correct password for an unconfirmed account shows a
+2. ✔ **Unconfirmed account:** with email confirmation on, a correct password for an unconfirmed account shows a
    "confirm your email" message with a **resend confirmation email** action.
 
 ### Edge cases

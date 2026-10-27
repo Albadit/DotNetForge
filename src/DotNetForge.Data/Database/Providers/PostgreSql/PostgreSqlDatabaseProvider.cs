@@ -11,8 +11,9 @@ using Npgsql;
 namespace DotNetForge.Data.Database.Providers.PostgreSql;
 
 /// <summary>
-/// PostgreSQL through Npgsql. Detected from a <c>Host=</c> connection string. Context: <see cref="PostgreSqlDbContext"/>;
-/// migrations in <c>Migrations/</c> next to this file.
+/// PostgreSQL through Npgsql: the CMS database (the only provider that hosts the CMS model) and additional databases.
+/// Detected from a <c>Host=</c> connection string. Context: <see cref="PostgreSqlDbContext"/>; migrations in
+/// <c>Migrations/</c> next to this file.
 /// Self-contained: no code is shared with the other SQL providers, so a change here never affects them.
 /// </summary>
 public sealed class PostgreSqlDatabaseProvider : IDatabaseProvider
@@ -29,6 +30,15 @@ public sealed class PostgreSqlDatabaseProvider : IDatabaseProvider
 
     public DatabaseSettings Normalize(DatabaseSettings settings, DatabaseHostContext host)
     {
+        if (settings.IsMain && string.IsNullOrWhiteSpace(settings.ConnectionString))
+        {
+            // No fallback, also not in Development: the CMS never connects to a database nobody configured.
+            throw new DatabaseConfigurationException(
+                "DATABASE_CONNECTION_STRING is required: the CMS runs on PostgreSQL. Set it in .env, e.g. " +
+                "'Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable'. " +
+                "For development: docker compose -f docker/compose.dev.yml up -d, or copy .env.developer to .env.");
+        }
+
         var value = settings.ConnectionString?.Trim() ?? string.Empty;
         if (value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) || value.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
         {
@@ -54,6 +64,14 @@ public sealed class PostgreSqlDatabaseProvider : IDatabaseProvider
     /// <summary>Also used by <c>DesignTimeDbContextFactory</c>.</summary>
     public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
         options.UseNpgsql(connectionString, sql => sql.MigrationsAssembly(MigrationsAssembly));
+
+    public System.Data.Common.DbConnection? CreateConnection(DatabaseSettings settings)
+    {
+        var connection = Npgsql.NpgsqlFactory.Instance.CreateConnection()
+            ?? throw new DatabaseProviderException("The database driver could not create a connection.");
+        connection.ConnectionString = settings.ConnectionString;
+        return connection;
+    }
 
     public DatabaseException? TranslateException(Exception exception) => exception switch
     {

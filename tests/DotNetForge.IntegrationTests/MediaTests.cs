@@ -183,7 +183,7 @@ public sealed class MediaTests
             AllowAutoRedirect = false,
             BaseAddress = new Uri("https://localhost"),
         });
-        var signIn = await DotNetForgeWebFactory.PostFormAsync(admin, "/account/login", "/account/login",
+        var signIn = await DotNetForgeWebFactory.PostFormAsync(admin, "/login", "/login",
             new Dictionary<string, string>
             {
                 ["email"] = DotNetForgeWebFactory.AdminEmail,

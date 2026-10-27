@@ -12,10 +12,9 @@ using MongoDB.EntityFrameworkCore.Extensions;
 namespace DotNetForge.Data.Database.Providers.MongoDb;
 
 /// <summary>
-/// MongoDB through the official EF Core provider (the CMS model) and the native C# driver (<see cref="DatabaseCommand"/>s).
-/// Both share one <see cref="IMongoClient"/> per connection string - the client is the connection pool and must be
-/// reused (.docs/database/mongodb.md). Transactions, and therefore the CMS's multi-document saves, need a replica set
-/// or sharded cluster (Atlas always is one).
+/// MongoDB for additional databases (the CMS runs on PostgreSQL) through the native C# driver
+/// (<see cref="DatabaseCommand"/>s): one <see cref="IMongoClient"/> per connection string - the client is the
+/// connection pool and must be reused (.docs/database/mongodb.md). Transactions need a replica set or sharded cluster.
 /// </summary>
 public sealed class MongoDbDatabaseProvider : IDatabaseProvider
 {
@@ -74,20 +73,13 @@ public sealed class MongoDbDatabaseProvider : IDatabaseProvider
         }
     }
 
-    public void AddDbContext(IServiceCollection services, DatabaseSettings settings)
-    {
-        var client = Client(settings);
-        services.AddDbContext<DotNetForgeDbContext, MongoDbContext>(options => options
-            .UseMongoDB(client, settings.DatabaseName!)
-            // The MongoDB provider keys EF Core's internal services by database name, so a process that hosts many
-            // MongoDB databases (the integration tests: one per host) passes EF's limit of 20. One database per
-            // process - every deployment - never reaches it; log instead of throwing.
-            .ConfigureWarnings(warnings => warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning)));
-    }
+    /// <summary>The CMS runs on PostgreSQL only; MongoDB serves additional databases (<c>DATABASES_&lt;NAME&gt;_*</c>).</summary>
+    public void AddDbContext(IServiceCollection services, DatabaseSettings settings) =>
+        throw new DatabaseConfigurationException(
+            "The CMS database must be PostgreSQL; MongoDB can only be an additional database (DATABASES_<NAME>_PROVIDER=mongodb).");
 
-    /// <summary>Creates missing collections and the model's indexes (unique ones included); safe on every start.</summary>
     public Task InitializeSchemaAsync(DotNetForgeDbContext db, CancellationToken cancellationToken) =>
-        db.Database.EnsureCreatedAsync(cancellationToken);
+        throw new NotSupportedException("MongoDB does not host the CMS model.");
 
     public IDatabaseExecutor CreateExecutor(DatabaseSettings settings, IModel? model, ILoggerFactory loggerFactory)
     {

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using DotNetForge.Core.Endpoints;
 using DotNetForge.Data;
+using DotNetForge.Data.Database;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -20,30 +21,64 @@ public sealed record EndpointRunResult(object? Data, long Affected, bool Truncat
 /// <summary>The SQL failed or timed out. <see cref="Exception.Message"/> is the database's message (for admins and token callers).</summary>
 public sealed class EndpointSqlException(string message, Exception? inner = null) : Exception(message, inner);
 
+/// <summary>A database custom endpoints can run on: <see cref="Name"/> null = the CMS database.</summary>
+public sealed record EndpointDatabase(string? Name, string Label);
+
 /// <summary>
-/// Runs a custom endpoint operation's SQL on the main database (.docs/features/custom-endpoints.md#how-a-call-runs): one
-/// transaction, the request values as typed ADO.NET parameters (<c>@name</c>) - never pasted into the SQL - with the
-/// operation's timeout and row limit. Only SQL databases; MongoDB has no SQL (<see cref="Supported"/>).
+/// Runs a custom endpoint operation's SQL (.docs/features/custom-endpoints.md#how-a-call-runs) on the CMS database or
+/// on the endpoint's additional SQL database (<c>DATABASES_&lt;NAME&gt;_*</c>): one transaction, the request values as
+/// typed ADO.NET parameters (<c>@name</c>) - never pasted into the SQL - with the operation's timeout and row limit.
+/// MongoDB databases have no SQL and can't be chosen.
 /// </summary>
 public sealed class SqlEndpointRunner
 {
     private readonly DotNetForgeDbContext _db;
+    private readonly DatabaseCatalog _catalog;
 
-    public SqlEndpointRunner(DotNetForgeDbContext db)
+    public SqlEndpointRunner(DotNetForgeDbContext db, DatabaseCatalog catalog)
     {
         _db = db;
+        _catalog = catalog;
     }
 
-    /// <summary>Whether the main database runs SQL (false on MongoDB).</summary>
-    public bool Supported => _db.Database.IsRelational();
+    /// <summary>The CMS database first, then every additional database that runs SQL.</summary>
+    public IReadOnlyList<EndpointDatabase> Databases =>
+        _catalog.All
+            .Where(d => d.Settings.IsMain || HasSql(d))
+            .Select(d => d.Settings.IsMain
+                ? new EndpointDatabase(null, $"CMS database ({d.Provider.DisplayName})")
+                : new EndpointDatabase(d.Name, $"{d.Name} ({d.Provider.DisplayName})"))
+            .ToList();
 
+    /// <summary>"reports" for " Reports ", null for empty (the CMS database).</summary>
+    public static string? Normalize(string? database) =>
+        string.IsNullOrWhiteSpace(database) ? null : database.Trim().ToLowerInvariant();
+
+    /// <summary>Why <paramref name="database"/> can't run endpoint SQL, or null when it can.</summary>
+    public string? Problem(string? database)
+    {
+        if (Normalize(database) is not { } name)
+        {
+            return null;
+        }
+
+        var target = _catalog.All.FirstOrDefault(d => !d.Settings.IsMain && d.Name == name);
+        if (target is null)
+        {
+            return $"There is no database '{name}': add DATABASES_{name.ToUpperInvariant()}_PROVIDER and _CONNECTION_STRING to the configuration.";
+        }
+
+        return HasSql(target) ? null : $"The database '{name}' is {target.Provider.DisplayName}, which has no SQL.";
+    }
+
+    /// <param name="database">The endpoint's database (<see cref="CustomEndpoint.Database"/>); null = the CMS database.</param>
     /// <param name="rollback">Undo every change when done (the editor's dry run).</param>
     public async Task<EndpointRunResult> RunAsync(
-        CustomEndpointOperation operation, IReadOnlyDictionary<string, object?> values, bool rollback, CancellationToken ct)
+        CustomEndpointOperation operation, string? database, IReadOnlyDictionary<string, object?> values, bool rollback, CancellationToken ct)
     {
-        if (!Supported)
+        if (Problem(database) is { } problem)
         {
-            throw new EndpointSqlException("Custom endpoints need a SQL database; MongoDB has no SQL.");
+            throw new EndpointSqlException(problem);
         }
 
         var timeout = Math.Clamp(operation.TimeoutSeconds, 1, 120);
@@ -52,9 +87,9 @@ public sealed class SqlEndpointRunner
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(linked.Token);
-            await using var command = _db.Database.GetDbConnection().CreateCommand();
-            command.Transaction = transaction.GetDbTransaction();
+            await using var session = await OpenAsync(Normalize(database), linked.Token);
+            await using var command = session.Connection.CreateCommand();
+            command.Transaction = session.Transaction;
             command.CommandText = operation.Sql;
             command.CommandTimeout = timeout;
             AddParameters(command, operation.Sql, values);
@@ -73,11 +108,11 @@ public sealed class SqlEndpointRunner
             var (data, affected, truncated) = result;
             if (rollback)
             {
-                await transaction.RollbackAsync(CancellationToken.None);
+                await session.Transaction.RollbackAsync(CancellationToken.None);
             }
             else
             {
-                await transaction.CommitAsync(linked.Token);
+                await session.Transaction.CommitAsync(linked.Token);
             }
 
             return new EndpointRunResult(data, affected, truncated, stopwatch.Elapsed);
@@ -92,11 +127,40 @@ public sealed class SqlEndpointRunner
         }
     }
 
-    private void AddParameters(DbCommand command, string sql, IReadOnlyDictionary<string, object?> values)
+    /// <summary>The CMS database through EF Core's connection; an additional one through its own connection.</summary>
+    private async Task<Session> OpenAsync(string? database, CancellationToken ct)
+    {
+        if (database is null)
+        {
+            var efTransaction = await _db.Database.BeginTransactionAsync(ct);
+            return new Session(_db.Database.GetDbConnection(), efTransaction.GetDbTransaction(), efTransaction, ownedConnection: null);
+        }
+
+        var target = _catalog.Get(database);
+        var connection = target.Provider.CreateConnection(target.Settings)!;
+        try
+        {
+            await connection.OpenAsync(ct);
+            var transaction = await connection.BeginTransactionAsync(ct);
+            return new Session(connection, transaction, transaction, connection);
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
+    }
+
+    private static bool HasSql(ResolvedDatabase database)
+    {
+        using var connection = database.Provider.CreateConnection(database.Settings);
+        return connection is not null;
+    }
+
+    private static void AddParameters(DbCommand command, string sql, IReadOnlyDictionary<string, object?> values)
     {
         // Only placeholders the SQL uses: some drivers reject parameters the statement doesn't reference.
         var used = new HashSet<string>(EndpointRules.SqlParameterNames(sql), StringComparer.OrdinalIgnoreCase);
-        var sqlite = _db.Database.ProviderName?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true;
         foreach (var (name, value) in values)
         {
             if (!used.Contains(name))
@@ -106,19 +170,30 @@ public sealed class SqlEndpointRunner
 
             var parameter = command.CreateParameter();
             parameter.ParameterName = "@" + name;
-            parameter.Value = value switch
-            {
-                null => DBNull.Value,
-                // EF Core stores Guids as upper-case text on SQLite; bind them the same way so comparisons match.
-                Guid g when sqlite => g.ToString().ToUpperInvariant(),
-                _ => value,
-            };
-            if (value is not null && DbTypeOf(value) is { } dbType && !(sqlite && value is Guid))
+            parameter.Value = value ?? DBNull.Value;
+            if (value is not null && DbTypeOf(value) is { } dbType)
             {
                 parameter.DbType = dbType;
             }
 
             command.Parameters.Add(parameter);
+        }
+    }
+
+    /// <summary>An open connection with its transaction; disposing ends both (the connection only when it is ours).</summary>
+    private sealed class Session(DbConnection connection, DbTransaction transaction, IAsyncDisposable owner, DbConnection? ownedConnection)
+        : IAsyncDisposable
+    {
+        public DbConnection Connection { get; } = connection;
+        public DbTransaction Transaction { get; } = transaction;
+
+        public async ValueTask DisposeAsync()
+        {
+            await owner.DisposeAsync();
+            if (ownedConnection is not null)
+            {
+                await ownedConnection.DisposeAsync();
+            }
         }
     }
 

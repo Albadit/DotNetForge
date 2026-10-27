@@ -27,7 +27,7 @@ public sealed class DatabaseTranslationTests
         new DotNetForgeDbContext(new DbContextOptionsBuilder<DotNetForgeDbContext>().UseSqlite("Data Source=:memory:").Options).Model);
 
     private static readonly DatabaseSchema Mongo = MongoDbDatabaseProvider.Schema(
-        new MongoDbContext(new DbContextOptionsBuilder<MongoDbContext>().UseMongoDB("mongodb://localhost:27017", "cms").Options).Model);
+        new DotNetForgeDbContext(new DbContextOptionsBuilder<DotNetForgeDbContext>().UseMongoDB("mongodb://localhost:27017", "cms").Options).Model);
 
     private static readonly SqlBuilder Sqlite = new(
         "SQLite",

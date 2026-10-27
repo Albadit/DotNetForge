@@ -1,54 +1,43 @@
 # Adding a database provider
 
 Adding a database means three things: **create a provider, implement the interface, register it**. The router,
-the service, the configuration loader and the CMS code don't change. This page walks through Oracle as an example;
-the same steps apply to MariaDB, CockroachDB, CosmosDB or anything else with a .NET driver.
+the service, the configuration loader and the CMS code don't change. A new provider serves **additional databases**
+(`DATABASES_<NAME>_*`): the CMS database is always PostgreSQL ([configuration](configuration.md#cms-database)), so a
+provider has no CMS context and no migrations. This page walks through Oracle as an example; the same steps apply to
+MariaDB, CockroachDB, CosmosDB or anything else with a .NET driver.
 
 ```mermaid
 flowchart LR
-    A["1. Package + context type<br/>(EF Core databases)"] --> B["2. Provider, dialect, SQL builder, executor<br/>IDatabaseProvider"]
-    B --> C["3. Migrations<br/>(SQL databases, in the same folder)"]
-    C --> D["4. Register<br/>AddDatabaseProvider&lt;T&gt;(&quot;oracle&quot;)"]
-    D --> E["5. Tests on the real database"]
-    E --> F["6. Docs + CI"]
+    A["1. Package"] --> B["2. Provider, dialect, SQL builder, executor<br/>IDatabaseProvider"]
+    B --> D["3. Register<br/>AddDatabaseProvider&lt;T&gt;(&quot;oracle&quot;)"]
+    D --> E["4. Tests on the real database"]
+    E --> F["5. Docs + CI"]
 ```
 
-## 1. Package and context type
+## 1. Package
 
-Add the EF Core provider to `Directory.Packages.props`, and a `PackageReference` in
+Add the driver to `Directory.Packages.props`, and a `PackageReference` in
 `src/DotNetForge.Data/DotNetForge.Data.csproj`:
 
 ```xml
-<PackageVersion Include="Oracle.EntityFrameworkCore" Version="10.x" />
+<PackageVersion Include="Oracle.ManagedDataAccess.Core" Version="23.x" />
 ```
 
 Everything for the new database goes in its own folder, `src/DotNetForge.Data/Database/Providers/Oracle/` (namespace
-`DotNetForge.Data.Database.Providers.Oracle`), including its migrations. Nothing in that folder is shared with
-another database ([providers → Isolation](providers.md#isolation-and-updates)). SQL databases get their own context
-type, so they get their own migration set:
-
-```csharp
-// src/DotNetForge.Data/Database/Providers/Oracle/OracleDbContext.cs
-public sealed class OracleDbContext : DotNetForgeDbContext
-{
-    public OracleDbContext(DbContextOptions<OracleDbContext> options) : base(options) { }
-
-    // Database-specific model adjustments go here, never into DotNetForgeDbContext
-    // (example: SqlServerDbContext makes SystemState.Id non-identity).
-}
-```
+`DotNetForge.Data.Database.Providers.Oracle`). Nothing in that folder is shared with another database
+([providers → Isolation](providers.md#isolation-and-updates)).
 
 ## 2. The provider
 
-A SQL database is four files next to the context. **Start by copying a SQL folder whose syntax is closest** (for
-Oracle, `SqlServer/`: `OFFSET … FETCH`), rename the `SqlServer` prefix to `Oracle`, then change what differs:
+A SQL database is four files. **Start by copying a SQL folder whose syntax is closest** (for Oracle, `SqlServer/`:
+`OFFSET … FETCH`), rename the `SqlServer` prefix to `Oracle`, then change what differs:
 
 | File | Copied from | Change |
 | --- | --- | --- |
 | `OracleDialect.cs` | `SqlServerDialect.cs` | identifier quoting, parameter prefix (`:p0`), paging, LIKE escaping, aggregate casts |
 | `OracleSqlBuilder.cs` | `SqlServerSqlBuilder.cs` | usually only the names; it calls `OracleDialect` for everything database-specific |
-| `OracleExecutor.cs` | `SqlServerExecutor.cs` | the driver's factory (`OracleClientFactory.Instance`) |
-| `OracleDatabaseProvider.cs` | `SqlServerDatabaseProvider.cs` | detection, settings validation, `Configure` (EF Core), error codes |
+| `OracleExecutor.cs` | `SqlServerExecutor.cs` | the driver's factory (`OracleClientFactory.Instance`); the `ListCollectionsAsync` query (e.g. `user_tables`) |
+| `OracleDatabaseProvider.cs` | `SqlServerDatabaseProvider.cs` | detection, settings validation, `CreateConnection`, error codes |
 
 The provider implements `IDatabaseProvider` directly; there is no base class:
 
@@ -56,25 +45,30 @@ The provider implements `IDatabaseProvider` directly; there is no base class:
 // src/DotNetForge.Data/Database/Providers/Oracle/OracleDatabaseProvider.cs (excerpt)
 public sealed class OracleDatabaseProvider : IDatabaseProvider
 {
-    private static readonly string MigrationsAssembly = typeof(OracleDatabaseProvider).Assembly.FullName!;
-
     public string DisplayName => "Oracle";
 
     // Return true only when the connection string can't belong to another database.
     public bool CanHandle(string? connectionString) => false;
 
+    // The CMS runs on PostgreSQL only; this provider serves additional databases.
     public void AddDbContext(IServiceCollection services, DatabaseSettings settings) =>
-        services.AddDbContext<DotNetForgeDbContext, OracleDbContext>(options => Configure(options, settings.ConnectionString!));
+        throw new DatabaseConfigurationException(
+            "The CMS database must be PostgreSQL; Oracle can only be an additional database (DATABASES_<NAME>_PROVIDER=oracle).");
 
     public Task InitializeSchemaAsync(DotNetForgeDbContext db, CancellationToken cancellationToken) =>
-        db.Database.MigrateAsync(cancellationToken);
+        throw new NotSupportedException("Oracle does not host the CMS model.");
 
     public IDatabaseExecutor CreateExecutor(DatabaseSettings settings, IModel? model, ILoggerFactory loggerFactory) =>
         new OracleExecutor(settings, model is null ? DatabaseSchema.Unmapped : Schema(model));
 
-    /// <summary>Also used by <c>DesignTimeDbContextFactory</c>.</summary>
-    public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
-        options.UseOracle(connectionString, sql => sql.MigrationsAssembly(MigrationsAssembly));
+    // Raw SQL for custom API endpoints on this database; leave it out (null) for a database without SQL.
+    public DbConnection? CreateConnection(DatabaseSettings settings)
+    {
+        var connection = OracleClientFactory.Instance.CreateConnection()
+            ?? throw new DatabaseProviderException("The database driver could not create a connection.");
+        connection.ConnectionString = settings.ConnectionString;
+        return connection;
+    }
 
     public DatabaseException? TranslateException(Exception exception) => exception switch
     {
@@ -94,38 +88,18 @@ public sealed class OracleDatabaseProvider : IDatabaseProvider
 
 A database that is **not SQL** implements `IDatabaseProvider` the same way (see `MongoDbDatabaseProvider`):
 - **`Normalize`**: validate the settings.
-- **`AddDbContext`**: register `DotNetForgeDbContext` with its EF Core provider, or throw
-  `DatabaseConfigurationException` if it can't host the CMS model.
-- **`InitializeSchemaAsync`**: create its collections and indexes.
+- **`AddDbContext`** / **`InitializeSchemaAsync`**: throw, as above.
 - **`CreateExecutor`**: return an `IDatabaseExecutor` that translates `DatabaseCommand`s with the native driver.
   - Use typed values, never strings.
-  - Validate unmapped names with `DatabaseSchema.EnsureIdentifier`.
+  - Validate names with `DatabaseSchema.EnsureIdentifier`.
   - Convert values with `ValueCoercion`.
+  - `ListCollectionsAsync`: its collections, system ones left out.
+- **`CreateConnection`**: don't implement it (the default returns `null`: no custom endpoints on it).
 - **`TranslateException`**.
 
-A provider that only serves **named databases** (no CMS model, e.g. a key-value store) can throw
-`DatabaseConfigurationException` from `AddDbContext` and implement just the commands it supports. Unsupported
-operations raise `DatabaseProviderException`.
+The provider can implement just the commands it supports; unsupported operations raise `DatabaseProviderException`.
 
-## 3. Migrations (SQL databases)
-
-Add a design-time factory next to the others in `src/DotNetForge.Data/DesignTimeDbContextFactory.cs`, then generate
-the initial migration into the database's folder:
-
-```bash
-dotnet ef migrations add InitialCreate --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context OracleDbContext --output-dir Database/Providers/Oracle/Migrations
-```
-
-Later migrations land in the same folder automatically (EF Core follows the existing snapshot), but the commands in
-[database → Migrations](../architecture/database.md#migrations) pass `--output-dir` anyway. Add the context to that
-loop and to `.vscode/tasks.json`: from then on, every schema change adds a migration for this context too. Check the
-generated SQL for:
-- **index key length limits**: every indexed text column in the model has a `HasMaxLength`;
-- **identity columns** that receive explicit values;
-- **date and Guid types.**
-
-## 4. Register
+## 3. Register
 
 ```csharp
 // src/DotNetForge.Data/Database/DatabaseServiceCollectionExtensions.cs → AddDefaultDatabaseProviders
@@ -133,32 +107,36 @@ generated SQL for:
 ```
 
 Or, to keep it out of the defaults, add the line in `DependencyRegistration` (or an application's own startup)
-after `AddDefaultDatabaseProviders()`. `DATABASE_PROVIDER=oracle` now selects it. Nothing else changes: no switch
-statement, no enum, no edits to the router, the service or the loader.
+after `AddDefaultDatabaseProviders()`. `DATABASES_<NAME>_PROVIDER=oracle` now selects it. Nothing else changes: no
+switch statement, no enum, no edits to the router, the service or the loader.
 
-## 5. Tests
+## 4. Tests
 
 1. Add the provider to `DatabaseProviderTests`:
-   - name resolution;
+   - name resolution (as an additional database);
+   - that it can't host the CMS (`Only_postgresql_hosts_the_cms`);
    - validation messages;
    - a `Describe` case proving credentials are not shown;
    - detection, if `CanHandle` can ever return true.
 2. Add the builder to `DatabaseTranslationTests` (a `SqlBuilder` entry, plus its exact SQL in `Selects`, `Pagings`
    and `Aggregates`); the shared expectations then run against it too.
 3. Add an unreachable-server case to `DatabaseConnectionTests`.
-4. Add the server to `TestDatabaseServer` (`DNF_TEST_ORACLE`) and run **the whole integration suite** on it:
+4. Add the server to `TestDatabaseServer.AdditionalDatabase` (`DNF_TEST_ORACLE`) and an
+   `[AdditionalDatabaseFact("oracle", "DNF_TEST_ORACLE")]` case to `AdditionalDatabaseProviderTests` (insert, list,
+   find, a custom endpoint on it, the Data Management export), plus creating and dropping its test database there:
 
    ```bash
-   DNF_TEST_ORACLE="User Id=system;Password=…;Data Source=localhost:1521/FREEPDB1" dotnet test tests/DotNetForge.IntegrationTests
+   DNF_TEST_ORACLE="User Id=system;Password=…;Data Source=localhost:1521/FREEPDB1" \
+     dotnet test tests/DotNetForge.IntegrationTests --filter "FullyQualifiedName~AdditionalDatabase"
    ```
 
-   Every test must pass; the contract tests (`DatabaseServiceContractTests`) cover CRUD, interoperability with EF
-   Core, keys, text matching, conflicts and transactions.
+   The CMS database of these tests is PostgreSQL (`DNF_TEST_POSTGRES`, [testing](../guides/testing.md#databases)).
 5. Add a wrong-credentials case to `DatabaseCredentialTests`.
 
-## 6. Docs and CI
+## 5. Docs and CI
 
 - [providers.md](providers.md): a row in the provider table, plus provider notes.
 - [configuration.md](configuration.md): an example connection string, and detection if any.
-- `.env.example` and `docker/compose.dev.yml` (an opt-in profile).
-- `.github/workflows/ci.yml`: a `database-providers` matrix entry that starts the server and sets the test variable.
+- `.env.example` and a compose file `docker/databases/<name>.yml`.
+- `.github/workflows/ci.yml`: an `additional-databases` matrix entry that starts the server and sets the test
+  variable.

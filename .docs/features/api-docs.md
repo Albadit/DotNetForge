@@ -29,7 +29,7 @@ src/DotNetForge.Shared/Constants/AuthorizationPolicies.cs        AuthorizationPo
 | `/admin/api-docs/openapi/{documentName}.json` | the OpenAPI document - `v1` is the only one (`MapOpenApi`) | `.RequireAuthorization(AuthorizationPolicies.ApiDocs)` |
 
 The `ApiDocs` policy is *authenticated + role `Super Admin` or `Developer`*. Signed-out visitors are sent to
-`/account/login`, other roles to `/account/denied`. The sidebar link (icon `book`, after API Endpoints) is hidden for
+`/login`, other roles to `/account/denied`. The sidebar link (icon `book`, after API Endpoints) is hidden for
 roles that can't open it.
 
 Scalar renders a complete HTML page of its own, so the admin screen isolates it in an iframe - the same pattern as an
@@ -65,8 +65,7 @@ One document, `v1` (`ApiDocsDocument.Name`), registered with `services.AddOpenAp
 | Responses | `200` described per result shape (`{ data: [rows], count, truncated }`, `{ data: {row} }`, `{ data: value }`, `{ affected }`), `400` (missing or wrong value), `500` (the SQL failed); plus `401` for token endpoints and `404` for `FirstRow` |
 | Security | a token endpoint gets one HTTP-bearer scheme named `Endpoint <first 8 hex digits of its id>`, required by all its operations; a public endpoint has none |
 
-Disabled endpoints are left out. On MongoDB custom endpoints still appear (they answer `501` when called -
-[custom endpoints](custom-endpoints.md#database-support)).
+Disabled endpoints are left out.
 
 ## Tokens in Scalar
 

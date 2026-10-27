@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using DotNetForge.Abstractions.Messaging;
 using DotNetForge.Abstractions.Security;
 using DotNetForge.Abstractions.Storage;
 using DotNetForge.Data;
@@ -29,9 +30,12 @@ namespace DotNetForge.IntegrationTests;
 /// (<c>DNF_TEST_S3_*</c>, .docs/guides/testing.md).
 /// </remarks>
 /// <remarks>
-/// SQLite by default. Set one of <c>DNF_TEST_POSTGRES</c>, <c>DNF_TEST_SQLSERVER</c>, <c>DNF_TEST_MYSQL</c> or
-/// <c>DNF_TEST_MONGODB</c> to a server connection string without a database to run the same tests on that database
-/// (<see cref="TestDatabaseServer"/>); each factory then creates and drops its own database.
+/// The CMS database is PostgreSQL: each factory creates and drops its own database on the server of
+/// <c>DNF_TEST_POSTGRES</c> (default localhost:5432, <see cref="TestDatabaseServer"/>).
+/// </remarks>
+/// <remarks>
+/// Email: SMTP is configured with placeholder settings (so "Forgot password?" and email confirmation are available)
+/// and <see cref="IEmailSender"/> is replaced by one that only records the messages in <see cref="SentEmails"/>.
 /// </remarks>
 public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Program>
 {
@@ -48,25 +52,26 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
     public DotNetForgeWebFactory(string environment = "Development", string? extensionsPath = null)
     {
         Environment.SetEnvironmentVariable("EXTENSIONS_PATH", extensionsPath ?? string.Empty);
+        // Never the developer's .env: a file that doesn't exist, so only the variables set here apply.
+        Environment.SetEnvironmentVariable("DOTNETFORGE_ENV_FILE", Path.Combine(Path.GetTempPath(), $"dnf-it-{Guid.NewGuid():N}.env"));
         _environment = environment;
         _workDir = Path.Combine(Path.GetTempPath(), $"dnf-it-{Guid.NewGuid():N}");
         StoragePath = Path.Combine(_workDir, "media");
         Directory.CreateDirectory(_workDir);
 
-        var database = TestDatabaseServer.For(_workDir, $"dnf_it_{Guid.NewGuid():N}");
-        Provider = database.Provider;
-        Environment.SetEnvironmentVariable("DATABASE_PROVIDER", database.Provider);
-        Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING", database.ConnectionString);
+        Environment.SetEnvironmentVariable("DATABASE_CONNECTION_STRING", TestDatabaseServer.CmsDatabase($"dnf_it_{Guid.NewGuid():N}"));
 
         Environment.SetEnvironmentVariable("APP_URL", "http://localhost");
         Environment.SetEnvironmentVariable("STORAGE_S3_SERVICE_URL", "http://127.0.0.1:9");
         Environment.SetEnvironmentVariable("STORAGE_S3_BUCKET", "test");
         Environment.SetEnvironmentVariable("STORAGE_S3_ACCESS_KEY_ID", "test");
         Environment.SetEnvironmentVariable("STORAGE_S3_SECRET_ACCESS_KEY", "test");
+        Environment.SetEnvironmentVariable("SMTP_HOST", "smtp.test.invalid");
+        Environment.SetEnvironmentVariable("SMTP_FROM", "cms@example.com");
     }
 
-    /// <summary>The database provider the tests run on (<c>sqlite</c> unless a <c>DNF_TEST_*</c> server is set).</summary>
-    public string Provider { get; }
+    /// <summary>The emails the app "sent" (newest last).</summary>
+    public List<EmailMessage> SentEmails { get; } = new();
 
     /// <summary>Where this factory's uploaded media is stored.</summary>
     public string StoragePath { get; }
@@ -74,8 +79,12 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(_environment);
-        builder.ConfigureTestServices(services => services.AddKeyedSingleton<IFileStorage>(
-            ExtensionMediaStorage.CoreStorageKey, new LocalFileStorage(StoragePath)));
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddKeyedSingleton<IFileStorage>(ExtensionMediaStorage.CoreStorageKey, new LocalFileStorage(StoragePath));
+            // Replaces the SMTP transport only, so LoggingEmailSender (the email log) runs as in production.
+            services.AddKeyedSingleton<IEmailSender>(LoggingEmailSender.TransportKey, new RecordingEmailSender(SentEmails));
+        });
     }
 
     /// <summary>Programmatically completes installation (creates the first Super Admin).</summary>
@@ -133,7 +142,7 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
     public async Task<HttpClient> SignInAsync(string email = AdminEmail, string password = AdminPassword)
     {
         var client = CreateNoRedirectClient();
-        var response = await PostFormAsync(client, "/account/login", "/account/login",
+        var response = await PostFormAsync(client, "/login", "/login",
             new Dictionary<string, string> { ["email"] = email, ["password"] = password });
         if (response.StatusCode != HttpStatusCode.Redirect)
         {
@@ -161,12 +170,25 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
             : throw new InvalidOperationException($"No antiforgery token on {formPage}.");
     }
 
+    private sealed class RecordingEmailSender(List<EmailMessage> sent) : IEmailSender
+    {
+        public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
+        {
+            lock (sent)
+            {
+                sent.Add(message);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
     [GeneratedRegex("name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"")]
     private static partial Regex TokenField();
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing && Provider != "sqlite")
+        if (disposing)
         {
             try
             {
@@ -184,7 +206,6 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
         {
             try
             {
-                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
                 Directory.Delete(_workDir, recursive: true);
             }
             catch

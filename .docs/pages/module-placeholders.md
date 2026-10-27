@@ -18,15 +18,11 @@ planned link a **Soon** badge (tooltip "Planned - not built yet").
 | `/admin/marketplace` | `Marketplace` | Marketplace | Main → **Marketplace** | `store` | [extensions.md](../features/extensions.md#planned-not-implemented) |
 | `/admin/content-history` | `ContentHistory` | Content History | Settings → Global Settings → **Content History** | `history` | [content-pages-and-routing.md](../features/content-pages-and-routing.md#planned-not-implemented) |
 | `/admin/internationalization` | `Internationalization` | Internationalization | Settings → Global Settings → **Internationalization** | `globe` | [internationalization.md](../features/internationalization.md#planned-not-implemented) |
-| `/admin/transfer` | `Transfer` | Transfer | Settings → Global Settings → **Transfer** | `transfer` | [transfer-and-updates.md](../features/transfer-and-updates.md#planned-not-implemented) |
 | `/admin/webhooks` | `Webhooks` | Webhooks | Settings → Global Settings → **Webhooks** | `webhook` | [webhooks.md](../features/webhooks.md#planned-not-implemented) |
-| `/admin/email/configuration` | `EmailConfiguration` | Email Configuration | Settings → Email → **Configuration** | `mail` | [email.md](../features/email.md#planned-not-implemented) |
-| `/admin/email/templates` | `EmailTemplates` | Email Templates | Settings → Email → **Templates** | `file-code` | [email.md](../features/email.md#planned-not-implemented) |
 | `/admin/providers` | `Providers` | Authentication Providers | Settings → Users & Permissions Plugin → **Providers** | `lock` | [authentication.md](../features/authentication.md#planned-not-implemented) |
-| `/admin/advanced-settings` | `AdvancedSettings` | Advanced User Settings | Settings → Users & Permissions Plugin → **Advanced Settings** | `sliders` | [authentication.md](../features/authentication.md#planned-not-implemented) |
 
 All are `GET` only, no parameters. Breadcrumbs follow the sidebar entry; when the title differs from the sidebar
-label the title is appended (e.g. **Settings** › **Email** › **Configuration** › **Email Configuration**).
+label the title is appended (e.g. **Settings** › **Users & Permissions Plugin** › **Providers** › **Authentication Providers**).
 
 ## Relevant source files
 
@@ -87,7 +83,7 @@ flowchart LR
 - `DocPath` is shown as plain text (`<code>`), not a link - the `.docs/` files are not served by the app.
 - What foundation exists differs per module: webhooks and auth providers have tables (the `HmacWebhookSigner` class
   exists but is not registered in DI); email has only the `IEmailSender` contract - no implementation is registered
-  (the unused `FileSystemEmailSender` was removed); marketplace, content history, i18n and transfer have nothing.
+  (the unused `FileSystemEmailSender` was removed); marketplace, content history and i18n have nothing (Transfer is built as [Data Management](data-management.md)).
   See [implementation status](../implementation-status.md).
 
 ## Extension points

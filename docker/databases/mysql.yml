@@ -1,0 +1,21 @@
+# MySQL 8.4 for development (.docs/database/configuration.md).
+#   docker compose -f docker/databases/mysql.yml up -d
+# Only as an additional database (the CMS database is PostgreSQL), e.g. in .env:
+#   DATABASES_<NAME>_PROVIDER=mysql
+#   DATABASES_<NAME>_CONNECTION_STRING=Server=localhost;Port=3306;Database=dotnetforge;Uid=root;Pwd=dotnetforge
+# Development only: the password is public.
+
+name: dotnetforge
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: dotnetforge
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:

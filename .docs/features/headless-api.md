@@ -150,7 +150,6 @@ The sign-in and setup limit (`credentials`) is described in [security](security.
 | 404 | route not found; no operation of an enabled custom endpoint answers the method and path, or a `FirstRow` operation found no row (`{ error }`) |
 | 429 | more than 300 API requests in the current minute from the client IP |
 | 500 | unhandled exception (e.g. two concurrent creates racing past the slug check into the unique index), or a custom endpoint operation's SQL failed |
-| 501 | a custom endpoint called while the main database is MongoDB |
 
 ## Conventions for new endpoints
 

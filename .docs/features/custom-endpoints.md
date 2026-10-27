@@ -6,7 +6,7 @@ SQL - are what the [headless API](headless-api.md) answers under `/api/custom/{p
 `products` can answer `GET /api/custom/products`, `GET /api/custom/products/{id}`, `POST /api/custom/products` and
 `DELETE /api/custom/products/{id}`. Reads (SELECT) and writes (INSERT, UPDATE, DELETE, anything the database accepts)
 are both allowed: the screen is for Super Admins and Developers only, and the SQL runs with the application's database
-rights.
+rights - on the CMS database (PostgreSQL) or on an [additional SQL database](#databases) the endpoint names.
 
 Each endpoint has **its own token** (`dnfe_…`), one for all its operations; API tokens don't open custom endpoints.
 Every enabled endpoint is also listed in the [API docs](api-docs.md) with its token filled in.
@@ -21,7 +21,7 @@ src/DotNetForge.Shared/Entities/CustomEndpoint.cs                  CustomEndpoin
 src/DotNetForge.Shared/Enums/Enums.cs                              EndpointResultShape, EndpointAccess
 src/DotNetForge.Core/Endpoints/EndpointRules.cs                    pure rules: methods, paths and sub-paths (NormalizePath, NormalizeSubPath, Combine), matching, parameter definitions, value conversion, binding
 src/DotNetForge.Content/Endpoints/CustomEndpointService.cs         validation, one operation per method + path shape, save/delete + audit, matching a request, response shapes, endpoint tokens
-src/DotNetForge.Content/Endpoints/SqlEndpointRunner.cs             runs an operation's SQL: transaction, typed parameters, timeout, row limit, JSON-safe values
+src/DotNetForge.Content/Endpoints/SqlEndpointRunner.cs             the databases an endpoint can use (Databases, Problem); runs an operation's SQL there: transaction, typed parameters, timeout, row limit, JSON-safe values
 src/DotNetForge.Api/Controllers/CustomEndpointsApiController.cs    /api/custom/{**path}
 src/DotNetForge.Web/Areas/Admin/Controllers/ApiEndpointsController.cs   the screen, its test run and "Regenerate token"
 src/DotNetForge.Web/ApiDocs/ApiDocsTransformers.cs               the endpoints in the API docs' OpenAPI document
@@ -36,6 +36,7 @@ src/DotNetForge.Web/ApiDocs/ApiDocsTransformers.cs               the endpoints i
 | Description | optional, ≤ 500 characters (the list and the API docs) |
 | Who may call it (`Access`) | `Token` ("Token" on the form, the default): callers send the endpoint's own token; `Public` ("Anyone"): no token. Applies to every operation |
 | Enabled | off → every operation answers 404 |
+| Database | optional: the `<NAME>` of an additional SQL database (`DATABASES_<NAME>_*`), stored trimmed and lower-cased (`SqlEndpointRunner.Normalize`); empty = the CMS database. Checked by `SqlEndpointRunner.Problem`: "There is no database 'x': add DATABASES_X_PROVIDER and _CONNECTION_STRING to the configuration." / "The database 'x' is MongoDB, which has no SQL." Applies to every operation ([Databases](#databases)) |
 | Operations | 1-20 (`CustomEndpointService.MaxOperations`); none → "Add at least one operation: the method, the SQL it runs and its parameters." |
 
 ### Operations
@@ -99,20 +100,21 @@ An API token (`dnf_…`) never opens a custom endpoint, and an endpoint's token 
 
 `CustomEndpointsApiController.Call` handles `GET|POST|PUT|PATCH|DELETE /api/custom/{**path}`:
 
-1. **MongoDB** - no SQL: `501 { error }`.
-2. **Match** - `CustomEndpointService.MatchAsync`: the operations with that method of the enabled endpoints, each
+1. **Match** - `CustomEndpointService.MatchAsync`: the operations with that method of the enabled endpoints, each
    matched against its full template (endpoint path + sub-path); a literal segment beats a `{param}`. No match
    (unknown path, other method, disabled endpoint) → `404 { error }`.
-3. **Token** - a `Token` endpoint needs `Authorization: Bearer <its token>`; a missing or different token (an API
+2. **Token** - a `Token` endpoint needs `Authorization: Bearer <its token>`; a missing or different token (an API
    token or another endpoint's token included) → `401 { error }` with `WWW-Authenticate: Bearer`. A `Public` endpoint
    ignores any `Authorization` header.
-4. **Values** - the operation's parameters from route values, query string and JSON body (invalid JSON → `400`),
+3. **Values** - the operation's parameters from route values, query string and JSON body (invalid JSON → `400`),
    converted to each parameter's type with defaults applied; a missing required value or a wrong type →
    `400 { error, errors: [{ parameter, message }] }`.
-5. **Run** - `SqlEndpointRunner.RunAsync(operation, values, rollback: false, …)`: one transaction (committed),
-   `CommandTimeout` and a cancellation timer set to the operation's timeout, typed `DbParameter`s. On SQLite a `guid`
-   is bound as upper-case text, as EF Core stores Guids there.
-6. **Audit** - every method but `GET` writes `endpoint.executed`, shown as the operation's route
+4. **Run** - `SqlEndpointRunner.RunAsync(operation, endpoint.Database, values, rollback: false, …)`: one transaction
+   (committed), `CommandTimeout` and a cancellation timer set to the operation's timeout, typed `DbParameter`s named
+   `@name` (only those the SQL references). The CMS database runs through EF Core's connection and transaction; an
+   additional database through its own connection (`IDatabaseProvider.CreateConnection`) and transaction. A database
+   that is no longer configured fails like a SQL error ("There is no database …").
+5. **Audit** - every method but `GET` writes `endpoint.executed`, shown as the operation's route
    (`CustomEndpointService.Route`, e.g. "DELETE /api/custom/products/{id}"), with the details
    `<name> (called with its token)` or `<name> (public call)` (`Success = false` when the SQL failed).
 
@@ -147,34 +149,40 @@ which can echo data ([database security](../database/security.md)).
 
 `POST /admin/api-endpoints/test` runs **one operation** of what is in the editor (saved or not): it takes the
 endpoint's fields plus `operation` (that operation's JSON), `testValues` (`{ "name": "text" }`) and `rollback`.
-`CustomEndpointService.CheckOne` validates the endpoint's settings and that operation; the values are bound as the API
+`CustomEndpointService.CheckOne` validates the endpoint's settings (including its database) and that operation, and
+the SQL runs on the endpoint's database as selected in the editor; the values are bound as the API
 would (body values are sent as the JSON body a client would send) and the answer is
 `{ ok, status, body, ms, rolledBack }` - the same status and body as the API - or `{ ok: false, errors }` with the
 validation or database messages. By default the transaction is **rolled back**, so INSERT, UPDATE and DELETE can be
 tried safely; the admin can turn that off. Every test run is audited as `endpoint.tested`, shown as the tested
 operation's route.
 
-## Database support
+## Databases
 
 | Database | Custom endpoints |
 | --- | --- |
-| SQLite, PostgreSQL, SQL Server, MySQL | ✔ - write the SQL in that database's dialect (quoting, `LIMIT` vs `TOP`, …); PostgreSQL needs `"Pages"` for the CMS's mixed-case tables |
-| MongoDB | endpoints can be saved, but answer `501` and can't be test-run |
+| The CMS database (default) | ✔ PostgreSQL dialect; the CMS's tables are mixed-case, so quote them (`"Pages"`, `"Title"`) |
+| An additional SQLite, PostgreSQL, SQL Server or MySQL database (`DATABASES_<NAME>_*`) | ✔ write the SQL in that database's dialect (quoting, `LIMIT` vs `TOP`, …); `@name` parameters work on all four drivers |
+| An additional MongoDB database | ✘ no SQL: not offered, and refused on save |
 
-The SQL runs on the **main** database, not on additional `DATABASES_*` connections.
+`SqlEndpointRunner.Databases` lists the choices: the CMS database first ("CMS database (PostgreSQL)"), then every
+additional database whose provider can create an ADO.NET connection (`IDatabaseProvider.CreateConnection` not null),
+as "<name> (<provider>)". The editor shows the **Database** select only when there is more than one choice or the
+endpoint already has a database ([API Endpoints](../pages/api-endpoints.md#functionality)).
 
 The tables are `CustomEndpoints` and `CustomEndpointOperations` ([database](../architecture/database.md#tables)). The
 `AddEndpointOperations` migrations turned every endpoint saved before operations existed into an endpoint with one
 operation (its method, SQL and settings, on the endpoint's own path). Two such endpoints that share a base path stay
 separate; saving one of them then asks to add its operations to the other ("… already uses
-`/api/custom/<path>` - add your operations to it instead."). On MongoDB (no migrations) an endpoint document from before has no operations - it
-answered `501` there anyway.
+`/api/custom/<path>` - add your operations to it instead."). The `AddEndpointDatabase` migration added
+`CustomEndpoints.Database` (null for existing endpoints: they keep running on the CMS database).
 
 ## Security
 
 - Only Super Admins and Developers open the screen (`[Authorize(Roles = Roles.SuperAdmin + "," + Roles.Developer)]`);
   the sidebar link is hidden for others.
-- The SQL can read every table, including password hashes and token hashes, and change or drop anything. Treat the
+- The SQL can read every table of its database - on the CMS database including password hashes and token hashes -
+  and change or drop anything. Treat the
   Super Admin and Developer roles accordingly; a `Public` endpoint exposes whatever its operations' SQL returns to
   anyone.
 - Endpoint tokens are encrypted at rest (Data Protection), compared in constant time, and shown only to Super Admins
@@ -193,11 +201,11 @@ endpoint's own token - no token, an API token or another endpoint's token get `4
 parameters, public endpoints, generic public errors, disabling, validation including "Add at least one operation",
 clashing operations within an endpoint and across endpoints and a second endpoint on the same base path, the
 rolled-back test run of one operation, regenerating a token, Super Admins and Developers only, audit). The endpoints in
-the API docs: `ApiDocsTests.cs` ([API docs](api-docs.md#tests)). The integration tests also run on PostgreSQL with
-`DNF_TEST_POSTGRES`.
+the API docs: `ApiDocsTests.cs` ([API docs](api-docs.md#tests)). Endpoints on additional databases:
+`AdditionalDatabaseProviderTests.cs` (one endpoint per SQL provider answering from its database;
+`Endpoints_refuse_unknown_databases_and_databases_without_sql`).
 
 ## Planned (not implemented)
 
-- Running on an additional database (`DATABASES_*`) instead of the main one.
 - Several tokens per endpoint (today one, so regenerating it breaks every caller at once) and token expiry.
 - Response caching; response schemas (column types) in the API docs.

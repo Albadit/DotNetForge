@@ -10,14 +10,13 @@ using Microsoft.Extensions.Logging;
 namespace DotNetForge.Data.Database.Providers.Sqlite;
 
 /// <summary>
-/// SQLite: the zero-setup default. An empty connection string means <c>storage/dotnetforge.db</c> in Development;
-/// elsewhere the file must be an absolute path on a writable volume (the deployment directory is read-only).
-/// Context: <see cref="DotNetForgeDbContext"/> (the base model); migrations in <c>Migrations/</c> next to this file.
+/// SQLite for additional databases (<c>DATABASES_&lt;NAME&gt;_*</c>; the CMS itself runs on PostgreSQL). An empty
+/// connection string means <c>storage/&lt;name&gt;.db</c> in Development; elsewhere the file must be an absolute path on
+/// a writable volume (the deployment directory is read-only).
 /// Self-contained: no code is shared with the other SQL providers, so a change here never affects them.
 /// </summary>
 public sealed class SqliteDatabaseProvider : IDatabaseProvider
 {
-    private static readonly string MigrationsAssembly = typeof(SqliteDatabaseProvider).Assembly.FullName!;
     private static readonly string[] ServerKeys = { "Server", "Host", "Initial Catalog", "Integrated Security", "Trusted_Connection", "User ID", "Uid" };
 
     public string DisplayName => "SQLite";
@@ -65,20 +64,26 @@ public sealed class SqliteDatabaseProvider : IDatabaseProvider
     public string Describe(DatabaseSettings settings) =>
         $"SQLite {SqliteConnectionStrings.GetDataSource(settings.ConnectionString ?? string.Empty)}";
 
+    /// <summary>The CMS runs on PostgreSQL only; SQLite serves additional databases (<c>DATABASES_&lt;NAME&gt;_*</c>).</summary>
     public void AddDbContext(IServiceCollection services, DatabaseSettings settings) =>
-        services.AddDbContext<DotNetForgeDbContext>(options => Configure(options, settings.ConnectionString!));
+        throw new DatabaseConfigurationException(
+            "The CMS database must be PostgreSQL; SQLite can only be an additional database (DATABASES_<NAME>_PROVIDER=sqlite).");
 
     public Task InitializeSchemaAsync(DotNetForgeDbContext db, CancellationToken cancellationToken) =>
-        db.Database.MigrateAsync(cancellationToken);
+        throw new NotSupportedException("SQLite does not host the CMS model.");
 
-    public IDatabaseExecutor CreateExecutor(DatabaseSettings settings, IModel? model, ILoggerFactory loggerFactory) =>
-        new SqliteExecutor(settings, model is null ? DatabaseSchema.Unmapped : Schema(model));
-
-    /// <summary>Also used by <c>DesignTimeDbContextFactory</c>.</summary>
-    public static void Configure(DbContextOptionsBuilder options, string connectionString)
+    public IDatabaseExecutor CreateExecutor(DatabaseSettings settings, IModel? model, ILoggerFactory loggerFactory)
     {
-        EnsureDirectory(connectionString);
-        options.UseSqlite(connectionString, sql => sql.MigrationsAssembly(MigrationsAssembly));
+        EnsureDirectory(settings.ConnectionString!);
+        return new SqliteExecutor(settings, model is null ? DatabaseSchema.Unmapped : Schema(model));
+    }
+
+    public System.Data.Common.DbConnection? CreateConnection(DatabaseSettings settings)
+    {
+        var connection = Microsoft.Data.Sqlite.SqliteFactory.Instance.CreateConnection()
+            ?? throw new DatabaseProviderException("The database driver could not create a connection.");
+        connection.ConnectionString = settings.ConnectionString;
+        return connection;
     }
 
     public DatabaseException? TranslateException(Exception exception) => exception switch

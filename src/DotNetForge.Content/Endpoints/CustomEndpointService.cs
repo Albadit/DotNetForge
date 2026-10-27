@@ -27,6 +27,9 @@ public sealed class CustomEndpointInput
 
     public bool Enabled { get; set; } = true;
 
+    /// <summary>The additional database its SQL runs on (<c>DATABASES_&lt;NAME&gt;_*</c>); empty = the CMS database.</summary>
+    public string? Database { get; set; }
+
     /// <summary>
     /// The operations as JSON (the editor serializes its cards into this):
     /// <c>[{ id, name, method, path, sql, parameters: [...], result, timeoutSeconds, maxRows }]</c>.
@@ -40,6 +43,7 @@ public sealed class CustomEndpointInput
         Description = e.Description,
         Access = e.Access,
         Enabled = e.Enabled,
+        Database = e.Database,
         OperationsJson = CustomEndpointService.SerializeOperations(operations),
     };
 }
@@ -68,12 +72,14 @@ public sealed class CustomEndpointService
     private readonly DotNetForgeDbContext _db;
     private readonly IAuditService _audit;
     private readonly IDataProtector _tokens;
+    private readonly SqlEndpointRunner _runner;
 
-    public CustomEndpointService(DotNetForgeDbContext db, IAuditService audit, IDataProtectionProvider dataProtection)
+    public CustomEndpointService(DotNetForgeDbContext db, IAuditService audit, IDataProtectionProvider dataProtection, SqlEndpointRunner runner)
     {
         _db = db;
         _audit = audit;
         _tokens = dataProtection.CreateProtector("DotNetForge.CustomEndpoints.Token.v1");
+        _runner = runner;
     }
 
     /// <summary>The endpoint's token in plain text, or null when it has none (or the key that encrypted it is gone).</summary>
@@ -239,7 +245,7 @@ public sealed class CustomEndpointService
         }
     }
 
-    private static (CustomEndpoint Draft, List<string> Errors) CheckEndpoint(CustomEndpointInput input)
+    private (CustomEndpoint Draft, List<string> Errors) CheckEndpoint(CustomEndpointInput input)
     {
         var errors = new List<string>();
         var name = input.Name?.Trim() ?? string.Empty;
@@ -265,6 +271,12 @@ public sealed class CustomEndpointService
             errors.Add("Choose who may call the endpoint.");
         }
 
+        var database = SqlEndpointRunner.Normalize(input.Database);
+        if (_runner.Problem(database) is { } problem)
+        {
+            errors.Add(problem);
+        }
+
         var draft = new CustomEndpoint
         {
             Name = name,
@@ -272,6 +284,7 @@ public sealed class CustomEndpointService
             Description = description,
             Access = input.Access,
             Enabled = input.Enabled,
+            Database = database,
         };
         return (draft, errors);
     }
@@ -405,6 +418,7 @@ public sealed class CustomEndpointService
         endpoint.Description = draft.Description;
         endpoint.Access = draft.Access;
         endpoint.Enabled = draft.Enabled;
+        endpoint.Database = draft.Database;
         endpoint.UpdatedDate = DateTime.UtcNow;
         // Every endpoint has a token from its first save, so switching it to "Token" access never leaves it open.
         endpoint.TokenProtected ??= _tokens.Protect(NewToken());

@@ -11,22 +11,24 @@ except `Developer`); what each role may do differs (see [Permissions](#permissio
 
 | Item | Value |
 | --- | --- |
-| Routes | `GET /admin/media`, `POST /admin/media/upload` (multipart), `POST /admin/media/visibility/{id:guid}` (form field `isPublic`), `POST /admin/media/delete/{id:guid}`, `POST /admin/media/delete-selected` (form field `ids`, repeated) |
+| Routes | `GET /admin/media` (`?folder={id}` shows a folder; unknown id → 404), `POST /admin/media/upload` (multipart, field `folderId`), `POST /admin/media/visibility/{id:guid}` (form field `isPublic`), `POST /admin/media/delete/{id:guid}`, `POST /admin/media/delete-selected` and `POST /admin/media/move-selected` (fields `ids` repeated, `folderId`, `returnFolder`), `POST /admin/media/folders` (`name`, `parentId`), `POST /admin/media/folders/{id:guid}/rename` (`name`), `/move` (`parentId`), `/delete` |
 | Public file URLs | `GET /media/{id}/{fileName}` - served by `MediaFilesController` ([download flow](../features/media-storage.md#download-flow)) |
 | Navigation entry | Sidebar → **Main** → **Media** (`AdminNavigation.Tree`); breadcrumbs **Main / Media** |
 | Linked from | Dashboard: quick action **Upload media** (`/admin/media#upload`, shown when permitted) and the **Media files** KPI card (a link only for users who may open this screen) |
-| Parameters / children | none; every POST redirects back to `/admin/media` (a failed upload re-renders the screen) |
+| Parameters / children | `folder` (query): the folder shown; every POST redirects back to the folder it came from (a failed upload re-renders the screen) |
 
 ## Relevant source files
 
 ```text
 src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs     list, upload, delete, DeleteSelected (MaxBulkDelete = 100); permission checks; request size limits
-src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs          MediaIndexViewModel (CanUpload, Files), MediaRowViewModel (+ Url, CanDelete)
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs          MediaIndexViewModel (CanUpload, folder rights, Current, Breadcrumbs, Folders, AllFolders, Files), MediaFolderLink, MediaFolderRowViewModel, MediaRowViewModel (+ Url, CanDelete)
 src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml           Upload card (dropzone), Library card (toolbar, bulk bar, media cards, per-file menu)
 src/DotNetForge.Web/Ui/MediaPresentation.cs                        Classify (filter kind + icon), Size ("3.4 KB")
 src/DotNetForge.Web/Ui/UiTagHelpers.cs                             <icon>, <badge>, <timestamp>, <empty-state>, <form-errors>
 src/DotNetForge.Web/Services/MediaService.cs                       upload/delete rules, allowed types, size cap, keys, audit
+src/DotNetForge.Web/Services/MediaFolderService.cs                 folders: create, rename, move, delete (empty only), paths, moving files, audit
 src/DotNetForge.Web/Controllers/MediaFilesController.cs            the /media/{id} links and thumbnails
+src/DotNetForge.Web/wwwroot/js/forge/media.js                      drag and drop of files and folders onto folders and breadcrumbs
 src/DotNetForge.Web/wwwroot/js/forge/ui.js                         collection (search/filter/paging), selection + bulk bar, view switch, dropzone, copy, confirm dialog
 src/DotNetForge.Web/wwwroot/css/forge/admin.css                    .media-items / .media-card grid and list layouts
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                  toasts (TempData) + confirm dialog, rendered by _AdminLayout
@@ -36,24 +38,28 @@ src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                  toasts (TempD
 
 ```text
 Media (_AdminLayout; header "Media" + description "Images, documents and other files for your pages. ...")
-├── card "Upload"                               only when CanUpload; "Up to 10 files, 25 MB each."
-│   └── form (POST /admin/media/upload, multipart, antiforgery)
+├── header actions [New folder] · [Upload] (CanUpload) - open the New folder dialog / the Upload dialog (media.js)
+├── <dialog class="upload-dialog"> > card "Upload" (id upload)   only when CanUpload; never part of the page until opened: by [Upload], a file drag onto the page or #upload, and again after a failed upload; closed by [×] (clears the files), Esc or a click on the backdrop
+│   └── form (POST /admin/media/upload, multipart, antiforgery, hidden folderId = the folder shown)
 │       ├── <form-errors />                     one line per rejected file / problem
 │       ├── .dropzone "Drop files here or click to choose"   allowed extensions; input type=file multiple required accept=…
-│       │   └── chosen file names (badges, JS)
+│       ├── preview (JS): one tile per chosen file - image thumbnail or file icon, name, size, "Too large" / "Type not allowed", [×] remove
 │       └── ☑ Public "Anyone with the link can open it. Private files need an admin sign-in."  (checked) · [Upload]
-└── card "Library" [data-collection, 48 per page]   "N total" / "x of N"
-    ├── grid / list switch                      JS only, remembered (localStorage dnf-view:media)
+├── <dialog #new-folder-dialog> "New folder" / "In Library/…"   only when CanUpload: form#folder-create (POST /admin/media/folders, hidden parentId) Name · footer [Cancel] [Create folder]
+└── card "Library" [data-collection, 48 per page]   title = breadcrumbs "Library / Photos / 2026" (links); "N total" / "x of N"
+    ├── header: grid / list switch (JS only, remembered)
     ├── .collection-bar
     │   ├── toolbar (JS only): ☐ select all · search "Search files" · "All types" ▾ · "Public and private" ▾
-    │   └── form#bulkDelete .bulk-bar (overlays the toolbar while files are selected): ☐ · "N selected" · [Clear] · [Delete selected]
-    ├── .media-items (data-view-mode grid|list): one article.media-card per file
-    │   ├── ☐ select (only when CanDelete) · thumbnail (image) or type icon → opens the file
-    │   ├── name (link, new tab) · size · <timestamp> · badge Public / Private (lock) · content type (list view)
-    │   └── ⋯ menu: Open · Copy link · Make private / Make public (only when CanChangeVisibility) · Delete (only when CanDelete)
+    │   └── form#bulkForm .bulk-bar (overlays the toolbar while files are selected): ☐ · "N selected" · [Clear] ·
+    │       Move to ▾ [Move] (when a file may be moved) · [Delete selected] (when a file may be deleted; confirm)
+    ├── .media-items (data-view-mode grid|list): the subfolders first (folder tiles), then one article.media-card per file
+    │   ├── folder tile: folder icon · name (opens it) · "n folders · n files" · ⋯ Open · Edit… (Media update; dialog) · Delete (Media delete)
+    │   ├── file: ☐ select (CanDelete or CanChangeVisibility) · thumbnail or type icon → opens the file
+    │   │   name (link, new tab) · size · <timestamp> · badge Public / Private (lock) · content type (list view)
+    │   └── file ⋯ menu: Open · Copy link · Make private / Make public (CanChangeVisibility) · Delete (CanDelete)
     ├── empty state "No matching files"         [data-collection-empty]
-    └── pagination                              JS, more than 48 matching files
-    (no files at all → empty state "No media yet" instead of toolbar and items)
+    └── pagination                              JS, more than 48 matching items
+    (nothing here → "No media yet" at the top level, "This folder is empty" inside a folder)
 ```
 
 ## Components
@@ -71,11 +77,49 @@ Component mechanics (cards, dropzone, collection, bulk bar, menu, toasts, confir
 
 ## Functionality
 
+### Folders
+
+Folders are **virtual** (`MediaFolder`, `MediaFolderService`): a file's stored object and its `/media/{id}` link never
+change when it moves. Folders nest without limit (the materialized path is at most 1000 characters).
+
+- **Create** - **New folder** in the header opens a dialog (`#new-folder-dialog`, "In Library/…", a **Name** field
+  focused; footer **Cancel** · **Create folder**, Enter creates too; Esc, Cancel or a click on the backdrop close it)
+  that creates a folder inside the one shown (`Media/create`); the screen comes back at the same scroll position.
+  Names: 1-100 characters, no `/` or `\`, not `.` or `..`, unique per parent ignoring case ("There is already a
+  folder 'x' here."). Audit `media.folder.created`.
+- **Browse** - folder tiles (with their counts) open `?folder={id}`; the card title is the breadcrumb trail back to
+  **Library**. Only the files of the folder shown are listed; search and filters work on them.
+- **Rename / move a folder** - **Edit…** in the folder's ⋯ menu (`Media/update`, JavaScript). The folder's `Path` and every path below it
+  are rewritten; a folder can't move into itself or one of its own folders. Audit `media.folder.updated` ("Renamed
+  from …" / "Moved from …").
+- **Delete a folder** - only when it is empty (`Media/delete`): **Delete** in the tile's menu; a folder with
+  files or folders is refused with what is in it. Audit `media.folder.deleted`.
+- **Move files** - select files, choose **Move to** in the bulk bar (Top level or any folder) and **Move**. Each file
+  needs `Media/update` (or `update.own` for own uploads); others are skipped and reported. Audit `media.moved` per file
+  ("To /Photos").
+- **Upload** goes into the folder shown.
+- **Edit… in a folder's ⋯ menu** (`Media/update`, JavaScript) opens the **Edit folder** dialog: **Name** [Rename] and
+  **Move into** [Move] (the folder itself and its own folders can't be chosen).
+  **Delete** in the menu is offered with `Media/delete`; a folder with content is refused with what is in it.
+- **Drag and drop** (`wwwroot/js/forge/media.js`, JavaScript and a mouse): drag a file - or, when it is selected, every
+  selected file - or a folder onto a folder tile, or onto a breadcrumb to move it up. The target is outlined while
+  dragging; dropping posts the same forms as the Move buttons (hidden `#dragMove` with the antiforgery token), so the
+  same permissions, rules and audit entries apply. Files are draggable when the user may move them, folders with
+  `Media/update`; a folder can't be dropped on itself (its own subfolders are refused by the server).
+
 ### Upload files
 
-1. **Trigger:** drop or choose up to 10 files, optionally untick **Public**, **Upload**.
+1. **Trigger:** click **Upload** in the header (or follow `#upload`), or drag files from the computer anywhere onto
+   the page - the Upload popup opens (a modal `<dialog>`, focus on the file picker) and the dropped files are added. Each chosen file shows a preview (an image
+   thumbnail drawn as a `data:` image - the policy allows no `blob:` URLs - or a file icon, its size, and "Too large" /
+   "Type not allowed" when it will be refused) with a remove button. The same file (name, size, last change) is added
+   only once however often it is dropped or picked, and **Upload** locks after the first click; optionally untick
+   **Public**; **Upload**.
 2. **Validation:** `Media/create` permission (else `Forbid` → [Access denied](access-denied.md)); 1-10 files; the
-   request limit (25 MB × 10 + 1 MB); per file in `MediaService`: not empty, ≤ 25 MB, extension in `AllowedTypes`.
+   request limit (25 MB × 10 + 1 MB); per file in `MediaService`: not empty, ≤ 25 MB, extension in `AllowedTypes`,
+   not a duplicate - a file with the same name and size already in that folder is refused ("'x' is already in this
+   folder (same name and size)."). The page builder's and the Content Manager's pickers get the existing file back
+   instead (`reuseDuplicate`, when its visibility matches).
 3. **Service:** `MediaService.UploadAsync` per file: generated storage key (`yyyy/MM/<random>.<ext>`),
    `IFileStorage.SaveAsync`, `MediaFile` row, audit `media.uploaded` ([upload flow](../features/media-storage.md#upload-flow)).
 4. **Result:** all stored → redirect with the toast "Uploaded N files." ("Uploaded 1 file."); any rejected → the same
@@ -142,7 +186,8 @@ loading for visitors at once - pages that show it display a broken image - excep
 
 Client-side over the server-rendered list ([behaviours](../architecture/design-system.md#behaviours)): search by
 name or content type, filter by type and access, 48 files per page, grid or list layout (remembered per browser).
-Without JavaScript the toolbar, view switch and pagination stay hidden and every file is listed in the grid.
+Without JavaScript the toolbar, view switch and pagination stay hidden and every file is listed in the grid; Upload
+and New folder are dialogs and need JavaScript.
 
 ## Data used by the page
 
@@ -172,6 +217,10 @@ sidebar. Actions use the `Media` permission area ([authorization](../features/au
 | Upload | ✔ | ✔ | ✔ | ✔ | - |
 | Make private / public (`update`, or `update.own`) | ✔ | ✔ | ✔ | own uploads only | - |
 | Delete (single or selected) | ✔ | ✔ | ✔ | own uploads only | - |
+| Create folders (`create`) | ✔ | ✔ | ✔ | ✔ | - |
+| Move files (`update`, or `update.own`) | ✔ | ✔ | ✔ | own uploads only | - |
+| Rename / move folders (`update`) | ✔ | ✔ | ✔ | - | - |
+| Delete empty folders (`delete`) | ✔ | ✔ | ✔ | - | - |
 
 Controls a user can't use are not rendered (Upload card, visibility and Delete menu items, checkboxes, bulk bar); the server
 re-checks on every POST, per file for bulk delete. Covered by
@@ -215,6 +264,7 @@ Server-rendered; the upload is a normal form post (the browser shows its own pro
 | When | Text |
 | --- | --- |
 | No files yet | **No media yet** - "Uploaded files appear here, ready to use on your pages." |
+| An empty folder | **This folder is empty** - "Upload files into it, move files here, or create a folder inside it." |
 | Search/filter matches nothing | **No matching files** - "Try another search or filter." |
 
 ## User interactions
@@ -267,8 +317,9 @@ flowchart TD
 
 ## Known limitations
 
-- No folders, tags, image variants, sorting, server-side search, or bulk public/private change; search and
-  filters work only on the files of the loaded list, in the browser.
+- No tags, image variants, sorting, server-side search, or bulk public/private change; search and
+  filters work only on the items of the folder shown, in the browser. Folders have no visibility of their own.
+- The media pickers of the page builder and the Content Manager list all files, not by folder.
 - Bulk delete needs JavaScript (the bulk bar is hidden without it); single delete works without.
 - Allowed types and size limit are constants in `MediaService`, not settings.
 - No content sniffing or malware scanning (types are decided by extension; active formats are not allowed).
@@ -286,11 +337,11 @@ Data model, settings, roles and upload rules: [media storage → Planned](../fea
 
   ```text
   File Manager
-  ├── toolbar: Upload (file picker, multiple) ✔ · New Folder · search box ✔ · filters ✔ (type, access) · sort
-  ├── breadcrumb: Root / Parent / Current       (every segment clickable)
-  ├── drop zone (drag/drop upload into the current folder)  ✔ drop zone, no folders
-  ├── list/grid ✔: subfolders, then files (name ✔, type ✔, size ✔, tags, public/private ✔, date ✔)
-  │   └── row actions: Download · Copy URL ✔ · Rename · Move · Public/Private · Access · Delete ✔
+  ├── toolbar: Upload (file picker, multiple) ✔ · New Folder ✔ · search box ✔ · filters ✔ (type, access) · sort
+  ├── breadcrumb: Root / Parent / Current ✔     (every segment clickable)
+  ├── drop zone (drag/drop upload into the current folder) ✔
+  ├── list/grid ✔: subfolders ✔, then files (name ✔, type ✔, size ✔, tags, public/private ✔, date ✔)
+  │   └── row actions: Download · Copy URL ✔ · Rename · Move ✔ (bulk, drag and drop) · Public/Private ✔ · Access · Delete ✔
   └── per-file upload results (accepted / rejected with reason ✔ / duplicate action taken)
   ```
 

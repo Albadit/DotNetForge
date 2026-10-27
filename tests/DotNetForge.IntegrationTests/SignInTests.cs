@@ -13,7 +13,7 @@ public sealed class SignInTests
         await factory.InstallAsync();
         using var client = factory.CreateNoRedirectClient();
 
-        var response = await DotNetForgeWebFactory.PostFormAsync(client, "/account/login", "/account/login",
+        var response = await DotNetForgeWebFactory.PostFormAsync(client, "/login", "/login",
             new Dictionary<string, string> { ["email"] = DotNetForgeWebFactory.AdminEmail, ["password"] = "wrong-password" });
         var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
 
@@ -42,7 +42,7 @@ public sealed class SignInTests
             fields["rememberMe"] = "true";
         }
 
-        var response = await DotNetForgeWebFactory.PostFormAsync(client, "/account/login", "/account/login", fields);
+        var response = await DotNetForgeWebFactory.PostFormAsync(client, "/login", "/login", fields);
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("dnf.auth=", StringComparison.Ordinal));

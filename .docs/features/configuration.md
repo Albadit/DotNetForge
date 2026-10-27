@@ -9,11 +9,12 @@ configures logging and `AllowedHosts`. Production values and a deployment checkl
 
 | Key | Required | Default | Validation | Used by |
 | --- | --- | --- | --- | --- |
-| `DATABASE_PROVIDER` | no (recommended outside Development) | detected from the connection string | a registered provider: `sqlite`, `postgresql`/`postgres`, `sqlserver`, `mysql`, `mongodb` | `DatabaseProviderRegistry` → the provider configures EF Core and `IDatabaseService` ([database configuration](../database/configuration.md)) |
-| `DATABASE_CONNECTION_STRING` | outside Development | empty = SQLite at `<devRoot>/storage/dotnetforge.db` (Development only) | validated by the chosen provider ([validation](../database/configuration.md#validation-startup)); **secret** | the provider's EF Core configuration and executor |
-| `DATABASES_<NAME>_PROVIDER`, `_CONNECTION_STRING` | no | - | as above, per named database | `IDatabaseService` ([more databases](../database/configuration.md#more-databases)) |
+| `DATABASE_CONNECTION_STRING` | yes (every environment) | - | key=value Npgsql form ([validation](../database/configuration.md#validation-startup)); empty stops startup; **secret** | EF Core and the CMS database's executor; the CMS database is always PostgreSQL (`DatabaseProviderRegistry` → `PostgreSqlDatabaseProvider`) |
+| `DATABASE_PROVIDER` | - | - | removed: not read; a value stops startup ("no longer used"), an empty line is ignored | - |
+| `DOTNETFORGE_ENV_FILE` | no (environment variable only) | `.env` in the content root / repository root | a file path; a missing file = no file values | `EnvConfigurationLoader` - the integration tests point it at a missing file so a developer's `.env` never applies |
+| `DATABASES_<NAME>_PROVIDER`, `_CONNECTION_STRING` | no | - | any registered provider (`sqlite`, `postgresql`/`postgres`, `sqlserver`, `mysql`, `mongodb`), detected from the connection string when empty; validated by that provider | additional databases: `IDatabaseService`, custom API endpoints, the Data Management export ([additional databases](../database/configuration.md#more-databases)) |
 | `APP_NAME` | no | `DotNetForge CMS` | - | layouts and screens via `ViewData["AppName"]`, Dashboard, Settings, `/health` |
-| `APP_URL` | no | `http://localhost:5000` | must be an absolute URI | validated only - **not used anywhere else** (Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS`) |
+| `APP_URL` | no | `http://localhost:5000` | must be an absolute URI | the links in password-reset and confirmation emails (`AccountService`, never the request's `Host` header); Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS`, not from it |
 | `STORAGE_S3_SERVICE_URL` | no | empty = AWS S3 | absolute URL | `S3FileStorage` (R2, MinIO, Supabase, SeaweedFS endpoint) |
 | `STORAGE_S3_BUCKET` | outside Development | - | non-empty | `S3FileStorage` |
 | `STORAGE_S3_ACCESS_KEY_ID` | outside Development | - | non-empty | `S3FileStorage` |
@@ -21,6 +22,12 @@ configures logging and `AllowedHosts`. Production values and a deployment checkl
 | `STORAGE_S3_REGION` | without a service URL (AWS) | `auto` when `STORAGE_S3_SERVICE_URL` is set | - | `S3FileStorage` (signing region) |
 | `EXTENSIONS_PATH` | no | `extensions/` next to the app, else at the repository root | absolute, or relative to the content root | `ExtensionLoader`, `ExtensionRuntime` (code loading), runtime Razor compilation of extension views ([extensions](extensions.md#discovery)) |
 | `STORAGE_S3_FORCE_PATH_STYLE` | no | `false` | `true` or `false` (`bool.TryParse`, case-insensitive) | `S3FileStorage` (`endpoint/bucket/key` URLs for MinIO, Supabase, SeaweedFS) |
+| `SMTP_HOST` | to send email | empty = no email | required (with `SMTP_FROM`) once any of `SMTP_HOST`, `SMTP_FROM`, `SMTP_USERNAME`, `SMTP_PASSWORD` is set | `SmtpEmailSender` ([Email (SMTP)](#email-smtp)) |
+| `SMTP_PORT` | no | `587` | 1-65535 | `SmtpEmailSender` |
+| `SMTP_USERNAME`, `SMTP_PASSWORD` | when the server needs authentication | - | `SMTP_PASSWORD` is a **secret** | `SmtpEmailSender` (credentials only when the username is set) |
+| `SMTP_FROM` | to send email | - | an email address (`MailAddress.TryCreate`) | sender address |
+| `SMTP_FROM_NAME` | no | `APP_NAME` | - | sender display name |
+| `SMTP_TLS` | no | `true` | only `false` (case-insensitive) turns it off | STARTTLS (`SmtpClient.EnableSsl`); implicit TLS on port 465 is not supported |
 
 Uploaded media always goes to S3-compatible object storage; there is no provider key, because R2, AWS S3, MinIO,
 Supabase and SeaweedFS all speak the same API and differ only in endpoint, region and path style. When **no**
@@ -31,7 +38,18 @@ required ones mandatory, in Development too. Details and provider choice:
 
 All keys are read by `EnvConfigurationLoader` (`src/DotNetForge.Infrastructure/Configuration/`); constants:
 `ProviderKey`, `ConnectionKey`, `AdditionalDatabasePrefix`, `AppNameKey`, `AppUrlKey`, `S3ServiceUrlKey`,
-`S3BucketKey`, `S3AccessKeyIdKey`, `S3SecretAccessKeyKey`, `S3RegionKey`, `S3ForcePathStyleKey`, `ExtensionsPathKey`.
+`S3BucketKey`, `S3AccessKeyIdKey`, `S3SecretAccessKeyKey`, `S3RegionKey`, `S3ForcePathStyleKey`, `ExtensionsPathKey`,
+`SmtpHostKey`, `SmtpPortKey`, `SmtpUsernameKey`, `SmtpPasswordKey`, `SmtpFromKey`, `SmtpFromNameKey`, `SmtpTlsKey`.
+
+### Email (SMTP)
+
+Optional. Leave every `SMTP_*` value empty and the app sends no email: the sign-in screen has no **Forgot password?**
+link and email confirmation cannot be turned on ([authentication](authentication.md#self-service-accounts)). Set
+at least `SMTP_HOST` and `SMTP_FROM` to send the password-reset and confirmation emails through `SmtpEmailSender`
+([email](email.md)); `EmailSettings.IsConfigured` is true exactly then. These keys are the only SMTP configuration:
+[Email → Configuration](../pages/email-configuration.md) shows them read-only (with a connection test, test sends and
+the email log); changes need a restart. A local SMTP catcher works for development - Mailpit from
+`docker/mail/mailpit.yml` (filled in in `.env.developer`).
 
 Changing any key requires a restart.
 
@@ -56,8 +74,9 @@ Treat them like the core secrets ([Secrets](#secrets)): `.env` locally, the host
 
 ## Database
 
-The loader only reads the database keys. The provider registry chooses the provider (from `DATABASE_PROVIDER`, or by
-detection from the connection string), and that provider validates the settings and applies its defaults. All of
+The loader only reads the database keys. The provider registry binds the CMS database to PostgreSQL (refusing any
+other `DATABASE_PROVIDER`) and each additional database to its provider (from `DATABASES_<NAME>_PROVIDER`, or by
+detection from the connection string); the provider validates the settings and applies its defaults. All of
 this happens while services are registered, before the app serves anything. The rules, detection table, messages
 and examples for each database are in [database configuration](../database/configuration.md).
 
@@ -70,17 +89,16 @@ treated as **read-only**: nothing may default to a path inside it.
 
 | Setting | Development | Any other environment |
 | --- | --- | --- |
-| SQLite database | `DATABASE_CONNECTION_STRING` optional; default `<devRoot>/storage/dotnetforge.db` | required; absolute `Data Source` on a writable volume (or in-memory), or use a database server |
+| CMS database (PostgreSQL) | `DATABASE_CONNECTION_STRING` optional; default the local server `localhost:5432`, database `dotnetforge` | required |
 | Uploaded media | S3 when any `STORAGE_S3_*` key is set, otherwise `<devRoot>/storage/media` | S3 required |
-| PostgreSQL, SQL Server, MySQL, MongoDB | same rules | same rules |
+| SQLite additional database | connection string optional; default `<devRoot>/storage/<name>.db` | required; absolute `Data Source` on a writable volume (or in-memory) |
+| Other additional databases | connection string required | connection string required |
 
 `<devRoot>` is `AppPaths.DevelopmentDataRoot`: the repository root when running from a checkout (the folder containing
 `DotNetForge.slnx`), otherwise the content root. Defaults never depend on the process working directory, so
-`dotnet run --project src/DotNetForge.Web`, F5 and the test host all use the same `storage/` at the repository root. `SqliteDatabaseProvider` creates the SQLite file's
-directory if missing (skipped for in-memory databases) - outside Development that is the configured volume, never
-the deployment directory. `AppEnvironment.ResolveConnectionString()` still has a relative
-`Data Source=storage/dotnetforge.db` fallback; the loader always sets a connection string, so only hand-built
-instances reach it.
+`dotnet run --project src/DotNetForge.Web`, F5 and the test host all use the same `storage/` at the repository root.
+`SqliteDatabaseProvider` creates a SQLite additional database's directory if missing (skipped for in-memory
+databases) - outside Development that is the configured volume, never the deployment directory.
 
 Requirements for a read-only container (`/tmp`, volumes, Data Protection keys in the database):
 [deployment → read-only deployment requirements](../guides/deployment.md#read-only-deployment-requirements).
@@ -90,7 +108,7 @@ Requirements for a read-only container (`/tmp`, volumes, Data Protection keys in
 1. The `.env` file is read from the **content root** (`builder.Environment.ContentRootPath`) if it exists there,
    otherwise from the **repository root** (the folder containing `DotNetForge.slnx`; `AppPaths.Resolve`). In a
    checkout the content root is `src/DotNetForge.Web`, so the repository root's `.env` is used. The file is
-   optional: without it Development runs on the SQLite and local-storage defaults, and containers set environment
+   optional: without it Development runs on the local PostgreSQL and local-storage defaults, and containers set environment
    variables instead (`docker/Dockerfile.dockerignore` keeps `.env` out of the image).
 2. For each key, a **non-empty process environment variable wins**; otherwise a non-empty `.env` value; otherwise
    unset. An empty value (`STORAGE_S3_REGION=`) counts as unset.
@@ -103,8 +121,8 @@ Requirements for a read-only container (`/tmp`, volumes, Data Protection keys in
 `EnvConfigurationLoader.Load` throws `ConfigurationException`; `Program.cs` prints
 `[DotNetForge] Configuration error: <message>` to stderr and exits with code `1`; database configuration errors
 (`DatabaseConfigurationException`, raised while services are registered) are reported the same way. The loader checks
-`APP_URL`, named-database keys and storage, in that order; then the providers validate the databases. Only the first
-failure is reported.
+`APP_URL`, named-database keys, storage and email, in that order; then the providers validate the databases. Only the
+first failure is reported.
 
 | Situation | Message |
 | --- | --- |
@@ -116,6 +134,9 @@ failure is reported.
 | No service URL and no region | `STORAGE_S3_REGION is required when STORAGE_S3_SERVICE_URL is not set (AWS S3).` |
 | Non-boolean path-style flag | `STORAGE_S3_FORCE_PATH_STYLE must be 'true' or 'false'. Got '<x>'.` |
 | S3 selected without bucket, access key id or secret | `<KEY> is required for S3 storage.` (e.g. `STORAGE_S3_BUCKET is required for S3 storage.`) |
+| Partial SMTP configuration | `Set both SMTP_HOST and SMTP_FROM to send email, or leave every SMTP_* value empty.` |
+| Invalid sender | `SMTP_FROM must be an email address. Got '<x>'.` |
+| Invalid port | `SMTP_PORT must be a port number (1-65535). Got '<x>'.` |
 
 Configuration is only validated, never probed: an unreachable database or S3 endpoint is not a configuration error
 (a database failure crashes startup; a storage failure surfaces on the first upload - see
@@ -123,16 +144,22 @@ Configuration is only validated, never probed: an unreachable database or S3 end
 
 ## `.env.example`
 
-The tracked template lists the keys in three sections (Database, Application, File storage) with comments; the
+The tracked template lists the keys in four sections (Database, Application, File storage, Email) with comments; the
 rarely needed `EXTENSIONS_PATH` is left out (its default is right for checkouts and published apps):
 
-- Works as-is in Development (empty `DATABASE_CONNECTION_STRING` = SQLite, empty `STORAGE_S3_*` = local
-  `storage/media`), writing to `storage/` at the repository root.
-- Outside Development: PostgreSQL or an absolute SQLite path, and S3-compatible storage.
+- `DATABASE_CONNECTION_STRING` is empty and must be set (the comment gives the local server of
+  `docker/databases/postgres.yml`: `Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable`); empty `STORAGE_S3_*` = local `storage/media` at the repository root in
+  Development.
+- An example of an additional database (`DATABASES_REPORTS_*`, SQL Server).
+
+`.env.developer` (also tracked) is the same contract filled in for the local RustFS or Ceph S3 server and Mailpit of
+`docker/compose.dev.yml` - public development credentials only ([development → production-like S3 and
+email](../guides/development.md#production-like-s3-and-email)).
+- Outside Development: a PostgreSQL connection string and S3-compatible storage.
 - PostgreSQL example connection string ending in `GSS Encryption Mode=Disable` (avoids a Kerberos library probe in
   slim containers, see [logging](logging-and-error-handling.md#expected-startup-log-lines)).
 - S3 examples for Cloudflare R2 (`STORAGE_S3_REGION=auto`), AWS S3 (no service URL, real region) and the local S3
-  server from `docker/compose.dev.yml` (`http://localhost:8333`, `STORAGE_S3_FORCE_PATH_STYLE=true`).
+  server from `docker/s3/seaweedfs.yml` (`http://localhost:8333`, `STORAGE_S3_FORCE_PATH_STYLE=true`).
 
 ## ASP.NET Core variables
 
@@ -151,9 +178,9 @@ Read by the framework, not by `EnvConfigurationLoader`:
 | --- | --- | --- |
 | Development config | `.env` copied from `.env.example`, `src/DotNetForge.Web/Properties/launchSettings.json`, `src/DotNetForge.Web/appsettings.Development.json`; runtime data in `<contentRoot>/storage/` (git-ignored) | committed `.env` |
 | Production config | process environment variables set by the host or orchestrator ([environment variables](../guides/deployment.md#environment-variables)); the image contains no configuration | files inside the deployment directory |
-| Secrets | `DATABASE_CONNECTION_STRING` (database password), `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY`, extension secrets ([Extension settings](#extension-settings)) - in `.env` locally, in the host's secret store in production | documentation, `.env.example`, logs, manifests |
+| Secrets | `DATABASE_CONNECTION_STRING` (database password), `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY`, `SMTP_PASSWORD`, extension secrets ([Extension settings](#extension-settings)) - in `.env` locally, in the host's secret store in production | documentation, `.env.example`, logs, manifests |
 | Uploaded media | `STORAGE_*`: object storage or an absolute path on a volume ([media storage](media-storage.md#storage-architecture)) | the deployment directory |
-| Database | `DATABASE_*`: PostgreSQL or a SQLite file on a volume ([deployment → database](../guides/deployment.md#database)); also holds the ASP.NET Core Data Protection key ring (table `DataProtectionKeys`) | the deployment directory |
+| Database | `DATABASE_*`: PostgreSQL ([deployment → database](../guides/deployment.md#database)); also holds the ASP.NET Core Data Protection key ring (table `DataProtectionKeys`) | the deployment directory |
 
 ## Other configuration sources
 
@@ -164,29 +191,25 @@ Read by the framework, not by `EnvConfigurationLoader`:
 | `src/DotNetForge.Web/Properties/launchSettings.json` | profiles `http` (`http://localhost:5000`) and `https` (`https://localhost:5001;http://localhost:5000`), `ASPNETCORE_ENVIRONMENT=Development` |
 | `.vscode/launch.json` | F5 profile with `ASPNETCORE_ENVIRONMENT=Development`, `ASPNETCORE_URLS=http://localhost:5000` |
 | `docker/Dockerfile` | `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=8080` ([Docker](../guides/deployment.md#docker)) |
-| `docker/compose.dev.yml` | development-only PostgreSQL 17 (port 5432) and SeaweedFS S3 (port 8333, bucket `dotnetforge`) to run against |
+| `docker/compose.dev.yml` | development-only PostgreSQL 17, RustFS S3 and Mailpit for `.env.developer`; one file per service in `docker/databases/`, `docker/s3/`, `docker/mail/` ([development](../guides/development.md#docker-services-for-development)) |
 | `UserSecretsId` `dotnetforge-cms` in the csproj | present but unused - secrets belong in `.env` or the environment |
-| `Setting` rows | runtime key/value settings edited on the [Settings screen](../pages/settings.md); no code reads them yet |
+| `Setting` rows | runtime key/value settings edited on the [Settings screen](../pages/settings.md); the `users.*` keys are the Advanced User Settings, read by `UserAccountSettingsService` and edited on [Advanced Settings](../pages/advanced-settings.md); no code reads the others |
 | Extension manifest `settings` | `ExtensionContext` (code and views) and `ViewData["Settings"]` in every extension view ([extensions](extensions.md#manifest)); read-only, no screen edits them |
 
 ## Design-time configuration
 
-The `dotnet ef` factories in `src/DotNetForge.Data/DesignTimeDbContextFactory.cs` do **not** read `.env` or detect
-the provider; the `--context` option picks it (MongoDB has no migrations):
+The `dotnet ef` factory in `src/DotNetForge.Data/DesignTimeDbContextFactory.cs` does **not** read `.env`:
 
 | Factory | Context | Connection string |
 | --- | --- | --- |
-| `DesignTimeDbContextFactory` | `DotNetForgeDbContext` (SQLite migrations) | `DATABASE_CONNECTION_STRING` from the process environment, else `Data Source=:memory:` (generating migrations never opens it) |
-| `PostgreSqlDesignTimeDbContextFactory` | `PostgreSqlDbContext` (`Database/Providers/PostgreSql/Migrations/`) | `DATABASE_CONNECTION_STRING`, else the placeholder `Host=localhost;Database=dotnetforge_design` (never opened while generating migrations) |
-| `SqlServerDesignTimeDbContextFactory` | `SqlServerDbContext` (`Database/Providers/SqlServer/Migrations/`) | `DATABASE_CONNECTION_STRING`, else a `localhost` placeholder |
-| `MySqlDesignTimeDbContextFactory` | `MySqlDbContext` (`Database/Providers/MySql/Migrations/`) | `DATABASE_CONNECTION_STRING`, else a `localhost` placeholder |
+| `PostgreSqlDesignTimeDbContextFactory` | `PostgreSqlDbContext` (`Database/Providers/PostgreSql/Migrations/`) | `DATABASE_CONNECTION_STRING` from the process environment, else the placeholder `Host=localhost;Database=dotnetforge_design` (never opened while generating migrations) |
 
 Migration commands: [database](../architecture/database.md).
 
 ## Secrets
 
-`.env` and `.env.*` are git-ignored (only `.env.example` is tracked), excluded from the build and from the Docker
-build context (`docker/Dockerfile.dockerignore`). `StorageSettings.S3SecretAccessKey` is never logged or rendered. Never put real
+`.env` and `.env.*` are git-ignored (only `.env.example` and `.env.developer` - development credentials for the local containers - are tracked), excluded from the build and from the Docker
+build context (`docker/Dockerfile.dockerignore`). `StorageSettings.S3SecretAccessKey` and `EmailSettings.Password` are never logged or rendered. Never put real
 connection strings or keys in documentation or `.env.example`.
 
 ## Planned (not implemented)
@@ -198,36 +221,33 @@ The setup-wizard part of the same specification is in [installation → Planned]
 
 | Key | Target use | Today |
 | --- | --- | --- |
-| `APP_URL` | public base URL for absolute links and redirects (and, per the developer guide, the URL the app is reached at) | validated only; Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS` |
-| `APP_NAME` | display name in the admin UI **and in emails** | ✔ admin UI; no email sending exists ([email](email.md)) |
+| `APP_URL` | public base URL for absolute links and redirects (and, per the developer guide, the URL the app is reached at) | ✔ links in emails; Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS` |
+| `APP_NAME` | display name in the admin UI **and in emails** | ✔ admin UI and emails (subject, body, default sender name) |
 
-- Moving data between databases (e.g. SQLite → PostgreSQL) belongs to
-  [transfer and updates](transfer-and-updates.md).
+- Moving data between sites belongs to [transfer and updates](transfer-and-updates.md).
 
 ### Rules and validation
 
 | Rule (spec) | Today |
 | --- | --- |
-| `.env` must exist and be parseable, otherwise startup aborts | `.env` is optional: Development falls back to SQLite and local storage; outside Development a missing connection string aborts startup. The process environment alone can configure the app (containers). `DotEnvParser` silently ignores malformed lines instead of failing. |
-| `DATABASE_PROVIDER` selects `sqlite` or `postgresql` | ✔ and more: any registered provider (`sqlite`, `postgresql`, `sqlserver`, `mysql`, `mongodb`); when empty it is detected from `DATABASE_CONNECTION_STRING` ([database configuration](../database/configuration.md)) |
+| `.env` must exist and be parseable, otherwise startup aborts | `.env` is optional: Development falls back to the local PostgreSQL and local storage; outside Development a missing connection string aborts startup. The process environment alone can configure the app (containers). `DotEnvParser` silently ignores malformed lines instead of failing. |
+| `DATABASE_PROVIDER` selects `sqlite` or `postgresql` | deliberately not: the CMS database is PostgreSQL only (empty = `postgresql`); SQLite, SQL Server, MySQL and MongoDB are additional databases (`DATABASES_<NAME>_PROVIDER`) ([database configuration](../database/configuration.md)) |
 | A malformed file aborts with a descriptive error naming the offending key | ✔ for every validated key (see [Failure behaviour](#failure-behaviour)); no error for unparseable lines |
 
 ### Acceptance criteria
 
-- [x] `.env.example` contains `DATABASE_PROVIDER`, `DATABASE_CONNECTION_STRING`, `APP_NAME` and `APP_URL` (plus
-  the `STORAGE_S3_*` keys and an example for each database).
-- [x] Copying `.env.example` to `.env` with default values starts the app on SQLite in Development
-  (`SqliteDatabaseProvider.Normalize`; outside Development an absolute path is required by design).
-- [x] `DATABASE_PROVIDER=postgresql` with a valid `DATABASE_CONNECTION_STRING` starts against PostgreSQL
-  (`PostgreSqlDatabaseProvider` → `PostgreSqlDbContext`, `DatabaseInitializer.InitializeAsync` → `MigrateAsync`); the
-  same holds for SQL Server, MySQL and MongoDB.
-- [x] An unknown `DATABASE_PROVIDER` aborts startup with a descriptive error listing the registered providers
-  (`DatabaseProviderRegistry.Resolve`).
-- [x] Outside Development an empty `DATABASE_CONNECTION_STRING` aborts startup with a descriptive error.
+- [x] `.env.example` contains `DATABASE_CONNECTION_STRING`, `APP_NAME` and `APP_URL` (plus
+  the `STORAGE_S3_*` and `SMTP_*` keys and an additional-database example).
+- [ ] Copying `.env.example` to `.env` with default values starts the app on SQLite in Development - changed: the CMS
+  runs on PostgreSQL and `DATABASE_CONNECTION_STRING` must be set (`.env.developer` has it filled in).
+- [x] A valid `DATABASE_CONNECTION_STRING` starts against PostgreSQL
+  (`PostgreSqlDatabaseProvider` → `PostgreSqlDbContext`, `DatabaseInitializer.InitializeAsync` → `MigrateAsync`).
+- [x] A `DATABASE_PROVIDER` value aborts startup ("no longer used", `EnvConfigurationLoader`); the CMS database is always PostgreSQL.
+- [x] An empty `DATABASE_CONNECTION_STRING` aborts startup with a descriptive error - in every environment.
 - [ ] A missing `.env` aborts startup with guidance to copy `.env.example` - deliberately not: without `.env`,
-  Development runs on the SQLite defaults; outside Development the missing connection string aborts startup.
+  Development runs on the local PostgreSQL default; outside Development the missing connection string aborts startup.
 - [x] `.env` is excluded from Git via `.gitignore` and secrets are never committed (`.gitignore`: `.env`, `.env.*`,
-  `!.env.example`).
+  `!.env.example`, `!.env.developer`).
 
 ## Where to change things
 

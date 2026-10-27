@@ -36,9 +36,8 @@ whether to update and what changes for them.
    text), routes, `.env` keys and defaults, permission keys, API endpoints, migration names. Use `.docs/` as the map
    (it is verified against the code) but re-check anything you quote. Drop what you can't confirm.
 4. **Find upgrade impact** - these need an *Upgrading* bullet:
-   - new migrations in `src/DotNetForge.Data/Database/Providers/{Sqlite,PostgreSql,SqlServer,MySql}/Migrations/` (each
-     provider applies its set on start; mention long-running or data-changing migrations and back-up advice) and
-     index changes for MongoDB (`EnsureCreated` never changes existing indexes);
+   - new migrations in `src/DotNetForge.Data/Database/Providers/PostgreSql/Migrations/` (applied on start; mention
+     long-running or data-changing migrations and back-up advice);
    - new runtime requirements (environment variables, writable volumes, object storage) - the deployment directory is
      read-only ([deployment](../../../.docs/guides/deployment.md));
    - new/changed `.env` keys (`EnvConfigurationLoader`, `.env.example`);
@@ -71,7 +70,7 @@ whether to update and what changes for them.
 - Fixed: a bug, described by what the user saw.
 
 ## Upgrading
-Stop the site, update the files, keep your `.env`, start it again - SQLite databases are migrated on start.
+Stop the site, update the files, keep your `.env`, start it again - the PostgreSQL database is migrated on start.
 - Anything the operator must do once, or that now works differently.
 
 ## Tested

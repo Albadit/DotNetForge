@@ -15,7 +15,7 @@ filters, sorting, the theme switch and multi-select bulk actions need them (each
 | Icons | `wwwroot/img/icons.svg` (sprite) + `<icon>` tag helper |
 | Tag helpers | `src/DotNetForge.Web/Ui/UiTagHelpers.cs` (`<icon>`, `<badge>`, `<alert>`, `<empty-state>`, `<stat-card>`, `<timestamp>`, `<form-errors>`) |
 | Presentation helpers | `Ui/AuditPresentation.cs` (audit action labels/icons), `Ui/MediaPresentation.cs` (file kind, size) |
-| Behaviours | `wwwroot/js/forge/theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types builder) |
+| Behaviours | `wwwroot/js/forge/theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `nav-state.js` (admin layout, synchronously after the sidebar: open groups and scroll before the first paint), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types builder) |
 | Shared partials | `Views/Shared/_Feedback.cshtml` (toasts + confirm dialog) and `_ThemeMenu.cshtml` - admin and auth layouts |
 | Navigation | `Areas/Admin/Navigation/AdminNavigation.cs` (tree + `AdminNavigationService`) |
 
@@ -94,7 +94,11 @@ column below 56rem. Never affected by public themes.
 ### Public fallback
 
 `Views/Shared/_Layout.cshtml` + `public.css`: the site root, content pages and the error page while no theme
-extension is enabled ([themes](../features/themes.md)). It hosts page modules like a theme does.
+extension is enabled ([themes](../features/themes.md)). It hosts page modules like a theme does. The header
+(`.site-header`) holds the brand, a page menu `nav.site-nav` (`aria-label="Site"`; the top-level live pages marked
+"display in menu" from `ViewData["Menu"]`, the current one `aria-current="page"` and bold) and **Admin →**, rendered
+only for signed-in users who may enter the admin (`Roles.CanEnterAdmin`). The error page gets no `Menu`, so it shows
+no menu.
 
 ## Components
 
@@ -119,7 +123,7 @@ Class names are the API. Combine them; don't restyle them per screen.
 | Toolbar | `.toolbar` (`.toolbar-search`, `.toolbar-spacer`), `.collection-bar` + `.bulk-bar`, `.pagination` |
 | Navigation | `.breadcrumbs`, `.tabs` > `.tab[aria-current]`, `.segmented` (filter buttons with `aria-pressed`) |
 | Menu | one component for every menu - [menus](#menus): `<action-menu>` for "⋯" row/card actions; the account and theme menus use the same markup with their own button |
-| Dialog | the shared confirm dialog (below); `dialog.dialog` with `.dialog-body/-icon/-title/-text/-footer` for others |
+| Dialog | the shared confirm dialog (below); `dialog.dialog` with `.dialog-body/-icon/-title/-text/-footer` for others. Fades (and its backdrop) in on `showModal()` and out on `close()` - CSS transitions with `@starting-style` and `overlay`/`display` `allow-discrete`; browsers without that close at once, `prefers-reduced-motion` turns it off |
 | Other | `.avatar`, `.dl` (description list), `.code-block` (+ copy button), `.list`, `.skeleton` (`-line`, `-title`), `[data-tooltip]`, `.sr-only`, `.text-muted/-subtle/-sm/-xs/-mono` |
 
 ### Icons
@@ -174,6 +178,9 @@ Write row and card menus with the tag helpers (`src/DotNetForge.Web/Ui/MenuTagHe
   optional `data-confirm-title`, `data-confirm-action` (button text) and `data-confirm-tone="accent"` (non-destructive).
   Without the dialog API it falls back to `window.confirm`; without JS the form submits directly. Scripts call
   `window.Forge.confirm({ title, text, action, tone })` (a promise).
+- **Scroll after a POST** - a `method="post"` form that redirects back to the same URL (within 30 s) brings the
+  screen back at the scroll position it was submitted from (`ui.js`, `sessionStorage` `dnf-scroll`, restored after
+  the screen's own deferred scripts); links, reloads and Back are left to the browser.
 - **Validation** - `<form-errors />` at the top of the form; the screen re-renders with the posted values.
 
 ## Behaviours
@@ -182,7 +189,7 @@ Write row and card menus with the tag helpers (`src/DotNetForge.Web/Ui/MenuTagHe
 
 | Attribute | Behaviour |
 | --- | --- |
-| `data-js-only` (+ `hidden`) | revealed only when scripts run (search boxes, view switches, copy buttons) |
+| `data-js-only` (+ `hidden`) | revealed only when scripts run (search boxes, view switches, copy buttons) - by the deferred `ui.js`, so after the first paint. Controls that must not appear late (the theme menu) use `html:not(.js) … { display: none }` instead: `theme.js` sets `<html class="js">` in `<head>` |
 | `data-collection` on a container, `data-item` on rows/cards | client-side search (`data-collection-search`), filters (`select[data-collection-filter="key"]` or `button[data-collection-filter][data-value][aria-pressed]`, matching a token of the item's `data-<key>` attribute, e.g. `data-collection-filter="status"` ↔ `data-status="enabled"`), sort (`th[data-sort="text|number|date"]`, cell `data-sort-value`), pagination (`data-page-size`, `[data-collection-pagination]`), count (`[data-collection-count]`), no-match state (`[data-collection-empty]`) |
 | `data-select-all`, `data-select-item`, `data-bulk-bar`, `data-bulk-count`, `data-bulk-clear` | selection with a bulk bar that overlays the toolbar (no layout shift); item checkboxes post with `form="…"` |
 | `data-view-switch` + `data-view-target` + `data-view-button` | grid/list switch, remembered per screen (`data-view-mode` on the target) |
@@ -191,7 +198,7 @@ Write row and card menus with the tag helpers (`src/DotNetForge.Web/Ui/MenuTagHe
 | `data-reveal="#password"` | show/hide password |
 | `data-tooltip="…"` (+ the same text in `aria-label`) | tooltip on hover and keyboard focus: one shared `.tooltip` in the top layer (`popover="manual"`), so a scrolling or `overflow: hidden` parent never clips it; above the element, below when there is no room, kept inside the window; `--color-tooltip-*` tokens (dark bubble in light theme, light bubble in dark); hidden on scroll, pointer down and Esc |
 | `data-fill="#form"` + `data-fill-<field>` | fill a form from a row (Settings → Edit) |
-| `details[data-nav-group]` | sidebar sub-group open state remembered across screens (the active group opens and stays open after leaving it) |
+| `details[data-nav-group]` | sidebar sub-group open state remembered across screens (the active group opens and stays open after leaving it); applied by `nav-state.js`, not `ui.js`, so it is in place before the first paint |
 | `iframe[data-frame]` | hides the skeleton once an admin extension has loaded |
 
 ## Accessibility (WCAG 2.2 AA)

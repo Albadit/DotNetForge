@@ -157,11 +157,10 @@ Not applicable - the screen has no form. Requests sent from Scalar are validated
 
 | Failure | Detection | User sees | Recovery |
 | --- | --- | --- | --- |
-| Not signed in | `ApiDocs` policy | redirect to `/account/login` (also when the frame or the JSON is opened directly) | sign in |
+| Not signed in | `ApiDocs` policy | redirect to `/login` (also when the frame or the JSON is opened directly) | sign in |
 | Wrong role | `ApiDocs` policy | [Access denied](access-denied.md) | ask a Super Admin for the `Developer` role |
 | Endpoint token unreadable (Data Protection key gone) | `TokenOf` returns null | the endpoint is listed with its scheme but no token filled in | **Generate token** on [API Endpoints](api-endpoints.md) |
 | API request refused | the API | Scalar shows the response: 401 (no or wrong token), 403 (token lacks the key), 429 (rate limit) | paste a token with the right key |
-| Custom endpoints on MongoDB | `CustomEndpointsApiController` | the endpoints are listed; calls answer 501 | - |
 | Frame fails to load | none | the skeleton stays | **Open full screen** or reload |
 
 ## Loading behaviour
@@ -198,7 +197,7 @@ View → ui.js (iframe[data-frame]), admin.css (.ext-frame-*), <icon>
 ```mermaid
 flowchart TD
     N["Sidebar: Settings › Global Settings › API Docs"] --> A{"ApiDocs policy?"}
-    A -- "anonymous" --> L["/account/login"]
+    A -- "anonymous" --> L["/login"]
     A -- "other role" --> X["/account/denied"]
     A -- "Super Admin / Developer" --> P["GET /admin/api-docs"]
     P --> F["iframe → GET /admin/api-docs/reference/ (Scalar)"]

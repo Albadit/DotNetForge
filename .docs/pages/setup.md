@@ -176,7 +176,7 @@ flowchart TD
 
 - Installation is audited as `cms.installed` (shown on [Audit Logs](audit-logs.md)).
 - `.env` is not edited here; configuration must already be valid for the process to start. Outside Development
-  that means an explicit `DATABASE_CONNECTION_STRING` (SQLite: absolute `Data Source`) and S3 storage
+  that means an explicit `DATABASE_CONNECTION_STRING` (PostgreSQL) and S3 storage
   (`STORAGE_S3_*`) - nothing may default to a path inside the read-only deployment directory, otherwise the process
   exits with a `ConfigurationException` before this screen is reachable. See
   [deployment → read-only deployment requirements](../guides/deployment.md#read-only-deployment-requirements) and
@@ -189,7 +189,7 @@ flowchart TD
   later sign in with the same casing.
 - The screen title is "Setup" (`<title>`), but the visible `<h1>` reads "Welcome to DotNetForge" - it is fixed text,
   not `APP_NAME`.
-- No inline script or style (CSP). Unlike `/account/login`, `/setup` is not among the screens
+- No inline script or style (CSP). Unlike `/login`, `/setup` is not among the screens
   `AdminUiTests.Every_screen_renders_without_inline_script_or_style` checks (the test installs first, after which
   `/setup` redirects).
 

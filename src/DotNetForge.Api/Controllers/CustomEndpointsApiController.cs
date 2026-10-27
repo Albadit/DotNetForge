@@ -45,11 +45,6 @@ public sealed partial class CustomEndpointsApiController : ControllerBase
     public async Task<IActionResult> Call(string? path)
     {
         var ct = HttpContext.RequestAborted;
-        if (!_runner.Supported)
-        {
-            return StatusCode(StatusCodes.Status501NotImplemented, new { error = "Custom endpoints need a SQL database." });
-        }
-
         var match = await _endpoints.MatchAsync(Request.Method, path ?? string.Empty, ct);
         if (match is not { } found)
         {
@@ -88,7 +83,7 @@ public sealed partial class CustomEndpointsApiController : ControllerBase
         var writes = !HttpMethods.IsGet(Request.Method);
         try
         {
-            var result = await _runner.RunAsync(operation, values, rollback: false, ct);
+            var result = await _runner.RunAsync(operation, endpoint.Database, values, rollback: false, ct);
             if (writes)
             {
                 await _audit.LogAsync(AuditActions.EndpointExecuted, CustomEndpointService.AuditEntity, endpoint.Id.ToString(),

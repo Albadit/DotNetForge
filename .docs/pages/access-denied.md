@@ -48,7 +48,7 @@ Layout mechanics: [design system → auth layout](../architecture/design-system.
 | Element | Behaviour |
 | --- | --- |
 | **Back to the dashboard** | link to `/admin` (Dashboard). For a user without an admin-capable role (e.g. `Authenticated`) this leads straight back here. |
-| **Sign in as someone else** | a real submit button in a POST form to `/account/logout` with an antiforgery token (audit `user.logout`, then `302 /account/login`). Works without JavaScript; no inline handler (CSP `script-src 'self'`). |
+| **Sign in as someone else** | a real submit button in a POST form to `/account/logout` with an antiforgery token (audit `user.logout`, then `302 /login`). Works without JavaScript; no inline handler (CSP `script-src 'self'`). |
 | Theme menu | Light / Dark / System ([themes](../architecture/design-system.md#themes)); JS only. |
 
 ## Data, state, validation, loading, empty states
@@ -79,7 +79,7 @@ flowchart LR
     A["Signed-in user opens restricted screen"] --> B["302 /account/denied?ReturnUrl=..."]
     B --> C[Denied page 403]
     C -- "Back to the dashboard" --> D["/admin"]
-    C -- "Sign in as someone else" --> E["POST /account/logout → /account/login"]
+    C -- "Sign in as someone else" --> E["POST /account/logout → /login"]
 ```
 
 ## Related pages
@@ -98,7 +98,7 @@ flowchart LR
   page; `pages.js` then shows the toast "Could not save the new order." and reloads.
 - The page carries no inline script or style (CSP, see [security](../features/security.md)). It is not among the
   pages `AdminUiTests.Every_screen_renders_without_inline_script_or_style` checks (that test covers
-  `/account/login`, `/` and `/about` outside the admin).
+  `/login`, `/` and `/about` outside the admin).
 
 ## Extension points
 

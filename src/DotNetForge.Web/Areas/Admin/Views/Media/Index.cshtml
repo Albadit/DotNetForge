@@ -6,49 +6,52 @@
     var accept = string.Join(",", MediaService.AllowedTypes.Keys);
     var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
     var anyDeletable = Model.Files.Any(f => f.CanDelete);
+    var anySelectable = Model.Files.Any(f => f.CanDelete || f.CanChangeVisibility);
+    var anyMovable = Model.Files.Any(f => f.CanChangeVisibility);
+    var here = Model.Current?.Id;
+    var empty = Model.Files.Count == 0 && Model.Folders.Count == 0;
+    static string Count(int n, string noun) => n == 1 ? $"1 {noun}" : $"{n} {noun}s";
+}
+
+@section Actions {
+    @if (Model.CanUpload)
+    {
+        <button type="button" class="btn btn-secondary" data-folder-new aria-controls="new-folder-dialog"><icon name="folder" /> New folder</button>
+        <button type="button" class="btn btn-primary" data-upload-toggle aria-controls="upload"><icon name="upload" /> Upload</button>
+    }
 }
 
 <div class="stack-lg">
-    @if (Model.CanUpload)
-    {
-        <section class="card" id="upload" aria-labelledby="upload-title">
-            <div class="card-header">
-                <div>
-                    <h2 class="card-title" id="upload-title">Upload</h2>
-                    <p class="card-description">
-                        Up to @MediaService.MaxFilesPerUpload files, @(MediaService.MaxUploadBytes / (1024 * 1024)) MB each.
-                    </p>
-                </div>
-            </div>
-            <form method="post" asp-area="Admin" asp-controller="Media" asp-action="Upload" enctype="multipart/form-data" class="card-body stack">
-                @Html.AntiForgeryToken()
-                <form-errors />
-                <div class="dropzone">
-                    <icon name="upload" size="xl" />
-                    <span class="dropzone-title">Drop files here or click to choose</span>
-                    <span class="text-sm">@string.Join(" · ", MediaService.AllowedTypes.Keys)</span>
-                    <label class="sr-only" for="files">Files to upload</label>
-                    <input id="files" name="files" type="file" multiple required accept="@accept" />
-                    <span class="dropzone-files" data-dropzone-files></span>
-                </div>
-                <div class="spread">
-                    <label class="check">
-                        <input type="checkbox" name="isPublic" value="true" checked />
-                        <span class="check-text"><span>Public</span><span class="check-hint">Anyone with the link can open it. Private files need an admin sign-in.</span></span>
-                    </label>
-                    <button type="submit" class="btn btn-primary"><icon name="upload" /> Upload</button>
-                </div>
-            </form>
-        </section>
-    }
-
     <section class="card" aria-labelledby="library-title" data-collection data-page-size="48">
         <div class="card-header">
             <div>
-                <h2 class="card-title" id="library-title">Library</h2>
-                <p class="card-description" data-collection-count>@Model.Files.Count total</p>
+                <h2 class="card-title" id="library-title">
+                    <nav class="folder-crumbs" aria-label="Folder">
+                        @if (Model.Current is null)
+                        {
+                            <span aria-current="page">Library</span>
+                        }
+                        else
+                        {
+                            <a href="/admin/media" data-drop-folder="">Library</a>
+                            @foreach (var crumb in Model.Breadcrumbs)
+                            {
+                                <span class="folder-crumbs-sep" aria-hidden="true">/</span>
+                                @if (crumb.Id == here)
+                                {
+                                    <span aria-current="page">@crumb.Name</span>
+                                }
+                                else
+                                {
+                                    <a href="/admin/media?folder=@crumb.Id" data-drop-folder="@crumb.Id">@crumb.Name</a>
+                                }
+                            }
+                        }
+                    </nav>
+                </h2>
+                <p class="card-description" data-collection-count>@Count(Model.Folders.Count, "folder") · @Count(Model.Files.Count, "file")</p>
             </div>
-            @if (Model.Files.Count > 0)
+            @if (!empty)
             {
                 <div class="segmented" role="group" aria-label="Layout" data-view-switch="media" data-view-target="#media-items" data-default="grid" data-js-only hidden>
                     <button type="button" data-view-button="grid" aria-pressed="true" aria-label="Grid view"><icon name="grid" size="sm" /></button>
@@ -57,15 +60,22 @@
             }
         </div>
 
-        @if (Model.Files.Count == 0)
+        @if (empty)
         {
-            <empty-state icon="image" title="No media yet" text="Uploaded files appear here, ready to use on your pages." />
+            @if (Model.Current is null)
+            {
+                <empty-state icon="image" title="No media yet" text="Uploaded files appear here, ready to use on your pages." />
+            }
+            else
+            {
+                <empty-state icon="folder" title="This folder is empty" text="Upload files into it, move files here, or create a folder inside it." />
+            }
         }
         else
         {
             <div class="collection-bar">
             <div class="toolbar" data-js-only hidden>
-                @if (anyDeletable)
+                @if (anySelectable)
                 {
                     <label class="check" aria-label="Select all files"><input type="checkbox" data-select-all /></label>
                 }
@@ -91,36 +101,86 @@
                 </select>
             </div>
 
-            @if (anyDeletable)
+            @if (anySelectable)
             {
-                <form method="post" asp-area="Admin" asp-controller="Media" asp-action="DeleteSelected" id="bulkDelete" class="bulk-bar" data-bulk-bar hidden
-                      data-confirm="Delete the selected files? Links to them stop working." data-confirm-title="Delete files" data-confirm-action="Delete files">
+                <form method="post" action="/admin/media/delete-selected" id="bulkForm" class="bulk-bar" data-bulk-bar hidden>
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnFolder" value="@here" />
                     <label class="check" aria-label="Select all files"><input type="checkbox" data-select-all /></label>
                     <span data-bulk-count>0 selected</span>
                     <span class="toolbar-spacer"></span>
                     <button type="button" class="btn btn-ghost btn-sm" data-bulk-clear>Clear</button>
-                    <button type="submit" class="btn btn-danger btn-sm"><icon name="trash" size="sm" /> Delete selected</button>
+                    @if (anyMovable)
+                    {
+                        <label class="sr-only" for="move-target">Move to</label>
+                        <select id="move-target" name="folderId" class="input-sm bulk-select">
+                            <option value="">Top level</option>
+                            @foreach (var target in Model.AllFolders)
+                            {
+                                <option value="@target.Id" selected="@(target.Id == here ? "selected" : null)">@(new string(' ', target.Depth * 3))@target.Path</option>
+                            }
+                        </select>
+                        <button type="submit" formaction="/admin/media/move-selected" class="btn btn-secondary btn-sm"><icon name="folder" size="sm" /> Move</button>
+                    }
+                    @if (anyDeletable)
+                    {
+                        <button type="submit" class="btn btn-danger btn-sm"
+                                data-confirm="Delete the selected files? Links to them stop working." data-confirm-title="Delete files" data-confirm-action="Delete files">
+                            <icon name="trash" size="sm" /> Delete selected
+                        </button>
+                    }
                 </form>
             }
             </div>
 
             <div class="media-items" id="media-items" data-view-mode="grid">
+                @foreach (var folder in Model.Folders)
+                {
+                    var inside = string.Join(" · ", new[] { folder.Folders > 0 ? Count(folder.Folders, "folder") : null, Count(folder.Files, "file") }.OfType<string>());
+                    <article class="media-card media-folder" data-item data-kind="folder" data-access="" data-search="@folder.Name"
+                             data-drop-folder="@folder.Id" draggable="@(Model.CanEditFolders ? "true" : null)" data-drag-folder="@(Model.CanEditFolders ? (Guid?)folder.Id : null)">
+                        <a class="media-thumb" href="/admin/media?folder=@folder.Id" tabindex="-1" aria-hidden="true" draggable="false">
+                            <icon name="folder" size="xl" />
+                        </a>
+                        <div class="media-meta">
+                            <a class="media-name" href="/admin/media?folder=@folder.Id" title="@folder.Name" draggable="false">@folder.Name</a>
+                            <span class="text-xs text-muted">@inside</span>
+                        </div>
+                        @if (Model.CanEditFolders || Model.CanDeleteFolders)
+                        {
+                            <action-menu class="media-actions" variant="secondary" label="Actions for the folder @folder.Name">
+                                <menu-link href="/admin/media?folder=@folder.Id" icon="folder">Open</menu-link>
+                                @if (Model.CanEditFolders)
+                                {
+                                    <menu-button icon="pencil" data-folder-edit="@folder.Id" data-folder-name="@folder.Name" data-folder-path="@folder.Path"
+                                                 data-folder-parent="@here" data-js-only hidden>Edit…</menu-button>
+                                }
+                                @if (Model.CanDeleteFolders)
+                                {
+                                    <menu-separator />
+                                    <menu-post action="/admin/media/folders/@folder.Id/delete" icon="trash" danger="true"
+                                               confirm="Delete the folder '@folder.Name'? Only an empty folder can be deleted." confirm-title="Delete folder" confirm-action="Delete folder">Delete</menu-post>
+                                }
+                            </action-menu>
+                        }
+                    </article>
+                }
                 @foreach (var file in Model.Files)
                 {
                     var (kind, icon) = MediaPresentation.Classify(file.ContentType);
                     <article class="media-card" data-item data-kind="@kind" data-access="@(file.IsPublic ? "public" : "private")"
-                             data-search="@file.FileName @file.ContentType">
-                        @if (file.CanDelete)
+                             data-search="@file.FileName @file.ContentType"
+                             draggable="@(file.CanChangeVisibility ? "true" : null)" data-drag-file="@(file.CanChangeVisibility ? (Guid?)file.Id : null)">
+                        @if (file.CanDelete || file.CanChangeVisibility)
                         {
                             <label class="media-select" aria-label="Select @file.FileName">
-                                <input type="checkbox" name="ids" value="@file.Id" form="bulkDelete" data-select-item />
+                                <input type="checkbox" name="ids" value="@file.Id" form="bulkForm" data-select-item />
                             </label>
                         }
-                        <a class="media-thumb" href="@file.Url" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">
+                        <a class="media-thumb" href="@file.Url" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true" draggable="false">
                             @if (kind == "image")
                             {
-                                <img src="@file.Url" alt="" loading="lazy" decoding="async" />
+                                <img src="@file.Url" alt="" loading="lazy" decoding="async" draggable="false" />
                             }
                             else
                             {
@@ -128,7 +188,7 @@
                             }
                         </a>
                         <div class="media-meta">
-                            <a class="media-name" href="@file.Url" target="_blank" rel="noopener" title="@file.FileName">@file.FileName</a>
+                            <a class="media-name" href="@file.Url" target="_blank" rel="noopener" title="@file.FileName" draggable="false">@file.FileName</a>
                             <span class="text-xs text-muted">@MediaPresentation.Size(file.SizeBytes) · <timestamp value="@file.UploadedDate" /></span>
                             <span class="media-badges">
                                 @if (file.IsPublic)
@@ -175,3 +235,113 @@
         }
     </section>
 </div>
+
+@if (Model.CanUpload)
+{
+    @* Upload (header), a file drag onto the page or #upload opens this; media.js shows it again after a failed upload. *@
+    <dialog class="dialog upload-dialog" aria-labelledby="upload-title">
+        <section class="card upload-panel" id="upload" aria-labelledby="upload-title" data-upload-panel
+                 data-upload-open="@(ViewData.ModelState.IsValid ? null : "true")" data-max-bytes="@MediaService.MaxUploadBytes">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="upload-title">Upload</h2>
+                    <p class="card-description">
+                        Up to @MediaService.MaxFilesPerUpload files, @(MediaService.MaxUploadBytes / (1024 * 1024)) MB each, into
+                        <strong>@(Model.Current?.Path ?? "the top level")</strong>.
+                    </p>
+                </div>
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-upload-close aria-label="Close upload" data-tooltip="Close">
+                    <icon name="x" />
+                </button>
+            </div>
+            <form method="post" asp-area="Admin" asp-controller="Media" asp-action="Upload" enctype="multipart/form-data" class="card-body stack">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="folderId" value="@here" />
+                <form-errors />
+                <div class="dropzone">
+                    <icon name="upload" size="xl" />
+                    <span class="dropzone-title">Drop files here or click to choose</span>
+                    <span class="text-sm">@string.Join(" · ", MediaService.AllowedTypes.Keys)</span>
+                    <label class="sr-only" for="files">Files to upload</label>
+                    <input id="files" name="files" type="file" multiple required accept="@accept" />
+                </div>
+                <ul class="upload-preview" data-upload-preview aria-label="Files to upload" hidden></ul>
+                <template id="upload-icons">
+                    <icon name="file" size="xl" data-icon="file" />
+                    <icon name="x" size="sm" data-icon="remove" />
+                </template>
+                <div class="spread">
+                    <label class="check">
+                        <input type="checkbox" name="isPublic" value="true" checked />
+                        <span class="check-text"><span>Public</span><span class="check-hint">Anyone with the link can open it. Private files need an admin sign-in.</span></span>
+                    </label>
+                    <button type="submit" class="btn btn-primary"><icon name="upload" /> Upload</button>
+                </div>
+            </form>
+        </section>
+    </dialog>
+
+    @* New folder (header) opens this. *@
+    <dialog class="dialog folder-dialog" id="new-folder-dialog" aria-labelledby="new-folder-title">
+        <div class="dialog-body stack">
+            <div>
+                <h2 class="dialog-title" id="new-folder-title">New folder</h2>
+                <p class="dialog-text">In Library@(Model.Current?.Path)</p>
+            </div>
+            <form method="post" action="/admin/media/folders" id="folder-create" class="field">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="parentId" value="@here" />
+                <label class="field-label" for="new-folder">Name</label>
+                <input id="new-folder" name="name" required maxlength="@MediaFolderService.MaxNameLength" placeholder="New folder" autofocus />
+            </form>
+        </div>
+        <form method="dialog" class="dialog-footer">
+            <button type="submit" class="btn">Cancel</button>
+            <button type="submit" class="btn btn-primary" form="folder-create"><icon name="folder" /> Create folder</button>
+        </form>
+    </dialog>
+}
+
+@if (Model.CanEditFolders)
+{
+    @* Edit… in a folder's menu opens this (media.js fills in the folder); without JavaScript the folder's own page has the same forms. *@
+    <dialog class="dialog folder-dialog" id="folder-dialog" aria-labelledby="folder-dialog-title">
+        <div class="dialog-body stack">
+            <h2 class="dialog-title" id="folder-dialog-title">Edit folder</h2>
+            <form method="post" data-folder-rename class="field">
+                @Html.AntiForgeryToken()
+                <label class="field-label" for="folder-dialog-name">Name</label>
+                <div class="form-actions folder-dialog-row">
+                    <input id="folder-dialog-name" name="name" required maxlength="@MediaFolderService.MaxNameLength" class="grow" />
+                    <button type="submit" class="btn btn-primary">Rename</button>
+                </div>
+            </form>
+            <form method="post" data-folder-move class="field">
+                @Html.AntiForgeryToken()
+                <label class="field-label" for="folder-dialog-parent">Move into</label>
+                <div class="form-actions folder-dialog-row">
+                    <select id="folder-dialog-parent" name="parentId" class="grow">
+                        <option value="" data-path="">Top level</option>
+                        @foreach (var target in Model.AllFolders)
+                        {
+                            <option value="@target.Id" data-path="@target.Path">@(new string(' ', target.Depth * 3))@target.Path</option>
+                        }
+                    </select>
+                    <button type="submit" class="btn btn-secondary">Move</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="dialog-footer">
+            <button type="submit" class="btn">Close</button>
+        </form>
+    </dialog>
+}
+
+@* Drag and drop posts through this form (media.js); the Move controls work without it. *@
+<form method="post" id="dragMove" data-return-folder="@here" hidden>
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script src="~/js/forge/media.js" asp-append-version="true" defer></script>
+}

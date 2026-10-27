@@ -65,7 +65,7 @@ Form - "Create user" / "Edit user" (h1, the email as description)
 
 | Action | What happens |
 | --- | --- |
-| Create | `UserManagementService.CreateAsync`: validates, hashes the password (`IPasswordHasher`), creates the user **enabled** (the form has no status field), adds the role links → toast "Created … They can sign in now." and the edit form. |
+| Create | `UserManagementService.CreateAsync`: validates, hashes the password (`IPasswordHasher`), creates the user **enabled** (the form has no status field) and email-confirmed, adds the role links → toast "Created … They can sign in now." and the edit form. |
 | Save | `UpdateAsync`: details and role links (never the status - **Disable user** / **Enable user** change it); the password only when a new one is entered → toast "Saved. Role changes apply the next time the user signs in." |
 | Enable / Disable | `SetStatusAsync` → toast; a disabled user can't sign in and an open session ends within 30 seconds. |
 | Delete | `DeleteAsync` after a confirmation dialog: role links, then the user → list with a toast. Audit entries keep the user's name snapshot. |
@@ -74,7 +74,7 @@ Role changes reach a signed-in user at their next sign-in (roles are claims); [g
 
 ## Data used by the page
 
-Single-table queries combined in memory (every provider, including MongoDB): all `Users`, `UserRoles` of those
+Single-table queries combined in memory: all `Users`, `UserRoles` of those
 users, all `Roles`. Links to a role that no longer exists are dropped.
 
 ## State
@@ -165,7 +165,8 @@ flowchart LR
 
 ## Known limitations
 
-- No invitations or password-reset emails (`IEmailSender` has no implementation): share the initial password yourself.
+- No invitations: share the initial password yourself. Users created here are email-confirmed; with SMTP configured
+  they can reset a forgotten password themselves ([self-service accounts](account-self-service.md)).
 - No optimistic concurrency: two people saving the same user at once - the last save wins.
 - No server-side paging or search.
 
@@ -175,7 +176,8 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Requirements
 
-- Invite users by email instead of setting their password (needs `IEmailSender`, [email](../features/email.md)).
+- Invite users by email instead of setting their password (`IEmailSender` ✔ exists; needs an invitation flow and
+  [email templates](../features/email.md)).
 - Flag semantically conflicting role combinations (effective permissions are the union ✔ and are shown ✔).
 
 ### Edge cases

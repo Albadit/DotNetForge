@@ -7,8 +7,9 @@ using Xunit;
 namespace DotNetForge.IntegrationTests;
 
 /// <summary>
-/// Wrong credentials against the real test servers: each provider reports a <see cref="DatabaseAuthenticationException"/>.
-/// Each test is skipped (and reported as skipped) unless its server's <c>DNF_TEST_*</c> variable is set.
+/// Wrong credentials against the real test servers, as an additional database: each provider reports a
+/// <see cref="DatabaseAuthenticationException"/>. Each test is skipped (and reported as skipped) unless its server's
+/// <c>DNF_TEST_*</c> variable is set.
 /// </summary>
 public sealed class DatabaseCredentialTests
 {
@@ -31,11 +32,11 @@ public sealed class DatabaseCredentialTests
     {
         var services = new ServiceCollection().AddLogging().AddDefaultDatabaseProviders();
         services.AddDotNetForgeDatabases(
-            new DatabaseSettings { Provider = provider, ConnectionString = connectionString },
-            Array.Empty<DatabaseSettings>(),
+            new DatabaseSettings { Provider = "postgresql", ConnectionString = TestDatabaseServer.CmsDatabase("unused") },
+            [new DatabaseSettings { Name = "check", Provider = provider, ConnectionString = connectionString }],
             new DatabaseHostContext(IsDevelopment: true, DevelopmentDataRoot: Path.GetTempPath()));
 
-        var result = await services.BuildServiceProvider().GetRequiredService<IDatabaseService>().TestConnectionAsync();
+        var result = await services.BuildServiceProvider().GetRequiredService<IDatabaseService>().TestConnectionAsync("check");
 
         Assert.IsType<DatabaseAuthenticationException>(result.Error);
         Assert.DoesNotContain("wrong-password", result.Error!.Message, StringComparison.Ordinal);

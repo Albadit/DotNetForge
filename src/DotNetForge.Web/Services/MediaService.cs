@@ -3,6 +3,7 @@ using DotNetForge.Data;
 using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Services;
 
@@ -57,10 +58,14 @@ public sealed class MediaService
         _logger = logger;
     }
 
-    /// <summary>Validates and stores one uploaded file.</summary>
-    /// <returns>The new row, or a user-facing error message.</returns>
+    /// <summary>
+    /// Validates and stores one uploaded file. A file with the same name and size already in <paramref name="folderId"/>
+    /// is a duplicate: refused, or - with <paramref name="reuseDuplicate"/> (the pickers, which need a file back) and the
+    /// same visibility - that existing file is returned instead of storing a second copy.
+    /// </summary>
+    /// <returns>The new (or reused) row, or a user-facing error message.</returns>
     public async Task<(MediaFile? File, string? Error)> UploadAsync(
-        IFormFile upload, bool isPublic, Guid? userId, CancellationToken ct = default)
+        IFormFile upload, bool isPublic, Guid? userId, Guid? folderId = null, bool reuseDuplicate = false, CancellationToken ct = default)
     {
         var originalName = Path.GetFileName(upload.FileName ?? string.Empty);
         var displayName = SanitizeFileName(originalName);
@@ -78,6 +83,23 @@ public sealed class MediaService
         if (!AllowedTypes.TryGetValue(extension, out var contentType))
         {
             return (null, $"'{displayName}' has a file type that is not allowed.");
+        }
+
+        var duplicate = await _db.MediaFiles
+            .Where(m => m.FolderId == folderId && m.FileName == displayName && m.SizeBytes == upload.Length)
+            .OrderByDescending(m => m.UploadedDate)
+            .FirstOrDefaultAsync(ct);
+        if (duplicate is not null)
+        {
+            if (reuseDuplicate && duplicate.IsPublic == isPublic)
+            {
+                return (duplicate, null);
+            }
+
+            if (!reuseDuplicate)
+            {
+                return (null, $"'{displayName}' is already in this folder (same name and size).");
+            }
         }
 
         // The key never contains user input: year / month / random id + normalized extension.
@@ -105,7 +127,7 @@ public sealed class MediaService
             ContentType = contentType,
             SizeBytes = upload.Length,
             RelativePath = key,
-            FolderPath = "/",
+            FolderId = folderId,
             IsPublic = isPublic,
             UploadedById = userId,
             UploadedDate = now,

@@ -161,6 +161,13 @@ public sealed class MongoExecutor : IDatabaseExecutor
         _database.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: cancellationToken);
 
     /// <summary>The client is owned by the provider and shared with EF Core; nothing to release here.</summary>
+    public async Task<IReadOnlyList<string>> ListCollectionsAsync(CancellationToken cancellationToken)
+    {
+        var cursor = await _database.ListCollectionNamesAsync(cancellationToken: cancellationToken);
+        var names = await cursor.ToListAsync(cancellationToken);
+        return names.Where(n => !n.StartsWith("system.", StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToList();
+    }
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private static IClientSessionHandle? Session(IDatabaseTransaction? transaction) => transaction switch

@@ -21,7 +21,7 @@ public sealed partial class AdminUiTests
         "/admin", "/admin/pages", "/admin/content", "/admin/content-types", "/admin/content-types/new", "/admin/media", "/admin/settings", "/admin/users", "/admin/users/create", "/admin/roles",
         "/admin/roles/create", "/admin/audit-logs", "/admin/profile",
         "/admin/api-tokens", "/admin/api-tokens/create", "/admin/plugins", "/admin/marketplace", "/admin/content-history",
-        "/admin/internationalization", "/admin/transfer", "/admin/webhooks", "/admin/email/configuration",
+        "/admin/internationalization", "/admin/data", "/admin/webhooks", "/admin/email/configuration",
         "/admin/email/templates", "/admin/providers", "/admin/advanced-settings",
     };
 
@@ -76,7 +76,7 @@ public sealed partial class AdminUiTests
         AssertWellFormed("/account/denied", await (await admin.GetAsync("/account/denied")).Content.ReadAsStringAsync());
 
         var visitor = factory.CreateNoRedirectClient();
-        foreach (var path in new[] { "/account/login", "/", "/about", "/error" })
+        foreach (var path in new[] { "/login", "/", "/about", "/error" })
         {
             AssertWellFormed(path, await visitor.GetStringAsync(path));
         }
@@ -108,9 +108,11 @@ public sealed partial class AdminUiTests
         Assert.Contains("href=\"/admin/api-tokens\" aria-current=\"page\"", adminHtml);
         Assert.Contains("<span aria-current=\"page\">Create API token</span>", adminHtml);
 
-        // Only the group holding the active screen is marked active (ui.js keeps the others as the user left them).
+        // Only the group holding the active screen is marked active. nav-state.js keeps the others as the user left
+        // them; it loads synchronously right after the sidebar so that state is in place before the first paint.
         Assert.Matches("data-nav-group=\"Global Settings\" open=\"open\"\\s+data-nav-active=\"true\"", adminHtml);
         Assert.Matches("data-nav-group=\"Email\"\\s+data-nav-active=\"false\"", adminHtml);
+        Assert.Matches("</aside>\\s*<script src=\"/js/forge/nav-state.js\\?v=[^\"]+\"></script>", adminHtml);
 
         // Pages comes before the Content Manager in the Main section.
         Assert.True(adminHtml.IndexOf("href=\"/admin/pages\"", StringComparison.Ordinal)

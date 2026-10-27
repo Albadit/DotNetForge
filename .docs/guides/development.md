@@ -5,13 +5,15 @@ Set up, run, debug and change DotNetForge CMS locally. Architecture: [codebase.m
 ## Prerequisites
 
 - .NET SDK 10.0 - `global.json` pins `10.0.100` with `rollForward: latestFeature` (any 10.0.1xx+ feature band works).
-- Optional: PostgreSQL, only if you switch provider.
+- PostgreSQL - the CMS database. Easiest: Docker (`docker/databases/postgres.yml`), or any local PostgreSQL server.
+  The integration tests need it too ([testing](testing.md#databases)).
 - No Node.js: the frontend is plain CSS/JS in `src/DotNetForge.Web/wwwroot/` ([design system](../architecture/design-system.md)).
 
 ## First run
 
 ```bash
 cp .env.example .env          # PowerShell: Copy-Item .env.example .env
+docker compose -f docker/databases/postgres.yml up -d    # PostgreSQL 17 on localhost:5432
 dotnet tool restore           # restores the pinned dotnet-ef tool (only needed for migrations)
 dotnet build                  # the whole solution, including the extensions
 dotnet run --project src/DotNetForge.Web
@@ -20,9 +22,11 @@ dotnet run --project src/DotNetForge.Web
 Open <http://localhost:5000>. You are redirected to `/setup`; create the first administrator (email + a password with
 ≥ 8 characters, a letter and a digit). You land on `/admin` signed in as Super Admin.
 
-Starting without `.env` fails fast with
-`[DotNetForge] Configuration error: Configuration is missing. Copy '.env.example' to '.env' ...` - see
-[configuration](../features/configuration.md).
+`DATABASE_CONNECTION_STRING` is required - there is no fallback, also not in Development. For the server of
+`docker/databases/postgres.yml` (which also creates the `dotnetforge` database) it is
+`Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable` (`.env.developer` has it).
+Missing or invalid values stop startup with `[DotNetForge] Configuration error: ...`
+([configuration](../features/configuration.md)).
 
 ## Everyday commands (repository root)
 
@@ -38,7 +42,9 @@ Starting without `.env` fails fast with
 | `dotnet format src/DotNetForge.Web --verify-no-changes --severity error` | the CI style check (run per project; see [testing](testing.md#ci)) |
 
 VS Code: **Terminal → Run Build Task** offers `build`, `watch (hot reload)`, `run`, `test: all`, `test: unit`,
-`test: integration`, `clean`, `restore tools`, `ef: add migration (SQLite)`, `ef: add migration (PostgreSQL)`.
+`test: integration`, `clean`, `restore tools` and the `ef: add migration (…)` tasks - only
+`ef: add migration (PostgreSQL)` still applies (the SQLite, SQL Server and MySQL ones target contexts that no longer
+exist).
 **F5** runs "Debug DotNetForge.Web" (builds first, opens the browser when Kestrel is listening).
 
 ### Where the app finds its files
@@ -51,41 +57,104 @@ the app first and then at the repository root (the folder holding `DotNetForge.s
 | --- | --- | --- |
 | `.env` | repository root | next to the app (optional; environment variables are the norm) |
 | `extensions/` | repository root (or `EXTENSIONS_PATH`) | `/app/extensions` (copied by `dotnet publish`) |
-| Development `storage/` (SQLite + media) | repository root | not used - explicit paths are required outside Development |
+| Development `storage/` (local media, SQLite additional databases) | repository root | not used - explicit settings are required outside Development |
 
 ## Resetting local state
 
 | Want to | Do |
 | --- | --- |
-| Start over (back to the setup wizard) | stop the app, delete `storage/` (SQLite database + local media), start again |
+| Start over (back to the setup wizard) | stop the app, drop and re-create the PostgreSQL database (`docker compose -f docker/databases/postgres.yml down -v`, then `up -d`), delete `storage/media/`, start again |
 | Re-create the starter pages | delete all pages on the Pages screen, restart (seeding re-creates them when there are no pages) |
 | Unlock a locked account | wait 15 minutes, or clear `LockoutEndUtc` on the `Users` row |
 
-In Development the default SQLite database (`storage/dotnetforge.db`) and local media (`storage/media/`) are in the
-repository root's `storage/`, whatever the working directory. `storage/` is git-ignored and only exists in
+In Development local media (`storage/media/`) and SQLite additional databases (`storage/<name>.db`) are in the
+repository root's `storage/`, whatever the working directory; the CMS data is in PostgreSQL. `storage/` is git-ignored and only exists in
 Development; production never writes there ([deployment](deployment.md#read-only-deployment-requirements)). The
 ignore rule is `/storage/` - the root folder only. It used to be `storage/`, which on case-insensitive file systems
 (Windows, macOS) also matched the source folders `src/DotNetForge.Abstractions/Storage/` and
 `src/DotNetForge.Infrastructure/Storage/`, so `IFileStorage.cs` and `S3FileStorage.cs` were silently left out of
 commits. If a new file under a `Storage/` folder does not show up in `git status`, check `git check-ignore -v <file>`.
 
-Extension state (which extensions are enabled) is in the database, so deleting `storage/` also disables every
+Extension state (which extensions are enabled) is in the database, so re-creating the database also disables every
 extension.
 
-## Developing against PostgreSQL and S3
+## Docker services for development
 
-`docker/compose.dev.yml` starts PostgreSQL 17 and an S3-compatible server (SeaweedFS) with a `dotnetforge` bucket:
+`docker/` holds one compose file per service, plus two that combine them (all in the compose project `dotnetforge`,
+so a service started from its own file and from a combined file is the same container with the same data):
+
+| File | Starts | Ports |
+| --- | --- | --- |
+| `docker/compose.dev.yml` | PostgreSQL + RustFS + Mailpit - the services `.env.developer` is filled in for | 5432, 9000/9001, 1026/8026 |
+| `docker/compose.app.yml` | the app built from `docker/Dockerfile` (Production, read-only) + the `compose.dev.yml` services | 8080 + the above |
+| `docker/databases/postgres.yml` | PostgreSQL 17 - the CMS database (`DNF_POSTGRES_PORT` changes the host port) | 5432 |
+| `docker/databases/mongodb.yml` | MongoDB 8, single-node replica set - additional databases, tests | 27017 |
+| `docker/databases/sqlserver.yml` | SQL Server 2022 - additional databases, tests | 1433 |
+| `docker/databases/mysql.yml` | MySQL 8.4 - additional databases, tests | 3306 |
+| `docker/s3/rustfs.yml` | RustFS (S3 with access keys) + bucket `dotnetforge` | 9000, 9001 |
+| `docker/s3/ceph.yml` | Ceph RADOS Gateway (S3 with access keys) + bucket `dotnetforge` | 7480 |
+| `docker/s3/seaweedfs.yml` | SeaweedFS S3 **without authentication** + bucket `dotnetforge` (live S3 tests, S3 connector sample) | 8333 |
+| `docker/mail/mailpit.yml` | Mailpit (SMTP with a sign-in, web inbox) | 1026, 8026 |
 
 ```bash
-docker compose -f docker/compose.dev.yml up -d
+docker compose -f docker/databases/mysql.yml up -d      # one service
+docker compose -f docker/compose.dev.yml down           # stop (add -v to delete the data)
 ```
 
-Copy the `.env` values from the header of `docker/compose.dev.yml` (a `Host=…` connection string,
-`STORAGE_S3_SERVICE_URL=http://localhost:8333`, `STORAGE_S3_FORCE_PATH_STYLE=true`) and run the app as usual. The S3
-server runs without authentication: development only. Stop with `docker compose -f docker/compose.dev.yml down`
-(add `-v` to delete the data).
+Each file's header has the `.env` values for its service. PostgreSQL is published on port 5432; when another
+PostgreSQL already uses it, start compose with `DNF_POSTGRES_PORT=5433` (PowerShell: `$env:DNF_POSTGRES_PORT=5433`)
+and use `Port=5433` in the connection string. Every password and key in these files is public: development only,
+never expose the ports.
 
-To run the production image locally with a read-only filesystem, see [deployment → Docker](deployment.md#docker).
+## Production-like S3 and email
+
+`.env.developer` (tracked) is a complete `.env` for the services of `docker/compose.dev.yml`: the data in PostgreSQL
+17, media in a real S3 server with access keys and signed requests, email over SMTP with a sign-in - the same code
+paths as in production, with everything local in Docker.
+
+```bash
+cp .env.developer .env
+docker compose -f docker/compose.dev.yml up -d
+dotnet run --project src/DotNetForge.Web
+```
+
+| Service | Endpoint | Credentials (development only) |
+| --- | --- | --- |
+| PostgreSQL 17 - the CMS database (`.env.developer` sets it explicitly; `.env.example` leaves it empty = the same server) | `localhost:5432` | `postgres` / `postgres`, database `dotnetforge` |
+| RustFS (S3) - the active block in `.env.developer` | S3 `http://localhost:9000`, console `http://localhost:9001/rustfs/console/` | `dotnetforge-dev` / `dotnetforge-dev-secret`; bucket `dotnetforge` created by `rustfs-bucket` (a signed request) |
+| Ceph RADOS Gateway (S3) - instead of RustFS: start `docker/s3/ceph.yml`, comment out the RustFS block and uncomment the Ceph block | S3 `http://127.0.0.1:7480` | same keys and bucket, created by the image on first start (about a minute) |
+| Mailpit (SMTP) | SMTP `localhost:1026`, inbox `http://localhost:8026` | `dotnetforge` / `dotnetforge-dev` - mail without (or with a wrong) sign-in is refused |
+
+- Choose one S3 server: both blocks set the same `STORAGE_S3_*` keys (path-style, region `us-east-1`).
+- Ceph must be addressed as `127.0.0.1`: with `localhost` the gateway takes the host name for a bucket name
+  (virtual-host style) and answers `NoSuchBucket`. Ceph comes from the official `quay.io/ceph/demo:latest-squid`
+  image (monitor, manager, OSD and gateway in one container; no longer rebuilt since Dec 2024). Its monitor needs a
+  fixed address, so it has its own network `172.30.250.0/24`.
+- Mailpit listens on 1026/8026 so it runs beside another Mailpit on the default 1025/8025. TLS stays off
+  (`SMTP_TLS=false`): `SmtpClient` validates certificates and Mailpit's would be self-signed, so STARTTLS itself is
+  not exercised locally.
+- `.env.developer` is excluded from the Docker build context like every `.env.*` but `.env.example`. Media stored in
+  one S3 server stays there when you switch to the other.
+
+## The app in Docker
+
+`docker/compose.app.yml` builds the production image and runs it like production - `Production` environment,
+read-only root filesystem with a `/tmp` tmpfs, non-root - against PostgreSQL, RustFS and Mailpit:
+
+```bash
+docker compose -f docker/compose.app.yml up -d --build     # http://localhost:8080 → /setup on the first start
+docker compose -f docker/compose.app.yml down              # add -v to delete the data
+```
+
+- The app starts once PostgreSQL is healthy and the bucket exists; it reaches the services by their names
+  (`postgres`, `mailpit`).
+- Media links are signed for `http://rustfs.localhost:9000`: browsers resolve `*.localhost` to 127.0.0.1 (the
+  published port), and inside Docker RustFS has the network alias `rustfs.localhost` - one address that works for the
+  app and the browser.
+- The auth cookie is Secure-only outside Development; browsers accept it on `http://localhost`.
+- Emails land in Mailpit (`http://localhost:8026`). Code changes need `--build` again.
+
+More on the image: [deployment → Docker](deployment.md#docker).
 
 ## Working on extensions
 
@@ -126,31 +195,24 @@ Every built-in screen is built from the Forge design system - read
 
 ## Database and migrations
 
-The database follows from `DATABASE_CONNECTION_STRING`: empty or `Data Source=…` is SQLite, `Host=…` is PostgreSQL
-([configuration → Database](../features/configuration.md#database)). Each provider has its own migration set,
-applied at startup, each in its database's folder `src/DotNetForge.Data/Database/Providers/<Database>/Migrations/`:
-SQLite (`DotNetForgeDbContext`), PostgreSQL (`PostgreSqlDbContext`), SQL Server (`SqlServerDbContext`) and MySQL
-(`MySqlDbContext`); MongoDB needs none. Details: [database.md](../architecture/database.md),
-[database layer](../database/architecture.md).
+The CMS database is PostgreSQL ([configuration → Database](../features/configuration.md#database)). Its one
+migration set, `src/DotNetForge.Data/Database/Providers/PostgreSql/Migrations/` (context `PostgreSqlDbContext`), is
+applied at startup. Details: [database.md](../architecture/database.md), [database layer](../database/architecture.md).
 
-After changing an entity or `DotNetForgeDbContext`, add a migration **for each SQL provider** (the loop in
-[database → Migrations](../architecture/database.md#migrations) does all four). For example:
+After changing an entity or `DotNetForgeDbContext`, add **one** migration:
 
 ```bash
 dotnet tool restore
-dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context DotNetForgeDbContext --output-dir Database/Providers/Sqlite/Migrations
-dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data \
-  --context PostgreSqlDbContext --output-dir Database/Providers/PostgreSql/Migrations
+dotnet ef migrations add <Name> --project src/DotNetForge.Data --startup-project src/DotNetForge.Data --context PostgreSqlDbContext --output-dir Database/Providers/PostgreSql/Migrations
 ```
 
-Repeat with `SqlServerDbContext` (`Database/Providers/SqlServer/Migrations`) and `MySqlDbContext` (`Database/Providers/MySql/Migrations`). Generating
-migrations never connects to a database. Afterwards strip the UTF-8 BOM EF adds to the generated files
-(`.editorconfig` requires `utf-8`) and check each `<Context>ModelSnapshot.cs` sits in its migration folder.
+Generating migrations never connects to a database. Afterwards strip the UTF-8 BOM EF adds to the generated files
+(`.editorconfig` requires `utf-8`) and check `PostgreSqlDbContextModelSnapshot.cs` sits in the migration folder.
 
-To develop against another database, start it from `docker/compose.dev.yml` (profiles `mongodb`, `sqlserver`,
-`mysql`) and set `DATABASE_PROVIDER` and `DATABASE_CONNECTION_STRING` from the compose file's comments
-([database configuration](../database/configuration.md)).
+To work with an additional database (extensions, custom API endpoints, exports), start its file from
+`docker/databases/` (`mongodb.yml`, `sqlserver.yml`, `mysql.yml`, or `postgres.yml` with another database name) and
+set `DATABASES_<NAME>_PROVIDER` and `DATABASES_<NAME>_CONNECTION_STRING`; a SQLite one needs no server
+(empty connection string = `storage/<name>.db`) ([more databases](../database/configuration.md#more-databases)).
 
 Step-by-step checklist: [database-change skill](../../.claude/skills/database-change/SKILL.md).
 
@@ -162,7 +224,9 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 - **Exception details:** run with `ASPNETCORE_ENVIRONMENT=Development` (default for the launch profiles) to get the
   developer exception page.
 - **SQL:** raise `Microsoft.EntityFrameworkCore.Database.Command` to `Information` in `src/DotNetForge.Web/appsettings.Development.json`.
-- **Inspect the DB:** open `storage/dotnetforge.db` with any SQLite browser (stop the app first if you write to it).
+- **Inspect the DB:** connect to `localhost:5432` (database `dotnetforge`, `postgres` / `postgres`) with `psql` or any
+  PostgreSQL client, e.g. `docker compose -f docker/databases/postgres.yml exec postgres psql -U postgres dotnetforge`.
+  The CMS's tables are mixed-case: quote them (`SELECT * FROM "Pages";`).
 - **Uploaded media (local provider):** files are under `storage/media/<yyyy>/<MM>/`; the `MediaFiles.RelativePath`
   column holds each file's key.
 - **CSP in Development** is report-only: violations appear in the browser console instead of breaking the page.
@@ -192,16 +256,22 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 
 ### The app exits immediately with "Configuration error"
 - **Cause:** missing/invalid `.env` or environment variable.
-- **Fix:** `DATABASE_CONNECTION_STRING` must be empty (SQLite, Development only), `Data Source=…` (SQLite) or
-  `Host=…;Database=…` (PostgreSQL); `APP_URL` must be absolute; once any `STORAGE_S3_*` key is set, the bucket and keys
-  are required.
-- **Outside Development** (e.g. `dotnet run --project src/DotNetForge.Web --no-launch-profile` with `ASPNETCORE_ENVIRONMENT=Production`) the SQLite
-  database must be an explicit absolute path and S3 storage must be configured ([configuration](../features/configuration.md)).
+- **Fix:** set `DATABASE_CONNECTION_STRING` to a key=value PostgreSQL string (`Host=…;Database=…`); remove
+  `DATABASE_PROVIDER` (no longer used; other databases are `DATABASES_<NAME>_*`); `APP_URL` must be absolute; once any
+  `STORAGE_S3_*` key is set, the bucket and keys are required.
+- **Outside Development** (e.g. `dotnet run --project src/DotNetForge.Web --no-launch-profile` with
+  `ASPNETCORE_ENVIRONMENT=Production`) the connection string and S3 storage must be configured
+  ([configuration](../features/configuration.md)).
+
+### Startup fails with a connection error to `localhost:5432`
+- **Cause:** the PostgreSQL of `DATABASE_CONNECTION_STRING` isn't running, or the port is taken by another server.
+- **Fix:** `docker compose -f docker/databases/postgres.yml up -d`, or set `DATABASE_CONNECTION_STRING` to your server
+  (another port: `DNF_POSTGRES_PORT=5433` when starting compose, `Port=5433` in the string).
 
 ### Every page redirects to `/setup`
 - **Cause:** the database is not installed (fresh or replaced DB).
-- **Fix:** complete `/setup`. If you expected an existing install, check which DB file the working directory points
-  to.
+- **Fix:** complete `/setup`. If you expected an existing install, check which database `DATABASE_CONNECTION_STRING`
+  points to.
 
 ### Redirected to "Access denied"
 - **Cause:** the screen requires `Super Admin`/`Admin` (Users, Roles, Audit Logs, API Tokens, Settings) or
@@ -254,8 +324,8 @@ testing and linting targets in [testing → Planned](testing.md#planned-not-impl
 | --- | --- | --- |
 | Node.js + npm (optional) | `npm install`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | no `package.json`, no ESLint |
 | Run URL | the app is reached at `APP_URL` | Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS`; see [configuration → Planned](../features/configuration.md#planned-not-implemented) |
-| PostgreSQL end to end | create the database and a user; set the `Host=…` connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `docker/compose.dev.yml` |
-| Switching provider | only a `.env` change plus migrations | ✔ for an empty database; moving existing data between providers belongs to [transfer and updates](../features/transfer-and-updates.md) |
+| PostgreSQL end to end | create the database and a user; set the `Host=…` connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `docker/databases/postgres.yml` |
+| Switching provider | only a `.env` change plus migrations | ✘ by design: the CMS database is PostgreSQL only; other databases are additional databases ([database configuration](../database/configuration.md)) |
 
 **Adding API endpoints** (beyond the [conventions for new endpoints](../features/headless-api.md#conventions-for-new-endpoints),
 which are ✔):
@@ -279,7 +349,7 @@ repository keeps the same six files in `.github/agents/`, as short quick referen
 
 | File | Must explain |
 | --- | --- |
-| `cms-overview.md` | what the CMS is: modular hybrid CMS (ASP.NET Core MVC, EF Core, Razor), Traditional/Headless/Hybrid modes, Windows/macOS/Linux, SQLite and PostgreSQL |
+| `cms-overview.md` | what the CMS is: modular hybrid CMS (ASP.NET Core MVC, EF Core, Razor), Traditional/Headless/Hybrid modes, Windows/macOS/Linux, SQLite and PostgreSQL (today: PostgreSQL for the CMS, SQLite as an additional database) |
 | `architecture-summary.md` | project structure, core vs extensions, database layer, **how content pages and modules work together** |
 | `extension-system.md` | extension types, the `dotnetforge.extension.json` manifest, validation, loading, enable/disable/update/remove lifecycle |
 | `permissions.md` | default roles (Super Admin → Public), permission areas, RBAC, how custom permissions are declared and enforced |
@@ -296,12 +366,12 @@ repository keeps the same six files in `.github/agents/`, as short quick referen
 ### Acceptance criteria
 
 - [x] A developer can clone, copy `.env.example` to `.env`, restore, build, apply migrations and run the CMS locally
-  ([First run](#first-run); SQLite migrations apply at startup; the default `APP_URL` matches the `http` profile).
+  ([First run](#first-run); PostgreSQL migrations apply at startup; the default `APP_URL` matches the `http` profile).
 - [x] `.env` configuration is documented and secrets stay in `.env` ([configuration](../features/configuration.md)).
-- [x] Using SQLite is documented end to end, including the connection string and migrations (this guide,
-  [configuration](../features/configuration.md), [database](../architecture/database.md)).
-- [x] Using PostgreSQL is documented end to end, including migrations ([Developing against PostgreSQL and S3](#developing-against-postgresql-and-s3), [Database and migrations](#database-and-migrations); `PostgreSqlDbContext` migrations).
-- [x] Switching providers requires only a `DATABASE_PROVIDER`/connection-string change (every provider prepares its schema at startup - `DatabaseInitializer`; data is not copied).
+- [ ] Using SQLite is documented end to end, including the connection string and migrations - SQLite is no longer
+  a CMS database; as an additional database it is documented in [database configuration](../database/configuration.md#more-databases).
+- [x] Using PostgreSQL is documented end to end, including migrations ([Docker services for development](#docker-services-for-development), [Database and migrations](#database-and-migrations); `PostgreSqlDbContext` migrations).
+- [ ] Switching providers requires only a provider/connection-string change - dropped: the CMS runs on PostgreSQL only.
 - [x] Creating API endpoints is documented with permission checks and input validation
   ([headless API](../features/headless-api.md#conventions-for-new-endpoints)).
 - [ ] Adding permissions is documented and mapped to permission areas and role/token assignment.

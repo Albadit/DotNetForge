@@ -1,42 +1,35 @@
 using DotNetForge.Data;
+using DotNetForge.Data.Database.Providers.PostgreSql;
 using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Services;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Xunit;
 
 namespace DotNetForge.IntegrationTests;
 
 /// <summary>
 /// The content-page rules owned by <see cref="PageService"/> (.docs/features/content-pages-and-routing.md), against a
-/// real (in-memory SQLite) database.
+/// real database (a fresh PostgreSQL database per test, <see cref="TestDatabaseServer"/>).
 /// </summary>
 public sealed class PageServiceTests : IAsyncLifetime
 {
-    private SqliteConnection _connection = null!;
     private DotNetForgeDbContext _db = null!;
     private PageService _service = null!;
 
     public async Task InitializeAsync()
     {
-        _connection = new SqliteConnection("Data Source=:memory:");
-        await _connection.OpenAsync();
-        // EF Core counts its internal service providers per process; when the suite runs on MongoDB (one provider per
-        // test database) that count is already past EF's limit of 20, so log the warning instead of throwing.
-        _db = new DotNetForgeDbContext(new DbContextOptionsBuilder<DotNetForgeDbContext>()
-            .UseSqlite(_connection)
-            .ConfigureWarnings(w => w.Log(CoreEventId.ManyServiceProvidersCreatedWarning))
-            .Options);
-        await _db.Database.EnsureCreatedAsync();
+        var options = new DbContextOptionsBuilder<PostgreSqlDbContext>();
+        TestDatabaseServer.Configure(options, TestDatabaseServer.CmsDatabase($"dnf_pages_{Guid.NewGuid():N}"));
+        _db = new PostgreSqlDbContext(options.Options);
+        await _db.Database.MigrateAsync();
         _service = new PageService(_db);
     }
 
     public async Task DisposeAsync()
     {
+        await _db.Database.EnsureDeletedAsync();
         await _db.DisposeAsync();
-        await _connection.DisposeAsync();
     }
 
     private async Task<Page> AddAsync(string slug, Guid? parent = null)

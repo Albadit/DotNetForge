@@ -106,16 +106,16 @@ public sealed class PageBuilderController : AdminControllerBase
     private async Task<IActionResult> SitePageViewAsync(Page page)
     {
         ViewData["AppName"] = _env.AppName;
-        var theme = await _themes.GetActiveThemeAsync(HttpContext.RequestAborted, page.ThemeId);
+        ViewData["Menu"] = (await _published.ListAsync(HttpContext.RequestAborted))
+            .Where(p => p.DisplayInMenu && p.ParentPageId is null)
+            .ToList();
+        var theme = await _themes.GetActiveThemeAsync(HttpContext.RequestAborted, await _themes.PageThemeIdAsync(page, HttpContext.RequestAborted));
         if (theme?.FindView("Page.cshtml") is not { } themeView)
         {
             return View("~/Views/Home/Page.cshtml", page);
         }
 
         ExtensionViewRenderer.AddExtensionViewData(ViewData, theme, admin: false);
-        ViewData["Menu"] = (await _published.ListAsync(HttpContext.RequestAborted))
-            .Where(p => p.DisplayInMenu && p.ParentPageId is null)
-            .ToList();
         return View(_renderer.ToViewPath(themeView), page);
     }
 
@@ -319,7 +319,7 @@ public sealed class PageBuilderController : AdminControllerBase
             return BadRequest(new { message = "Choose an image file." });
         }
 
-        var (saved, error) = await _media.UploadAsync(file, isPublic: true, CurrentUserId, HttpContext.RequestAborted);
+        var (saved, error) = await _media.UploadAsync(file, isPublic: true, CurrentUserId, reuseDuplicate: true, ct: HttpContext.RequestAborted);
         return saved is null
             ? BadRequest(new { message = error ?? "The upload failed." })
             : Ok(new { url = MediaService.UrlFor(saved), name = saved.FileName, contentType = saved.ContentType });

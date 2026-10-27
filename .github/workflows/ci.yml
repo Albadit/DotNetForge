@@ -1,8 +1,8 @@
 name: CI
 
 # Build and test DotNetForge CMS on every push and pull request.
-# The build/test job runs on all three platforms to honour the spec's
-# cross-platform acceptance criterion (Windows, macOS, Linux).
+# Build and unit tests run on all three platforms (the spec's cross-platform criterion: Windows, macOS, Linux). The
+# integration tests need the CMS database - PostgreSQL - so they run on Linux, where service containers exist.
 
 on:
   push:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-and-test:
-    name: Build & test (${{ matrix.os }})
+    name: Build & unit tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -38,18 +38,11 @@ jobs:
       - name: Restore local tools
         run: dotnet tool restore
 
-      - name: Create .env (SQLite)
-        shell: bash
-        run: cp .env.example .env
-
       - name: Build (solution)
         run: dotnet build DotNetForge.slnx --configuration Release
 
       - name: Unit tests
         run: dotnet test tests/DotNetForge.Tests --configuration Release --verbosity normal
-
-      - name: Integration tests
-        run: dotnet test tests/DotNetForge.IntegrationTests --configuration Release --verbosity normal
 
   format:
     name: Format & style
@@ -74,9 +67,9 @@ jobs:
           done
 
   postgres-and-s3:
-    # The same integration tests against PostgreSQL (its own migration set) plus the live S3 contract tests
-    # against an S3-compatible server (.docs/guides/testing.md).
-    name: PostgreSQL + S3 storage
+    # The integration tests on the CMS database (PostgreSQL, a fresh database per test) plus the live S3 contract
+    # tests against an S3-compatible server (.docs/guides/testing.md).
+    name: Integration tests (PostgreSQL) + S3 storage
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -116,10 +109,10 @@ jobs:
       - name: Integration tests on PostgreSQL
         run: dotnet test tests/DotNetForge.IntegrationTests --configuration Release
 
-  database-providers:
-    # The full integration suite on the other supported databases (.docs/database/providers.md#testing): each
-    # provider must behave like SQLite and PostgreSQL for the CMS and for IDatabaseService.
-    name: Integration tests (${{ matrix.provider }})
+  additional-databases:
+    # The other providers serve additional databases (DATABASES_<NAME>_*, .docs/database/providers.md#testing): the
+    # additional-database tests on each server, next to a PostgreSQL CMS database.
+    name: Additional database (${{ matrix.provider }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -142,7 +135,6 @@ jobs:
           - provider: mongodb
             # MongoDB 8.x refuses to start on Linux kernels 6.19+ (SERVER-121912), which ubuntu-latest (26.04) has.
             runner: ubuntu-24.04
-            # A single-node replica set: the CMS saves several documents at once, which needs transactions.
             start: docker run -d --name db -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
             ready: >-
               docker exec db mongosh --quiet --eval
@@ -150,6 +142,18 @@ jobs:
               | grep -q 1
             variable: DNF_TEST_MONGODB
             connection: mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DNF_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -166,41 +170,38 @@ jobs:
           for i in $(seq 1 90); do if ${{ matrix.ready }}; then exit 0; fi; sleep 2; done
           docker logs db; exit 1
 
-      - name: Integration tests on ${{ matrix.provider }}
+      - name: Additional-database tests on ${{ matrix.provider }}
         # Only this entry's variable is non-empty; an empty one means "not configured" (TestDatabaseServer).
         env:
           DNF_TEST_SQLSERVER: ${{ matrix.variable == 'DNF_TEST_SQLSERVER' && matrix.connection || '' }}
           DNF_TEST_MYSQL: ${{ matrix.variable == 'DNF_TEST_MYSQL' && matrix.connection || '' }}
           DNF_TEST_MONGODB: ${{ matrix.variable == 'DNF_TEST_MONGODB' && matrix.connection || '' }}
-        run: dotnet test tests/DotNetForge.IntegrationTests --configuration Release
+        run: >-
+          dotnet test tests/DotNetForge.IntegrationTests --configuration Release
+          --filter "FullyQualifiedName~AdditionalDatabase|FullyQualifiedName~DatabaseCredential"
 
   read-only-container:
-    # Builds the production image and boots it with a read-only root filesystem: startup, migrations and the
-    # setup screen must work without writing into the deployment directory (.docs/guides/deployment.md).
+    # Builds the production image and runs it with docker/compose.app.yml - Production, read-only root filesystem,
+    # PostgreSQL, RustFS and Mailpit: startup, migrations and the setup screen must work without writing into the
+    # deployment directory (.docs/guides/deployment.md).
     name: Read-only container
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build image
-        run: docker build -f docker/Dockerfile -t dotnetforge:ci .
+      - name: Build and start
+        run: docker compose -f docker/compose.app.yml up -d --build
 
-      - name: Run read-only and probe
+      - name: Probe
         shell: bash
         run: |
-          # Startup validates the S3 settings but does not contact the bucket, and this probe uploads nothing,
-          # so placeholder values are enough here; uploads against a real S3 server run in postgres-and-s3.
-          docker run -d --name app --read-only --tmpfs /tmp -p 8080:8080 \
-            -e "DATABASE_CONNECTION_STRING=Data Source=/tmp/cms.db" \
-            -e STORAGE_S3_SERVICE_URL=http://s3.invalid -e STORAGE_S3_BUCKET=ci \
-            -e STORAGE_S3_ACCESS_KEY_ID=ci -e STORAGE_S3_SECRET_ACCESS_KEY=ci \
-            dotnetforge:ci
-          for i in $(seq 1 30); do curl -sf http://localhost:8080/health && break; sleep 1; done
+          for i in $(seq 1 120); do curl -sf http://localhost:8080/health && break; sleep 1; done
           curl -sf -o /dev/null http://localhost:8080/setup
-          test -z "$(docker diff app)"
-          docker logs app
+          if docker compose -f docker/compose.app.yml exec -T app sh -c 'touch /app/probe'; then
+            echo "the deployment directory is writable"; exit 1
+          fi
 
-      - name: Container logs on failure
+      - name: Logs on failure
         if: failure()
-        run: docker logs app || true
+        run: docker compose -f docker/compose.app.yml logs app

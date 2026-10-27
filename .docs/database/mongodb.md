@@ -1,113 +1,73 @@
 # MongoDB
 
-MongoDB is a full provider: the whole CMS (setup, sign-in, pages, media, API) and `IDatabaseService` run on it.
-The integration suite passes on MongoDB 8.0 exactly as on the SQL databases.
+MongoDB is an **additional database** (`DATABASES_<NAME>_PROVIDER=mongodb`): `IDatabaseService` reads and writes it
+with the native driver, and Data Management can export it. It never hosts the CMS - the CMS database is PostgreSQL
+([configuration](configuration.md#cms-database)); `MongoDbDatabaseProvider.AddDbContext` throws
+`DatabaseConfigurationException` and `InitializeSchemaAsync` throws `NotSupportedException`.
 
 ## Requirements
 
-- **MongoDB 5.0 or later, as a replica set or sharded cluster.** Atlas is always one.
-  - The CMS saves several documents at once (installation, seeding, role assignment), and the EF Core MongoDB
-    provider wraps those saves in a transaction.
-  - A standalone server rejects transactions, so multi-document saves fail.
-  - For development, a single-node replica set is enough: `docker compose -f docker/compose.dev.yml --profile mongodb up -d`.
-- **A database name in the URL path** (`mongodb://host:27017/dotnetforge`). MongoDB also authenticates against
-  that database, so add `authSource=admin` for a user created in `admin` (such as the root user of the Docker image).
+- **A database name in the URL path** (`mongodb://host:27017/events`). MongoDB also authenticates against that
+  database, so add `authSource=admin` for a user created in `admin` (such as the root user of the Docker image).
+- **Transactions** (`IDatabaseService.BeginTransactionAsync`) need MongoDB 5.0 or later as a replica set or sharded
+  cluster (Atlas always is one); a standalone server rejects them. For development, a single-node replica set:
+  `docker compose -f docker/databases/mongodb.yml up -d`.
 
 ```env
-DATABASE_PROVIDER=mongodb
-DATABASE_CONNECTION_STRING=mongodb+srv://cms:<secret>@cluster0.example.mongodb.net/dotnetforge
+DATABASES_EVENTS_PROVIDER=mongodb
+DATABASES_EVENTS_CONNECTION_STRING=mongodb+srv://reader:<secret>@cluster0.example.mongodb.net/events
 # local single-node replica set:
-# DATABASE_CONNECTION_STRING=mongodb://localhost:27017/dotnetforge?replicaSet=rs0&directConnection=true
+# DATABASES_EVENTS_CONNECTION_STRING=mongodb://localhost:27017/events?replicaSet=rs0&directConnection=true
 ```
 
 ## How it is built
 
 ```mermaid
 flowchart LR
-    CMS["CMS code (LINQ)"] --> Ctx["MongoDbContext<br/>(MongoDB.EntityFrameworkCore 10.0.4)"]
     Svc["IDatabaseService"] --> Exec["MongoExecutor<br/>(MongoDB.Driver, native API)"]
-    Ctx --> Client["IMongoClient<br/>one per connection string, per process"]
-    Exec --> Client
+    Exec --> Client["IMongoClient<br/>one per connection string, per process"]
     Client --> Db[("MongoDB replica set")]
 ```
 
-- **One client.**
-  - `MongoDbDatabaseProvider` creates one `MongoClient` per connection string for the whole process. The client is
-    the connection pool and is thread-safe.
-  - EF Core and the native executor share it, so there are never two pools for one database.
-- **EF Core MongoDB provider for the CMS model** (`MongoDbContext`, `src/DotNetForge.Data/Database/Providers/MongoDb/`). Each
-  entity is a collection named like its table (`Users`, `Pages`, …), and properties are document fields.
-- **The native driver for `DatabaseCommand`s** (`MongoExecutor`):
+- **One client.** `MongoDbDatabaseProvider` creates one `MongoClient` per connection string for the whole process.
+  The client is the connection pool and is thread-safe.
+- **The native driver for `DatabaseCommand`s** (`MongoExecutor`, `src/DotNetForge.Data/Database/Providers/MongoDb/`):
   - `Find` with sort, skip, limit and projection;
   - `CountDocuments`;
   - `InsertOne`/`InsertMany`;
   - `UpdateOne`/`UpdateMany` with `$set`;
   - `DeleteOne`/`DeleteMany`;
-  - aggregation pipelines (`$match` → `$group` → `$project` → `$sort/$skip/$limit`).
+  - aggregation pipelines (`$match` → `$group` → `$project` → `$sort/$skip/$limit`);
+  - `ListCollectionsAsync`: `listCollections` without `system.*`.
   - Filters use the driver's typed `FilterDefinitionBuilder`, never JSON strings.
+- **No SQL.** `CreateConnection` returns `null`, so [custom API endpoints](../features/custom-endpoints.md) can't run
+  on a MongoDB database ("The database '<name>' is MongoDB, which has no SQL.") and the endpoint editor doesn't offer
+  it.
+- Names are used as written and must be plain identifiers ([query routing](query-routing.md#names-and-schema)); a
+  collection whose name isn't one is skipped by the Data Management export.
+- `MongoKeys` (time-ordered `long` and random `int` keys) and the model mapping (`Schema`, `_id` paths) are used only
+  when an executor is created with an EF model; additional databases have none, and `MongoDB.EntityFrameworkCore`
+  stays referenced for that mapping.
 
-## Schema without migrations
-
-MongoDB has no migrations. At every start the provider calls `Database.EnsureCreatedAsync()`, which:
-- creates missing collections;
-- creates the model's indexes, including the **unique** ones (`Users.Email`, `Settings.Key`, page slugs, …).
-  Uniqueness is therefore enforced by the database, as on SQL.
-
-Limits:
-- **Existing indexes are matched by name and never changed or dropped.** Changing an index definition in the model
-  needs a manual `dropIndex` (or a new index name).
-- **Renamed or removed properties stay in existing documents** until rewritten. Plan data changes as scripts.
-  Example: a database created before tenants were removed keeps the old `TenantId` fields and its old composite
-  indexes (e.g. `(TenantId, Email)`); both are harmless, and the new indexes are created next to them.
-
-## Keys
-
-| Model key | Stored as |
-| --- | --- |
-| `Guid` (most entities) | `_id`, BSON binary subtype 4 (standard UUID) |
-| Composite (`UserRoles`: UserId + RoleId) | `_id: { UserId: …, RoleId: … }` |
-| `long` identity (`AuditLogs`) | `_id` from `MongoLongKeyGenerator`: milliseconds since 2020 in the high bits, 20 random bits below, so entries stay time-ordered |
-| `int` identity (`DataProtectionKeys`) | `_id` from `MongoIntKeyGenerator`: random positive int (a few keys per year) |
-| `int` constant (`SystemState`, always 1) | `_id: 1` |
-
-MongoDB never generates integer keys, so `MongoDbContext` registers the two generators. `IDatabaseService` inserts
-use them too.
-
-Enums are stored as numbers, dates as BSON dates (UTC, millisecond precision), decimals as `Decimal128`.
+Values come back as `DatabaseRecord`s: BSON dates as UTC `DateTime`, `Decimal128` as `decimal`, binary UUIDs as `Guid`.
 
 ## Query rules
 
-The EF Core MongoDB provider translates single-collection LINQ well. Queries that cross collections are where it
-stops:
-- **joins:** supported only since 10.0.3 (August 2026), and recent releases fixed wrong results;
-- **navigation properties inside a query**, e.g. `r.UserRoles.Count` in a `Select`: rejected;
-- **correlated subqueries on another DbSet:** rejected;
-- **`GroupBy`:** rejected.
-
-CMS code therefore follows one rule on every provider: **one collection per query; combine in memory.** Examples:
-- the role list counts users with a second query on `UserRoles`;
-- sign-in reads role IDs, then role names.
-
-See `src/DotNetForge.Web/Areas/Admin/Controllers/RolesController.cs`, `UsersController.cs` and
-`src/DotNetForge.Web/Services/AuthService.cs`. `GroupBy` over results already in memory is fine.
-
-## Write rules
-
-The SQL providers send a `SaveChanges` call's deletes before its inserts; the MongoDB provider does not guarantee that.
-To replace a set of rows that has a unique index, **diff, don't delete and re-add**: remove the rows no longer wanted,
-add the new ones and change the rest in place. Re-adding a row with the same unique key in the same `SaveChanges`
-fails on MongoDB with `E11000 duplicate key`. `PagePermissionService` (`ReplaceRolesAsync`, `ReplaceUsersAsync`),
-`UserManagementService` and `RoleManagementService` follow this.
+MongoDB no longer hosts the CMS, so CMS code has no MongoDB query restrictions. The single-table CMS queries that
+combine results in memory (e.g. `RolesController`, `UsersController`, `AuthService`, `ContentQueryService`) date from
+when it did; they keep working on PostgreSQL. Commands on a MongoDB additional database go through
+`IDatabaseService` only, one collection per command; for a `$lookup` across collections use the driver directly
+([provider-specific operations](query-routing.md#provider-specific-operations)).
 
 ## Operations
 
-- **Version pinning.**
-  - `MongoDB.EntityFrameworkCore` is pinned exactly (`[10.0.4]` in `Directory.Packages.props`). Its versions follow
-    EF Core, not semantic versioning, so patch releases have changed storage formats and behavior before.
-  - Upgrade deliberately and run the MongoDB integration tests (`DNF_TEST_MONGODB`).
+- **Version pinning.** `MongoDB.EntityFrameworkCore` (which brings `MongoDB.Driver`) is pinned exactly (`[10.0.4]` in
+  `Directory.Packages.props`); its versions follow EF Core, not semantic versioning. Upgrade deliberately and run the
+  MongoDB additional-database tests (`DNF_TEST_MONGODB`, [testing](../guides/testing.md#databases)).
 - **Timeouts.** Server selection fails after 30 s by default (`serverSelectionTimeoutMS` in the URL). Each command
   also gets `MaxTime` from its timeout.
-- **Backups.** Use `mongodump` or Atlas backups, together with the media bucket ([deployment](../guides/deployment.md#backups)).
+- **Backups.** Use `mongodump` or Atlas backups; the Data Management export of a MongoDB database is a JSON copy for
+  your own use, not importable.
 - **Errors.**
   - duplicate key → `DatabaseConflictException`;
   - authentication → `DatabaseAuthenticationException`;
@@ -115,6 +75,3 @@ fails on MongoDB with `E11000 duplicate key`. `PagePermissionService` (`ReplaceR
   - `MaxTime` exceeded → `DatabaseTimeoutException`;
   - transactions on a standalone server → `DatabaseProviderException` ("MongoDB transactions need a replica set or
     sharded cluster").
-- **Test quirk.** EF Core creates one internal service provider per MongoDB database name. Test runs with many
-  databases exceed EF's limit of 20, so `MongoDbDatabaseProvider` logs `ManyServiceProvidersCreatedWarning` instead
-  of throwing. A deployment uses one database and never reaches it.

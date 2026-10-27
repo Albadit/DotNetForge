@@ -8,7 +8,7 @@ Layered solution (`DotNetForge.slnx`); the web host is `src/DotNetForge.Web`, Do
 | `DotNetForge.Abstractions` | Contracts (`IFileStorage`, `IDatabaseService`, security, messaging). No dependencies, no entities. |
 | `DotNetForge.Shared` | Entities, enums, constants (incl. `AuthorizationPolicies`), DTOs, `Result`, manifest model, `AppEnvironment`, `PermissionMatrix`, store interfaces, `PageVisibility.Live` / `IPublishedPages`. |
 | `DotNetForge.Core` | `InstallationService`, `PermissionService` (content/media permission checks), validators, structured content rules (`Content/`). No EF Core. |
-| `DotNetForge.Data` | `DotNetForgeDbContext` (SQLite migrations, Data Protection keys) and one context per other provider (PostgreSQL, SQL Server, MySQL migrations; MongoDB), the database layer in `Database/` (provider registry, `IDatabaseService`), `DataSeeder`, `InstallationStore`. |
+| `DotNetForge.Data` | `DotNetForgeDbContext` (the model, incl. Data Protection keys) and `PostgreSqlDbContext` with the migrations (the CMS database is PostgreSQL), the database layer in `Database/` (provider registry for additional SQLite, PostgreSQL, SQL Server, MySQL and MongoDB databases, `IDatabaseService`), `DataSeeder`, `InstallationStore`. |
 | `DotNetForge.Content` | Structured content over the database: `ContentTypeService`, `ContentEntryService`, `ContentQueryService`, `ContentApiService` - shared by admin and API. Pure rules (`ContentSchema`, `EntryData`, `ItemData`) are in `DotNetForge.Core/Content`. |
 | `DotNetForge.Infrastructure` | PBKDF2 hasher, clock, API token factory, HMAC signer, `.env` loader, `LocalFileStorage` and `S3FileStorage`. |
 | `DotNetForge.Extensions` | `ManifestValidator`, `ExtensionLoader` (discovery), `ExtensionRuntime` + `ExtensionLoadContext` (code loading), `ExtensionCatalog` (is it active?). |
@@ -21,7 +21,7 @@ Layered solution (`DotNetForge.slnx`); the web host is `src/DotNetForge.Web`, Do
 1. `EnvConfigurationLoader.Load(...)` → `AppEnvironment` (exit code 1 on invalid config).
 2. `AddDotNetForge(env, contentRoot)` (`src/DotNetForge.Web/Startup/DependencyRegistration.cs`) registers everything,
    including the extension host (`AddExtensionHost`: loads extension code, runs each `ConfigureServices`).
-3. `DatabaseInitializer.InitializeAsync` → the main provider's schema step (migrations, or MongoDB `EnsureCreated`) + seed.
+3. `DatabaseInitializer.InitializeAsync` → the PostgreSQL migrations + seed.
 4. Pipeline: exception handler/HSTS (non-Development) → `SecurityHeadersMiddleware` → static files → routing →
    `InstallationMiddleware` → `ExtensionEndpointGateMiddleware` → authentication → rate limiter → authorization →
    controllers, `/health`, extension endpoints (`MapDotNetForgeExtensionsAsync`), fallback to `HomeController.RenderPage`.

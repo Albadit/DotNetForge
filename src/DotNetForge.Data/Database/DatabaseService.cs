@@ -135,6 +135,25 @@ public sealed partial class DatabaseService : IDatabaseService
         }
     }
 
+    public async Task<IReadOnlyList<string>> ListCollectionsAsync(string? database = null, CancellationToken cancellationToken = default)
+    {
+        var (target, executor) = _router.Route(database);
+        using var timeout = new CancellationTokenSource(DefaultTimeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        try
+        {
+            return await executor.ListCollectionsAsync(linked.Token);
+        }
+        catch (Exception ex) when (target.Provider.TranslateException(ex) is { } error ||
+                                  (ex is OperationCanceledException && timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested))
+        {
+            throw (ex is OperationCanceledException
+                    ? new DatabaseTimeoutException("Listing the collections timed out.", ex)
+                    : target.Provider.TranslateException(ex)!)
+                .WithContext(target.Provider.DisplayName, target.Name, operation: null, collection: null);
+        }
+    }
+
     private async Task<DatabaseResult<IReadOnlyList<DatabaseRecord>>> RunQueryAsync(
         DatabaseCommand command, IDatabaseTransaction? transaction, bool throwOnError, CancellationToken cancellationToken)
     {

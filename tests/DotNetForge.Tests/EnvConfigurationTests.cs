@@ -18,6 +18,8 @@ public sealed class EnvConfigurationTests
         "DATABASE_PROVIDER", "DATABASE_CONNECTION_STRING", "DATABASE_NAME", "APP_NAME", "APP_URL",
         "STORAGE_S3_SERVICE_URL", "STORAGE_S3_BUCKET",
         "STORAGE_S3_ACCESS_KEY_ID", "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_S3_REGION", "STORAGE_S3_FORCE_PATH_STYLE",
+        "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM", "SMTP_FROM_NAME", "SMTP_TLS",
+        "DOTNETFORGE_ENV_FILE",
     };
 
     private static T WithCleanEnv<T>(Func<string, T> act, string envFileContent)
@@ -53,15 +55,71 @@ public sealed class EnvConfigurationTests
     }
 
     [Fact]
+    public void Email_is_off_until_smtp_is_configured()
+    {
+        Assert.False(WithCleanEnv(d => EnvConfigurationLoader.Load(d), "SMTP_PORT=\nSMTP_TLS=\n").Email.IsConfigured);
+
+        var email = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
+            "SMTP_HOST=smtp.example.com\nSMTP_FROM=cms@example.com\nSMTP_USERNAME=mailer\nSMTP_PASSWORD=secret\n").Email;
+        Assert.True(email.IsConfigured);
+        Assert.Equal(587, email.Port);
+        Assert.True(email.UseTls);
+        Assert.Equal("mailer", email.Username);
+
+        var plain = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
+            "SMTP_HOST=localhost\nSMTP_FROM=cms@example.com\nSMTP_PORT=1025\nSMTP_TLS=false\n").Email;
+        Assert.Equal(1025, plain.Port);
+        Assert.False(plain.UseTls);
+    }
+
+    [Theory]
+    [InlineData("SMTP_HOST=smtp.example.com\n")]
+    [InlineData("SMTP_USERNAME=mailer\nSMTP_PASSWORD=secret\n")]
+    [InlineData("SMTP_HOST=smtp.example.com\nSMTP_FROM=not-an-address\n")]
+    [InlineData("SMTP_HOST=smtp.example.com\nSMTP_FROM=cms@example.com\nSMTP_PORT=70000\n")]
+    public void A_partial_or_invalid_smtp_configuration_fails_at_startup(string envFile)
+    {
+        Assert.Throws<ConfigurationException>(() => WithCleanEnv(d => EnvConfigurationLoader.Load(d), envFile));
+    }
+
+    [Fact]
     public void Main_database_settings_are_read_as_written()
     {
         var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
-            "DATABASE_PROVIDER=mongodb\nDATABASE_CONNECTION_STRING=mongodb://db:27017/cms?replicaSet=rs0\n");
+            "DATABASE_CONNECTION_STRING=Host=db;Database=cms\nDATABASE_PROVIDER=\n");
 
         Assert.Equal("main", env.Database.Name);
-        Assert.Equal("mongodb", env.Database.Provider);
-        Assert.Equal("mongodb://db:27017/cms?replicaSet=rs0", env.Database.ConnectionString);
+        Assert.Null(env.Database.Provider); // always PostgreSQL: the registry decides, nothing is read
+        Assert.Equal("Host=db;Database=cms", env.Database.ConnectionString);
         Assert.Empty(env.AdditionalDatabases);
+    }
+
+    [Fact]
+    public void DOTNETFORGE_ENV_FILE_replaces_the_env_file()
+    {
+        var other = Path.Combine(Path.GetTempPath(), $"dnf-other-{Guid.NewGuid():N}.env");
+        File.WriteAllText(other, "APP_NAME=From the other file\n");
+        try
+        {
+            var env = WithCleanEnv(d =>
+            {
+                Environment.SetEnvironmentVariable("DOTNETFORGE_ENV_FILE", other);
+                return EnvConfigurationLoader.Load(d);
+            }, "APP_NAME=From .env\n");
+            Assert.Equal("From the other file", env.AppName);
+        }
+        finally
+        {
+            File.Delete(other);
+        }
+    }
+
+    [Fact]
+    public void A_database_provider_setting_stops_startup()
+    {
+        var ex = Assert.Throws<ConfigurationException>(() => WithCleanEnv(d => EnvConfigurationLoader.Load(d),
+            "DATABASE_PROVIDER=postgresql\nDATABASE_CONNECTION_STRING=Host=db;Database=cms\n"));
+        Assert.Contains("DATABASE_PROVIDER is no longer used", ex.Message);
     }
 
     [Fact]
@@ -109,7 +167,7 @@ public sealed class EnvConfigurationTests
     [Fact]
     public void ToString_never_contains_the_connection_string()
     {
-        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d), "DATABASE_PROVIDER=postgresql\nDATABASE_CONNECTION_STRING=Host=db;Password=s3cret\n");
+        var env = WithCleanEnv(d => EnvConfigurationLoader.Load(d), "DATABASE_CONNECTION_STRING=Host=db;Password=s3cret\n");
 
         Assert.DoesNotContain("s3cret", env.Database.ToString(), StringComparison.Ordinal);
     }

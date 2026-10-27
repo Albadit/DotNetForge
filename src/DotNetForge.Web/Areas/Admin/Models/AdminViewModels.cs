@@ -78,6 +78,23 @@ public sealed class ModulePlaceholderViewModel
     public string Description { get; init; } = string.Empty;
 }
 
+/// <summary>Advanced User Settings (.docs/pages/advanced-settings.md): sign-ups, default role, email confirmation.</summary>
+public sealed class AdvancedSettingsViewModel
+{
+    public bool SignUps { get; set; }
+    public Guid? DefaultRoleId { get; set; }
+    public bool EmailConfirmation { get; set; }
+    public string? ResetPasswordUrl { get; set; }
+    public string? ConfirmationRedirectUrl { get; set; }
+
+    /// <summary>The roles new accounts may get (not Super Admin or Public); Authenticated when none is chosen.</summary>
+    public IReadOnlyList<(Guid Id, string Name, bool OpensAdmin)> Roles { get; set; } = Array.Empty<(Guid, string, bool)>();
+
+    /// <summary>Whether SMTP is configured: email confirmation and "Forgot password?" need it.</summary>
+    public bool EmailConfigured { get; set; }
+    public bool CanEdit { get; set; }
+}
+
 /// <summary>The Pages screen: the page tree (left) and the selected page's form (right).</summary>
 public sealed class ContentIndexViewModel
 {
@@ -103,6 +120,9 @@ public sealed class PageEditorExtras
     public IReadOnlyList<DotNetForge.Web.Services.PageUserGrant> UserGrants { get; init; } = Array.Empty<DotNetForge.Web.Services.PageUserGrant>();
     public bool CanManagePermissions { get; init; }
     public IReadOnlyList<ThemeOption> Themes { get; init; } = Array.Empty<ThemeOption>();
+
+    /// <summary>The theme a parent page hands down (its name, and that page's title), or null.</summary>
+    public (string Theme, string FromPage)? InheritedTheme { get; init; }
     public bool HasLayout { get; init; }
     public bool HasDraftChanges { get; init; }
     public DateTime? LayoutPublishedDate { get; init; }
@@ -156,7 +176,44 @@ public sealed class ReorderItem
 public sealed class MediaIndexViewModel
 {
     public bool CanUpload { get; init; }
+
+    /// <summary>Rename and move folders (<c>Media/update</c>).</summary>
+    public bool CanEditFolders { get; init; }
+
+    /// <summary>Delete (empty) folders (<c>Media/delete</c>).</summary>
+    public bool CanDeleteFolders { get; init; }
+
+    /// <summary>The folder shown; null = the top level.</summary>
+    public MediaFolderLink? Current { get; init; }
+
+    /// <summary>From the top level down to <see cref="Current"/>.</summary>
+    public IReadOnlyList<MediaFolderLink> Breadcrumbs { get; init; } = Array.Empty<MediaFolderLink>();
+
+    /// <summary>The folders inside <see cref="Current"/>.</summary>
+    public IReadOnlyList<MediaFolderRowViewModel> Folders { get; init; } = Array.Empty<MediaFolderRowViewModel>();
+
+    /// <summary>Every folder by path - the "Move to" choices.</summary>
+    public IReadOnlyList<MediaFolderLink> AllFolders { get; init; } = Array.Empty<MediaFolderLink>();
+
+    /// <summary>The files inside <see cref="Current"/>.</summary>
     public IReadOnlyList<MediaRowViewModel> Files { get; init; } = Array.Empty<MediaRowViewModel>();
+}
+
+/// <summary>A folder of the media library as links and selects show it.</summary>
+public sealed record MediaFolderLink(Guid Id, string Name, string Path)
+{
+    /// <summary>Indentation level for selects ("/a" = 0, "/a/b" = 1).</summary>
+    public int Depth => Path.Count(c => c == '/') - 1;
+}
+
+/// <summary>A folder tile in the library: its name and what is inside.</summary>
+public sealed class MediaFolderRowViewModel
+{
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
+    public int Files { get; init; }
+    public int Folders { get; init; }
 }
 
 /// <summary>A row on the Media library list (.docs/features/media-storage.md).</summary>
@@ -306,9 +363,6 @@ public sealed class ApiEndpointsIndexViewModel
     /// <summary>Each endpoint's operations (by endpoint id).</summary>
     public ILookup<Guid, DotNetForge.Shared.Entities.CustomEndpointOperation> Operations { get; init; } =
         Array.Empty<DotNetForge.Shared.Entities.CustomEndpointOperation>().ToLookup(o => o.EndpointId);
-
-    /// <summary>False on MongoDB: endpoints can be kept but not run.</summary>
-    public bool Supported { get; init; }
 }
 
 /// <summary>The endpoint editor: the endpoint (new when <see cref="Id"/> is null) with its operations (edited by endpoints.js).</summary>
@@ -316,7 +370,10 @@ public sealed class ApiEndpointEditViewModel
 {
     public Guid? Id { get; init; }
     public DotNetForge.Content.Endpoints.CustomEndpointInput Input { get; init; } = new();
-    public bool Supported { get; init; }
+
+    /// <summary>Where the SQL can run: the CMS database, then each additional SQL database.</summary>
+    public IReadOnlyList<DotNetForge.Content.Endpoints.EndpointDatabase> Databases { get; init; } =
+        Array.Empty<DotNetForge.Content.Endpoints.EndpointDatabase>();
 
     /// <summary>The saved operations with their full path templates - what "Call it" shows.</summary>
     public IReadOnlyList<(DotNetForge.Shared.Entities.CustomEndpointOperation Operation, string Template)> Calls { get; init; } =

@@ -73,7 +73,7 @@ factory returns any `IFileStorage`.
 | Keys and rules | unchanged: `MediaService` still generates keys and enforces upload rules; connectors should enforce `StorageKey.IsValid` like the built-in providers |
 
 Sample: `extensions/connectors/s3-storage` (`dotnetforge.connector.s3`) - its own S3-compatible bucket from manifest
-`settings` (`serviceUrl`, `bucket`, `region`, `forcePathStyle`; defaults point at the `docker/compose.dev.yml`
+`settings` (`serviceUrl`, `bucket`, `region`, `forcePathStyle`; defaults point at the `docker/s3/seaweedfs.yml`
 server) and secrets `S3_CONNECTOR_ACCESS_KEY_ID` / `S3_CONNECTOR_SECRET_ACCESS_KEY`
 ([configuration → extension settings](configuration.md#extension-settings)). Extensions can also **use** media storage
 directly by injecting `IFileStorage` (the Contact Form sample stores messages under `ext/contact-form/...`); such
@@ -85,7 +85,7 @@ S3 is the only storage for deployments, and no provider name is configured: ever
 so choosing one means setting its endpoint (`STORAGE_S3_SERVICE_URL`), region and path style.
 
 **Recommendation: Cloudflare R2** for production. In development, either leave `STORAGE_S3_*` empty (uploads go to
-`storage/media`) or run `docker/compose.dev.yml` (an S3-compatible server) to use the S3 path locally.
+`storage/media`) or run an S3 server from `docker/s3/` (RustFS, Ceph or SeaweedFS) to use the S3 path locally.
 
 Prices researched October 2026 (check the providers' pages before committing; they change):
 
@@ -219,8 +219,9 @@ Covered by `AdminUiTests.Bulk_delete_removes_the_selected_files_the_user_may_del
 
 - Default: no `STORAGE_S3_*` key set → uploads go to `storage/media` at the repository root (Development only;
   `storage/` is git-ignored).
-- S3 path locally: `docker compose -f docker/compose.dev.yml up -d` starts PostgreSQL and an S3-compatible server on
-  `http://localhost:8333` with bucket `dotnetforge`; the settings to put in `.env` are in the compose file header.
+- S3 path locally: `docker compose -f docker/compose.dev.yml up -d` with `.env.developer` (RustFS with access keys),
+  or one server from `docker/s3/` - each creates bucket `dotnetforge`; the `.env` settings are in its file header
+  ([development](../guides/development.md#docker-services-for-development)).
 - Live S3 contract tests: set `DNF_TEST_S3_*` ([testing](../guides/testing.md)).
 
 ## Backups
@@ -235,7 +236,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Requirements
 
-- File Manager: folders with arbitrary nesting, rename and move files and folders, breadcrumbs, drag-and-drop
+- File Manager: folders with arbitrary nesting ✔, rename ✔ and move ✔ folders, move files ✔ (rename files: not yet), breadcrumbs ✔, drag-and-drop ✔ (moving)
   upload, delete with in-use protection (pages of type `File`, `Page.FileReference`).
 - Private files with explicit role/user **access grants** (today private = any signed-in admin-capable user).
 - Search, filter and sort by name, type/MIME, tag, folder, date and size; tags on files (today: in-browser search by
@@ -256,7 +257,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 | Target field | Today | Notes |
 | --- | --- | --- |
 | `extension` | derived from `RelativePath` | |
-| `folderId` | `FolderPath` (always `/`) | new `MediaFolder` entity: `id`, `name`, `parentId`, materialized `path`, `isPublic`, `createdBy`, `createdDate` |
+| `folderId` | ✔ `FolderId` | ✔ `MediaFolder` entity: `Id`, `Name`, `ParentId`, materialized `Path` (unique), `CreatedById`, `CreatedDate` - no `isPublic` per folder yet |
 | `storageProvider` | - | needed so files stay reachable after switching storage; today one storage is used at a time (core or the first enabled [connector](#storage-connectors)) and older objects are not tracked per row |
 | `tags`, `width`, `height`, `variants`, `checksum`, `updatedDate` | - | |
 
@@ -290,9 +291,9 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 - [ ] Unsafe uploads are scanned or blocked and never served (active formats are not allowlisted; no scanning).
 - [x] Filenames are sanitized and directory-traversal attempts are neutralized (keys are generated, `StorageKey` validation in every provider; display names sanitized in `MediaService`).
 - [ ] Duplicate names/content follow the configured strategy and the result is shown to the user.
-- [ ] Folders can be created, renamed, moved and deleted, with arbitrary nesting.
-- [ ] Breadcrumbs reflect the folder hierarchy and every segment is clickable.
-- [ ] A folder cannot be moved into itself or a descendant.
+- [x] Folders can be created, renamed, moved and deleted (empty only), with arbitrary nesting ([media → folders](../pages/media.md#folders)).
+- [x] Breadcrumbs reflect the folder hierarchy and every segment is clickable.
+- [x] A folder cannot be moved into itself or a descendant.
 - [ ] Files and folders can be marked public or private (files ✔ at upload and later per file - `MediaController.Visibility`; no folders).
 - [ ] Private files enforce role/user access grants; unauthorized download → `403`, missing → `404`, no metadata leakage (private files return `404` to anyone but signed-in admin-capable users - `MediaFilesController`; no grants).
 - [x] Public files are directly downloadable, including anonymously (`MediaFilesController`).

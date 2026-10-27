@@ -10,6 +10,9 @@ public sealed class EmailMessage
     public required string Body { get; init; }
 
     public bool IsHtml { get; init; } = true;
+
+    /// <summary>The email template it was rendered from (e.g. <c>password-reset</c>), for the email log; null otherwise.</summary>
+    public string? Template { get; init; }
 }
 
 /// <summary>Sends transactional email via the configured SMTP provider (.docs/features/email.md).</summary>

@@ -105,7 +105,10 @@ With the default grants only Super Admin and Admin pass; `Editor` and `Author` a
 ## Validation
 
 Key required (trimmed). Key ≤ 200 characters (after trimming), value ≤ 4000 characters - the column lengths, checked
-before saving so PostgreSQL never rejects the insert. No key format, no duplicate warning.
+before saving so PostgreSQL never rejects the insert. No key format, no duplicate warning. Keys owned by screens with
+their own rules are refused ("'<key>' is managed on <screen>; change it there."): `users.*`
+([Advanced Settings](advanced-settings.md) - e.g. a Super Admin default role) and `transfer.*` (the backup schedule,
+[Data Management](data-management.md)). SMTP is not a setting here: it comes from `SMTP_*` in `.env`.
 
 ## Error handling
 
@@ -190,7 +193,7 @@ diagnostics, two logo uploads, a **Check for updates** action, a system health i
 | Available CMS updates | version or "Up to date" | update check service, links to [transfer and updates](../features/transfer-and-updates.md) | ✘ |
 | C# language version | string | build/runtime | ✘ |
 | ASP.NET Core version | string | runtime | ✘ |
-| Database provider | `sqlite` \| `postgresql` | detected from `DATABASE_CONNECTION_STRING` | ✔ `AppEnvironment.Provider` (not displayed) |
+| Database provider | `postgresql` (the CMS database is always PostgreSQL; no setting) | - | ✔ `DatabaseCatalog.Main` (not displayed; Data Management shows it on its Export card) |
 | Environment | e.g. `Development`, `Production` | hosting environment | ✔ `IWebHostEnvironment.EnvironmentName` (not displayed) |
 | Installed extensions | count (optional list) | extension registry ([extensions](../features/extensions.md)) | `InstalledExtensions` holds the enabled state (written on enable/disable); on-disk discovery is `IExtensionLoader.Discover`, "is it active" is `ExtensionCatalog` |
 | System health | `Healthy` \| `Degraded` \| `Unhealthy` + per-check detail | health check service | ✘ (`GET /health` returns a static `ok`) |
@@ -217,7 +220,7 @@ override; public [themes](../features/themes.md) never affect it.
 | Internationalization | Global Settings | [internationalization](../features/internationalization.md) |
 | File Manager | Global Settings | [media storage](../features/media-storage.md) |
 | Plugins | Global Settings | [Plugins](plugins.md) |
-| Transfer | Global Settings | [transfer and updates](../features/transfer-and-updates.md) |
+| Transfer (sidebar: **Data Management**) | Global Settings | [Data Management](data-management.md) |
 | Webhooks | Global Settings | [webhooks](../features/webhooks.md) |
 | Roles, Users, Audit Logs | Administration Panel | [Roles](roles.md), [Users](users.md), [Audit Logs](audit-logs.md) |
 | Configuration, Templates | Email | [email](../features/email.md) |
@@ -289,7 +292,7 @@ settings.
 - [ ] Logo uploads with a disallowed type or over the size limit are rejected with a clear message.
 - [ ] Server-side validation rejects unsafe uploads even when client validation is bypassed.
 - [ ] The hub table links to every settings screen (API Tokens, Content History, Internationalization, File Manager,
-  Plugins, Transfer, Webhooks, Email, Administration Panel, Users & Permissions Plugin).
+  Plugins, Transfer (Data Management), Webhooks, Email, Administration Panel, Users & Permissions Plugin).
 - [x] Marketplace is reachable from the admin **Main** menu - `AdminNavigation.Tree` → `/admin/marketplace`
   (`ModulesController.Marketplace`, placeholder screen; "Soon" badge in the sidebar).
 - [ ] **Check for updates** reports an available version (with link) or "Up to date", and an error state when the

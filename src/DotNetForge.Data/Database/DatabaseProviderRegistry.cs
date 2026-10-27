@@ -23,6 +23,9 @@ public sealed class DatabaseProviderRegistry
     /// <summary>Registered names, including aliases.</summary>
     public IReadOnlyCollection<string> Names => _byName.Keys;
 
+    /// <summary>The provider of the CMS (main) database: whatever is registered under this name (or an alias of it).</summary>
+    public const string CmsProvider = "postgresql";
+
     public bool TryGet(string name, out IDatabaseProvider provider) => _byName.TryGetValue(name, out provider!);
 
     /// <summary>
@@ -31,6 +34,22 @@ public sealed class DatabaseProviderRegistry
     /// </summary>
     public ResolvedDatabase Resolve(DatabaseSettings settings, DatabaseHostContext host)
     {
+        // The CMS database is always PostgreSQL (.docs/database/configuration.md) - there is no setting for it; the other
+        // providers serve additional databases.
+        if (settings.IsMain)
+        {
+            if (!string.IsNullOrWhiteSpace(settings.Provider) &&
+                (!_byName.TryGetValue(settings.Provider, out var chosen) || !_byName.TryGetValue(CmsProvider, out var cms) ||
+                 !ReferenceEquals(chosen, cms)))
+            {
+                throw new DatabaseConfigurationException(
+                    $"'{settings.Provider}' can't host the CMS: the CMS database is PostgreSQL. SQLite, SQL Server, MySQL " +
+                    "and MongoDB can be added as additional databases (DATABASES_<NAME>_PROVIDER).");
+            }
+
+            settings = settings with { Provider = CmsProvider };
+        }
+
         var (name, provider) = string.IsNullOrWhiteSpace(settings.Provider)
             ? Detect(settings)
             : (settings.Provider!, Get(settings));

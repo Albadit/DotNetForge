@@ -1,0 +1,50 @@
+@using DotNetForge.Web.Services
+@model IReadOnlyList<EmailTemplateState>
+@{
+    ViewData["Title"] = "Email Templates";
+    ViewData["Description"] = "The emails the CMS sends. Change a subject or body; restore the default at any time.";
+}
+
+<section class="card" aria-labelledby="templates-title">
+    <div class="card-header">
+        <h2 class="card-title" id="templates-title">Templates</h2>
+    </div>
+    <div class="table-wrap">
+        <table class="table table-stack">
+            <thead>
+                <tr>
+                    <th scope="col">Template</th>
+                    <th scope="col">Sent when</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model)
+                {
+                    <tr>
+                        <td class="cell-lead">
+                            <a class="cell-primary" href="/admin/email/templates/@t.Definition.Key">@t.Definition.Name</a>
+                            <span class="cell-sub text-mono">@t.Definition.Key</span>
+                        </td>
+                        <td data-label="Sent when" class="text-muted">@t.Definition.Trigger</td>
+                        <td data-label="Status">
+                            @if (t.IsCustomized)
+                            {
+                                <badge tone="Info" dot="true">Customized</badge>
+                                <span class="cell-sub"><timestamp value="@t.UpdatedDate" /></span>
+                            }
+                            else
+                            {
+                                <badge tone="Neutral" dot="true">Default</badge>
+                            }
+                        </td>
+                        <td class="col-actions">
+                            <a class="btn btn-ghost btn-sm" href="/admin/email/templates/@t.Definition.Key"><icon name="pencil" size="sm" /> Edit</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

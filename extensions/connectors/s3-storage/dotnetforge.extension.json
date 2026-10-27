@@ -13,7 +13,7 @@
   "dependencies": [],
   "routes": [],
   "settings": {
-    // The defaults match the local S3 server of docker/compose.dev.yml (docker compose -f docker/compose.dev.yml up -d).
+    // The defaults match the local S3 server of docker/s3/seaweedfs.yml (docker compose -f docker/s3/seaweedfs.yml up -d).
     // Credentials never go here: set S3_CONNECTOR_ACCESS_KEY_ID and S3_CONNECTOR_SECRET_ACCESS_KEY in .env.
     "serviceUrl": "http://localhost:8333",
     "bucket": "dotnetforge",

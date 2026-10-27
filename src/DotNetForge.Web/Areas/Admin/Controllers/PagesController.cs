@@ -221,6 +221,7 @@ public sealed class PagesController : AdminControllerBase
             SocialImageUrl = source.SocialImageUrl,
             DisplayInMenu = source.DisplayInMenu,
             ThemeId = source.ThemeId,
+            ThemeForChildren = source.ThemeForChildren,
             LayoutJson = source.LayoutJson,
             LayoutPublishedDate = source.LayoutPublishedDate,
             DraftLayoutJson = source.DraftLayoutJson,
@@ -356,6 +357,11 @@ public sealed class PagesController : AdminControllerBase
                 UserGrants = grants.Users,
                 CanManagePermissions = CanManagePermissions,
                 Themes = themes,
+                InheritedTheme = ThemeResolver.InheritedFrom(
+                    pages.Select(p => new ThemeNode(p.Id, p.ParentPageId, p.Title, p.ThemeId, p.ThemeForChildren)).ToList(),
+                    selectedPage.ParentPageId) is { } from
+                    ? (themes.FirstOrDefault(t => t.Id == from.ThemeId)?.Name ?? from.ThemeId!, from.Title)
+                    : null,
                 HasLayout = selectedPage.LayoutJson is not null,
                 HasDraftChanges = PageBuilderService.HasPendingChanges(selectedPage),
                 LayoutPublishedDate = selectedPage.LayoutPublishedDate,

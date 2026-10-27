@@ -1,0 +1,33 @@
+# SeaweedFS's S3 gateway: a small S3-compatible server WITHOUT authentication (any keys are accepted). The live S3
+# tests (DNF_TEST_S3_*, .docs/guides/testing.md) and the defaults of the S3 storage connector sample
+# (extensions/connectors/s3-storage) use it.
+#   docker compose -f docker/s3/seaweedfs.yml up -d
+# .env:
+#   STORAGE_S3_SERVICE_URL=http://localhost:8333
+#   STORAGE_S3_BUCKET=dotnetforge
+#   STORAGE_S3_ACCESS_KEY_ID=dev
+#   STORAGE_S3_SECRET_ACCESS_KEY=dev
+#   STORAGE_S3_FORCE_PATH_STYLE=true
+# Development only. Never expose the port.
+
+name: dotnetforge
+
+services:
+  seaweedfs:
+    image: chrislusf/seaweedfs
+    command: server -s3 -dir=/data
+    ports:
+      - "8333:8333"
+    volumes:
+      - seaweedfs-data:/data
+
+  # Creates the bucket once the S3 server answers.
+  seaweedfs-bucket:
+    image: curlimages/curl
+    depends_on:
+      - seaweedfs
+    command: ["sh", "-c", "until curl -sf -X PUT http://seaweedfs:8333/dotnetforge; do sleep 1; done"]
+    restart: "no"
+
+volumes:
+  seaweedfs-data:

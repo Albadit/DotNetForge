@@ -61,7 +61,7 @@ public static class AdminNavigation
                 new NavLink("Content History", "/admin/content-history", "history", typeof(ModulesController), Planned: true),
                 new NavLink("Internationalization", "/admin/internationalization", "globe", typeof(ModulesController), Planned: true),
                 new NavLink("Plugins", "/admin/plugins", "puzzle", typeof(PluginsController)),
-                new NavLink("Transfer", "/admin/transfer", "transfer", typeof(ModulesController), Planned: true),
+                new NavLink("Data Management", "/admin/data", "database", typeof(DataManagementController)),
                 new NavLink("Webhooks", "/admin/webhooks", "webhook", typeof(ModulesController), Planned: true),
             }),
             new NavGroup("Administration Panel", new[]
@@ -72,15 +72,15 @@ public static class AdminNavigation
             }),
             new NavGroup("Email", new[]
             {
-                new NavLink("Configuration", "/admin/email/configuration", "mail", typeof(ModulesController), Planned: true),
-                new NavLink("Templates", "/admin/email/templates", "file-code", typeof(ModulesController), Planned: true),
+                new NavLink("Configuration", "/admin/email/configuration", "mail", typeof(EmailConfigurationController)),
+                new NavLink("Templates", "/admin/email/templates", "file-code", typeof(EmailTemplatesController)),
             }),
             // The spec tree lists Roles here too; it is shown once, under Administration Panel
             // (.docs/architecture/pages.md#canonical-sidebar-tree-vs-the-sidebar).
             new NavGroup("Users & Permissions Plugin", new[]
             {
                 new NavLink("Providers", "/admin/providers", "lock", typeof(ModulesController), Planned: true),
-                new NavLink("Advanced Settings", "/admin/advanced-settings", "sliders", typeof(ModulesController), Planned: true),
+                new NavLink("Advanced Settings", "/admin/advanced-settings", "sliders", typeof(AdvancedSettingsController)),
             }),
         }),
     };

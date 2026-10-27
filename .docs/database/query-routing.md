@@ -23,7 +23,8 @@ public sealed class ReportService(IDatabaseService db)
 }
 ```
 
-The same code runs unchanged on SQLite, PostgreSQL, SQL Server, MySQL and MongoDB.
+Without `.On(...)` a command goes to the CMS database (PostgreSQL); with `.On("reports")` the same command model runs
+unchanged on an additional SQLite, PostgreSQL, SQL Server, MySQL or MongoDB database.
 
 | Method | Operations | Returns |
 | --- | --- | --- |
@@ -33,6 +34,7 @@ The same code runs unchanged on SQLite, PostgreSQL, SQL Server, MySQL and MongoD
 | `TryQueryAsync`, `TryExecuteAsync` | as above | failures as `Success = false` instead of exceptions |
 | `BeginTransactionAsync(database)` | | `IDatabaseTransaction`; pass it to the commands; dispose without commit = rollback |
 | `TestConnectionAsync(database)` | | latency and a credential-free server description; never throws for database errors |
+| `ListCollectionsAsync(database)` | | the database's tables or collections (system ones left out), sorted by name; throws `DatabaseException`; 30 s timeout |
 | `Databases` | | the configured databases (name, provider, server) |
 
 ## The command model
@@ -40,8 +42,8 @@ The same code runs unchanged on SQLite, PostgreSQL, SQL Server, MySQL and MongoD
 ```text
 DatabaseCommand
 ├── Operation      Find · FindOne · Count · InsertOne · InsertMany · UpdateOne · UpdateMany · DeleteOne · DeleteMany · Aggregate
-├── Collection     "Users" (table or collection; for the main database also the entity name "User")
-├── Database       null = main; "reports" = DATABASES_REPORTS_*
+├── Collection     "Users" (table or collection; for the CMS database also the entity name "User")
+├── Database       null = the CMS database ("main"); "reports" = DATABASES_REPORTS_*
 ├── Filter         DatabaseFilter tree (below)
 ├── Fields         projection; null = all fields
 ├── Sort           DatabaseSort(Field, Descending)…
@@ -75,8 +77,8 @@ automatically.
 - `Eq("Status", 1)` and `Eq("Status", "Disabled")` both match the enum field.
 - A Guid may be passed as text.
 - Dates come back as UTC `DateTime`.
-- SQL parameters use EF Core's type mapping for the field, so the service stores and compares values exactly as
-  EF Core does (e.g. Guids as text on SQLite, binary UUIDs on MongoDB).
+- On the CMS database, SQL parameters use EF Core's type mapping for the field, so the service stores and compares
+  values exactly as EF Core does. Additional databases have no model: values are sent as given.
 
 **Writes that could touch every record need an explicit filter.**
 - `UpdateMany`, `DeleteMany`, `UpdateOne` and `DeleteOne` are rejected without one.
@@ -86,9 +88,9 @@ automatically.
   model tables have; on a database without a model, use the `*Many` form with a filter that matches one record.
 - Key fields can't be updated.
 
-**Inserts** fill in a missing single `Guid` key. Database-generated keys are left to the database: identity columns
-on SQL, and the time-ordered key generator on MongoDB. Required fields without a database default must be supplied,
-because CLR property initializers don't run for commands.
+**Inserts** into the CMS database fill in a missing single `Guid` key; database-generated keys (identity columns)
+are left to the database. Required fields without a database default must be supplied, because CLR property
+initializers don't run for commands. Additional databases have no model, so inserts write exactly the given fields.
 
 ## Routing
 
@@ -123,14 +125,12 @@ There is no `switch` over database types anywhere:
 
 ## Names and schema
 
-For the **main database**, names are checked against the CMS's EF Core model (`DatabaseSchema.FromModel`):
-- **Collections** are found by table/collection name (`Users`) or entity name (`User`).
-- **Fields** are the model's property names (`Email`). The provider maps them to native names:
-  - column names for SQL;
-  - element names for MongoDB, where the key is `_id` and parts of a composite key are `_id.<Part>`.
+For the **CMS database**, names are checked against the CMS's EF Core model (`DatabaseSchema.FromModel`):
+- **Collections** are found by table name (`Users`) or entity name (`User`).
+- **Fields** are the model's property names (`Email`). The provider maps them to column names.
 - **Unknown names** raise `DatabaseNotFoundException` before anything reaches the database.
 
-For a **named database without a model**:
+For an **additional database** (no model):
 - Names are used as written, but must be plain identifiers (`^[A-Za-z_][A-Za-z0-9_]{0,127}$`). This rules out SQL
   syntax, MongoDB operators (`$`) and paths (`.`).
 - A `Find` without `Fields` returns every column/field.
@@ -151,7 +151,7 @@ The CMS itself keeps using EF Core LINQ ([architecture](architecture.md)).
 ## Transactions
 
 ```csharp
-await using var tx = await db.BeginTransactionAsync();            // main database
+await using var tx = await db.BeginTransactionAsync();            // the CMS database
 await db.ExecuteAsync(DatabaseCommand.InsertOne("Settings", a), tx);
 await db.ExecuteAsync(DatabaseCommand.UpdateMany("Settings", f, set), tx);
 await tx.CommitAsync();                                           // or dispose to roll back

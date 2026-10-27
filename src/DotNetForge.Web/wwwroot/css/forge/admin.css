@@ -5,7 +5,21 @@
 
 /* ==== Shell ================================================================================================= */
 .shell { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100vh; }
-.main { display: flex; flex-direction: column; min-width: 0; }
+.shell > .main { display: flex; flex-direction: column; min-width: 0; } /* not ".main": Monaco uses that class too */
+
+/* Every screen is a full page load. Browsers with cross-document view transitions keep the old screen up until the
+   new one can paint and swap only the content; the sidebar and the top bar are their own layers and swap without
+   a fade, so they stay put between screens (nav-state.js restores its groups and scroll before that first paint). */
+@view-transition { navigation: auto; }
+.sidebar { view-transition-name: sidebar; }
+.topbar { view-transition-name: topbar; }
+::view-transition-group(sidebar), ::view-transition-new(sidebar),
+::view-transition-group(topbar), ::view-transition-new(topbar) { animation: none; }
+::view-transition-old(sidebar), ::view-transition-old(topbar) { display: none; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 120ms; }
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
 
 /* ==== Sidebar (charcoal in both themes - the logo tile) ===================================================== */
 .sidebar {
@@ -497,3 +511,70 @@
     .endpoint-path > input { border-radius: var(--radius); }
     .endpoint-op-settings { grid-template-columns: 1fr; }
 }
+
+/* Email → Templates (.docs/pages/email-templates.md) */
+.template-body { min-height: 16rem; font-size: var(--text-sm); }
+/* The Monaco code editor that replaces the body textarea (email-templates.js; Monaco itself is in /lib/monaco). */
+.code-editor { display: flex; flex-direction: column; border: 1px solid var(--color-border-strong); border-radius: var(--radius); overflow: hidden; }
+.code-editor[hidden] { display: none; }
+.code-editor-surface { height: 24rem; }
+.code-editor-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); padding: 0.125rem var(--space-2);
+    border-top: 1px solid var(--color-border); background: var(--color-surface-muted); font-size: var(--text-xs); color: var(--color-text-muted); }
+.code-status-item { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0.125rem 0.375rem; border-radius: var(--radius-sm); white-space: nowrap; }
+button.code-status-item { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+button.code-status-item:hover { background: var(--color-surface-hover); color: var(--color-text); }
+button.code-status-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.code-status-item[aria-pressed="true"] { color: var(--color-accent-text); }
+.code-status-item.is-over { color: var(--color-danger); font-weight: var(--weight-semibold); }
+.code-status-count { display: inline-flex; align-items: center; gap: 0.25rem; }
+.code-status-errors.is-active { color: var(--color-danger); }
+.code-status-warnings.is-active { color: var(--color-warning); }
+.code-status-spacer { flex: 1; }
+.code-editor:focus-within { border-color: var(--color-accent); box-shadow: var(--focus-ring); }
+.code-editor .code-var { color: var(--color-accent-text) !important; font-weight: var(--weight-semibold); }
+.email-preview { display: block; width: 100%; height: 26rem; border: 1px solid var(--color-border); border-radius: var(--radius); background: #fff; }
+.template-variables { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; list-style: none; }
+.template-variables li { display: flex; flex-direction: column; gap: var(--space-1); }
+.template-variable { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.template-sample { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--color-text-muted); }
+.template-sample > span { min-width: 0; overflow-wrap: anywhere; }
+/* ==== Email Configuration: connection test steps ============================================================== */
+.probe-steps { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.probe-step { display: grid; grid-template-columns: auto 7rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); font-size: var(--text-sm); }
+.probe-name { font-weight: var(--weight-semibold); }
+.probe-detail { color: var(--color-text-muted); overflow-wrap: anywhere; }
+.probe-time { color: var(--color-text-subtle); font-variant-numeric: tabular-nums; }
+.probe-ok { color: var(--color-success); }
+.probe-failed { color: var(--color-danger); }
+@media (max-width: 40rem) { .probe-step { grid-template-columns: auto minmax(0, 1fr); } .probe-detail, .probe-time { grid-column: 2; } }
+/* ==== Media library: folders (breadcrumbs in the card title, folder tiles) ===================== */
+.folder-crumbs { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1); }
+.folder-crumbs a { color: var(--color-text-muted); text-decoration: none; }
+.folder-crumbs a:hover { color: var(--color-text); text-decoration: underline; }
+.folder-crumbs-sep { color: var(--color-text-subtle); }
+.media-folder .media-thumb { color: var(--color-accent); }
+.folder-settings .form-actions { flex-wrap: nowrap; }
+.bulk-bar .bulk-select { width: auto; max-width: 16rem; }
+.bulk-bar [data-bulk-count] { white-space: nowrap; }
+/* Drag and drop (media.js): the dragged item fades, a folder or breadcrumb under it is outlined. */
+.media-card[draggable="true"] { cursor: grab; }
+.media-card.is-dragging { opacity: 0.45; }
+.media-card.is-drop-target { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-accent); background: var(--color-accent-soft); }
+.folder-crumbs a.is-drop-target { color: var(--color-accent-text); text-decoration: underline; border-radius: var(--radius-sm); box-shadow: var(--focus-ring); }
+/* Upload panel (media.js): previews of the chosen files, and the edit-folder dialog. */
+.upload-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.upload-preview[hidden] { display: none; }
+.upload-item { position: relative; display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.upload-item.is-invalid { border-color: var(--color-danger); }
+.upload-thumb { display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--color-surface-muted); color: var(--color-text-subtle); }
+.upload-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.upload-meta { display: flex; flex-direction: column; gap: 0.15rem; padding: var(--space-2); min-width: 0; font-size: var(--text-xs); color: var(--color-text-muted); }
+.upload-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text); font-weight: var(--weight-semibold); font-size: var(--text-sm); }
+.upload-problem { color: var(--color-danger); }
+.upload-remove { position: absolute; top: var(--space-1); right: var(--space-1); }
+.folder-dialog { width: min(32rem, calc(100vw - 2rem)); }
+.folder-dialog .dialog-body { display: flex; flex-direction: column; }
+.folder-dialog-row { flex-wrap: nowrap; }
+/* The Upload card is the content of a <dialog class="dialog upload-dialog">, which fades it in and out. */
+.upload-dialog { width: min(46rem, calc(100vw - 2rem)); max-height: calc(100vh - 4rem); padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: auto; }
+.upload-dialog > .card { margin: 0; box-shadow: var(--shadow-lg); }

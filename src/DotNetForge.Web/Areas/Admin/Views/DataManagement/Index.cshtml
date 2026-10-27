@@ -1,0 +1,269 @@
+@model DataManagementController.DataManagementViewModel
+@using DotNetForge.Shared.Enums
+@using DotNetForge.Web.Services
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = "Data Management";
+    ViewData["Description"] = "Export the CMS data, keep backups, and - in Development - import an export into this site.";
+    static string Size(long bytes) => bytes switch
+    {
+        < 1024 => bytes + " B",
+        < 1024 * 1024 => (bytes / 1024d).ToString("0.#") + " KB",
+        _ => (bytes / 1024d / 1024d).ToString("0.#") + " MB",
+    };
+    string By(Guid? id) => id is { } user ? Model.Users.GetValueOrDefault(user) ?? "Deleted user" : "Automatic";
+    static string Kind(TransferRecord r) => r.Automatic ? "Automatic" : r.Note is not null ? "Safety copy" : "Manual";
+}
+
+<div class="stack">
+    <form-errors />
+
+    <section class="card" aria-labelledby="export-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="export-title">Export</h2>
+                <p class="card-description">Download a database as one .zip file - to keep, or to bring this site's data into another site.</p>
+            </div>
+        </div>
+        <form method="post" action="/admin/data/export">
+            @Html.AntiForgeryToken()
+            <div class="card-body stack">
+                @if (Model.ExportDatabases.Count > 1)
+                {
+                    <div class="field">
+                        <label class="field-label" for="database">Database</label>
+                        <select id="database" name="database" aria-describedby="database-hint">
+                            @foreach (var (name, label) in Model.ExportDatabases)
+                            {
+                                <option value="@name">@label</option>
+                            }
+                        </select>
+                        <span class="field-hint" id="database-hint">The CMS database is the default. An additional database (<code>DATABASES_&lt;NAME&gt;_*</code>) is exported table by table as JSON - for your own use; only CMS exports can be imported.</span>
+                    </div>
+                }
+                <dl class="dl dl-compact">
+                    <dt>CMS database</dt>
+                    <dd>@Model.Provider: pages, content types and entries, media details, users and roles, settings, email templates, API tokens and endpoints, webhooks, extensions and the audit log.</dd>
+                    <dt>Not included</dt>
+                    <dd>Uploaded files (they stay in the media storage) and this site's encryption keys - so on another site custom API endpoint tokens must be regenerated.</dd>
+                </dl>
+                <p class="text-sm text-muted"><icon name="shield" size="sm" /> The file contains password hashes and personal data: store it like a database backup.</p>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary"><icon name="download" /> Download export</button>
+            </div>
+        </form>
+    </section>
+
+    <form method="post" action="/admin/data/backups/schedule">
+        @Html.AntiForgeryToken()
+        <section class="card" aria-labelledby="schedule-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="schedule-title">Automatic backups</h2>
+                    <p class="card-description">Stored in the media storage under <code>backups/</code> - not public, listed below.</p>
+                </div>
+                <badge tone="@(Model.Schedule.Enabled ? Tone.Success : Tone.Neutral)" dot="true">@(Model.Schedule.Enabled ? "On" : "Off")</badge>
+            </div>
+            <div class="card-body stack">
+                <label class="switch-row">
+                    <span class="check-text">
+                        <span>Back up automatically</span>
+                        <span class="check-hint">Recommended. Runs in the background when the interval since the last backup has passed.</span>
+                    </span>
+                    @* The checkbox first: a bound bool takes the first posted value. *@
+                    <input type="checkbox" class="switch" role="switch" name="enabled" value="true" checked="@(Model.Schedule.Enabled ? "checked" : null)" />
+                    <input type="hidden" name="enabled" value="false" />
+                </label>
+                <div class="form-grid">
+                    <div class="field">
+                        <label class="field-label" for="intervalHours">Every</label>
+                        <select id="intervalHours" name="intervalHours">
+                            @foreach (var hours in DatabaseTransferService.Intervals)
+                            {
+                                <option value="@hours" selected="@(hours == Model.Schedule.IntervalHours ? "selected" : null)">@DataManagementController.Describe(hours)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="field-label" for="keep">Keep</label>
+                        <input id="keep" name="keep" type="number" min="1" max="100" required value="@Model.Schedule.Keep" aria-describedby="keep-hint" />
+                        <span class="field-hint" id="keep-hint">The newest automatic backups; older ones are deleted. Manual backups stay until you delete them.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary"><icon name="check" /> Save schedule</button>
+            </div>
+        </section>
+    </form>
+
+    <section class="card" aria-labelledby="backups-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="backups-title">Backups</h2>
+                <p class="card-description">@Model.Backups.Count stored</p>
+            </div>
+            <form method="post" action="/admin/data/backups">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-secondary btn-sm"><icon name="archive" /> Back up now</button>
+            </form>
+        </div>
+        @if (Model.Backups.Count == 0)
+        {
+            <empty-state icon="archive" title="No backups yet" text="Back up now, or turn on automatic backups." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="table table-stack">
+                    <thead>
+                        <tr>
+                            <th scope="col">Backup</th>
+                            <th scope="col">Kind</th>
+                            <th scope="col">Records</th>
+                            <th scope="col">Size</th>
+                            <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var backup in Model.Backups)
+                        {
+                            <tr>
+                                <td class="cell-lead">
+                                    <span class="cell-primary"><timestamp value="@backup.StartedAt" /></span>
+                                    <span class="cell-sub">@backup.FileName</span>
+                                </td>
+                                <td data-label="Kind">
+                                    <badge tone="@(backup.Automatic ? Tone.Neutral : Tone.Info)">@Kind(backup)</badge>
+                                    @if (backup.Note is not null)
+                                    {
+                                        <span class="cell-sub">@backup.Note</span>
+                                    }
+                                </td>
+                                <td data-label="Records">@backup.RecordCount.ToString("N0")</td>
+                                <td data-label="Size">@Size(backup.SizeBytes)</td>
+                                <td class="col-actions">
+                                    <action-menu label="Actions for the backup of @backup.StartedAt.ToString("u")">
+                                        <menu-post action="/admin/data/backups/@backup.Id/download" icon="download">Download</menu-post>
+                                        @if (Model.ImportAllowed)
+                                        {
+                                            <menu-post action="/admin/data/backups/@backup.Id/restore" icon="rotate-ccw"
+                                                       confirm="Replace ALL current data with this backup? The current data is backed up first, and you are signed out afterwards."
+                                                       confirm-title="Restore backup" confirm-action="Restore">Restore</menu-post>
+                                        }
+                                        <menu-separator />
+                                        <menu-post action="/admin/data/backups/@backup.Id/delete" icon="trash" danger="true"
+                                                   confirm="Delete this backup? The file is removed from the storage; this can't be undone."
+                                                   confirm-title="Delete backup" confirm-action="Delete">Delete</menu-post>
+                                    </action-menu>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="card" aria-labelledby="import-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="import-title">Import</h2>
+                <p class="card-description">Replace all data of this site with an export - e.g. a copy of another site, or a backup.</p>
+            </div>
+            <badge tone="Warning">Development only</badge>
+        </div>
+        @if (Model.ImportAllowed)
+        {
+            <form method="post" action="/admin/data/import" enctype="multipart/form-data"
+                  data-confirm="Replace ALL data of this site with the file's? The current data is backed up first, and you are signed out afterwards."
+                  data-confirm-title="Import export" data-confirm-action="Import">
+                @Html.AntiForgeryToken()
+                <div class="card-body stack">
+                    <div class="field">
+                        <label class="field-label" for="file">Export file<span class="field-required" aria-hidden="true">*</span></label>
+                        <input id="file" name="file" type="file" accept=".zip,application/zip" required aria-describedby="file-hint" />
+                        <span class="field-hint" id="file-hint">
+                            A .zip from Download export or a backup of the same CMS version.
+                            It is checked completely - format, checksums, versions, a Super Admin - before anything changes.
+                        </span>
+                    </div>
+                    <label class="check">
+                        <input type="checkbox" name="confirm" value="true" required />
+                        <span class="check-text">
+                            <span>Replace all current data</span>
+                            <span class="check-hint">Content, users, settings and the audit log are replaced in one step; a failure changes nothing. A backup of the current data is stored first.</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-danger"><icon name="upload" /> Import and replace data</button>
+                </div>
+            </form>
+        }
+        else
+        {
+            <div class="card-body">
+                <alert tone="Info" title="Not available in production">Import and restore replace all data, so they only run when the app runs in Development. Export and backups work here; import the file into a development copy, or restore through your database's own tools.</alert>
+            </div>
+        }
+    </section>
+
+    <section class="card" aria-labelledby="history-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="history-title">History</h2>
+                <p class="card-description">The latest exports, backups, imports and restores.</p>
+            </div>
+        </div>
+        @if (Model.History.Count == 0)
+        {
+            <empty-state icon="history" title="Nothing yet" text="Exports, backups and imports are listed here." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="table table-stack">
+                    <thead>
+                        <tr>
+                            <th scope="col">When</th>
+                            <th scope="col">Operation</th>
+                            <th scope="col">Result</th>
+                            <th scope="col">Records</th>
+                            <th scope="col">By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var run in Model.History)
+                        {
+                            var ok = run.Status == TransferStatus.Success;
+                            <tr>
+                                <td class="cell-lead">
+                                    <span class="cell-primary"><timestamp value="@run.StartedAt" /></span>
+                                    <span class="cell-sub">@run.FileName</span>
+                                </td>
+                                <td data-label="Operation">
+                                    @run.Operation
+                                    @if (run.SourceProvider is not null)
+                                    {
+                                        <span class="cell-sub">@run.SourceProvider → @run.Provider</span>
+                                    }
+                                </td>
+                                <td data-label="Result">
+                                    <badge tone="@(ok ? Tone.Success : Tone.Danger)" dot="true">@(ok ? "Succeeded" : "Failed")</badge>
+                                    @if (run.Error is not null)
+                                    {
+                                        <span class="cell-sub">@run.Error</span>
+                                    }
+                                </td>
+                                <td data-label="Records">@(ok ? run.RecordCount.ToString("N0") : "-")</td>
+                                <td data-label="By">@By(run.InitiatedById)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

@@ -40,7 +40,7 @@ public static class DataSeeder
     }
 
     /// <summary>The newest one-time data update (<see cref="SystemState.SeedVersion"/>).</summary>
-    public const int CurrentSeedVersion = 1;
+    public const int CurrentSeedVersion = 2;
 
     /// <summary>
     /// One-time updates of data that existing databases were seeded without, each applied once (recorded in
@@ -58,6 +58,16 @@ public static class DataSeeder
         {
             // 1: structured content - the default grants of the new areas for the built-in roles.
             await AddDefaultGrantsAsync(db, new[] { PermissionAreas.ContentTypes, PermissionAreas.Entries }, ct);
+        }
+
+        if (state.SeedVersion < 2)
+        {
+            // 2: email confirmation - accounts that existed before it are trusted as confirmed, so turning it on
+            // never locks them out.
+            foreach (var user in await db.Users.Where(u => !u.EmailConfirmed).ToListAsync(ct))
+            {
+                user.EmailConfirmed = true;
+            }
         }
 
         state.SeedVersion = CurrentSeedVersion;

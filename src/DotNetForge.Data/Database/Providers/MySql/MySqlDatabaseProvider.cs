@@ -13,14 +13,12 @@ namespace DotNetForge.Data.Database.Providers.MySql;
 
 /// <summary>
 /// MySQL 8 through Oracle's MySql.EntityFrameworkCore (the Pomelo provider has no EF Core 10 release). Never
-/// auto-detected - <c>Server=</c> strings are ambiguous - so set <c>DATABASE_PROVIDER=mysql</c>. Context:
-/// <see cref="MySqlDbContext"/>; migrations in <c>Migrations/</c> next to this file.
+/// auto-detected - <c>Server=</c> strings are ambiguous - so set <c>DATABASES_&lt;NAME&gt;_PROVIDER=mysql</c>. For
+/// additional databases only (the CMS runs on PostgreSQL).
 /// Self-contained: no code is shared with the other SQL providers, so a change here never affects them.
 /// </summary>
 public sealed class MySqlDatabaseProvider : IDatabaseProvider
 {
-    private static readonly string MigrationsAssembly = typeof(MySqlDatabaseProvider).Assembly.FullName!;
-
     public string DisplayName => "MySQL";
 
     public bool CanHandle(string? connectionString) => false;
@@ -29,18 +27,24 @@ public sealed class MySqlDatabaseProvider : IDatabaseProvider
 
     public string Describe(DatabaseSettings settings) => DescribeConnection(settings.ConnectionString);
 
+    /// <summary>The CMS runs on PostgreSQL only; MySQL serves additional databases (<c>DATABASES_&lt;NAME&gt;_*</c>).</summary>
     public void AddDbContext(IServiceCollection services, DatabaseSettings settings) =>
-        services.AddDbContext<DotNetForgeDbContext, MySqlDbContext>(options => Configure(options, settings.ConnectionString!));
+        throw new DatabaseConfigurationException(
+            "The CMS database must be PostgreSQL; MySQL can only be an additional database (DATABASES_<NAME>_PROVIDER=mysql).");
 
     public Task InitializeSchemaAsync(DotNetForgeDbContext db, CancellationToken cancellationToken) =>
-        db.Database.MigrateAsync(cancellationToken);
+        throw new NotSupportedException("MySQL does not host the CMS model.");
 
     public IDatabaseExecutor CreateExecutor(DatabaseSettings settings, IModel? model, ILoggerFactory loggerFactory) =>
         new MySqlExecutor(settings, model is null ? DatabaseSchema.Unmapped : Schema(model));
 
-    /// <summary>Also used by <c>DesignTimeDbContextFactory</c>.</summary>
-    public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
-        options.UseMySQL(connectionString, sql => sql.MigrationsAssembly(MigrationsAssembly));
+    public System.Data.Common.DbConnection? CreateConnection(DatabaseSettings settings)
+    {
+        var connection = global::MySql.Data.MySqlClient.MySqlClientFactory.Instance.CreateConnection()
+            ?? throw new DatabaseProviderException("The database driver could not create a connection.");
+        connection.ConnectionString = settings.ConnectionString;
+        return connection;
+    }
 
     public DatabaseException? TranslateException(Exception exception) => exception switch
     {

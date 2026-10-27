@@ -21,16 +21,16 @@ public sealed class DatabaseConnectionTests
     {
         var services = new ServiceCollection().AddLogging().AddDefaultDatabaseProviders();
         services.AddDotNetForgeDatabases(
-            new DatabaseSettings { Provider = provider, ConnectionString = connectionString },
-            Array.Empty<DatabaseSettings>(),
+            new DatabaseSettings { Provider = "postgresql", ConnectionString = "Host=localhost;Database=cms" },
+            [new DatabaseSettings { Name = "extra", Provider = provider, ConnectionString = connectionString }],
             new DatabaseHostContext(IsDevelopment: true, DevelopmentDataRoot: Path.GetTempPath()));
         var db = services.BuildServiceProvider().GetRequiredService<IDatabaseService>();
 
-        var result = await db.TestConnectionAsync();
+        var result = await db.TestConnectionAsync("extra");
 
         Assert.False(result.Success);
         Assert.IsType<DatabaseConnectionException>(result.Error);
-        Assert.Equal("main", result.Error!.Database);
+        Assert.Equal("extra", result.Error!.Database);
         Assert.DoesNotContain("s3cret", result.Error.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("s3cret", result.Data?.Server ?? string.Empty, StringComparison.Ordinal);
     }

@@ -1,88 +1,20 @@
-# Optional local services for developing against production-like backends (.docs/guides/development.md):
-#   docker compose -f docker/compose.dev.yml up -d                       PostgreSQL + S3
-#   docker compose -f docker/compose.dev.yml --profile mongodb up -d     + MongoDB (single-node replica set)
-#   docker compose -f docker/compose.dev.yml --profile sqlserver up -d   + SQL Server
-#   docker compose -f docker/compose.dev.yml --profile mysql up -d       + MySQL
-# Then in .env (one database; .docs/database/configuration.md has the others):
-#   DATABASE_PROVIDER=postgresql
-#   DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
-#   STORAGE_S3_SERVICE_URL=http://localhost:8333
-#   STORAGE_S3_BUCKET=dotnetforge
-#   STORAGE_S3_ACCESS_KEY_ID=dev
-#   STORAGE_S3_SECRET_ACCESS_KEY=dev
-#   STORAGE_S3_FORCE_PATH_STYLE=true
-# Development only: the S3 server and MongoDB run without authentication and the passwords are public. Never
-# expose these ports.
+# Local development services (.docs/guides/development.md#production-like-s3-and-email): PostgreSQL 17, RustFS (S3
+# with access keys) and Mailpit (SMTP with a sign-in) - the services .env.developer is filled in for.
+#   cp .env.developer .env
+#   docker compose -f docker/compose.dev.yml up -d
+#   dotnet run --project src/DotNetForge.Web
+# Stop with "docker compose -f docker/compose.dev.yml down" (add -v to delete the data).
+#
+# Every service also has its own file to start alone or instead (same project "dotnetforge", so they share data):
+#   docker/databases/  postgres.yml, mongodb.yml, sqlserver.yml, mysql.yml
+#   docker/s3/         rustfs.yml, ceph.yml, seaweedfs.yml (no authentication; the live S3 tests use it)
+#   docker/mail/       mailpit.yml
+# e.g. docker compose -f docker/databases/mysql.yml up -d. The app itself in a container: docker/compose.app.yml.
+# Development only: every password and key here is public. Never expose these ports.
 
-services:
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: dotnetforge
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+name: dotnetforge
 
-  # MongoDB needs a replica set for transactions (the CMS saves several documents at once): a single-node one,
-  # initiated by the health check. DATABASE_CONNECTION_STRING=mongodb://localhost:27017/dotnetforge?replicaSet=rs0&directConnection=true
-  mongodb:
-    image: mongo:8.0
-    profiles: [mongodb]
-    command: ["--replSet", "rs0", "--bind_ip_all"]
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }"]
-      interval: 5s
-      retries: 30
-
-  # DATABASE_PROVIDER=sqlserver, DATABASE_CONNECTION_STRING=Server=localhost,1433;Initial Catalog=dotnetforge;User Id=sa;Password=DotNetForge!2026;TrustServerCertificate=true
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    profiles: [sqlserver]
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: DotNetForge!2026
-    ports:
-      - "1433:1433"
-    volumes:
-      - sqlserver-data:/var/opt/mssql
-
-  # DATABASE_PROVIDER=mysql, DATABASE_CONNECTION_STRING=Server=localhost;Port=3306;Database=dotnetforge;Uid=root;Pwd=dotnetforge
-  mysql:
-    image: mysql:8.4
-    profiles: [mysql]
-    environment:
-      MYSQL_ROOT_PASSWORD: dotnetforge
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-
-  # SeaweedFS's S3 gateway: a small S3-compatible server (MinIO images are no longer on Docker Hub).
-  s3:
-    image: chrislusf/seaweedfs
-    command: server -s3 -dir=/data
-    ports:
-      - "8333:8333"
-    volumes:
-      - s3-data:/data
-
-  # Creates the bucket once the S3 server answers.
-  s3-bucket:
-    image: curlimages/curl
-    depends_on:
-      - s3
-    command: ["sh", "-c", "until curl -sf -X PUT http://s3:8333/dotnetforge; do sleep 1; done"]
-    restart: "no"
-
-volumes:
-  postgres-data:
-  s3-data:
-  mongodb-data:
-  sqlserver-data:
-  mysql-data:
+include:
+  - databases/postgres.yml
+  - s3/rustfs.yml
+  - mail/mailpit.yml

@@ -14,7 +14,6 @@
     var basePath = form.querySelector("[data-endpoint-path]");
     var methods = JSON.parse(form.getAttribute("data-methods") || "[\"GET\"]");
     var types = JSON.parse(form.getAttribute("data-types") || "[\"string\"]");
-    var supported = form.getAttribute("data-supported") === "true";
     var sources = [["route", "URL path"], ["query", "Query string"], ["body", "JSON body"]];
     var results = [["Rows", "All rows - { data: [...] }"], ["FirstRow", "First row - { data: {...} }, 404 if none"],
         ["Value", "One value - { data: 42 }"], ["AffectedRows", "Rows changed - { affected: 3 }"]];
@@ -124,7 +123,7 @@
                     "<div class=\"form-grid\" data-test-values></div>" +
                     "<label class=\"check\"><input type=\"checkbox\" checked data-test-rollback /><span class=\"check-text\"><span>Undo changes after the run</span>" +
                     "<span class=\"check-hint\">The SQL runs in a transaction that is rolled back, so test INSERT, UPDATE and DELETE safely.</span></span></label>" +
-                    "<div class=\"cluster\"><button type=\"button\" class=\"btn btn-secondary\" data-test-run" + (supported ? "" : " disabled") + ">" + icon("send") + " Run test</button>" +
+                    "<div class=\"cluster\"><button type=\"button\" class=\"btn btn-secondary\" data-test-run>" + icon("send") + " Run test</button>" +
                     "<span class=\"text-sm text-muted\" data-test-status role=\"status\"></span></div>" +
                     "<pre class=\"code-block\" data-test-output hidden></pre>" +
                 "</div></details>" +

@@ -26,7 +26,7 @@ sequenceDiagram
     P->>P: builder.Build()
     P->>DBI: InitializeAsync(db, ApplicationStopping)
     DBI->>DBI: Database.MigrateAsync()
-    Note over DBI: the main database's provider: migrations (SQLite, PostgreSQL,<br/>SQL Server, MySQL) or EnsureCreated (MongoDB)
+    Note over DBI: PostgreSQL: the migrations of PostgreSqlDbContext
     DBI->>S: SeedAsync(db)
     P->>H: build pipeline, map routes + MapDotNetForgeExtensionsAsync (each extension's MapEndpoints), app.Run()
     H->>H: start ScheduledPublishingService (waits 5 s), AuditEventDispatcher
@@ -35,20 +35,17 @@ sequenceDiagram
 Notes:
 
 - Configuration is loaded **before** the host's own configuration system is used; `.env` values never enter
-  `IConfiguration`. Outside Development the loader refuses defaults inside the deployment directory: SQLite needs an
-  explicit `DATABASE_CONNECTION_STRING` with an absolute `Data Source` (in-memory allowed), and media needs S3
-  settings. In Development the defaults are `storage/dotnetforge.db` and `storage/media` at the repository root. See
-  [configuration](../features/configuration.md).
-- The scoped `DotNetForgeDbContext` resolves to the main provider's context type (`PostgreSqlDbContext`,
-  `SqlServerDbContext`, `MySqlDbContext`, `MongoDbContext`, or `DotNetForgeDbContext` for SQLite), so the schema step
-  applies that provider's own migration set, or for MongoDB its collections and indexes
-  ([database → providers](database.md#providers), [database layer](../database/architecture.md#startup)).
+  `IConfiguration`. `DATABASE_CONNECTION_STRING` (PostgreSQL) is always required; outside Development the S3 settings
+  are too (Development defaults media to `storage/media` at the repository root). A `DATABASE_PROVIDER` value stops
+  startup (no longer used). See [configuration](../features/configuration.md).
+- The scoped `DotNetForgeDbContext` resolves to `PostgreSqlDbContext`, so the schema step applies its migration set
+  ([database → provider](database.md#provider), [database layer](../database/architecture.md#startup)).
 - Migration and seeding run on **every** start, synchronously, before Kestrel accepts requests. Seeding is
   idempotent (each step checks for existing rows). Details: [database.md](database.md#seeding).
 - The Data Protection key ring is read from the `DataProtectionKeys` table on first use; the first key is created
   (and stored) on the first request that needs one.
-- A database failure here (bad PostgreSQL connection string, locked SQLite file, an old PostgreSQL database without
-  migration history) throws an unhandled exception and the process exits.
+- A database failure here (bad PostgreSQL connection string, PostgreSQL not running, an old PostgreSQL database
+  without migration history) throws an unhandled exception and the process exits.
 - Extension code is loaded **before** the container is built, enabled or not, because extensions register services.
   A failing extension (missing DLL, bad entry type, throwing `ConfigureServices`/`MapEndpoints`) is marked "not
   running" and logged (`Extension {id} is enabled but not running: ...` (warning; information while disabled)); it never stops startup
@@ -74,7 +71,7 @@ flowchart TD
     AuthN --> RL["UseRateLimiter (policies from [EnableRateLimiting])"]
     RL -- "limit exceeded" --> T429([429])
     RL --> AuthZ["UseAuthorization (policies, roles, ApiToken scheme for /api)"]
-    AuthZ -- "anonymous on protected admin endpoint" --> Login(["302 /account/login?ReturnUrl=..."])
+    AuthZ -- "anonymous on protected admin endpoint" --> Login(["302 /login?ReturnUrl=..."])
     AuthZ -- "signed in, role missing" --> Denied([302 /account/denied])
     AuthZ --> EP["Endpoint: controller action / /health / fallback"]
 ```
@@ -102,7 +99,7 @@ Key properties:
   an endpoint carrying `ExtensionEndpointMetadata` (mapped by `MapDotNetForgeExtensionsAsync` or an MVC controller in an
   extension assembly) answers `404` while its extension is not active (`ExtensionCatalog.IsActiveAsync`).
 - **Rate limiting** applies only to endpoints with `[EnableRateLimiting]` / `RequireRateLimiting`: `credentials`
-  (POST `/account/login`, POST `/setup`, the external sign-in endpoints; 10 per minute per IP), `api` (every
+  (POST `/login`, the self-service account POSTs, POST `/setup`, the external sign-in endpoints; 10 per minute per IP), `api` (every
   `ApiControllerBase` action; 300 per minute per IP) and `forms` (extension form posts that opt in; 5 per minute per
   IP). Fixed windows, no queue, partitioned by `Connection.RemoteIpAddress`, per instance. Rejections get an empty
   `429`.
@@ -171,7 +168,7 @@ sequenceDiagram
     participant DB as DotNetForgeDbContext
     participant H as IPasswordHasher
     participant Aud as IAuditService
-    User->>RL: POST /account/login (email, password, returnUrl, antiforgery)
+    User->>RL: POST /login (email, password, returnUrl, antiforgery)
     alt more than 10 attempts this minute from this IP
         RL-->>User: 429
     end
@@ -240,7 +237,7 @@ A disabled or deleted user therefore loses access within 30 seconds; their role 
 ```mermaid
 flowchart LR
     Req["POST /admin/pages/update/{id}"] --> Policy{"AdminArea policy:<br/>role in Super Admin, Admin, Editor, Author?"}
-    Policy -- "no cookie" --> L([302 /account/login])
+    Policy -- "no cookie" --> L([302 /login])
     Policy -- "no" --> D([302 /account/denied → 403 page])
     Policy -- yes --> Roles{"Controller [Authorize(Roles = ...)]?"}
     Roles -- "not in role" --> D
@@ -466,14 +463,14 @@ See [configuration](../features/configuration.md) and
 | Public URL not resolving | `HomeController.RenderPage` | Empty-body 404 |
 | Private media requested without access, or missing object | `MediaFilesController` | Empty-body 404 (missing object also logged) |
 | Media storage unavailable during upload | `MediaService.UploadAsync` | Per-file message on the Media screen; error logged |
-| Anonymous on admin | cookie challenge | 302 to `/account/login?ReturnUrl=...` |
+| Anonymous on admin | cookie challenge | 302 to `/login?ReturnUrl=...` |
 | Wrong role | cookie forbid | 302 to `/account/denied` (renders with status 403) |
 | Disabled/deleted user with a valid cookie | `ValidateSessionAsync` | Signed out within 30 s; next admin request → login |
 | Too many requests | rate limiter (`credentials`, `api`, `forms`) | Empty `429` |
 | Endpoint of a disabled or failed extension | `ExtensionEndpointGateMiddleware` | Empty-body 404 |
 | Extension widget/module view throws | `ExtensionViewRenderer` | "<name> could not be displayed." in place of the view; error logged |
 | Extension audit handler throws or times out (30 s) | `AuditEventDispatcher` | Nothing visible; error logged, next handler runs |
-| External sign-in fails (no account, disabled, locked, provider error) | `ExternalLoginController` | Redirect to `/account/login` with a message; `user.login.failed` audited |
+| External sign-in fails (no account, disabled, locked, provider error) | `ExternalLoginController` | Redirect to `/login` with a message; `user.login.failed` audited |
 | API auth failure / missing permission | `ApiTokenAuthenticationHandler` / `RequireApiPermissionAttribute` | 401 / 403 JSON |
 | API rule violation | `ContentApiController` via `IPageService` | `400 { "error": "..." }` |
 | Unhandled exception (Development) | developer exception page | Stack trace page |
@@ -484,7 +481,7 @@ Details and gaps: [logging and errors](../features/logging-and-error-handling.md
 
 ## External integrations
 
-Out-of-process dependencies at runtime: the database (SQLite file or PostgreSQL server) and an S3-compatible object
+Out-of-process dependencies at runtime: the PostgreSQL server, any additional databases (`DATABASES_<NAME>_*`) and an S3-compatible object
 store (outside Development always) - the app uploads, reads and deletes objects through
 `S3FileStorage` (or an enabled storage connector), and browsers download directly from presigned URLs. Enabled
 extensions may call their own services (the samples: Open-Meteo, Discord OAuth, Twilio, a second S3 bucket). Planned integrations and their current state

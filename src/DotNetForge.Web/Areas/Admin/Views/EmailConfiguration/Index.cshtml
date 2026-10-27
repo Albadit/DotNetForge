@@ -1,0 +1,165 @@
+@using DotNetForge.Core.Email
+@model EmailConfigurationController.EmailConfigurationViewModel
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = "Email Configuration";
+    ViewData["Description"] = "The SMTP server the CMS sends email with, tools to test it, and the emails it sent.";
+    var settings = Model.Settings;
+    var configured = settings.IsConfigured;
+    var canTest = Model.CanTest && configured;
+    static string Or(string? value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value;
+}
+
+@section Actions {
+    @if (Model.MailpitInboxUrl is not null)
+    {
+        <a class="btn btn-secondary" href="@Model.MailpitInboxUrl" target="_blank" rel="noopener"><icon name="inbox" /> Open Mailpit inbox</a>
+    }
+}
+
+<div class="stack">
+    @if (!configured)
+    {
+        <alert tone="Warning" title="Email is off">Set <code>SMTP_HOST</code> and <code>SMTP_FROM</code> (and the other <code>SMTP_*</code> values) in <code>.env</code> and restart. Until then the sign-in page has no "Forgot password?" link and email confirmation can't be turned on.</alert>
+    }
+
+    <section class="card" aria-labelledby="smtp-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="smtp-title">SMTP server</h2>
+                <p class="card-description">From <code>.env</code> - read-only here. Change the <code>SMTP_*</code> values there and restart the app.</p>
+            </div>
+            <badge tone="@(configured ? Tone.Success : Tone.Neutral)" dot="true">@(configured ? "Configured" : "Not configured")</badge>
+        </div>
+        <div class="card-body">
+            <dl class="dl dl-compact">
+                <dt>Host</dt>
+                <dd>@(configured ? $"{settings.Host}:{settings.Port}" : "-") <span class="text-subtle text-sm">SMTP_HOST, SMTP_PORT</span></dd>
+                <dt>Encryption</dt>
+                <dd>@(settings.UseTls ? "STARTTLS" : "None (only for a local test server)") <span class="text-subtle text-sm">SMTP_TLS</span></dd>
+                <dt>Sign-in</dt>
+                <dd>@(string.IsNullOrEmpty(settings.Username) ? "None" : $"{settings.Username}, password {(string.IsNullOrEmpty(settings.Password) ? "not set" : "set")}") <span class="text-subtle text-sm">SMTP_USERNAME, SMTP_PASSWORD</span></dd>
+                <dt>Sender</dt>
+                <dd>@Or(settings.FromName, Model.AppName) &lt;@Or(settings.FromAddress, "-")&gt; <span class="text-subtle text-sm">SMTP_FROM, SMTP_FROM_NAME</span></dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card" aria-labelledby="connection-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="connection-title">Test connection</h2>
+                <p class="card-description">Connects, starts TLS and signs in - without sending anything - and shows which step fails.</p>
+            </div>
+            <form method="post" action="/admin/email/configuration/connection">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-secondary btn-sm" disabled="@(canTest ? null : "disabled")"><icon name="plug" /> Test connection</button>
+            </form>
+        </div>
+        @if (Model.Probe is { } probe)
+        {
+            <div class="card-body stack">
+                <alert tone="@(probe.Succeeded ? Tone.Success : Tone.Danger)" title="@(probe.Succeeded ? "The connection works" : "The connection test failed")">
+                    @(probe.Succeeded ? "Emails can be sent with these settings." : "See the failed step below.")
+                </alert>
+                <ol class="probe-steps">
+                    @foreach (var step in probe.Steps)
+                    {
+                        <li class="probe-step">
+                            <icon name="@(step.Ok ? "circle-check" : "circle-x")" class="@(step.Ok ? "probe-ok" : "probe-failed")" />
+                            <span class="probe-name">@step.Name</span>
+                            <span class="probe-detail">@step.Detail</span>
+                            <span class="probe-time">@((int)step.Elapsed.TotalMilliseconds) ms</span>
+                        </li>
+                    }
+                </ol>
+                @if (probe.Extensions.Count > 0)
+                {
+                    <p class="text-sm text-muted">Server extensions: @string.Join(" · ", probe.Extensions)</p>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="card" aria-labelledby="test-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="test-title">Send a test</h2>
+                <p class="card-description">A short test message, or one of the email templates with its sample data - to see the real email in an inbox.</p>
+            </div>
+        </div>
+        <form method="post" action="/admin/email/configuration/test">
+            @Html.AntiForgeryToken()
+            <fieldset class="fieldset card-body" disabled="@(canTest ? null : "disabled")">
+                <legend class="sr-only">Send a test</legend>
+                <div class="form-grid">
+                    <div class="field">
+                        <label class="field-label" for="template">Email</label>
+                        <select id="template" name="template">
+                            <option value="">Test message</option>
+                            @foreach (var template in EmailTemplateCatalog.All)
+                            {
+                                <option value="@template.Key" selected="@(template.Key == Model.TestTemplate ? "selected" : null)">@template.Name (template)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="field-label" for="recipient">Send to</label>
+                        <input id="recipient" name="recipient" type="email" value="@Model.TestRecipient" required />
+                    </div>
+                </div>
+            </fieldset>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary" disabled="@(canTest ? null : "disabled")"><icon name="send" /> Send test</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card" aria-labelledby="log-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="log-title">Email log</h2>
+                <p class="card-description">The latest emails the CMS tried to send (kept 30 days; no message bodies).</p>
+            </div>
+        </div>
+        @if (Model.Log.Count == 0)
+        {
+            <empty-state icon="mail" title="No emails yet" text="Password resets, confirmations, welcome emails and tests appear here." />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="table table-stack">
+                    <thead>
+                        <tr>
+                            <th scope="col">When</th>
+                            <th scope="col">To</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in Model.Log)
+                        {
+                            <tr>
+                                <td class="cell-lead"><timestamp value="@entry.SentAt" /></td>
+                                <td data-label="To">@entry.Recipient</td>
+                                <td data-label="Email">
+                                    @(entry.Template is { } key ? EmailTemplateCatalog.Find(key)?.Name ?? key : "Test message")
+                                    <span class="cell-sub">@entry.Subject</span>
+                                </td>
+                                <td data-label="Result">
+                                    <badge tone="@(entry.Success ? Tone.Success : Tone.Danger)" dot="true">@(entry.Success ? "Sent" : "Failed")</badge>
+                                    @if (entry.Error is not null)
+                                    {
+                                        <span class="cell-sub">@entry.Error</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

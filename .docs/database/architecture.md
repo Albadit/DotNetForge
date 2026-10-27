@@ -1,7 +1,8 @@
 # Database architecture
 
-DotNetForge runs on **SQLite, PostgreSQL, SQL Server, MySQL or MongoDB**, and new databases can be added without
-changing application code. This page explains how the database layer is put together. The other pages cover:
+The CMS runs on **PostgreSQL**. Through `IDatabaseService` it can also reach **additional databases** - SQLite,
+PostgreSQL, SQL Server, MySQL or MongoDB - and new database technologies can be added without changing application
+code. This page explains how the database layer is put together. The other pages cover:
 [providers](providers.md), [query routing](query-routing.md), [configuration](configuration.md),
 [MongoDB](mongodb.md), [security](security.md) and [adding a provider](adding-a-provider.md).
 
@@ -9,16 +10,19 @@ changing application code. This page explains how the database layer is put toge
 
 | | EF Core (`DotNetForgeDbContext`) | `IDatabaseService` |
 | --- | --- | --- |
-| Used by | the CMS itself: every controller and service in `src/` | extensions, tooling, additional databases |
+| Used by | the CMS itself: every controller and service in `src/` | extensions, tooling, additional databases, the Data Management export |
 | Queries | typed LINQ, change tracking, migrations | structured [`DatabaseCommand`](query-routing.md)s |
-| Databases | the **main** database only | the main database and any [named database](configuration.md#more-databases) |
+| Databases | the **CMS** (main) database only - PostgreSQL | the CMS database and any [additional database](configuration.md#more-databases) |
 | Provider-specific code | none in application code: the provider configures EF Core | none: the provider's executor translates commands |
 
-Both paths go through the same provider, so the CMS and `IDatabaseService` always agree on the database, the schema
-and the value formats. EF Core is itself a provider/adapter layer: LINQ is translated per database. The CMS keeps
-it because typed queries, change tracking and migrations would otherwise have to be rebuilt by hand.
-`IDatabaseService` adds what EF Core does not cover: one structured API for any configured database, MongoDB-native
-execution, consistent results and errors.
+Both paths go through the same provider, so the CMS and `IDatabaseService` always agree on the CMS database, its
+schema and the value formats. The CMS uses EF Core because typed queries, change tracking and migrations would
+otherwise have to be rebuilt by hand. `IDatabaseService` adds what EF Core does not cover: one structured API for any
+configured database, MongoDB-native execution, consistent results and errors.
+
+A third, narrow path exists for raw SQL: [custom API endpoints](../features/custom-endpoints.md) run their SQL on the
+CMS database through EF Core's connection, or on an additional SQL database through
+`IDatabaseProvider.CreateConnection`.
 
 ```mermaid
 flowchart TB
@@ -31,20 +35,20 @@ flowchart TB
     Svc --> Router["QueryRouter"]
     Router --> Catalog["DatabaseCatalog<br/>(configured databases)"]
     Catalog --> Registry["DatabaseProviderRegistry"]
-    Ctx -. "configured by" .-> Main
-    Registry --> Main["IDatabaseProvider of the main database"]
-    Registry --> Other["IDatabaseProvider of each named database"]
-    subgraph Providers
+    Ctx -. "configured by" .-> Pg
+    Registry --> Pg["PostgreSqlDatabaseProvider<br/>(CMS database)"]
+    Registry --> Other["IDatabaseProvider of each additional database"]
+    subgraph Providers["Providers of additional databases"]
         Sqlite["SqliteDatabaseProvider"]
-        Pg["PostgreSqlDatabaseProvider"]
+        Pg2["PostgreSqlDatabaseProvider"]
         Ss["SqlServerDatabaseProvider"]
         My["MySqlDatabaseProvider"]
         Mongo["MongoDbDatabaseProvider"]
     end
-    Main --- Providers
     Other --- Providers
+    Pg --> PgDb[("PostgreSQL<br/>CMS")]
     Sqlite --> SqliteDb[("SQLite")]
-    Pg --> PgDb[("PostgreSQL")]
+    Pg2 --> PgDb2[("PostgreSQL")]
     Ss --> SsDb[("SQL Server")]
     My --> MyDb[("MySQL")]
     Mongo --> MongoDb[("MongoDB")]
@@ -54,17 +58,17 @@ flowchart TB
 
 | Component | File | Responsibility |
 | --- | --- | --- |
-| `IDatabaseService`, `DatabaseCommand`, `DatabaseFilter`, `DatabaseResult<T>`, `DatabaseRecord`, exceptions | `src/DotNetForge.Abstractions/Database/` | Provider-neutral contracts; no dependencies, so extensions can use them |
+| `IDatabaseService`, `DatabaseCommand`, `DatabaseFilter`, `DatabaseResult<T>`, `DatabaseRecord`, exceptions | `src/DotNetForge.Abstractions/Database/` | Provider-neutral contracts; no dependencies, so extensions can use them. `IDatabaseService.ListCollectionsAsync(database)` lists a database's tables or collections (throws `DatabaseException`, 30 s timeout) |
 | `DatabaseSettings` | `src/DotNetForge.Shared/Configuration/DatabaseSettings.cs` | One configured database as read from the environment |
 | `IDatabaseProvider`, `IDatabaseExecutor` | `src/DotNetForge.Data/Database/IDatabaseProvider.cs` | What a database technology must implement |
 | `DatabaseProviderRegistry` | `src/DotNetForge.Data/Database/DatabaseProviderRegistry.cs` | Name → provider; detection from the connection string |
-| `DatabaseCatalog` | same file | The resolved databases (main + named) |
+| `DatabaseCatalog` | same file | The resolved databases (CMS + additional) |
 | `QueryRouter` | `src/DotNetForge.Data/Database/QueryRouter.cs` | Database name → executor; one executor per database, created once |
 | `DatabaseService` | `src/DotNetForge.Data/Database/DatabaseService.cs` | Validation, timeouts, timing, error translation, logging |
 | `DatabaseCommandValidator` | `src/DotNetForge.Data/Database/DatabaseCommandValidator.cs` | Shape checks before any provider is involved |
 | `DatabaseSchema`, `CollectionMap`, `FieldMap` | `src/DotNetForge.Data/Database/DatabaseSchema.cs` | Model names → table/column or collection/element names; name validation |
 | `ValueCoercion` | `src/DotNetForge.Data/Database/ValueCoercion.cs` | Values to the model's types and back (Guid, enum, UTC dates) |
-| One folder per database | `src/DotNetForge.Data/Database/Providers/<Database>/` | Everything specific to that database, with no code shared between databases: provider, context type, migrations; SQL databases also their dialect, parameterized SQL builder and ADO.NET executor; MongoDB its executor and key generators. See [providers → Isolation](providers.md#isolation-and-updates) |
+| One folder per database | `src/DotNetForge.Data/Database/Providers/<Database>/` | Everything specific to that database, with no code shared between databases: the provider; SQL databases also their dialect, parameterized SQL builder and ADO.NET executor; PostgreSQL also the CMS context `PostgreSqlDbContext` and the migrations; MongoDB its executor and key generators. See [providers → Isolation](providers.md#isolation-and-updates) |
 | Registration | `src/DotNetForge.Data/Database/DatabaseServiceCollectionExtensions.cs` | `AddDatabaseProvider<T>(name)`, `AddDefaultDatabaseProviders()`, `AddDotNetForgeDatabases(...)` |
 
 ## Startup
@@ -75,19 +79,19 @@ sequenceDiagram
     participant L as EnvConfigurationLoader
     participant D as DependencyRegistration
     participant R as DatabaseProviderRegistry
-    participant Pr as Provider (main)
+    participant Pr as PostgreSqlDatabaseProvider
     participant I as DatabaseInitializer
     P->>L: Load(contentRoot, isDevelopment)
     L-->>P: AppEnvironment (DatabaseSettings as written)
     P->>D: AddDotNetForge(env)
     D->>D: AddDefaultDatabaseProviders()
-    D->>R: AddDotNetForgeDatabases(main, named, host)
-    R->>R: resolve provider by name, or detect it
-    R->>Pr: Normalize(settings) (validates, applies defaults)
+    D->>R: AddDotNetForgeDatabases(main, additional, host)
+    R->>R: main: must be postgresql; additional: by name, or detected
+    R->>Pr: Normalize(settings) (validates)
     Note over R,Pr: invalid configuration → DatabaseConfigurationException → exit 1
     R->>Pr: AddDbContext(services, settings)
     P->>I: InitializeAsync(db, catalog.Main.Provider)
-    I->>Pr: InitializeSchemaAsync (migrations, or MongoDB collections + indexes)
+    I->>Pr: InitializeSchemaAsync (PostgreSQL migrations)
     I->>I: DataSeeder.SeedAsync
 ```
 
@@ -171,7 +175,7 @@ Records are `DatabaseRecord`s, case-insensitive dictionaries holding the model's
 
 ```text
 dbug: Database main (PostgreSQL) Find Users: 12 records in 23.4 ms
-info: Slow database command: main (MongoDB) Aggregate AuditLogs: 40 records in 812.0 ms
+info: Slow database command: events (MongoDB) Aggregate orders: 40 records in 812.0 ms
 warn: Database reports (MySQL) InsertOne events failed after 3.1 ms: DatabaseConflictException: A record with the same unique value already exists.
 ```
 
@@ -182,7 +186,7 @@ connection strings and driver messages are never logged ([security](security.md#
 
 - **Clients and pools are reused.**
   - SQL executors open short-lived connections from the driver's pool.
-  - MongoDB uses one `MongoClient` per connection string for the whole process, shared with EF Core.
+  - MongoDB uses one `MongoClient` per connection string for the whole process.
   - Executors are created once per configured database (`QueryRouter`).
 - **Everything is async and cancellable.**
   - Every operation takes a `CancellationToken`.
@@ -198,12 +202,9 @@ connection strings and driver messages are never logged ([security](security.md#
 
 ## Rules for code in this repository
 
-- CMS code keeps using LINQ against `DotNetForgeDbContext`, and must stay portable:
-  - one table per query;
-  - no navigation properties crossing tables inside a query;
-  - no joins.
-  - Combine small, single-table queries in memory instead. MongoDB enforces this; see
-    [MongoDB → Query rules](mongodb.md#query-rules).
-- No database-specific code outside `src/DotNetForge.Data/Database/` and the per-provider context types.
-- Schema changes need a migration for **every SQL context** (SQLite, PostgreSQL, SQL Server, MySQL); MongoDB picks up
-  new collections and indexes at startup ([database.md → Migrations](../architecture/database.md#migrations)).
+- CMS code uses LINQ against `DotNetForgeDbContext`. The CMS database is always PostgreSQL, so queries no longer
+  need to avoid joins or navigations for MongoDB's sake; the existing code is single-table (small queries combined in
+  memory) and still works as it is.
+- No database-specific code outside `src/DotNetForge.Data/Database/`.
+- Schema changes need **one** migration, for `PostgreSqlDbContext`
+  ([database.md → Migrations](../architecture/database.md#migrations)).

@@ -1,0 +1,25 @@
+# MongoDB 8 for development (.docs/database/mongodb.md). The CMS saves several documents at once, so MongoDB needs a
+# replica set for transactions: a single-node one, initiated by the health check.
+#   docker compose -f docker/databases/mongodb.yml up -d
+# Only as an additional database (the CMS database is PostgreSQL), e.g. in .env:
+#   DATABASES_<NAME>_PROVIDER=mongodb
+#   DATABASES_<NAME>_CONNECTION_STRING=mongodb://localhost:27017/dotnetforge?replicaSet=rs0&directConnection=true
+# Development only: no authentication. Never expose the port.
+
+name: dotnetforge
+
+services:
+  mongodb:
+    image: mongo:8.0
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }"]
+      interval: 5s
+      retries: 30
+
+volumes:
+  mongodb-data:

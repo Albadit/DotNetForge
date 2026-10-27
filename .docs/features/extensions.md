@@ -119,7 +119,7 @@ Changes on one instance are serialized by a semaphore.
 ### Enabled state
 
 `ExtensionState` (`src/DotNetForge.Web/Services/ExtensionState.cs`, also registered as `DotNetForge.Sdk.IExtensionState`)
-caches the set of enabled ids from `InstalledExtensions` (single-table query, so it runs on every provider). A change
+caches the set of enabled ids from `InstalledExtensions` (one single-table query). A change
 on this instance refreshes it immediately; another instance sees it within `ExtensionState.Lifetime` (30 s). A read
 that overlapped a change is never cached.
 
@@ -220,7 +220,7 @@ Each sample is runnable; [extensions/README.md](../../extensions/README.md) says
 | `extensions/modules/contact-form` | `dotnetforge.module.contact-form` | module | ✔ | contact form on the `pages` it lists; messages to media storage (`ext/contact-form/...`) + audit `contactform.submitted` |
 | `extensions/libraries/markdown-kit` | `dotnetforge.library.markdown-kit` | library | ✔ | safe Markdown → HTML (`IMarkdownRenderer`), used by Contact Form |
 | `extensions/plugins/seo-toolkit` | `dotnetforge.plugin.seo-toolkit` | plugin | ✔ | `/sitemap.xml` of live pages and `/robots.txt` |
-| `extensions/connectors/s3-storage` | `dotnetforge.connector.s3` | connector | ✔ | media storage in its own S3-compatible bucket (defaults: the `docker/compose.dev.yml` server) |
+| `extensions/connectors/s3-storage` | `dotnetforge.connector.s3` | connector | ✔ | media storage in its own S3-compatible bucket (defaults: the `docker/s3/seaweedfs.yml` server) |
 | `extensions/authentication/discord-login` | `dotnetforge.auth.discord` | authentication | ✔ | "Sign in with Discord" for users with a matching verified email (needs `DISCORD_CLIENT_ID`/`_SECRET`) |
 | `extensions/providers/sms-notifications` | `dotnetforge.provider.sms` | provider | ✔ | SMS for selected audit events (`log` gateway offline, `twilio`) |
 

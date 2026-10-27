@@ -23,7 +23,7 @@ public sealed class SecurityTests
         await factory.InstallAsync();
         using var client = factory.CreateNoRedirectClient();
 
-        var response = await client.GetAsync("/account/login");
+        var response = await client.GetAsync("/login");
 
         Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
         Assert.Equal("SAMEORIGIN", response.Headers.GetValues("X-Frame-Options").Single());
@@ -43,7 +43,7 @@ public sealed class SecurityTests
             AllowAutoRedirect = false,
             BaseAddress = new Uri("https://localhost"),
         });
-        await DotNetForgeWebFactory.PostFormAsync(client, "/account/login", "/account/login", new Dictionary<string, string>
+        await DotNetForgeWebFactory.PostFormAsync(client, "/login", "/login", new Dictionary<string, string>
         {
             ["email"] = DotNetForgeWebFactory.AdminEmail,
             ["password"] = DotNetForgeWebFactory.AdminPassword,
@@ -77,8 +77,8 @@ public sealed class SecurityTests
         await factory.InstallAsync();
         using var client = factory.CreateNoRedirectClient();
 
-        var response = await DotNetForgeWebFactory.PostFormAsync(client, "/account/login",
-            "/account/login?returnUrl=https%3A%2F%2Fevil.example%2F",
+        var response = await DotNetForgeWebFactory.PostFormAsync(client, "/login",
+            "/login?returnUrl=https%3A%2F%2Fevil.example%2F",
             new Dictionary<string, string>
             {
                 ["email"] = DotNetForgeWebFactory.AdminEmail,
@@ -124,7 +124,7 @@ public sealed class SecurityTests
 
         var response = await editor.GetAsync("/admin/pages");
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Contains("/account/login", response.Headers.Location?.OriginalString);
+        Assert.Contains("/login", response.Headers.Location?.OriginalString);
     }
 
     [Fact]
@@ -133,12 +133,12 @@ public sealed class SecurityTests
         using var factory = new DotNetForgeWebFactory();
         await factory.InstallAsync();
         using var client = factory.CreateNoRedirectClient();
-        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(client, "/account/login");
+        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(client, "/login");
 
         var statuses = new List<HttpStatusCode>();
         for (var i = 0; i < 12; i++)
         {
-            var response = await client.PostAsync("/account/login", new FormUrlEncodedContent(new Dictionary<string, string>
+            var response = await client.PostAsync("/login", new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["email"] = "nobody@example.com",
                 ["password"] = "wrong-password-1",

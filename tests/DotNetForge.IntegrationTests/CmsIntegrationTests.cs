@@ -166,7 +166,7 @@ public sealed class CmsIntegrationTests
         var response = await client.GetAsync("/admin");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Contains("/account/login", response.Headers.Location?.OriginalString);
+        Assert.Contains("/login", response.Headers.Location?.OriginalString);
     }
 
     [Fact]
