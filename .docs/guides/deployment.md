@@ -11,6 +11,7 @@ everything it writes at runtime goes to the database or to object storage, never
 | Uploaded media | S3-compatible object storage via `IFileStorage` (`STORAGE_S3_*`, required) | the content root |
 | Data Protection key ring (auth cookies, antiforgery tokens) | the `DataProtectionKeys` table | the default `~/.aspnet/DataProtection-Keys` folder |
 | Upload buffering (multipart bodies over 64 KB) | the OS temp directory: `ASPNETCORE_TEMP`, else `/tmp` | - must be writable (tmpfs), is not storage |
+| Video compression (with `FFMPEG_PATH`) | input and output copy in the OS temp directory (`Path.GetTempPath()`, `/tmp`) while one video is compressed, deleted afterwards | - needs about twice the largest video's size free |
 | Logs | stdout/stderr (console logger) | log files |
 | Extension views | compiled **in memory** from `extensions/` (read only) | - |
 | Extension code | loaded at startup from each extension's built `bin/` (read into memory, files never locked) | building inside the running container |
@@ -50,7 +51,7 @@ your platform's secret store, never in the image or the repository.
 | `DATABASE_CONNECTION_STRING` | `Host=…;Database=dotnetforge;Username=…;Password=…;GSS Encryption Mode=Disable` | ✔ | required; the CMS database is always PostgreSQL ([database configuration](../database/configuration.md)) |
 | `DATABASES_<NAME>_PROVIDER`, `_CONNECTION_STRING` | optional | ✔ | additional databases for your own data ([more databases](../database/configuration.md#more-databases)) |
 | `APP_NAME` | display name | | |
-| `APP_URL` | public base URL | | the links in password-reset and confirmation emails |
+| `APP_URL` | public base URL, exactly as people open the site (`https://cms.example.com`) | | the links in password-reset and confirmation emails, the callback URLs registered at OAuth providers, and the only origin passkeys work on - see [Public address (`APP_URL`)](#public-address-app_url) |
 | `STORAGE_S3_SERVICE_URL` | `https://<account-id>.r2.cloudflarestorage.com` | | empty = AWS S3 |
 | `STORAGE_S3_BUCKET` | bucket name | | |
 | `STORAGE_S3_ACCESS_KEY_ID` | bucket-scoped key id | ✔ | |
@@ -60,6 +61,8 @@ your platform's secret store, never in the image or the repository.
 | `ASPNETCORE_FORWARDEDHEADERS_ENABLED` | `true` behind a proxy | | see [Behind a reverse proxy](#behind-a-reverse-proxy) |
 | `ASPNETCORE_HTTP_PORTS` | `8080` (image default) | | |
 | `ASPNETCORE_TEMP` | optional | | upload buffer directory (default `/tmp`) |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | optional; SMS codes need all three | ✔ (`TWILIO_AUTH_TOKEN`) | SMS codes for two-step verification ([configuration → SMS](../features/configuration.md#sms-twilio)) |
+| `FFMPEG_PATH` | `/usr/bin/ffmpeg` (set by the image built with `WITH_FFMPEG=true`) | | optional: video compression ([configuration → video compression](../features/configuration.md#video-compression)) |
 
 Provider-specific storage values: [media storage → Provider setup](../features/media-storage.md#provider-setup).
 Full key reference with validation messages: [configuration](../features/configuration.md).
@@ -87,8 +90,18 @@ docker run -d --name dotnetforge \
   dotnetforge
 ```
 
+**ffmpeg (optional).** The image has no ffmpeg by default, so uploaded videos are stored as uploaded. To compress MP4
+uploads ([media storage → videos](../features/media-storage.md#videos)), build with the `WITH_FFMPEG` build argument:
+it installs the base image's `ffmpeg` package with apt (about 200 MB more) and sets `FFMPEG_PATH=/usr/bin/ffmpeg`.
+Then turn on **Compress videos** in Settings → Media Library ([Media Library settings](../pages/media-settings.md)).
+
+```bash
+docker build -f docker/Dockerfile --build-arg WITH_FFMPEG=true -t dotnetforge .
+```
+
 To try the image locally with PostgreSQL, S3 and SMTP: `docker compose -f docker/compose.app.yml up -d --build`
-([development → the app in Docker](development.md#the-app-in-docker)).
+([development → the app in Docker](development.md#the-app-in-docker)); that compose file builds the image with
+`WITH_FFMPEG: "true"`.
 
 On first start the app applies the database migrations and seeds baseline data, then redirects every request to
 `/setup` until the first Super Admin is created. `GET /health` returns `{ "status": "ok", "app": "<APP_NAME>" }` and
@@ -112,6 +125,21 @@ read-only, set the same environment variables, run `dotnet DotNetForge.Web.dll`.
   `src/`): `extensions/Directory.Build.props` then references the SDK DLLs next to the app
   ([extensions → Deployment](../features/extensions.md#deployment)).
 
+## Public address (`APP_URL`)
+
+`APP_URL` must be the address people type in the browser - scheme, host and port - not the container's internal
+address:
+
+- **OAuth providers** ([Providers](../pages/providers.md)): the screen shows `APP_URL` + `/signin/<key>` as the
+  callback URL to register at the provider, but ASP.NET Core's OAuth handler builds the `redirect_uri` it sends from
+  the address the request arrived on. Both must match, so people must open the site at `APP_URL`, and behind a proxy
+  `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` must be set so the scheme is `https` - otherwise the provider refuses
+  the sign-in (redirect URI mismatch). **Apple** accepts only `https` return URLs, and its posted
+  callback needs the `SameSite=None; Secure` correlation cookie, so Apple sign-in works only over HTTPS.
+- **Passkeys** ([MFA → Passkeys](../features/mfa.md#passkeys)) are bound to `APP_URL`'s host, and only `APP_URL`'s
+  origin is accepted. Changing the domain later makes every registered passkey unusable (people sign in with another
+  method or a recovery code and add the passkey again). Browsers allow WebAuthn only on `https` or `localhost`.
+
 ## Behind a reverse proxy
 
 Terminate TLS at the proxy (nginx, Caddy, Traefik, a cloud load balancer) and forward to port 8080.
@@ -122,7 +150,11 @@ Terminate TLS at the proxy (nginx, Caddy, Traefik, a cloud load balancer) and fo
   from any sender, so the app must only be reachable through the proxy.
 - The app does not redirect HTTP to HTTPS itself (`UseHttpsRedirection` is not used); configure that on the proxy.
   HSTS is sent on HTTPS responses outside Development.
-- Allow request bodies up to 251 MB on `/admin/media/upload` (10 × 25 MB + overhead), or lower both limits together.
+- Allow request bodies as large as the media uploads accept: on `/admin/media/upload` the largest
+  [upload limit](../features/media-storage.md#upload-limits) × 10 + 1 MB (with the defaults - 100 MB for videos -
+  1001 MB), on `/admin/content/api/media/upload` and `/admin/pages/{id}/builder/upload` the largest limit + 1 MB.
+  nginx: `client_max_body_size`. The limits are set on [Settings → Media Library](../pages/media-settings.md); lower
+  them there when the proxy must stay smaller.
 
 ## Database
 
@@ -163,7 +195,9 @@ What already works across instances: Data Protection keys are shared through the
 storage; the scheduled-publishing job is idempotent (running on every instance is harmless).
 
 What is per instance: rate limits (in memory, so N instances allow N× the limit), the API-token verification cache
-and the session-validation cache (both short-lived and self-correcting), the extension discovery cache, the
+and the session-validation cache (both short-lived and self-correcting), the two-factor caches ("required?" and "has
+a method?", 30 s each), the built-in OAuth provider schemes (each instance re-reads the Providers settings at most
+every 30 s, so a change on one instance reaches the others within 30 s), the extension discovery cache, the
 enabled-extensions cache (30 s, so an enable/disable reaches other instances within 30 s) and the queue that feeds
 extension audit handlers (events are handled on the instance that wrote them).
 

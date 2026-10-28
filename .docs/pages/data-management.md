@@ -2,15 +2,17 @@
 
 ## Purpose
 
-Export the CMS data, keep backups (manual or on a schedule) and - only in Development - import an export or restore a
-backup, which replaces all data. Additional databases (`DATABASES_<NAME>_*`) can be exported too, as a JSON copy for
-your own use. File format, rules and what is not built (core updates):
+Export the CMS data and the media files, keep backups (manual or on a schedule) and - only in Development - import an
+export or restore a backup, which replaces all data. Additional databases (`DATABASES_<NAME>_*`) can be exported too,
+as a JSON copy for your own use. File format, rules and what is not built (core updates):
 [transfer and updates](../features/transfer-and-updates.md).
 
 | Operation | Risk | Where it runs |
 | --- | --- | --- |
 | Export of the CMS database (download) | low | everywhere |
 | Export of an additional database (download, not importable) | low | everywhere |
+| [Media export](#media-export): every uploaded file as a .zip (download, not importable) | low | everywhere |
+| [Database and media](#database-and-media): both exports in one .zip (download) | low | everywhere |
 | Backups of the CMS database (manual, automatic) | low | everywhere |
 | Import, restore a backup | critical: replaces all data | **Development only** (`IHostEnvironment.IsDevelopment()`) |
 
@@ -18,8 +20,8 @@ your own use. File format, rules and what is not built (core updates):
 
 | Item | Value |
 | --- | --- |
-| Routes | `GET /admin/data`; `POST /admin/data/export` (form field `database`), `/backups`, `/backups/schedule`, `/backups/{id}/download`, `/backups/{id}/delete`, `/backups/{id}/restore`, `/import` |
-| Title (h1, last breadcrumb) | "Data Management" (description "Export the CMS data, keep backups, and - in Development - import an export into this site.") |
+| Routes | `GET /admin/data`; `POST /admin/data/export` (form field `database`), `/export-media`, `/export-all` (form field `database`), `/backups`, `/backups/schedule`, `/backups/{id}/download`, `/backups/{id}/delete`, `/backups/{id}/restore`, `/import` |
+| Title (h1, last breadcrumb) | "Data Management" (description "Export the CMS data and the media files, keep backups, and - in Development - import an export into this site.") |
 | Navigation entry | sidebar **Settings → Global Settings → Data Management** (icon `database`), after Plugins and before Webhooks; shown only to Super Admins |
 | Children | none |
 
@@ -31,6 +33,7 @@ src/DotNetForge.Web/Areas/Admin/Views/DataManagement/Index.cshtml
 src/DotNetForge.Web/Services/DatabaseTransferService.cs              export (CMS or additional database), backups (IFileStorage), schedule, import/restore, records, audit, one run at a time
 src/DotNetForge.Web/Services/TransferFile.cs                         the .zip formats: CMS export (write, read + check, replace in one transaction; model-driven) and additional-database export (WriteDatabaseAsync)
 src/DotNetForge.Web/Services/AutomaticBackupService.cs               background job: an automatic backup when the schedule is due
+src/DotNetForge.Web/Services/MediaExportService.cs                   the media export: every media file in its folders + media.json, streamed into the response (optionally with a database export)
 src/DotNetForge.Core/Transfer/{TransferManifest,TransferRules}.cs    manifest, compatibility rules and file names (pure, unit-tested)
 src/DotNetForge.Shared/Entities/TransferRecord.cs                    the result log (table TransferRecords)
 ```
@@ -38,14 +41,17 @@ src/DotNetForge.Shared/Entities/TransferRecord.cs                    the result 
 ## Page layout
 
 ```text
-Data Management (description "Export the CMS data, keep backups, and - in Development - import …")
+Data Management (description "Export the CMS data and the media files, keep backups, and - in Development - import …")
 ├── <form-errors />
-├── card **Export** ("Download a database as one .zip file - …") - form
-│   ├── **Database** select (only with additional databases): "CMS database (PostgreSQL)" (default), then
-│   │   "<name> (<provider>)" per additional database; hint: only CMS exports can be imported
-│   ├── dl: CMS database (provider + what it includes) · Not included (uploaded files, this site's encryption keys)
-│   ├── note "The file contains password hashes and personal data …"
-│   └── card-footer: [**Download export**]
+├── card **Export** ("Download the database, the media files, or both as one .zip file - …") - one form
+│   ├── **Database** select (only with additional databases; for Database and Database and media): "CMS database
+│   │   (PostgreSQL)" (default), then "<name> (<provider>)" per additional database; hint: only CMS exports can be imported
+│   ├── dl: Database (provider, what it includes, not the uploaded files nor this site's encryption keys) ·
+│   │   Media ("N files (size) in their library folders …, plus media.json …; a download only") ·
+│   │   Database and media ("Both in one file: the database export unchanged at the top …, the files under media/.")
+│   ├── note (`.note`) "The database export contains password hashes and personal data … Media is streamed straight from the storage …"
+│   └── card-footer: [**Media**] (formaction `/admin/data/export-media`; disabled while the library is empty)
+│       [**Database**] (the form's action `/admin/data/export`) [**Database and media**] (primary, formaction `/admin/data/export-all`)
 ├── card **Automatic backups** (badge On / Off) - form
 │   ├── switch "Back up automatically", **Every** (6 hours / 12 hours / day / week), **Keep** (1-100)
 │   └── card-footer: [**Save schedule**]
@@ -61,7 +67,7 @@ Data Management (description "Export the CMS data, keep backups, and - in Develo
 
 ## Functionality
 
-- **Export** → `DatabaseTransferService.ExportAsync(userId, database, ct)`:
+- **Database** (Export card) → `DatabaseTransferService.ExportAsync(userId, database, ct)`:
   - **CMS database** (`database` empty, the default): the importable export, written to a temporary file (outside the
     read-only deployment directory, deleted when the download ends) and streamed as
     `dotnetforge-export-postgresql-<yyyyMMdd-HHmmss>.zip`.
@@ -72,6 +78,8 @@ Data Management (description "Export the CMS data, keep backups, and - in Develo
     "There is no database '<x>'."
   - Both: a `TransferRecord` (operation `Export`; for an additional database `Provider` = its provider and `Note` =
     "Database <name>") and audit `transfer.exported`. A failure → error toast "The export failed (<type>); see the log."
+- **Media** → the [media export](#media-export).
+- **Database and media** → [both in one .zip](#database-and-media).
 - **Back up now** → `CreateBackupAsync`: a CMS export, stored with `IFileStorage` (the media storage: the local folder
   in Development, S3 or a storage extension otherwise) under `backups/<record id>.zip`, named
   `dotnetforge-backup-postgresql-<yyyyMMdd-HHmmss>.zip`. Backups are never served by the media route (it only serves
@@ -94,6 +102,45 @@ Data Management (description "Export the CMS data, keep backups, and - in Develo
 
 Backups, import and restore are CMS-only; an additional database is only exported.
 
+### Media export
+
+`POST /admin/data/export-media` (antiforgery) → `MediaExportService.WriteAsync`, streamed straight into the response
+as `dotnetforge-media-<yyyyMMdd-HHmmss>.zip` (UTC) - read from the media storage file by file, never buffered in
+memory or on disk, however large the library. It works in every environment and is a download only: nothing imports
+it. Covered by `MediaOptimizationTests.Media_export_has_the_files_in_their_folders_and_a_manifest`.
+
+| Part | Content |
+| --- | --- |
+| Folders | one directory entry per `MediaFolders` row - also empty ones - at its path without the leading `/` (`Photos/2026/`) |
+| Files | every `MediaFiles` row's stored object at `<folder path>/<FileName>` (top level: `<FileName>`); the same name twice in a folder becomes `name (2).ext`; private files too. Text files are compressed, everything else is stored as is (already compressed). Entry time = the upload time |
+| `media.json` | `format` `"dotnetforge-media"`, `version` 1, `exportedAt`, `folders` (the folder paths, e.g. `/Photos`), and `files`: per file `id`, `path` (in the .zip; null when missing), `fileName`, `originalName`, `contentType`, `sizeBytes`, `originalSizeBytes`, `isPublic`, `folder` (`/` or `/Photos`), `uploadedDate`, `url` (`/media/{id}/{name}`), `missing` |
+| Missing objects | a row whose stored object is gone is listed with `"missing": true` and no file - the export does not fail |
+
+Each run writes a `TransferRecord` (operation `MediaExport`, shown as "Media export" in the History; `Provider`
+"Media storage", `RecordCount` = files written, `SizeBytes` = their stored size, `Note` "N stored file(s) missing")
+and the audit entry `transfer.exported` (details "Media: N files", plus ", N missing"). A failure after the download
+has started cuts the download off (the browser shows it as failed), is logged and recorded as failed; a download
+stopped in the browser is recorded as failed with "Cancelled: the download was stopped.". The media export does not
+take the one-run-at-a-time gate of exports, backups and imports: it only reads, and a large library can take minutes,
+which would block backups meanwhile.
+
+### Database and media
+
+`POST /admin/data/export-all` (antiforgery, form field `database` as for **Database**) → first
+`DatabaseTransferService.ExportAsync` (its own `Export` record and audit entry; a failure or a busy gate → the same
+error toast as **Database**, nothing is downloaded), then `MediaExportService.WriteAsync` with that export file,
+streamed as `dotnetforge-full-<yyyyMMdd-HHmmss>.zip`:
+
+| Part | Content |
+| --- | --- |
+| `dotnetforge-export-postgresql-<…>.zip` | the database export, byte for byte (stored, not recompressed) - extract it and import it as it is |
+| `media/` | the [media export](#media-export) under `media/`: `media/Photos/2026/beach.jpg` and `media.json` in `media/` (its `path`s start with `media/`, `folder` stays `/Photos`; plus `database` = the export's file name) |
+
+The media part's `TransferRecord` has `FileName` = the combined file and `Note` "With <export file>" (shown under
+"Media export" in the History); its audit details end with ", with <export file>". The temporary export file is
+deleted when the download ends. Covered by
+`MediaOptimizationTests.Database_and_media_export_has_the_database_export_unchanged_and_the_files_under_media`.
+
 ### Import flow
 
 1. One run at a time (a process-wide gate): busy → "Another export, backup or import is running …".
@@ -112,8 +159,9 @@ Backups, import and restore are CMS-only; an additional database is only exporte
 ## Data used by the page
 
 `TransferRecords` (backups and history), `Settings` (`transfer.backup.*`), `Users` (who started a run), every
-transferred table for export/import, `IFileStorage` (`backups/`), the configured additional databases
-(`DatabaseCatalog`, read through `IDatabaseService`).
+transferred table for export/import, `IFileStorage` (`backups/`, and every media object for the media export),
+`MediaFiles` / `MediaFolders` (the media export and its file count and size on the card), the configured additional
+databases (`DatabaseCatalog`, read through `IDatabaseService`).
 
 ## State
 
@@ -146,13 +194,14 @@ carry only its type.
 
 ## Loading behaviour
 
-Server-rendered; export, backup and import run within the request (no progress bar - the browser shows the upload and
-download).
+Server-rendered; exports, backup and import run within the request (no progress bar - the browser shows
+the upload and download).
 
 ## Empty states
 
 "No backups yet" (Back up now, or turn on automatic backups); History "Nothing yet". Without additional databases the
-Export card has no Database select.
+Export card has no Database select. With no media files **Media** is disabled (**Database and media** still works,
+with an empty `media/`).
 
 ## User interactions
 
@@ -163,6 +212,7 @@ Restore, delete and import ask for confirmation (`data-confirm` / `menu-post con
 
 ```text
 DataManagementController → DatabaseTransferService → TransferFile (DotNetForgeDbContext model; IDatabaseService for additional databases), TransferRules, DatabaseCatalog, IFileStorage, IAuditService, IMemoryCache
+                         → MediaExportService → DotNetForgeDbContext, IFileStorage, IAuditService
 AutomaticBackupService → DatabaseTransferService (own scope)
 ```
 
@@ -170,8 +220,10 @@ AutomaticBackupService → DatabaseTransferService (own scope)
 
 ```mermaid
 flowchart LR
-    T[Data Management] -- "Download export (CMS)" --> Z[(.zip download, importable)]
-    T -- "Download export (additional database)" --> J[(.zip of JSON tables)]
+    T[Data Management] -- "Database (CMS)" --> Z[(.zip download, importable)]
+    T -- "Database (additional database)" --> J[(.zip of JSON tables)]
+    T -- "Media" --> M[(.zip of media files + media.json)]
+    T -- "Database and media" --> F[(.zip: export .zip + media/)]
     T -- Back up now / schedule --> B[(storage backups/)]
     T -- "Import / Restore (Development)" --> C{file checked?}
     C -- no --> E[form-errors, nothing changed] --> T
@@ -187,7 +239,9 @@ flowchart LR
 
 - Format and rules: [export file](../features/transfer-and-updates.md#export-file). The file holds password hashes,
   API token hashes and personal data - not this site's Data Protection keys, so values encrypted with them must be
-  renewed after moving to another site: custom API endpoint tokens. A restore into the same site keeps them.
+  renewed after moving to another site: custom API endpoint tokens, the sign-in providers' secrets (re-enter them on
+  [Providers](providers.md)) and authenticator-app setups ([MFA](../features/mfa.md#storage-secrets-and-transfer)). A
+  restore into the same site keeps them.
 - `SystemState` (installed flag, data version) and the transfer history are this site's own and never replaced.
 - Audit log entries are imported with new ids (in their original order); every other key keeps its value.
 - The CMS database is always PostgreSQL; an export made on another database by an earlier build imports when its
@@ -195,8 +249,8 @@ flowchart LR
 
 ## Known limitations
 
-- Media **files** are not part of an export (only their details); both sites must use the same media storage, or the
-  files must be copied separately.
+- Media **files** are not part of a database export (only their details); both sites must use the same media storage,
+  or the files must be copied separately - the [media export](#media-export) downloads them, but nothing imports it.
 - No progress display; the import holds the whole file in memory while checking it.
 - An additional database's export skips tables or collections whose names aren't plain identifiers (listed as
   `skipped` in its manifest); values are written as the database returns them.
@@ -206,3 +260,5 @@ flowchart LR
 ## Planned (not implemented)
 
 - Core updates, application rollback and update status - [transfer and updates](../features/transfer-and-updates.md#planned-not-implemented).
+- Importing a media export (putting the files back into the media storage and matching them with the `MediaFiles`
+  rows of a database import by `id`), and media files in backups.

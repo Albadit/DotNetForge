@@ -23,13 +23,6 @@ public static class DataSeeder
         (Roles.Public, "The implicit role for unauthenticated visitors. Read-only public content."),
     };
 
-    // The default authentication providers (.docs/features/authentication.md). Email is built-in and enabled.
-    private static readonly string[] OAuthProviders =
-    {
-        "Auth0", "CAS", "Cognito", "Discord", "Facebook", "GitHub", "Google", "Instagram",
-        "Keycloak", "LinkedIn", "Microsoft", "Patreon", "Reddit", "Twitch", "Twitter/X", "VK",
-    };
-
     public static async Task SeedAsync(DotNetForgeDbContext db, CancellationToken cancellationToken = default)
     {
         await SeedRolesAsync(db, cancellationToken);
@@ -153,20 +146,44 @@ public static class DataSeeder
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// One <see cref="AuthProvider"/> row per sign-in provider (.docs/features/authentication.md#providers): Email
+    /// (built-in, enabled) and every <see cref="AuthProviderKeys.OAuth"/> provider (disabled until configured). Runs on
+    /// every start: adds new catalog providers, keeps names current and removes rows of providers that left the catalog
+    /// - only while they were never configured, so no settings are lost.
+    /// </summary>
     private static async Task SeedAuthProvidersAsync(DotNetForgeDbContext db, CancellationToken ct)
     {
-        if (await db.AuthProviders.AnyAsync(ct))
+        var rows = await db.AuthProviders.ToListAsync(ct);
+        var wanted = AuthProviderKeys.OAuth.Prepend((Key: AuthProviderKeys.Email, Name: "Email")).ToList();
+        foreach (var row in rows.Where(r => wanted.All(w => w.Key != r.Key) && !r.Enabled && r.SettingsJson is "" or "{}"))
         {
-            return;
+            db.AuthProviders.Remove(row);
         }
 
-        db.AuthProviders.Add(new AuthProvider { Name = "Email", Enabled = true, IsBuiltIn = true });
-        foreach (var name in OAuthProviders)
+        foreach (var (key, name) in wanted)
         {
-            db.AuthProviders.Add(new AuthProvider { Name = name, Enabled = false, IsBuiltIn = false });
+            var row = rows.FirstOrDefault(r => r.Key == key);
+            if (row is null)
+            {
+                db.AuthProviders.Add(new AuthProvider
+                {
+                    Key = key,
+                    Name = name,
+                    Enabled = key == AuthProviderKeys.Email,
+                    IsBuiltIn = key == AuthProviderKeys.Email,
+                });
+            }
+            else if (row.Name != name)
+            {
+                row.Name = name;
+            }
         }
 
-        await db.SaveChangesAsync(ct);
+        if (db.ChangeTracker.HasChanges())
+        {
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     private static async Task EnsureSystemStateAsync(DotNetForgeDbContext db, CancellationToken ct)

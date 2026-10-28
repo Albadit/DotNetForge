@@ -33,6 +33,15 @@ public sealed class AppEnvironment
     /// <summary>Outgoing email over SMTP (<c>SMTP_*</c>, .docs/features/email.md); not configured = no email is sent.</summary>
     public EmailSettings Email { get; set; } = new();
 
+    /// <summary>Text messages through Twilio (<c>TWILIO_*</c>, .docs/features/mfa.md#sms); not configured = no SMS codes.</summary>
+    public SmsSettings Sms { get; set; } = new();
+
+    /// <summary>
+    /// The ffmpeg executable (<c>FFMPEG_PATH</c>) used to compress uploaded videos (.docs/features/media-storage.md#optimization);
+    /// null = videos are stored as uploaded.
+    /// </summary>
+    public string? FfmpegPath { get; set; }
+
     /// <summary>
     /// Any deployment value by name - process environment first, then <c>.env</c> - for settings that are not part of
     /// the core contract, such as an extension's secrets (<c>ExtensionContext.GetEnvironmentValue</c>).
@@ -65,6 +74,24 @@ public sealed class EmailSettings
     public bool UseTls { get; set; } = true;
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Host) && !string.IsNullOrWhiteSpace(FromAddress);
+}
+
+/// <summary>
+/// Twilio credentials for SMS sign-in codes (.docs/features/mfa.md#sms). All optional: without them the SMS method is
+/// "not available" on Two-factor authentication.
+/// </summary>
+public sealed class SmsSettings
+{
+    public string? AccountSid { get; set; }
+
+    /// <summary>Secret - never logged or rendered.</summary>
+    public string? AuthToken { get; set; }
+
+    /// <summary>The sending number (+15551234567) or a Messaging Service SID (MG...).</summary>
+    public string? From { get; set; }
+
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(AccountSid) && !string.IsNullOrWhiteSpace(AuthToken) && !string.IsNullOrWhiteSpace(From);
 }
 
 /// <summary>

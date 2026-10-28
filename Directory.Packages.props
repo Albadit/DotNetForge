@@ -35,6 +35,11 @@
     <!-- API reference (.docs/features/api-docs.md): the OpenAPI document and the Scalar UI that renders it. -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.18.3" />
+    <PackageVersion Include="SkiaSharp" Version="4.153.1" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
+    <!-- Two-factor sign-in (.docs/features/mfa.md): passkeys (WebAuthn) and the authenticator-app QR code. -->
+    <PackageVersion Include="Fido2" Version="4.2.0" />
+    <PackageVersion Include="QRCoder" Version="1.8.0" />
 
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

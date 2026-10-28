@@ -60,6 +60,7 @@ public static class AdminNavigation
                 new NavLink("API Docs", "/admin/api-docs", "book", typeof(ApiDocsController)),
                 new NavLink("Content History", "/admin/content-history", "history", typeof(ModulesController), Planned: true),
                 new NavLink("Internationalization", "/admin/internationalization", "globe", typeof(ModulesController), Planned: true),
+                new NavLink("Media Library", "/admin/media-settings", "image", typeof(MediaSettingsController)),
                 new NavLink("Plugins", "/admin/plugins", "puzzle", typeof(PluginsController)),
                 new NavLink("Data Management", "/admin/data", "database", typeof(DataManagementController)),
                 new NavLink("Webhooks", "/admin/webhooks", "webhook", typeof(ModulesController), Planned: true),
@@ -79,7 +80,8 @@ public static class AdminNavigation
             // (.docs/architecture/pages.md#canonical-sidebar-tree-vs-the-sidebar).
             new NavGroup("Users & Permissions Plugin", new[]
             {
-                new NavLink("Providers", "/admin/providers", "lock", typeof(ModulesController), Planned: true),
+                new NavLink("Providers", "/admin/providers", "lock", typeof(AuthProvidersController)),
+                new NavLink("Two-factor (MFA)", "/admin/mfa", "shield", typeof(MfaSettingsController)),
                 new NavLink("Advanced Settings", "/admin/advanced-settings", "sliders", typeof(AdvancedSettingsController)),
             }),
         }),

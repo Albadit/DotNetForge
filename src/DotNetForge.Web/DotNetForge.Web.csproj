@@ -16,6 +16,12 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Scalar.AspNetCore" />
+    <!-- Image optimization on upload (Services/ImageOptimizer.cs); the Linux assets need no system libraries (Docker). -->
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+    <!-- Two-factor sign-in (Services/Mfa/): passkeys (WebAuthn) and the QR code of the authenticator-app setup. -->
+    <PackageReference Include="Fido2" />
+    <PackageReference Include="QRCoder" />
   </ItemGroup>
 
   <!--

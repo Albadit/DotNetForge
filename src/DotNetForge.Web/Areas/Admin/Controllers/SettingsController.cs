@@ -32,6 +32,8 @@ public sealed class SettingsController : AdminControllerBase
     {
         ("users.", "Advanced Settings"),
         (DatabaseTransferService.KeyPrefix, "Data Management"),
+        (MediaSettingsService.KeyPrefix, "Media Library"),
+        (DotNetForge.Web.Services.Mfa.MfaSettingsService.KeyPrefix, "Two-factor authentication"),
     };
 
     private readonly IAuditService _audit;

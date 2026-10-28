@@ -1,0 +1,26 @@
+@using DotNetForge.Shared.Enums
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = "Add a phone for SMS codes";
+    ViewData["Description"] = "We text a code to check the number.";
+}
+
+<form method="post" action="/admin/profile/security/code/send" class="form-narrow">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="type" value="@MfaMethodType.Sms" />
+    <section class="card" aria-labelledby="phone-title">
+        <div class="card-header"><h2 class="card-title" id="phone-title">Phone number</h2></div>
+        <div class="card-body stack">
+            <form-errors />
+            <div class="field">
+                <label class="field-label" for="phone">Mobile number<span class="field-required" aria-hidden="true">*</span></label>
+                <input id="phone" name="phone" type="tel" required autocomplete="tel" value="@ViewData["Phone"]" placeholder="+41 79 123 45 67" aria-describedby="phone-hint" />
+                <span class="field-hint" id="phone-hint">With the country code (+41, +1, +49 ...). Text messages may cost the site owner a small fee.</span>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a class="btn" href="/admin/profile/security">Cancel</a>
+            <button type="submit" class="btn btn-primary"><icon name="send" /> Send code</button>
+        </div>
+    </section>
+</form>

@@ -1,0 +1,93 @@
+@model AuthProvidersController.ProvidersViewModel
+@{
+    ViewData["Title"] = "Providers";
+    ViewData["Description"] = "How people sign in: with their email and password, or with an account they already have elsewhere.";
+}
+
+<div class="stack-lg">
+    <section class="card" aria-labelledby="providers-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="providers-title">Sign-in providers</h2>
+                <p class="card-description">An enabled provider adds "Sign in with ..." to the sign-in page. Only verified email addresses are accepted; with Enable sign-ups on (Advanced Settings), a new email gets a new account.</p>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table table-stack">
+                <thead>
+                    <tr>
+                        <th scope="col">Provider</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Callback URL</th>
+                        <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="cell-lead">
+                            <span class="cell-primary">Email</span>
+                            <span class="cell-sub">Email address and password - built in</span>
+                        </td>
+                        <td data-label="Status"><badge tone="Success" dot="true">Enabled</badge></td>
+                        <td data-label="Callback URL"><span class="text-subtle">-</span></td>
+                        <td class="col-actions"><a class="btn btn-ghost btn-sm" href="/admin/advanced-settings">Settings</a></td>
+                    </tr>
+                    @foreach (var row in Model.Providers)
+                    {
+                        <tr>
+                            <td class="cell-lead">
+                                <a class="cell-primary" href="/admin/providers/@row.Provider.Key">@row.Provider.Name</a>
+                                <span class="cell-sub">@row.Provider.Key</span>
+                            </td>
+                            <td data-label="Status">
+                                @switch (row.State)
+                                {
+                                    case AuthProvidersController.ProviderState.Enabled:
+                                        <badge tone="Success" dot="true">Enabled</badge>
+                                        break;
+                                    case AuthProvidersController.ProviderState.Disabled:
+                                        <badge dot="true">Disabled</badge>
+                                        break;
+                                    default:
+                                        <badge tone="@(row.Unreadable ? Tone.Warning : Tone.Neutral)">@(row.Unreadable ? "Secret unreadable" : "Not set up")</badge>
+                                        break;
+                                }
+                            </td>
+                            <td data-label="Callback URL"><code class="text-xs">@Model.AppUrl@row.Provider.CallbackPath</code></td>
+                            <td class="col-actions"><a class="btn btn-secondary btn-sm" href="/admin/providers/@row.Provider.Key"><icon name="pencil" size="sm" /> Edit</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card" aria-labelledby="extensions-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="extensions-title">From extensions</h2>
+                <p class="card-description">Providers added by authentication extensions. They are configured in <code>.env</code> and turned on or off on Plugins.</p>
+            </div>
+        </div>
+        @if (Model.Extensions.Count == 0)
+        {
+            <empty-state icon="puzzle" title="No provider extensions" text="Authentication extensions in extensions/ can add more providers." compact="true" />
+        }
+        else
+        {
+            <ul class="list">
+                @foreach (var extension in Model.Extensions)
+                {
+                    <li>
+                        <span class="grow stack-sm mfa-text">
+                            <strong>@extension.Name</strong>
+                            <span class="text-xs text-muted">Extension @extension.ExtensionId · scheme <code>@extension.Scheme</code></span>
+                        </span>
+                        <badge tone="@(extension.Active ? Tone.Success : Tone.Neutral)" dot="true">@(extension.Active ? "Enabled" : "Disabled")</badge>
+                        <a class="btn btn-ghost btn-sm" href="/admin/plugins">Plugins</a>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</div>

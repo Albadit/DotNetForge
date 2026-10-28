@@ -144,6 +144,62 @@ public sealed partial class AccountService
     }
 
     /// <summary>
+    /// Creates the account of someone who signed in with a provider and has none yet
+    /// (.docs/features/authentication.md#sign-up-through-a-provider): only while **Enable sign-ups** is on, with the
+    /// default role, one account per email. The provider verified the email, so the account is confirmed; it has no
+    /// password until the user sets one (Profile, or Forgot password).
+    /// </summary>
+    public async Task<RegisterResult> RegisterExternalAsync(string email, string? firstName, string? lastName, string via, CancellationToken ct = default)
+    {
+        var settings = await _settings.GetAsync(ct);
+        if (!settings.SignUps)
+        {
+            return new RegisterResult(null, false, "Registration is turned off.");
+        }
+
+        email = email.Trim();
+        if (!EmailValidator.IsValid(email) || email.Length > UserManagementService.MaxEmailLength)
+        {
+            return new RegisterResult(null, false, "The provider's email address can't be used here.");
+        }
+
+        var emails = await _db.Users.AsNoTracking().Select(u => u.Email).ToListAsync(ct);
+        if (emails.Contains(email, StringComparer.OrdinalIgnoreCase))
+        {
+            return new RegisterResult(null, false, "An account with this email already exists.");
+        }
+
+        if (await _settings.DefaultRoleAsync(settings, ct) is not { } role)
+        {
+            _logger.LogWarning("Registration through {Provider} refused: the default role for new accounts no longer exists.", via);
+            return new RegisterResult(null, false, "Registration is not available right now. Please try again later.");
+        }
+
+        static string? Name(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim()[..Math.Min(value.Trim().Length, UserManagementService.MaxNameLength)];
+        var user = new User
+        {
+            FirstName = Name(firstName),
+            LastName = Name(lastName),
+            Email = email,
+            PasswordHash = string.Empty, // no password: sign in with the provider, or set one
+            Status = UserStatus.Enabled,
+            EmailConfirmed = true,
+            CreatedDate = DateTime.UtcNow,
+        };
+        _db.Users.Add(user);
+        _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.UserRegistered, "User", user.Id.ToString(), user.Email, details: $"via {via}; Role: {role.Name}", cancellationToken: ct);
+        if (await EmailEnabledAsync(ct))
+        {
+            await SendWelcomeAsync(user, ct);
+        }
+
+        return new RegisterResult(user, false, null);
+    }
+
+    /// <summary>
     /// Emails a reset link when the address belongs to an enabled account. Always completes the same way, so the form
     /// can answer neutrally and never reveals whether an account exists.
     /// </summary>
@@ -279,6 +335,17 @@ public sealed partial class AccountService
         }, ct);
     }
 
+    /// <summary>
+    /// The "Sign-in code" email of two-factor authentication (.docs/features/mfa.md#email-codes); false when email
+    /// isn't configured or the send failed (only the error type is logged).
+    /// </summary>
+    public async Task<bool> SendSignInCodeAsync(User user, string code, TimeSpan lifetime, CancellationToken ct = default) =>
+        await EmailEnabledAsync(ct) && await SendAsync(user, EmailTemplateCatalog.SignInCode, new()
+        {
+            ["code"] = code,
+            ["expiryMinutes"] = lifetime.TotalMinutes.ToString("0", CultureInfo.InvariantCulture),
+        }, ct);
+
     private async Task SendConfirmationAsync(User user, CancellationToken ct)
     {
         var token = _tokens.Protect($"confirm|{user.Id}|{user.Email}", ConfirmationLinkLifetime);
@@ -292,8 +359,8 @@ public sealed partial class AccountService
     private Task SendWelcomeAsync(User user, CancellationToken ct) =>
         SendAsync(user, EmailTemplateCatalog.WelcomeEmail, new() { ["loginUrl"] = _env.AppUrl.TrimEnd('/') + "/login" }, ct);
 
-    /// <summary>Renders the template (customized on Email → Templates, else the default) and sends it.</summary>
-    private async Task SendAsync(User user, string templateKey, Dictionary<string, string> values, CancellationToken ct)
+    /// <summary>Renders the template (customized on Email → Templates, else the default) and sends it; false when it failed.</summary>
+    private async Task<bool> SendAsync(User user, string templateKey, Dictionary<string, string> values, CancellationToken ct)
     {
         var purpose = EmailTemplateCatalog.Find(templateKey)?.Name ?? templateKey;
         values["userName"] = user.DisplayName;
@@ -303,11 +370,13 @@ public sealed partial class AccountService
         {
             var (subject, html) = await _templates.RenderAsync(templateKey, values, ct);
             await _email.SendAsync(new EmailMessage { To = user.Email, Subject = subject, Body = html, IsHtml = true, Template = templateKey }, ct);
+            return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // The error type only: SMTP errors can echo addresses. The form still answers neutrally.
             LogSendFailed(purpose, ex.GetType().Name);
+            return false;
         }
     }
 

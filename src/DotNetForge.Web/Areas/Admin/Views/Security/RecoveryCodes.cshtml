@@ -1,0 +1,30 @@
+@model string[]
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = "Your recovery codes";
+    ViewData["Description"] = "If you lose your phone or key, sign in with one of these. Each works once.";
+}
+
+<div class="stack-lg form-narrow">
+    <alert tone="Warning" title="Save them now">
+        This is the only time they are shown. Keep them somewhere safe - a password manager, or printed. Only hashes are
+        stored, so they can't be shown again; you can make new ones on Sign-in security.
+    </alert>
+
+    <section class="card card-accent" aria-labelledby="codes-title">
+        <div class="card-header"><h2 class="card-title" id="codes-title">Recovery codes</h2></div>
+        <div class="card-body stack">
+            <ol class="mfa-codes">
+                @foreach (var code in Model)
+                {
+                    <li><code>@code</code></li>
+                }
+            </ol>
+            <span id="recovery-text" hidden>@string.Join("\n", Model)</span>
+        </div>
+        <div class="card-footer">
+            <button type="button" class="btn btn-secondary" data-copy-target="#recovery-text" data-js-only hidden><icon name="copy" /> Copy</button>
+            <a class="btn btn-primary" href="/admin/profile/security">I saved them</a>
+        </div>
+    </section>
+</div>

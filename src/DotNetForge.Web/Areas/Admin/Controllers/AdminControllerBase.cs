@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using DotNetForge.Abstractions.Authorization;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Mfa;
 using DotNetForge.Web.Startup;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
@@ -18,6 +20,27 @@ public abstract class AdminControllerBase : Controller
 {
     protected Guid? CurrentUserId =>
         Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : null;
+
+    /// <summary>
+    /// While Two-factor authentication is required for admin users (.docs/features/mfa.md#requirement), someone who
+    /// hasn't set up a method yet can only use Profile → Sign-in security; every other admin screen sends them there.
+    /// </summary>
+    public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        if (this is not SecurityController && CurrentUserId is { } userId)
+        {
+            var services = HttpContext.RequestServices;
+            if (await services.GetRequiredService<MfaSettingsService>().IsRequiredAsync(HttpContext.RequestAborted)
+                && !await services.GetRequiredService<MfaService>().IsEnrolledAsync(userId, HttpContext.RequestAborted))
+            {
+                context.Result = Redirect("/admin/profile/security");
+                return;
+            }
+        }
+
+        // The base runs OnActionExecuting / OnActionExecuted around the action (PagesController uses them).
+        await base.OnActionExecutionAsync(context, next);
+    }
 
     /// <summary>
     /// Whether any of the signed-in user's roles grants <paramref name="action"/> in <paramref name="area"/> - from the

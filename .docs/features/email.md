@@ -2,8 +2,8 @@
 
 Outbound transactional email: the SMTP connection, a test send, and the library of email templates the CMS sends
 to users (confirmation, password reset, invitation, lockout, admin notifications). Today an SMTP sender configured on
-`SMTP_*` in `.env` (shown read-only on **Email → Configuration**) sends four templates - email confirmation, password reset, welcome
-and account locked - which administrators can customize on **Email → Templates**
+`SMTP_*` in `.env` (shown read-only on **Email → Configuration**) sends five templates - email confirmation, password reset, welcome,
+account locked and the two-factor sign-in code - which administrators can customize on **Email → Templates**
 ([self-service account flows](authentication.md#self-service-accounts)).
 
 ## Current state
@@ -15,7 +15,7 @@ and account locked - which administrators can customize on **Email → Templates
 | `SmtpEmailSender` | `src/DotNetForge.Infrastructure/Messaging/SmtpEmailSender.cs`, registered as the keyed transport (`LoggingEmailSender.TransportKey`) in `DependencyRegistration` | BCL `System.Net.Mail.SmtpClient` with the settings in effect, read per send (`IEmailSettingsSource`); 30 s timeout (`TimeoutException`); STARTTLS when TLS is on (implicit TLS on port 465 is **not** supported - use 587); credentials only when `SMTP_USERNAME` is set; `From` = `SMTP_FROM` with `SMTP_FROM_NAME` or `APP_NAME`. Throws when SMTP is not configured - callers check `EmailSettings.IsConfigured` first |
 | `LoggingEmailSender` | `src/DotNetForge.Web/Services/LoggingEmailSender.cs`, the scoped `IEmailSender` | sends through the transport and writes an `EmailLog` entry per attempt (time, recipient, subject, template, sent/failed + reason; own DI scope; 30-day retention) - the email log of [Email → Configuration](../pages/email-configuration.md) |
 | Settings in effect | `EmailConfigurationService` (`IEmailSettingsSource`) | `SMTP_*` from `.env` → `AppEnvironment.Email` only ([configuration](configuration.md#email-smtp); a partial configuration fails startup) |
-| Messages sent | `AccountService` (and `AuthService` on lockout) | the four [templates](#templates), rendered by `EmailTemplateService.RenderAsync` |
+| Messages sent | `AccountService` (and `AuthService` on lockout, `MfaService` for sign-in codes) | the five [templates](#templates), rendered by `EmailTemplateService.RenderAsync` |
 | Email Configuration screen | `/admin/email/configuration` → `EmailConfigurationController` | ✔ the `.env` settings read-only, connection test (`SmtpProbe`), test sends (plain or a template), email log, Mailpit link in Development - [Email → Configuration](../pages/email-configuration.md) |
 | Email Templates screen | `/admin/email/templates` → `EmailTemplatesController` | ✔ edit, preview (sandboxed), restore default - [Email → Templates](../pages/email-templates.md) |
 | Sidebar | `AdminNavigation.Tree` group **Settings → Email** → Configuration, Templates (both need Settings read) | |
@@ -38,8 +38,9 @@ is code (`src/DotNetForge.Core/Email/EmailTemplateCatalog.cs`); a customized sub
 | --- | --- | --- | --- |
 | Email confirmation | `email-confirmation` | registration with email confirmation on, and **resend** (`AccountService`) | `{{userName}}`, **`{{confirmationUrl}}`**, `{{expiryDays}}`, `{{appName}}`, `{{appUrl}}` |
 | Password reset | `password-reset` | **Forgot password** for an enabled account (`AccountService`) | `{{userName}}`, **`{{resetUrl}}`**, `{{expiryMinutes}}`, `{{appName}}`, `{{appUrl}}` |
-| Welcome email | `welcome-email` | an account is ready: registration without confirmation, or the first confirmation (`AccountService`) | `{{userName}}`, `{{loginUrl}}`, `{{appName}}`, `{{appUrl}}` |
+| Welcome email | `welcome-email` | an account is ready: registration without confirmation, the first confirmation, or an account created by [sign-up through a provider](authentication.md#sign-up-through-a-provider) (`AccountService`) | `{{userName}}`, `{{loginUrl}}`, `{{appName}}`, `{{appUrl}}` |
 | Account locked | `account-locked` | 5 wrong passwords start the 15-minute lockout (`AuthService` → `AccountService.SendAccountLockedAsync`) | `{{userName}}`, `{{unlockUrl}}` (the forgot-password page - a reset also unlocks), `{{lockoutMinutes}}`, `{{appName}}`, `{{appUrl}}` |
+| Sign-in code | `sign-in-code` | [two-factor authentication](mfa.md#email-codes) by email: a sign-in step sends a code, or a user turns **Email codes** on (`MfaService` → `AccountService.SendSignInCodeAsync`) | `{{userName}}`, **`{{code}}`**, `{{expiryMinutes}}` (10), `{{appName}}`, `{{appUrl}}` |
 
 - `{{userName}}` = `User.DisplayName`, `{{appName}}` / `{{appUrl}}` = `APP_NAME` / `APP_URL`; links are built from
   `APP_URL`, never from the request.
@@ -51,7 +52,8 @@ is code (`src/DotNetForge.Core/Email/EmailTemplateCatalog.cs`); a customized sub
   forge-orange mark, the body in a white card with the orange accent bar, a footer with the site URL - the Forge
   colours as inline styles in tables (what email clients render; no SVG logo). The frame isn't editable; the default
   bodies use its helpers for the heading, the orange button and the plain-link fallback.
-- Nothing is sent without SMTP; welcome and account-locked emails are skipped then. A failed send is logged with the
+- Nothing is sent without SMTP; welcome and account-locked emails are skipped then, and email codes count as off
+  ([MFA](mfa.md#email-codes)). A failed send is logged with the
   exception type only.
 
 ## Planned (not implemented)
@@ -62,7 +64,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 - ✔ **Email → Configuration** screen: the `.env` SMTP settings (read-only), a connection test, test sends and the email log ([Email → Configuration](../pages/email-configuration.md)).
 - ✔ **Email → Templates** screen: list, view, edit, preview (sample data, no send) and restore-to-default templates
-  ([Email → Templates](../pages/email-templates.md); four templates - see below).
+  ([Email → Templates](../pages/email-templates.md); five templates - see below).
 - SMTP credentials are secrets: they live in `.env` only, never in Git or the database; the password is never shown
   (Email → Configuration says only whether it is set) and never written to logs, the email log or audit details.
 - This module owns message content and delivery only; the flows that trigger the messages (confirmation, reset,
@@ -87,7 +89,8 @@ Target behaviour from the original product specification. Nothing in this sectio
 
 ### Templates (specification)
 
-✔ Built for four of the six templates ([Templates](#templates)); the variable lists grew where the emails needed it
+✔ Built for four of the six templates, plus **Sign-in code** for [two-factor authentication](mfa.md#email-codes)
+([Templates](#templates)); the variable lists grew where the emails needed it
 (`{{expiryDays}}`, `{{appUrl}}`). Still planned: **User invitation** and **Admin notification** (no invitation flow and
 no notification events exist).
 

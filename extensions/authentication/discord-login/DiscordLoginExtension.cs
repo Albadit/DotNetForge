@@ -12,8 +12,8 @@ namespace DiscordLogin;
 /// <summary>
 /// Entry point of the Discord Login extension: an OAuth 2.0 scheme for Discord plus a "Sign in with Discord" button
 /// (<c>AddLoginProvider</c>). The scheme signs into the host's temporary external cookie; the host then signs in the
-/// existing CMS user with the same email. Only a <b>verified</b> Discord email is passed on, so nobody can claim an
-/// address they don't own. No CMS account is ever created here.
+/// CMS user with the same email - or, while Enable sign-ups is on, creates one. Only a <b>verified</b> Discord email
+/// is passed on, so nobody can claim an address they don't own.
 /// </summary>
 public sealed class DiscordLoginExtension : IExtension
 {

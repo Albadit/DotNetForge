@@ -11,7 +11,7 @@ public sealed class EmailTemplateRendererTests
     [Fact]
     public void Every_shipped_default_is_valid_and_renders_with_its_sample_data()
     {
-        Assert.Equal(4, EmailTemplateCatalog.All.Count);
+        Assert.Equal(5, EmailTemplateCatalog.All.Count);
         foreach (var t in EmailTemplateCatalog.All)
         {
             Assert.Empty(EmailTemplateRenderer.Validate(t, t.DefaultSubject, t.DefaultBody));

@@ -44,12 +44,19 @@ tables/<Entity>.json     one per entity, a JSON array of row objects (property n
 ```
 
 - **Included:** every entity of `DotNetForgeDbContext` - pages and their permissions, content types/entries/values,
-  media details, users, roles, permissions, settings, auth providers, email templates, API tokens (hashes), custom
+  media details, users (with their two-factor methods and recovery codes), roles, permissions, settings, auth providers,
+  email templates, API tokens (hashes), custom
   endpoints, webhooks and deliveries, installed extensions, the audit log.
 - **Not included:** `DataProtectionKeys` (this site's key ring - secrets), `SystemState` (this site's install state
-  and data version), `TransferRecords` (this site's transfer history), media files.
+  and data version), `TransferRecords` (this site's transfer history), media files - the separate
+  [media export](../pages/data-management.md#media-export) downloads those.
 - Values protected with the key ring can't be decrypted on another site: the tokens of custom API endpoints (refused
-  - regenerate them). A restore into the same site keeps them. (SMTP settings live in `.env`, not in the data.)
+  - regenerate them), the built-in sign-in providers' client secrets and Apple key (the [Providers](../pages/providers.md)
+  screen shows **Secret unreadable** and the provider is off until they are entered again) and authenticator-app
+  secrets (those apps stop working; the user signs in with another method or a recovery code and sets the app up
+  again). Recovery codes (hashes), passkeys (public keys - as long as `APP_URL`'s host is the same) and email/SMS
+  methods keep working ([MFA → storage](mfa.md#storage-secrets-and-transfer)). A restore into the same site keeps
+  everything. (SMTP settings live in `.env`, not in the data.)
 - The CMS database is read in one `RepeatableRead` transaction, so the tables agree with each other; dates without a
   kind (exports from SQLite) are imported as UTC.
 
@@ -92,7 +99,7 @@ Each run writes a `TransferRecord`:
 | Field | Type | Notes |
 | --- | --- | --- |
 | `Id` | guid | |
-| `Operation` | enum | `Export` \| `Backup` \| `Import` \| `Restore` |
+| `Operation` | enum | `Export` \| `Backup` \| `Import` \| `Restore` \| `MediaExport` (the [media export](../pages/data-management.md#media-export)) |
 | `Status` | enum | `Success` \| `Failed` |
 | `Provider`, `SourceProvider` | string(50) | this site's database (an additional database's provider for its export); the file's (imports) |
 | `FileName`, `StorageKey` | string(260), string(500)? | `StorageKey` while a backup is stored |
@@ -115,8 +122,9 @@ Target behaviour from the original product specification. Nothing in this sectio
 - Updates never touch `extensions/` or `storage/` (custom extensions and user data survive).
 - **Extension updates** (`InstalledExtension.UpdateAvailable`, update action) are part of the extension lifecycle:
   [extensions](extensions.md).
-- Data Management: progress display for long runs; media files in the export; import in production only with a
-  tested recovery procedure.
+- Data Management: progress display for long runs; importing the media files (the
+  [media export](../pages/data-management.md#media-export) is a download only) and media files in backups; import in
+  production only with a tested recovery procedure.
 - Repository hygiene: `.gitignore` additions `out/`, `publish/`, `*.log`, `.cache/`.
 
 ### Folder layout

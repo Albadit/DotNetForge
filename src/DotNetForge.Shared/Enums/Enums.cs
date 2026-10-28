@@ -115,10 +115,58 @@ public enum TransferOperation
 
     /// <summary>A stored backup replaced the data (Development only).</summary>
     Restore = 3,
+
+    /// <summary>The media files downloaded as a .zip in their library folders.</summary>
+    MediaExport = 4,
+}
+
+/// <summary>Optimization state of a <see cref="Entities.MediaFile"/> (.docs/features/media-storage.md#optimization).</summary>
+public enum MediaOptimization
+{
+    /// <summary>Stored as uploaded (not optimizable, optimization off, or the result was not smaller).</summary>
+    None = 0,
+
+    /// <summary>Replaced by a smaller version; <c>OriginalSizeBytes</c> holds the uploaded size.</summary>
+    Optimized = 1,
+
+    /// <summary>A video waiting for the background compression (ffmpeg).</summary>
+    Pending = 2,
+
+    /// <summary>A video being compressed right now.</summary>
+    Processing = 3,
+
+    /// <summary>Compression failed; the uploaded file is kept (see the log).</summary>
+    Failed = 4,
 }
 
 public enum TransferStatus
 {
     Success = 0,
     Failed = 1,
+}
+
+/// <summary>A second sign-in factor (.docs/features/mfa.md). Stored as int: append values, never renumber.</summary>
+public enum MfaMethodType
+{
+    /// <summary>Time-based one-time codes from an authenticator app (TOTP, RFC 6238).</summary>
+    AuthenticatorApp = 1,
+
+    /// <summary>A one-time code emailed at sign-in (needs SMTP).</summary>
+    Email = 2,
+
+    /// <summary>A one-time code sent by text message (needs an SMS service).</summary>
+    Sms = 3,
+
+    /// <summary>A passkey or security key (WebAuthn).</summary>
+    Passkey = 4,
+}
+
+/// <summary>Who must use a second factor (.docs/features/mfa.md#requirement).</summary>
+public enum MfaRequirement
+{
+    /// <summary>Everyone may turn it on; nobody has to.</summary>
+    Optional = 0,
+
+    /// <summary>Every account that can open the admin must set one up before using it.</summary>
+    AdminUsers = 1,
 }

@@ -151,6 +151,11 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<bool>("IsBuiltIn")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -158,10 +163,16 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
 
                     b.Property<string>("SettingsJson")
                         .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -579,10 +590,19 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("Optimization")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("OptimizationStartedDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("OriginalName")
                         .IsRequired()
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
+
+                    b.Property<long?>("OriginalSizeBytes")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("RelativePath")
                         .IsRequired()
@@ -601,6 +621,8 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("FolderId");
+
+                    b.HasIndex("Optimization");
 
                     b.ToTable("MediaFiles");
                 });
@@ -1025,6 +1047,84 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("DotNetForge.Shared.Entities.UserMfaMethod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Counter")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("CredentialId")
+                        .HasMaxLength(1024)
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("LastUsedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<byte[]>("PublicKey")
+                        .HasMaxLength(2048)
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Secret")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CredentialId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserMfaMethods");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.UserRecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UsedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserRecoveryCodes");
+                });
+
             modelBuilder.Entity("DotNetForge.Shared.Entities.UserRole", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -1157,6 +1257,24 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.UserMfaMethod", b =>
+                {
+                    b.HasOne("DotNetForge.Shared.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("DotNetForge.Shared.Entities.UserRecoveryCode", b =>
+                {
+                    b.HasOne("DotNetForge.Shared.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DotNetForge.Shared.Entities.UserRole", b =>

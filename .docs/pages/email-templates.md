@@ -11,12 +11,12 @@ and **Restore default**. Mechanism and the template catalog: [email → template
 | --- | --- |
 | Routes | `GET /admin/email/templates` (list), `GET/POST /admin/email/templates/{key}` (editor, save), `POST /admin/email/templates/{key}/restore`, `GET/POST /admin/email/templates/{key}/preview` (the preview document) |
 | Navigation entry | sidebar **Settings → Email → Templates** (icon `file-code`) |
-| Children | one editor per template key: `email-confirmation`, `password-reset`, `welcome-email`, `account-locked` (others → 404) |
+| Children | one editor per template key: `email-confirmation`, `password-reset`, `welcome-email`, `account-locked`, `sign-in-code` (others → 404) |
 
 ## Relevant source files
 
 ```text
-src/DotNetForge.Core/Email/EmailTemplateCatalog.cs                     the four templates: key, name, trigger, variables, required, defaults, sample values
+src/DotNetForge.Core/Email/EmailTemplateCatalog.cs                     the five templates: key, name, trigger, variables, required, defaults, sample values
 src/DotNetForge.Core/Email/EmailTemplateRenderer.cs                    Validate, Variables, RenderSubject, RenderBody (pure, unit-tested)
 src/DotNetForge.Core/Email/EmailLayout.cs                              the frame around every email (Forge colours, inline styles) + default-body helpers
 src/DotNetForge.Web/wwwroot/js/forge/email-templates.js                the Monaco body editor (variable IntelliSense, hovers, validation, highlighting) + live preview
@@ -116,7 +116,7 @@ Server-rendered; the preview frame loads `GET …/preview` with the page.
 
 ## Empty states
 
-Not applicable (the catalog always has four templates).
+Not applicable (the catalog always has five templates).
 
 ## User interactions
 
@@ -127,7 +127,7 @@ The preview follows typing (JavaScript; without it, the saved template) and **Re
 
 ```text
 EmailTemplatesController → EmailTemplateService (DotNetForgeDbContext, IAuditService) → EmailTemplateCatalog, EmailTemplateRenderer
-AccountService (and AuthService for "Account locked") → EmailTemplateService.RenderAsync → IEmailSender
+AccountService (and AuthService for "Account locked", MfaService for "Sign-in code") → EmailTemplateService.RenderAsync → IEmailSender
 ```
 
 ## Page flow

@@ -19,10 +19,10 @@ planned link a **Soon** badge (tooltip "Planned - not built yet").
 | `/admin/content-history` | `ContentHistory` | Content History | Settings → Global Settings → **Content History** | `history` | [content-pages-and-routing.md](../features/content-pages-and-routing.md#planned-not-implemented) |
 | `/admin/internationalization` | `Internationalization` | Internationalization | Settings → Global Settings → **Internationalization** | `globe` | [internationalization.md](../features/internationalization.md#planned-not-implemented) |
 | `/admin/webhooks` | `Webhooks` | Webhooks | Settings → Global Settings → **Webhooks** | `webhook` | [webhooks.md](../features/webhooks.md#planned-not-implemented) |
-| `/admin/providers` | `Providers` | Authentication Providers | Settings → Users & Permissions Plugin → **Providers** | `lock` | [authentication.md](../features/authentication.md#planned-not-implemented) |
 
 All are `GET` only, no parameters. Breadcrumbs follow the sidebar entry; when the title differs from the sidebar
-label the title is appended (e.g. **Settings** › **Users & Permissions Plugin** › **Providers** › **Authentication Providers**).
+label the title is appended. **Providers** (`/admin/providers`) was a placeholder until it was built
+([Providers](providers.md)).
 
 ## Relevant source files
 
@@ -81,9 +81,10 @@ flowchart LR
 ## Important implementation details / known limitations
 
 - `DocPath` is shown as plain text (`<code>`), not a link - the `.docs/` files are not served by the app.
-- What foundation exists differs per module: webhooks and auth providers have tables (the `HmacWebhookSigner` class
-  exists but is not registered in DI); email has only the `IEmailSender` contract - no implementation is registered
-  (the unused `FileSystemEmailSender` was removed); marketplace, content history and i18n have nothing (Transfer is built as [Data Management](data-management.md)).
+- What foundation exists differs per module: webhooks have tables (the `HmacWebhookSigner` class exists but is not
+  registered in DI); marketplace, content history and i18n have nothing (Transfer is built as
+  [Data Management](data-management.md), Providers as [Providers](providers.md), email as
+  [Email Configuration](email-configuration.md) and [Email Templates](email-templates.md)).
   See [implementation status](../implementation-status.md).
 
 ## Extension points

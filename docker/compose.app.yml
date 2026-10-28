@@ -22,6 +22,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      args:
+        # ffmpeg in the image, so Settings > Media Library can compress videos (empty: leave it out).
+        WITH_FFMPEG: "true"
     image: dotnetforge:local
     read_only: true
     tmpfs:

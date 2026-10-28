@@ -13,8 +13,8 @@ configures logging and `AllowedHosts`. Production values and a deployment checkl
 | `DATABASE_PROVIDER` | - | - | removed: not read; a value stops startup ("no longer used"), an empty line is ignored | - |
 | `DOTNETFORGE_ENV_FILE` | no (environment variable only) | `.env` in the content root / repository root | a file path; a missing file = no file values | `EnvConfigurationLoader` - the integration tests point it at a missing file so a developer's `.env` never applies |
 | `DATABASES_<NAME>_PROVIDER`, `_CONNECTION_STRING` | no | - | any registered provider (`sqlite`, `postgresql`/`postgres`, `sqlserver`, `mysql`, `mongodb`), detected from the connection string when empty; validated by that provider | additional databases: `IDatabaseService`, custom API endpoints, the Data Management export ([additional databases](../database/configuration.md#more-databases)) |
-| `APP_NAME` | no | `DotNetForge CMS` | - | layouts and screens via `ViewData["AppName"]`, Dashboard, Settings, `/health` |
-| `APP_URL` | no | `http://localhost:5000` | must be an absolute URI | the links in password-reset and confirmation emails (`AccountService`, never the request's `Host` header); Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS`, not from it |
+| `APP_NAME` | no | `DotNetForge CMS` | - | layouts and screens via `ViewData["AppName"]`, Dashboard, Settings, `/health`; the issuer shown in authenticator apps, the passkey relying-party name and the SMS code text ([MFA](mfa.md)) |
+| `APP_URL` | no | `http://localhost:5000` | must be an absolute URI | the links in password-reset and confirmation emails (`AccountService`, never the request's `Host` header); the callback URLs of the built-in OAuth providers ([authentication](authentication.md#built-in-oauth-providers)); the passkey relying party (host) and the only accepted origin ([MFA](mfa.md#passkeys)); Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS` / `ASPNETCORE_HTTP_PORTS`, not from it |
 | `STORAGE_S3_SERVICE_URL` | no | empty = AWS S3 | absolute URL | `S3FileStorage` (R2, MinIO, Supabase, SeaweedFS endpoint) |
 | `STORAGE_S3_BUCKET` | outside Development | - | non-empty | `S3FileStorage` |
 | `STORAGE_S3_ACCESS_KEY_ID` | outside Development | - | non-empty | `S3FileStorage` |
@@ -28,6 +28,8 @@ configures logging and `AllowedHosts`. Production values and a deployment checkl
 | `SMTP_FROM` | to send email | - | an email address (`MailAddress.TryCreate`) | sender address |
 | `SMTP_FROM_NAME` | no | `APP_NAME` | - | sender display name |
 | `SMTP_TLS` | no | `true` | only `false` (case-insensitive) turns it off | STARTTLS (`SmtpClient.EnableSsl`); implicit TLS on port 465 is not supported |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | for SMS codes | empty = no SMS codes | trimmed; SMS codes need all three (fewer: SMS codes stay off, no startup error); `TWILIO_AUTH_TOKEN` is a **secret** | `TwilioSmsSender` → two-factor SMS codes ([SMS (Twilio)](#sms-twilio)) |
+| `FFMPEG_PATH` | for video compression | empty = videos are stored as uploaded | none at startup (trimmed); checked by running `ffmpeg -version` when first needed | `Ffmpeg` → `VideoOptimizationService` ([Video compression](#video-compression)) |
 
 Uploaded media always goes to S3-compatible object storage; there is no provider key, because R2, AWS S3, MinIO,
 Supabase and SeaweedFS all speak the same API and differ only in endpoint, region and path style. When **no**
@@ -39,7 +41,8 @@ required ones mandatory, in Development too. Details and provider choice:
 All keys are read by `EnvConfigurationLoader` (`src/DotNetForge.Infrastructure/Configuration/`); constants:
 `ProviderKey`, `ConnectionKey`, `AdditionalDatabasePrefix`, `AppNameKey`, `AppUrlKey`, `S3ServiceUrlKey`,
 `S3BucketKey`, `S3AccessKeyIdKey`, `S3SecretAccessKeyKey`, `S3RegionKey`, `S3ForcePathStyleKey`, `ExtensionsPathKey`,
-`SmtpHostKey`, `SmtpPortKey`, `SmtpUsernameKey`, `SmtpPasswordKey`, `SmtpFromKey`, `SmtpFromNameKey`, `SmtpTlsKey`.
+`SmtpHostKey`, `SmtpPortKey`, `SmtpUsernameKey`, `SmtpPasswordKey`, `SmtpFromKey`, `SmtpFromNameKey`, `SmtpTlsKey`,
+`FfmpegPathKey`, `TwilioAccountSidKey`, `TwilioAuthTokenKey`, `TwilioFromKey`.
 
 ### Email (SMTP)
 
@@ -50,6 +53,27 @@ at least `SMTP_HOST` and `SMTP_FROM` to send the password-reset and confirmation
 [Email → Configuration](../pages/email-configuration.md) shows them read-only (with a connection test, test sends and
 the email log); changes need a restart. A local SMTP catcher works for development - Mailpit from
 `docker/mail/mailpit.yml` (filled in in `.env.developer`).
+
+### SMS (Twilio)
+
+Optional. `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM` are read into `AppEnvironment.Sms`
+(`SmsSettings`, `IsConfigured` when all three are set). With them, `TwilioSmsSender` sends the 6-digit codes of the
+**SMS codes** method of [two-factor authentication](mfa.md#sms) through Twilio's Messages API (plain HTTPS, no SDK);
+without them the method shows **Needs Twilio** on [Two-factor authentication](../pages/mfa.md) and counts as off.
+`TWILIO_FROM` is the sending number in E.164 form (`+15551234567`) or a Messaging Service SID (starts with `MG`, sent
+as `MessagingServiceSid`). With only one or two of the keys the app starts normally and SMS codes stay off: the
+`sms-notifications` sample extension reads `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` alone
+([Extension settings](#extension-settings)) - its sending number is in its own settings.
+
+### Video compression
+
+Optional. `FFMPEG_PATH` is the full path of an ffmpeg executable (e.g. `/usr/bin/ffmpeg`,
+`C:\ffmpeg\bin\ffmpeg.exe`), read into `AppEnvironment.FfmpegPath`. With it, MP4 uploads can be compressed in the
+background once **Compress videos** is turned on in [Settings → Media Library](../pages/media-settings.md)
+([media storage → videos](media-storage.md#videos)). The value is not validated at startup: `Ffmpeg` runs
+`ffmpeg -version` once per process when first needed, and a path that doesn't start or answer only turns video
+compression off (the settings screen shows "ffmpeg doesn't run" with the reason; a warning is logged). The Docker
+image sets it to `/usr/bin/ffmpeg` when built with `WITH_FFMPEG=true` ([deployment](../guides/deployment.md#docker)).
 
 Changing any key requires a restart.
 
@@ -62,13 +86,13 @@ process environment variable, else non-empty `.env` value, else `null`). The `.e
 so a change needs a restart. Non-secret options belong in the manifest `settings` instead
 ([extensions → Manifest](extensions.md#manifest)).
 
-Keys the samples read (none is in `.env.example`; each is documented by its extension):
+Keys the samples read (documented by each extension; only the two Twilio keys are in `.env.example`, because they are core keys too):
 
 | Key | Extension | Without it |
 | --- | --- | --- |
 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | `extensions/authentication/discord-login` | `ConfigureServices` throws → the extension shows **not running** on [Plugins](../pages/plugins.md) and cannot be enabled |
 | `S3_CONNECTOR_ACCESS_KEY_ID`, `S3_CONNECTOR_SECRET_ACCESS_KEY` | `extensions/connectors/s3-storage` | the storage factory throws when media storage is first used while the connector is enabled |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | `extensions/providers/sms-notifications` | only needed for its `twilio` gateway; the default `log` gateway works offline |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | `extensions/providers/sms-notifications` | only needed for its `twilio` gateway; the default `log` gateway works offline. These two are also read by the core ([SMS (Twilio)](#sms-twilio)); with `TWILIO_FROM` as well, two-factor SMS codes become available |
 
 Treat them like the core secrets ([Secrets](#secrets)): `.env` locally, the host's secret store in production.
 
@@ -121,7 +145,7 @@ Requirements for a read-only container (`/tmp`, volumes, Data Protection keys in
 `EnvConfigurationLoader.Load` throws `ConfigurationException`; `Program.cs` prints
 `[DotNetForge] Configuration error: <message>` to stderr and exits with code `1`; database configuration errors
 (`DatabaseConfigurationException`, raised while services are registered) are reported the same way. The loader checks
-`APP_URL`, named-database keys, storage and email, in that order; then the providers validate the databases. Only the
+`APP_URL`, named-database keys, storage, email and SMS, in that order; then the providers validate the databases. Only the
 first failure is reported.
 
 | Situation | Message |
@@ -144,8 +168,9 @@ Configuration is only validated, never probed: an unreachable database or S3 end
 
 ## `.env.example`
 
-The tracked template lists the keys in four sections (Database, Application, File storage, Email) with comments; the
-rarely needed `EXTENSIONS_PATH` is left out (its default is right for checkouts and published apps):
+The tracked template lists the keys in six sections (Database, Application, File storage, Email, Video compression,
+SMS codes) with comments; the rarely needed `EXTENSIONS_PATH` is left out (its default is right for checkouts and published
+apps):
 
 - `DATABASE_CONNECTION_STRING` is empty and must be set (the comment gives the local server of
   `docker/databases/postgres.yml`: `Host=localhost;Port=5432;Database=dotnetforge;Username=postgres;Password=postgres;GSS Encryption Mode=Disable`); empty `STORAGE_S3_*` = local `storage/media` at the repository root in
@@ -154,7 +179,8 @@ rarely needed `EXTENSIONS_PATH` is left out (its default is right for checkouts 
 
 `.env.developer` (also tracked) is the same contract filled in for the local RustFS or Ceph S3 server and Mailpit of
 `docker/compose.dev.yml` - public development credentials only ([development → production-like S3 and
-email](../guides/development.md#production-like-s3-and-email)).
+email](../guides/development.md#production-like-s3-and-email)); its `FFMPEG_PATH` is empty too (set it to a local
+ffmpeg to try video compression), and so are its `TWILIO_*` keys.
 - Outside Development: a PostgreSQL connection string and S3-compatible storage.
 - PostgreSQL example connection string ending in `GSS Encryption Mode=Disable` (avoids a Kerberos library probe in
   slim containers, see [logging](logging-and-error-handling.md#expected-startup-log-lines)).
@@ -178,7 +204,7 @@ Read by the framework, not by `EnvConfigurationLoader`:
 | --- | --- | --- |
 | Development config | `.env` copied from `.env.example`, `src/DotNetForge.Web/Properties/launchSettings.json`, `src/DotNetForge.Web/appsettings.Development.json`; runtime data in `<contentRoot>/storage/` (git-ignored) | committed `.env` |
 | Production config | process environment variables set by the host or orchestrator ([environment variables](../guides/deployment.md#environment-variables)); the image contains no configuration | files inside the deployment directory |
-| Secrets | `DATABASE_CONNECTION_STRING` (database password), `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY`, `SMTP_PASSWORD`, extension secrets ([Extension settings](#extension-settings)) - in `.env` locally, in the host's secret store in production | documentation, `.env.example`, logs, manifests |
+| Secrets | `DATABASE_CONNECTION_STRING` (database password), `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY`, `SMTP_PASSWORD`, `TWILIO_AUTH_TOKEN`, extension secrets ([Extension settings](#extension-settings)) - in `.env` locally, in the host's secret store in production | documentation, `.env.example`, logs, manifests |
 | Uploaded media | `STORAGE_*`: object storage or an absolute path on a volume ([media storage](media-storage.md#storage-architecture)) | the deployment directory |
 | Database | `DATABASE_*`: PostgreSQL ([deployment → database](../guides/deployment.md#database)); also holds the ASP.NET Core Data Protection key ring (table `DataProtectionKeys`) | the deployment directory |
 
@@ -193,7 +219,7 @@ Read by the framework, not by `EnvConfigurationLoader`:
 | `docker/Dockerfile` | `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=8080` ([Docker](../guides/deployment.md#docker)) |
 | `docker/compose.dev.yml` | development-only PostgreSQL 17, RustFS S3 and Mailpit for `.env.developer`; one file per service in `docker/databases/`, `docker/s3/`, `docker/mail/` ([development](../guides/development.md#docker-services-for-development)) |
 | `UserSecretsId` `dotnetforge-cms` in the csproj | present but unused - secrets belong in `.env` or the environment |
-| `Setting` rows | runtime key/value settings edited on the [Settings screen](../pages/settings.md); the `users.*` keys are the Advanced User Settings, read by `UserAccountSettingsService` and edited on [Advanced Settings](../pages/advanced-settings.md); no code reads the others |
+| `Setting` rows | runtime key/value settings edited on the [Settings screen](../pages/settings.md); the `users.*` keys are the Advanced User Settings, read by `UserAccountSettingsService` and edited on [Advanced Settings](../pages/advanced-settings.md); `transfer.backup.*` the backup schedule ([Data Management](../pages/data-management.md)); `media.*` the [Media Library settings](../pages/media-settings.md) (`MediaSettingsService`); no code reads the others |
 | Extension manifest `settings` | `ExtensionContext` (code and views) and `ViewData["Settings"]` in every extension view ([extensions](extensions.md#manifest)); read-only, no screen edits them |
 
 ## Design-time configuration

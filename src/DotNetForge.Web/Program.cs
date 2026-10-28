@@ -53,6 +53,8 @@ app.UseMiddleware<InstallationMiddleware>();
 // Endpoints contributed by an extension answer only while it is enabled (.docs/features/extensions.md).
 app.UseMiddleware<ExtensionEndpointGateMiddleware>();
 
+// The built-in OAuth providers' schemes follow their Providers settings (re-read at most every 30 s).
+app.UseMiddleware<DotNetForge.Web.Authentication.OAuthProviderRefreshMiddleware>();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();

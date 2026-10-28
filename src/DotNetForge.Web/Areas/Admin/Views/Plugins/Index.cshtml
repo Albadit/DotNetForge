@@ -72,23 +72,23 @@
                             <div class="cluster">
                                 <h3 class="extension-name" id="ext-@ext.Id">@ext.Name</h3>
                                 <span class="text-xs text-subtle">v@(ext.Version)</span>
+                                @if (ext.Problem is not null)
+                                {
+                                    @* The problem stays out of the card: an icon next to the name opens it (a popover, placed by ui.js). *@
+                                    var problemId = "problem-" + System.Text.RegularExpressions.Regex.Replace(ext.Id, "[^A-Za-z0-9]", "-");
+                                    var problemTitle = ext.ValidManifest ? "Not running" : "Invalid manifest";
+                                    <button type="button" class="btn btn-ghost btn-icon btn-sm extension-problem-button @(ext.ValidManifest ? "is-warning" : "is-danger")"
+                                            popovertarget="@problemId" aria-haspopup="dialog" aria-expanded="false"
+                                            aria-label="@problemTitle - show why" data-tooltip="@problemTitle">
+                                        <icon name="@(ext.ValidManifest ? "triangle-alert" : "circle-x")" />
+                                    </button>
+                                    <div class="menu-list extension-problem" id="@problemId" popover role="dialog" aria-label="@problemTitle" data-placement="bottom-start">
+                                        <alert tone="@(ext.ValidManifest ? Tone.Warning : Tone.Danger)" title="@problemTitle">@ext.Problem</alert>
+                                    </div>
+                                }
                             </div>
                             <div class="text-xs text-muted text-truncate" title="@ext.Id · extensions/@ext.Folder">@ext.Id</div>
                         </div>
-                        @if (ext.Problem is not null)
-                        {
-                            @* The problem stays out of the card: an icon in the header opens it (a popover, placed by ui.js). *@
-                            var problemId = "problem-" + System.Text.RegularExpressions.Regex.Replace(ext.Id, "[^A-Za-z0-9]", "-");
-                            var problemTitle = ext.ValidManifest ? "Not running" : "Invalid manifest";
-                            <button type="button" class="btn btn-ghost btn-icon btn-sm extension-problem-button @(ext.ValidManifest ? "is-warning" : "is-danger")"
-                                    popovertarget="@problemId" aria-haspopup="dialog" aria-expanded="false"
-                                    aria-label="@problemTitle - show why" data-tooltip="@problemTitle">
-                                <icon name="@(ext.ValidManifest ? "triangle-alert" : "circle-x")" />
-                            </button>
-                            <div class="menu-list extension-problem" id="@problemId" popover role="dialog" aria-label="@problemTitle" data-placement="bottom-end">
-                                <alert tone="@(ext.ValidManifest ? Tone.Warning : Tone.Danger)" title="@problemTitle">@ext.Problem</alert>
-                            </div>
-                        }
                         @if (ext.IsEnabled)
                         {
                             <badge tone="Success" dot="true">Enabled</badge>

@@ -32,6 +32,8 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<SystemState> SystemState => Set<SystemState>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<AuthProvider> AuthProviders => Set<AuthProvider>();
+    public DbSet<UserMfaMethod> UserMfaMethods => Set<UserMfaMethod>();
+    public DbSet<UserRecoveryCode> UserRecoveryCodes => Set<UserRecoveryCode>();
     public DbSet<ContentType> ContentTypes => Set<ContentType>();
     public DbSet<ContentEntry> ContentEntries => Set<ContentEntry>();
     public DbSet<ContentEntryValue> ContentEntryValues => Set<ContentEntryValue>();
@@ -125,6 +127,7 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(m => m.ContentType).HasMaxLength(200);
             e.Property(m => m.RelativePath).IsRequired().HasMaxLength(1000);
             e.HasIndex(m => m.FolderId);
+            e.HasIndex(m => m.Optimization);
         });
 
         b.Entity<MediaFolder>(e =>
@@ -302,9 +305,33 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
         b.Entity<AuthProvider>(e =>
         {
             e.HasKey(p => p.Id);
+            e.Property(p => p.Key).IsRequired().HasMaxLength(50);
             e.Property(p => p.Name).IsRequired().HasMaxLength(100);
-            e.Property(p => p.SettingsJson).HasMaxLength(4000);
+            e.Property(p => p.SettingsJson).HasMaxLength(8000);
             e.HasIndex(p => p.Name).IsUnique();
+            e.HasIndex(p => p.Key).IsUnique();
+        });
+
+        // Second sign-in factors (.docs/features/mfa.md); they go with the user.
+        b.Entity<UserMfaMethod>(e =>
+        {
+            e.HasKey(m => m.Id);
+            e.Property(m => m.Name).IsRequired().HasMaxLength(100);
+            e.Property(m => m.Secret).HasMaxLength(1000);
+            e.Property(m => m.PhoneNumber).HasMaxLength(20);
+            e.Property(m => m.CredentialId).HasMaxLength(1024);
+            e.Property(m => m.PublicKey).HasMaxLength(2048);
+            e.HasOne<User>().WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(m => m.UserId);
+            e.HasIndex(m => m.CredentialId);
+        });
+
+        b.Entity<UserRecoveryCode>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.Property(c => c.CodeHash).IsRequired().HasMaxLength(64);
+            e.HasOne<User>().WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(c => c.UserId);
         });
     }
 }

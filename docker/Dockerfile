@@ -14,10 +14,18 @@ RUN set -e; for project in $(find extensions -name '*.csproj'); do dotnet build 
 RUN dotnet publish src/DotNetForge.Web/DotNetForge.Web.csproj --configuration Release --output /app /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
+# Optional ffmpeg for video compression (.docs/features/media-storage.md#optimization), about 200 MB more:
+#   docker build -f docker/Dockerfile --build-arg WITH_FFMPEG=true -t dotnetforge .
+# Without it FFMPEG_PATH stays empty and videos are stored as uploaded.
+ARG WITH_FFMPEG=
+RUN if [ -n "$WITH_FFMPEG" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*; \
+    fi
 WORKDIR /app
 COPY --from=build /app .
 ENV ASPNETCORE_ENVIRONMENT=Production \
-    ASPNETCORE_HTTP_PORTS=8080
+    ASPNETCORE_HTTP_PORTS=8080 \
+    FFMPEG_PATH=${WITH_FFMPEG:+/usr/bin/ffmpeg}
 USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "DotNetForge.Web.dll"]

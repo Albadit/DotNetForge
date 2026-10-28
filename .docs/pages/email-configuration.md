@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The SMTP server the CMS sends email with - password reset, email confirmation, welcome and account-locked emails
+The SMTP server the CMS sends email with - password reset, email confirmation, welcome, account-locked and two-factor sign-in code emails
 ([email](../features/email.md)) - shown **read-only**: SMTP is configured only with `SMTP_*` in `.env`
 ([configuration → email](../features/configuration.md#email-smtp)). The screen adds tools to check it: a connection
 test, test sends (a plain message or an email template with sample data), the email log and, in Development, a link

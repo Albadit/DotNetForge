@@ -1,0 +1,174 @@
+@using DotNetForge.Shared.Enums
+@using DotNetForge.Web.Services.Mfa
+@model SecurityController.SecurityViewModel
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = "Sign-in security";
+    ViewData["Description"] = "Two-step verification for your account: after your password, a second step only you can do.";
+    var settings = Model.Settings;
+    // Methods of a type the administrator turned off are listed but not asked for at sign-in.
+    var on = Model.Methods.Any(m => settings.Allows(m.Type));
+    bool Has(MfaMethodType type) => Model.Methods.Any(m => m.Type == type);
+    string Icon(MfaMethodType type) => type switch
+    {
+        MfaMethodType.AuthenticatorApp => "smartphone",
+        MfaMethodType.Passkey => "key",
+        MfaMethodType.Sms => "message",
+        _ => "mail",
+    };
+}
+
+<div class="stack-lg">
+    @if (Model.Required && !on)
+    {
+        <alert tone="Warning" title="Two-step verification is required">Your administrator asks everyone who uses the admin to set it up. Add one of the methods below to continue.</alert>
+    }
+
+    <section class="card" aria-labelledby="methods-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="methods-title">Two-step verification</h2>
+                <p class="card-description">@(on ? "When you sign in, you confirm with one of these." : "Off: your password alone signs you in.")</p>
+            </div>
+            <badge tone="@(on ? Tone.Success : Tone.Neutral)" dot="true">@(on ? "On" : "Off")</badge>
+        </div>
+        @if (Model.Methods.Count > 0)
+        {
+            <ul class="list">
+                @foreach (var method in Model.Methods)
+                {
+                    <li>
+                        <span class="list-icon" aria-hidden="true"><icon name="@Icon(method.Type)" /></span>
+                        <span class="grow stack-sm mfa-text">
+                            <strong>@method.Name</strong>
+                            <span class="text-xs text-muted">
+                                @MfaService.Label(method.Type) · added <timestamp value="@method.CreatedDate" /> · last used <timestamp value="@method.LastUsedDate" empty="never" />
+                                @if (!settings.Allows(method.Type))
+                                {
+                                    <text> · turned off by your administrator</text>
+                                }
+                            </span>
+                        </span>
+                        <form method="post" action="/admin/profile/security/@method.Id/remove"
+                              data-confirm="Remove '@method.Name'? @(Model.Methods.Count == 1 ? "It is your only method: two-step verification turns off and your recovery codes stop working." : "You can still confirm with your other methods.")"
+                              data-confirm-title="Remove method" data-confirm-action="Remove">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-ghost btn-sm"><icon name="trash" size="sm" /> Remove</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section class="card" aria-labelledby="add-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="add-title">Add a method</h2>
+                <p class="card-description">Add more than one, so you can still sign in when a phone or key is not at hand.</p>
+            </div>
+        </div>
+        @if (!settings.AnyAllowed)
+        {
+            <div class="card-body"><p class="text-muted">Your administrator hasn't turned on any two-step method yet.</p></div>
+        }
+        else
+        {
+            <ul class="list">
+                @if (settings.AuthenticatorApp)
+                {
+                    <li>
+                        <span class="list-icon" aria-hidden="true"><icon name="smartphone" /></span>
+                        <span class="grow stack-sm mfa-text">
+                            <strong>Authenticator app</strong>
+                            <span class="text-xs text-muted">A 6-digit code from Google Authenticator, Microsoft Authenticator, 1Password and similar apps. Works offline.</span>
+                        </span>
+                        @if (Has(MfaMethodType.AuthenticatorApp))
+                        {
+                            <badge tone="Success">Added</badge>
+                        }
+                        else
+                        {
+                            <a class="btn btn-secondary btn-sm" href="/admin/profile/security/authenticator"><icon name="plus" size="sm" /> Set up</a>
+                        }
+                    </li>
+                }
+                @if (settings.Passkeys)
+                {
+                    <li data-passkey-register>
+                        <span class="list-icon" aria-hidden="true"><icon name="key" /></span>
+                        <span class="grow stack-sm mfa-text">
+                            <strong>Passkey or security key</strong>
+                            <span class="text-xs text-muted">Face ID, Touch ID, Windows Hello, your phone or a USB key - nothing to type.</span>
+                            <span class="mfa-passkey-add" data-js-only hidden>
+                                <label class="sr-only" for="passkey-name">Name of the passkey</label>
+                                <input id="passkey-name" name="name" class="input-sm" maxlength="@MfaService.MaxNameLength" placeholder="Name, e.g. Work laptop" />
+                                <button type="button" class="btn btn-secondary btn-sm" data-passkey-add><icon name="plus" size="sm" /> Add passkey</button>
+                            </span>
+                            <span class="text-sm text-danger" data-passkey-error role="alert" hidden></span>
+                            <noscript><span class="text-xs text-muted">Adding a passkey needs JavaScript.</span></noscript>
+                            @Html.AntiForgeryToken()
+                        </span>
+                    </li>
+                }
+                @if (settings.Email)
+                {
+                    <li>
+                        <span class="list-icon" aria-hidden="true"><icon name="mail" /></span>
+                        <span class="grow stack-sm mfa-text">
+                            <strong>Email codes</strong>
+                            <span class="text-xs text-muted">A code sent to @Model.User.Email when you sign in. Only as safe as your mailbox.</span>
+                        </span>
+                        @if (Has(MfaMethodType.Email))
+                        {
+                            <badge tone="Success">Added</badge>
+                        }
+                        else
+                        {
+                            <form method="post" action="/admin/profile/security/code/send">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="type" value="@MfaMethodType.Email" />
+                                <button type="submit" class="btn btn-secondary btn-sm"><icon name="plus" size="sm" /> Turn on</button>
+                            </form>
+                        }
+                    </li>
+                }
+                @if (settings.Sms)
+                {
+                    <li>
+                        <span class="list-icon" aria-hidden="true"><icon name="message" /></span>
+                        <span class="grow stack-sm mfa-text">
+                            <strong>SMS codes</strong>
+                            <span class="text-xs text-muted">A code by text message to your phone. The weakest method - prefer an app or a passkey.</span>
+                        </span>
+                        <a class="btn btn-secondary btn-sm" href="/admin/profile/security/sms"><icon name="plus" size="sm" /> Add phone</a>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    @if (Model.Methods.Count > 0)
+    {
+        <section class="card" aria-labelledby="recovery-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="recovery-title">Recovery codes</h2>
+                    <p class="card-description">For when you can't use any method. Each works once.</p>
+                </div>
+                <badge tone="@(Model.RecoveryCodesLeft <= 3 ? Tone.Warning : Tone.Neutral)">@Model.RecoveryCodesLeft of @MfaService.RecoveryCodeCount left</badge>
+            </div>
+            <div class="card-footer">
+                <form method="post" action="/admin/profile/security/recovery-codes"
+                      data-confirm="Make new recovery codes? Your current ones stop working." data-confirm-title="New recovery codes" data-confirm-action="Make new codes">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary"><icon name="refresh-cw" /> Make new codes</button>
+                </form>
+            </div>
+        </section>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/forge/passkeys.js" asp-append-version="true" defer></script>
+}

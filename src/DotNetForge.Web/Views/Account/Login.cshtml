@@ -1,11 +1,11 @@
-@using DotNetForge.Sdk
+@using DotNetForge.Web.Services
 @{
     ViewData["Title"] = "Sign in";
     Layout = "_AuthLayout";
     var returnUrl = ViewData["ReturnUrl"] as string;
     var email = ViewData["Email"] as string;
     var rememberMe = ViewData["RememberMe"] as bool? == true;
-    var providers = ViewData["LoginProviders"] as IReadOnlyList<LoginProviderContribution> ?? Array.Empty<LoginProviderContribution>();
+    var providers = ViewData["LoginProviders"] as IReadOnlyList<LoginOption> ?? Array.Empty<LoginOption>();
     var signUps = ViewData["SignUps"] as bool? == true;
     var canResetPassword = ViewData["CanResetPassword"] as bool? == true;
     var unconfirmed = ViewData["Unconfirmed"] as bool? == true;
@@ -59,7 +59,7 @@
 
 @if (providers.Count > 0)
 {
-    @* External providers come from enabled authentication extensions (.docs/features/authentication.md). *@
+    @* Providers: the built-in ones enabled on Providers, then those of enabled authentication extensions (.docs/features/authentication.md). *@
     <div class="auth-divider"><span>or continue with</span></div>
     <div class="stack-sm">
         @foreach (var provider in providers)

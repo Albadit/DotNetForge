@@ -50,6 +50,7 @@ public sealed class ApiDocsDocumentTransformer : IOpenApiDocumentTransformer
             Title = $"{_env.AppName} API",
             Version = ApiDocsDocument.Name,
             Description = "The headless API needs an API token (Settings › API Tokens) with the permission each operation names. " +
+                "Signed in as a Super Admin, requests sent from this page work without one (your admin session is used). " +
                 "Custom endpoints (Settings › API Endpoints) use their own token, already filled in here.",
         };
         document.Components ??= new OpenApiComponents();
@@ -58,7 +59,9 @@ public sealed class ApiDocsDocumentTransformer : IOpenApiDocumentTransformer
         {
             Type = SecuritySchemeType.Http,
             Scheme = "bearer",
-            Description = "An API token. Its secret is shown once, when it is created on the API Tokens screen.",
+            Description = "An API token. Its secret is shown once, when it is created on the API Tokens screen. " +
+                "Super Admins can leave it empty here: requests from this page then use the admin session (all permissions). " +
+                "Fill it in to try a token with its own permissions.",
         };
 
         var endpoints = (await _endpoints.ListAsync(cancellationToken)).Where(e => e.Enabled).ToList();

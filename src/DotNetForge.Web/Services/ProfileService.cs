@@ -89,7 +89,9 @@ public sealed class ProfileService
             return "Your account no longer exists.";
         }
 
-        if (string.IsNullOrEmpty(input.CurrentPassword) || !_hasher.Verify(input.CurrentPassword, user.PasswordHash))
+        // An account made through a sign-in provider has no password yet: it sets its first one without.
+        var hasPassword = !string.IsNullOrEmpty(user.PasswordHash);
+        if (hasPassword && (string.IsNullOrEmpty(input.CurrentPassword) || !_hasher.Verify(input.CurrentPassword, user.PasswordHash)))
         {
             return "Your current password is not correct.";
         }
@@ -104,7 +106,7 @@ public sealed class ProfileService
             return "The new password and its confirmation do not match.";
         }
 
-        if (string.Equals(input.NewPassword, input.CurrentPassword, StringComparison.Ordinal))
+        if (hasPassword && string.Equals(input.NewPassword, input.CurrentPassword, StringComparison.Ordinal))
         {
             return "Choose a password different from your current one.";
         }

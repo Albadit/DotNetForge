@@ -197,6 +197,9 @@ public sealed class MediaIndexViewModel
 
     /// <summary>The files inside <see cref="Current"/>.</summary>
     public IReadOnlyList<MediaRowViewModel> Files { get; init; } = Array.Empty<MediaRowViewModel>();
+
+    /// <summary>Upload limits and optimization (Media Library settings) - shown on the Upload dialog.</summary>
+    public DotNetForge.Web.Services.MediaSettings Limits { get; init; } = DotNetForge.Web.Services.MediaSettings.Default;
 }
 
 /// <summary>A folder of the media library as links and selects show it.</summary>
@@ -221,15 +224,25 @@ public sealed class MediaRowViewModel
 {
     public Guid Id { get; init; }
     public string FileName { get; init; } = string.Empty;
+
+    /// <summary>The name it was uploaded with (Info).</summary>
+    public string? OriginalName { get; init; }
     public string ContentType { get; init; } = string.Empty;
     public long SizeBytes { get; init; }
+
+    /// <summary>Who uploaded it (email; Info), or null when unknown or deleted.</summary>
+    public string? UploadedBy { get; init; }
+
+    /// <summary>The size as uploaded when optimization made it smaller; null = stored as uploaded.</summary>
+    public long? OriginalSizeBytes { get; init; }
+    public DotNetForge.Shared.Enums.MediaOptimization Optimization { get; init; }
     public bool IsPublic { get; init; }
     public DateTime UploadedDate { get; init; }
     public string Url { get; init; } = string.Empty;
     public bool CanDelete { get; init; }
 
-    /// <summary>Whether the user may switch the file between public and private (<c>Media/update</c> or <c>update.own</c>).</summary>
-    public bool CanChangeVisibility { get; init; }
+    /// <summary>Whether the user may make the file public or private, move or rename it (<c>Media/update</c> or <c>update.own</c>).</summary>
+    public bool CanEdit { get; init; }
 }
 
 /// <summary>The Settings screen: existing key/value settings (left) and an add/update form (right).</summary>

@@ -19,7 +19,7 @@
                 <label class="switch-row">
                     <span class="check-text">
                         <span>Enable sign-ups</span>
-                        <span class="check-hint">Visitors can create an account at <code>/register</code>, and the sign-in page links to it. When off, <code>/register</code> answers 404.</span>
+                        <span class="check-hint">Visitors can create an account at <code>/register</code>, and the sign-in page links to it; signing in with a provider (Providers) creates an account for a new email. When off, <code>/register</code> answers 404 and providers sign in existing accounts only.</span>
                     </span>
                     @* The checkbox first: a bound bool takes the first posted value. *@
                     <input type="checkbox" class="switch" role="switch" name="SignUps" value="true" checked="@(Model.SignUps ? "checked" : null)" />
@@ -35,7 +35,7 @@
                     </select>
                     <span class="field-hint" id="role-hint">Authenticated is a site-only role: signed in, but no admin. Only a Super Admin can choose a role that opens the admin.</span>
                 </div>
-                <p class="text-sm text-muted"><icon name="info" size="sm" /> One account per email address - always on: a sign-up with an email that already has an account is refused.</p>
+                <p class="note text-sm text-muted"><icon name="info" size="sm" /><span>One account per email address - always on: a sign-up with an email that already has an account is refused.</span></p>
             </div>
         </section>
 

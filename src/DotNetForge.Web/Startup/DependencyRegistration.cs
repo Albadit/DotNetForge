@@ -24,7 +24,9 @@ using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Enums;
 using DotNetForge.Shared.Stores;
 using DotNetForge.Web.ApiDocs;
+using DotNetForge.Web.Authentication;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -108,6 +110,17 @@ public static class DependencyRegistration
         services.AddScoped<DotNetForge.Abstractions.Messaging.IEmailSender, LoggingEmailSender>();
         services.AddScoped<UserAccountSettingsService>();
         services.AddScoped<AccountService>();
+        // Two-factor authentication (.docs/features/mfa.md): settings, methods, sign-in step; SMS through Twilio.
+        services.AddScoped<MfaSettingsService>();
+        services.AddScoped<MfaService>();
+        services.AddHttpClient<ISmsSender, TwilioSmsSender>(client => client.Timeout = TimeSpan.FromSeconds(15));
+        // Built-in OAuth providers (.docs/features/authentication.md#built-in-oauth-providers): settings on Providers,
+        // schemes added and removed at runtime by the registry.
+        services.AddScoped<AuthProviderService>();
+        services.AddSingleton<OAuthProviderRegistry>();
+        services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<OAuthProviderOptions>, ConfigureOAuthProviderOptions>();
+        services.AddSingleton<Microsoft.Extensions.Options.IPostConfigureOptions<OAuthProviderOptions>,
+            OAuthPostConfigureOptions<OAuthProviderOptions, OAuthProviderHandler>>();
         // Data Management: export, backups (stored with IFileStorage) and the Development-only import (.docs/pages/data-management.md).
         services.AddScoped<DatabaseTransferService>();
         services.AddScoped<IAuditService, AuditService>();
@@ -115,6 +128,11 @@ public static class DependencyRegistration
         services.AddScoped<IPublishedPages, PublishedPageService>();
         services.AddScoped<MediaService>();
         services.AddScoped<MediaFolderService>();
+        // Media Library settings: upload limits and optimization (image re-encoding, ffmpeg video compression).
+        services.AddScoped<MediaSettingsService>();
+        services.AddScoped<MediaExportService>();
+        services.AddSingleton<Ffmpeg>();
+        services.AddSingleton<VideoOptimizationQueue>();
         services.AddScoped<UserManagementService>();
         services.AddScoped<RoleManagementService>();
         services.AddScoped<ProfileService>();
@@ -171,8 +189,27 @@ public static class DependencyRegistration
                     : CookieSecurePolicy.Always;
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
             })
+            // Short-lived cookie of a sign-in waiting for its second factor (PendingSignIn, MfaLoginController).
+            .AddCookie(PendingSignIn.Scheme, options =>
+            {
+                options.Cookie.Name = "dnf.mfa";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = hostEnv.IsDevelopment()
+                    ? CookieSecurePolicy.SameAsRequest
+                    : CookieSecurePolicy.Always;
+                options.ExpireTimeSpan = PendingSignIn.Lifetime;
+                options.SlidingExpiration = false;
+            })
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(
-                ApiTokenDefaults.Scheme, _ => { });
+                ApiTokenDefaults.Scheme, _ => { })
+            // The API's scheme: a token when one is sent, otherwise a Super Admin's same-origin admin session (API docs).
+            .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, AdminSessionAuthenticationHandler>(
+                ApiTokenDefaults.SessionScheme, _ => { })
+            .AddPolicyScheme(ApiTokenDefaults.RequestScheme, ApiTokenDefaults.RequestScheme, options =>
+                options.ForwardDefaultSelector = context => HasCredentials(context.Request.Headers.Authorization.ToString())
+                    ? ApiTokenDefaults.Scheme
+                    : ApiTokenDefaults.SessionScheme);
 
         services.AddAuthorization(options =>
         {
@@ -193,6 +230,8 @@ public static class DependencyRegistration
         services.AddHostedService<ScheduledPublishingService>();
         // Background job that stores automatic backups on the Data Management schedule (off by default).
         services.AddHostedService<AutomaticBackupService>();
+        // Background job that compresses queued videos with ffmpeg (only with FFMPEG_PATH and compression on).
+        services.AddHostedService<VideoOptimizationService>();
 
         // MVC + the API controllers (the API project is mounted as an application part). Runtime Razor
         // compilation lets extensions ship views under extensions/ that are compiled in memory and rendered on
@@ -261,6 +300,16 @@ public static class DependencyRegistration
         }
 
         return runtime;
+    }
+
+    /// <summary>
+    /// Whether an <c>Authorization</c> header carries a credential. An empty one, or a bare "Bearer" (what an API
+    /// client sends when its token field is left empty), falls back to the admin session.
+    /// </summary>
+    private static bool HasCredentials(string authorization)
+    {
+        var value = authorization.Trim();
+        return value.Length > 0 && !value.Equals("Bearer", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

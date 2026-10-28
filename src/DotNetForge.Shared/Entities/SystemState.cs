@@ -34,13 +34,16 @@ public class Setting
 }
 
 /// <summary>
-/// An authentication provider entry shown under Users &amp; Permissions Plugin (.docs/features/authentication.md).
-/// The built-in Email provider is enabled by default; OAuth/OIDC providers are disabled until
-/// configured.
+/// A sign-in provider on Users &amp; Permissions Plugin → Providers (.docs/features/authentication.md#providers): the
+/// built-in Email provider (password sign-in, always on) and one row per OAuth provider of
+/// <c>OAuthProviderCatalog</c>, disabled until configured.
 /// </summary>
 public class AuthProvider
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>The catalog key (<c>email</c>, <c>google</c>, <c>github</c>, ...); unique.</summary>
+    public string Key { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;
 
@@ -48,6 +51,9 @@ public class AuthProvider
 
     public bool IsBuiltIn { get; set; }
 
-    /// <summary>Provider-specific settings (client id/secret, authority), stored as JSON.</summary>
+    /// <summary>Provider-specific settings (client id, the protected client secret, ...), stored as JSON.</summary>
     public string SettingsJson { get; set; } = "{}";
+
+    /// <summary>Last change (UTC); other app instances reload the providers when it moves.</summary>
+    public DateTime UpdatedDate { get; set; } = DateTime.UtcNow;
 }

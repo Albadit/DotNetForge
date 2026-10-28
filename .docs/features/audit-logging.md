@@ -35,10 +35,10 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 
 | Action constant | Key | Written by | Entity |
 | --- | --- | --- | --- |
-| `UserLogin` | `user.login` | `AccountController.Login` (success; `HttpContext.User` is set to the new principal first, so the entry carries the user); `ExternalLoginController.Callback` (details `via <provider>`) | `User`, id, email |
-| `UserLoginFailed` | `user.login.failed` | `AccountController.Login` (any failure; `success: false`); `ExternalLoginController` (details `via <provider>` or `external sign-in`) | `User`, no id, the typed / provider email |
+| `UserLogin` | `user.login` | `AccountController.Login` (success; `HttpContext.User` is set to the new principal first, so the entry carries the user); `ExternalLoginController.Callback` (details `via <provider>`); `MfaLoginController` once the second step passed (details `with an authenticator app` / `a passkey` / `an email code` / `an SMS code` / `a recovery code`, prefixed `via <provider>, ` after a provider sign-in - [MFA](mfa.md#sign-in)). A sign-in waiting for its second step writes nothing yet | `User`, id, email |
+| `UserLoginFailed` | `user.login.failed` | `AccountController.Login` (any failure; `success: false`); `ExternalLoginController` (details `via <provider>` or `external sign-in`; also `GET /account/external/failed` when a built-in provider's sign-in failed or was cancelled, without an email); `MfaLoginController` for a wrong second step (with the user's id and email; details `wrong code from <method>` / `wrong passkey`) | `User`, no id (except the second step), the typed / provider email |
 | `UserLogout` | `user.logout` | `AccountController.Logout` | - |
-| `UserRegistered` | `user.registered` | `AccountService.RegisterAsync` (`/register`; details `Role: <name>`; anonymous actor) | `User`, id, email |
+| `UserRegistered` | `user.registered` | `AccountService.RegisterAsync` (`/register`; details `Role: <name>`; anonymous actor); `AccountService.RegisterExternalAsync` ([sign-up through a provider](authentication.md#sign-up-through-a-provider); details `via <provider>; Role: <name>`) | `User`, id, email |
 | `PasswordResetRequested` | `user.password.reset.requested` | `AccountService.RequestPasswordResetAsync` (`success` = an enabled account matched; anonymous) | `User`, id when matched, the typed email |
 | `PasswordReset` | `user.password.reset` | `AccountService.ResetPasswordAsync` (a reset link was used) | `User`, id, email |
 | `EmailConfirmed` | `user.email.confirmed` | `AccountService.ConfirmEmailAsync` (first use of a confirmation link) | `User`, id, email |
@@ -66,15 +66,15 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 | `EndpointTested` | `endpoint.tested` | `ApiEndpointsController.Test` (one operation; details `Changes rolled back` / `Changes kept`) | `CustomEndpoint`, no id (the run may be unsaved), the tested operation's route (`CustomEndpointService.Route`: "GET /api/custom/products/{id}") |
 | `EndpointTokenRegenerated` | `endpoint.token.regenerated` | `CustomEndpointService.RegenerateTokenAsync` (from `ApiEndpointsController.RegenerateToken`; details: its name; never the token) | `CustomEndpoint`, id, its base path |
 | `EndpointExecuted` | `endpoint.executed` | `CustomEndpointsApiController.Call` for every method but GET; details `<name> (called with its token)` or `<name> (public call)`; `Success = false` when the SQL failed. No API token is involved, so the actor is anonymous - or the signed-in user when the call carries the admin session cookie (e.g. "Test Request" in the [API docs](api-docs.md)) | `CustomEndpoint`, id, the called operation's route ("DELETE /api/custom/products/{id}") |
-| `MediaUploaded` | `media.uploaded` | `MediaService.UploadAsync` (per stored file, from `MediaController.Upload`) | `MediaFile`, id, file name |
+| `MediaUploaded` | `media.uploaded` | `MediaService.UploadAsync` (per stored file, from `MediaController.Upload`; details "Optimized from N to M bytes" when [image optimization](media-storage.md#images) stored a smaller version) | `MediaFile`, id, file name |
 | `MediaDeleted` | `media.deleted` | `MediaService.DeleteAsync` (from `MediaController.Delete`) | `MediaFile`, id, file name |
-| `MediaUpdated` | `media.updated` | `MediaService.SetVisibilityAsync` (from `MediaController.Visibility`; details `Made public` / `Made private`) | `MediaFile`, id, file name |
+| `MediaUpdated` | `media.updated` | `MediaService.SetVisibilityAsync` (from `MediaController.Visibility`; details `Made public` / `Made private`), `MediaService.RenameAsync` (from `MediaController.Rename`; details `Renamed from '<old name>'`) | `MediaFile`, id, file name |
 | `MediaMoved` | `media.moved` | `MediaFolderService.MoveFileAsync` (from `MediaController.MoveSelected`, per file; details `To <path>`) | `MediaFile`, id, file name |
 | `MediaFolderCreated` | `media.folder.created` | `MediaFolderService.CreateAsync` (from `MediaController.CreateFolder`) | `MediaFolder`, id, path |
 | `MediaFolderUpdated` | `media.folder.updated` | `MediaFolderService.RenameAsync` / `MoveAsync` (details `Renamed from …` / `Moved from …`) | `MediaFolder`, id, new path |
 | `MediaFolderDeleted` | `media.folder.deleted` | `MediaFolderService.DeleteAsync` (empty folders only) | `MediaFolder`, id, path |
-| `SettingsChanged` | `settings.changed` | `SettingsController.Save`; `UserAccountSettingsService.SaveAsync` (display "Advanced User Settings"); `EmailConfigurationController` connection test and test sends (display "Email configuration"; details "Connection test passed/failed", "Test email sent", "Test of '<template>' failed" ...; a failure `success: false`); `EmailTemplateService` save / restore (entity `EmailTemplate`, key, "Email template: <name>"); `DatabaseTransferService.SaveScheduleAsync` (display "Backup schedule", details the schedule) | `Setting`, key (or none), key or screen name (value not recorded) |
-| `TransferExported` | `transfer.exported` | `DatabaseTransferService.ExportAsync` (from `DataManagementController.Export`; a failure `success: false`) | `TransferRecord`, id, file name |
+| `SettingsChanged` | `settings.changed` | `SettingsController.Save`; `UserAccountSettingsService.SaveAsync` (display "Advanced User Settings"); `EmailConfigurationController` connection test and test sends (display "Email configuration"; details "Connection test passed/failed", "Test email sent", "Test of '<template>' failed" ...; a failure `success: false`); `EmailTemplateService` save / restore (entity `EmailTemplate`, key, "Email template: <name>"); `DatabaseTransferService.SaveScheduleAsync` (display "Backup schedule", details the schedule); `MediaSettingsService.SaveAsync` (display "Media Library settings", details "Limits I/V/O MB, images optimized/as uploaded, videos compressed/as uploaded"); `MfaSettingsService.SaveAsync` (display "Two-factor authentication", no details) | `Setting`, key (or none), key or screen name (value not recorded) |
+| `TransferExported` | `transfer.exported` | `DatabaseTransferService.ExportAsync` (from `DataManagementController.Export`; a failure `success: false`); `MediaExportService.WriteAsync` (from `DataManagementController.ExportMedia`; details "Media: N files" (+ ", N missing"), a failure `success: false` with the error) | `TransferRecord`, id, file name |
 | `BackupCreated` | `transfer.backup.created` | `DatabaseTransferService` - Back up now, automatic backups (no user; details "Automatic") and the safety backup before an import (details its note) | `TransferRecord`, id, file name |
 | `BackupDownloaded` | `transfer.backup.downloaded` | `DatabaseTransferService.OpenBackupAsync` (from `DataManagementController.Download`) | `TransferRecord`, id, file name |
 | `BackupDeleted` | `transfer.backup.deleted` | `DatabaseTransferService.DeleteBackupAsync`; pruning of automatic backups (details "Older than the newest n automatic backups") | `TransferRecord`, id, file name |
@@ -84,6 +84,11 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 | `ApiTokenRevoked` | `apitoken.revoked` | `ApiTokensController.Revoke` | `ApiToken`, id, name |
 | `PluginEnabled` | `plugin.enabled` | `ExtensionLifecycleService.EnableAsync` (from `PluginsController.Enable`) | `Extension`, manifest id, name |
 | `PluginDisabled` | `plugin.disabled` | `ExtensionLifecycleService.DisableAsync` (from `PluginsController.Disable`) | `Extension`, manifest id, name |
+| `ProviderUpdated` | `provider.updated` | `AuthProviderService.SaveAsync` (from `AuthProvidersController.Edit`, only when something changed; details `Enabled` / `Disabled` and `Changed: <field names>` such as `ClientId, ClientSecret` - never values) | `AuthProvider`, id, provider name |
+| `MfaMethodAdded` | `user.mfa.added` | `MfaService` when a user finishes setting up a method on [Sign-in security](../pages/sign-in-security.md) (details `<type>: <name>`, e.g. `Passkey: Work laptop`) | `User`, id, email |
+| `MfaMethodRemoved` | `user.mfa.removed` | `MfaService.RemoveAsync` (details `<type>: <name>`) | `User`, id, email |
+| `RecoveryCodesGenerated` | `user.mfa.recovery.generated` | `MfaService.GenerateRecoveryCodesAsync` (with the first method, and **Make new codes**; never the codes) | `User`, id, email |
+| `MfaReset` | `user.mfa.reset` | `MfaService.ResetAsync` (from `UsersController.ResetMfa`; details `<n> method(s) removed`) | `User`, id, email |
 
 Defined but never written: `plugin.installed`, `webhook.created`, `audit.exported`.
 
@@ -96,8 +101,7 @@ The content-type and entry actions come from the [Content Manager](../pages/cont
 actor is the signed-in user or the API token ([structured content](structured-content.md)).
 
 Not logged: API reads, reordering of entries or content types, scheduler changes (`ScheduledPublishingService`), and failed or denied operations other than
-sign-in (403s, validation errors, rejected uploads, refused enable/disable). `Details` is filled only by external
-sign-in and extensions.
+sign-in (403s, validation errors, rejected uploads, refused enable/disable).
 
 ## Extension handlers
 

@@ -53,7 +53,7 @@ deliverables and the generated-solution deliverables of the specification.
 | Setup / registration flow | ✔ | | [installation](features/installation.md) |
 | Admin dashboard | ✔ | quick actions, KPI cards, recent activity, system card + widget extensions; no built-in widgets | [dashboard](pages/dashboard.md) |
 | Admin sidebar / shell | ✔ | full sidebar tree, hidden per role, collapsible Settings groups, breadcrumbs, light/dark ([design system](architecture/design-system.md)); unbuilt items are placeholders | [pages architecture](architecture/pages.md), [module placeholders](pages/module-placeholders.md) |
-| Authentication | ✔ | email/password, lockout, cookie, OAuth through authentication extensions (existing users); no sign-up or reset | [authentication](features/authentication.md) |
+| Authentication | ✔ | email/password, lockout, cookie, sign-up, password reset, ten built-in OAuth providers and extension providers (sign-up through a provider), two-factor authentication | [authentication](features/authentication.md), [MFA](features/mfa.md) |
 | RBAC permissions | ✔ | partial: roles + seeded matrix; admin checks role names, API checks permission keys | [authorization](features/authorization.md) |
 | Content manager foundation | ✔ | page tree CRUD, SEO fields, schedules (**Pages**); content types with a field builder and generated entry forms (**Content Manager**) | [Pages](pages/pages.md), [structured content](features/structured-content.md) |
 | File Manager foundation | ✔ | upload, public/private files, library with search and filters, delete and bulk delete (**Media** screen); no folders or tags | [media storage](features/media-storage.md) |

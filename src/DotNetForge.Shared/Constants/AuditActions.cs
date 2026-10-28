@@ -60,4 +60,19 @@ public static class AuditActions
 
     /// <summary>A custom endpoint that is not a GET ran (it may have changed data).</summary>
     public const string EndpointExecuted = "endpoint.executed";
+
+    /// <summary>A sign-in provider was enabled, disabled or its settings changed (Providers).</summary>
+    public const string ProviderUpdated = "provider.updated";
+
+    /// <summary>A user set up a second sign-in factor (authenticator app, email, SMS, passkey).</summary>
+    public const string MfaMethodAdded = "user.mfa.added";
+
+    /// <summary>A user removed one of their second factors.</summary>
+    public const string MfaMethodRemoved = "user.mfa.removed";
+
+    /// <summary>A user made new recovery codes (the old ones stop working).</summary>
+    public const string RecoveryCodesGenerated = "user.mfa.recovery.generated";
+
+    /// <summary>An administrator removed every second factor of a user (lost phone).</summary>
+    public const string MfaReset = "user.mfa.reset";
 }

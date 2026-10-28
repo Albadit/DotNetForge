@@ -409,7 +409,7 @@ public sealed class ContentController : AdminControllerBase
     /// <summary>Uploads a file from an entry form (needs <c>Media</c> / <c>create</c>): <c>{ id, name, url, isImage }</c>.</summary>
     [HttpPost("api/media/upload")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(MediaService.MaxUploadBytes + 1024 * 1024)]
+    [MediaUploadLimit]
     public async Task<IActionResult> Upload(IFormFile? file, bool isPublic = true)
     {
         if (!Can(PermissionAreas.Media, PermissionActions.Create))

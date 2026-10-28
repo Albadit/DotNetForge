@@ -24,6 +24,7 @@ public static class EmailTemplateCatalog
     public const string PasswordReset = "password-reset";
     public const string WelcomeEmail = "welcome-email";
     public const string AccountLocked = "account-locked";
+    public const string SignInCode = "sign-in-code";
 
     public static readonly IReadOnlyList<EmailTemplateDefinition> All = new[]
     {
@@ -77,6 +78,18 @@ public static class EmailTemplateCatalog
             EmailLayout.Button("{{unlockUrl}}", "Reset my password") + "\n" +
             EmailLayout.Note("If it was you, wait {{lockoutMinutes}} minutes and sign in again."),
             Samples(("unlockUrl", "https://cms.example.com/forgot-password"), ("lockoutMinutes", "15"))),
+        new EmailTemplateDefinition(
+            SignInCode,
+            "Sign-in code",
+            "Two-factor authentication by email: someone signs in, or turns email codes on (.docs/features/mfa.md).",
+            new[] { "userName", "code", "expiryMinutes", "appName", "appUrl" },
+            new[] { "code" },
+            "{{code}} is your {{appName}} sign-in code",
+            EmailLayout.Heading("Your sign-in code") + "\n" +
+            "<p style=\"margin:0 0 16px;\">Hello {{userName}}, enter this code to finish signing in to {{appName}}:</p>\n" +
+            "<p style=\"margin:0 0 16px;font-size:28px;font-weight:700;letter-spacing:6px;\">{{code}}</p>\n" +
+            EmailLayout.Note("The code works once and for {{expiryMinutes}} minutes. If you didn't try to sign in, change your password - someone knows it."),
+            Samples(("code", "482913"), ("expiryMinutes", "10"))),
     };
 
     public static EmailTemplateDefinition? Find(string? key) =>

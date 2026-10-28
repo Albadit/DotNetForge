@@ -1,0 +1,37 @@
+@using DotNetForge.Shared.Enums
+@using DotNetForge.Web.Services.Mfa
+@model SecurityController.CodeSetupViewModel
+@{
+    var sms = Model.Type == MfaMethodType.Sms;
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = sms ? "Check your phone" : "Check your email";
+    ViewData["Description"] = sms
+        ? $"We texted a 6-digit code to {MfaService.MaskPhone(Model.Target)}."
+        : $"We emailed a 6-digit code to {Model.Target}.";
+}
+
+<form method="post" action="/admin/profile/security/code" class="form-narrow">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="type" value="@Model.Type" />
+    <input type="hidden" name="target" value="@Model.Target" />
+    <input type="hidden" name="token" value="@Model.Token" />
+    <section class="card" aria-labelledby="code-title">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title" id="code-title">Enter the code</h2>
+                <p class="card-description">It works for @MfaService.CodeLifetime.TotalMinutes.ToString("0") minutes.</p>
+            </div>
+        </div>
+        <div class="card-body stack">
+            <form-errors />
+            <div class="field">
+                <label class="field-label" for="code">6-digit code</label>
+                <input id="code" name="code" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" autofocus class="input-code" />
+            </div>
+        </div>
+        <div class="card-footer">
+            <a class="btn" href="/admin/profile/security">Cancel</a>
+            <button type="submit" class="btn btn-primary"><icon name="check" /> Turn on</button>
+        </div>
+    </section>
+</form>

@@ -10,7 +10,7 @@ together. After a fresh install the list contains only the Super Admin created b
 
 | Item | Value |
 | --- | --- |
-| Routes | `GET /admin/users` (list) · `GET /admin/users/create` · `POST /admin/users/create` · `GET /admin/users/{id}` (edit) · `POST /admin/users/{id}` (save) · `POST /admin/users/{id}/enable` · `POST /admin/users/{id}/disable` · `POST /admin/users/{id}/delete` |
+| Routes | `GET /admin/users` (list) · `GET /admin/users/create` · `POST /admin/users/create` · `GET /admin/users/{id}` (edit) · `POST /admin/users/{id}` (save) · `POST /admin/users/{id}/enable` · `POST /admin/users/{id}/disable` · `POST /admin/users/{id}/mfa/reset` · `POST /admin/users/{id}/delete` |
 | Sidebar entry | **Settings → Administration Panel → Users** (`AdminNavigation.Tree`) |
 | Breadcrumbs | Settings › Administration Panel › Users › *Create user* / *Edit user* |
 | Parameters | none on the list (search, filters, sort and paging are client-side) |
@@ -45,6 +45,7 @@ Form - "Create user" / "Edit user" (h1, the email as description)
 └── aside.editor-aside (edit only)
     ├── card **Account**: status badge · Created · Last sign-in
     ├── card **Effective permissions**: per catalog area - "Full access", action badges or "No access"
+    ├── card **Two-step verification**: On/Off badge · one badge per method · [Reset two-step verification] (with `update`, not on your own account)
     ├── card **Disable access** / **Enable access** (not on your own account)
     └── card.card-danger **Delete user** (not on your own account)
 ```
@@ -60,6 +61,7 @@ Form - "Create user" / "Edit user" (h1, the email as description)
 | Row menu (⋯) | **Edit** (or **View** without `Users` / `update`); **Enable**/**Disable** (with `update`) and **Delete** (with `delete`, confirmation dialog) - not on your own row; these post `returnTo=list`, so the result toast shows on the list |
 | Role checkbox | every role in the database, built-in first (`IsBuiltIn`), then by name - the seven built-in roles (`Admin`, `Author`, `Authenticated`, `Developer`, `Editor`, `Public`, `Super Admin`) and the custom ones; `Developer` (API docs, API tokens and API endpoints only) is assignable like any other role. `name="RoleIds" value="{roleId}"`; `Super Admin` is disabled with "Only a Super Admin can give this role." for non-Super Admins (a held one is posted as a hidden field) |
 | Effective permissions | `PermissionCatalog.Areas` × the saved roles' grants from `IRoleGrantStore` (Super Admin: everything) |
+| Two-step verification | the user's `UserMfaMethods` (`MfaService.MethodsAsync`, in `ViewData["MfaMethods"]`): **On** with one badge per method ("Authenticator app", "Passkey", "Email code", "SMS code") or **Off** with "The user hasn't set up a second step." ("Set it up on Profile → Sign-in security." on your own account) |
 
 ## Functionality
 
@@ -69,6 +71,7 @@ Form - "Create user" / "Edit user" (h1, the email as description)
 | Save | `UpdateAsync`: details and role links (never the status - **Disable user** / **Enable user** change it); the password only when a new one is entered → toast "Saved. Role changes apply the next time the user signs in." |
 | Enable / Disable | `SetStatusAsync` → toast; a disabled user can't sign in and an open session ends within 30 seconds. |
 | Delete | `DeleteAsync` after a confirmation dialog: role links, then the user → list with a toast. Audit entries keep the user's name snapshot. |
+| Reset two-step verification | for someone who lost their phone or key ([MFA → Lost access](../features/mfa.md#lost-access)): confirmation dialog "Remove every two-step method and recovery code of … ? Until they set up a new one, their password alone signs them in." → `UsersController.ResetMfa` → `MfaService.ResetAsync` deletes all their methods and recovery codes (audit `user.mfa.reset`, "N method(s) removed") → toast "Two-step verification is off for … They sign in with their password and can set it up again." ("… has no two-step methods." when there were none). On your own account: "Change your own methods on Profile → Sign-in security." |
 
 Role changes reach a signed-in user at their next sign-in (roles are claims); [grant](roles.md) changes apply at once.
 
@@ -87,7 +90,7 @@ Server: the `Users` / `UserRoles` rows. Client: the list's search, filters, sort
 | --- | --- |
 | list, form (`GET`) | `AdminArea` + `Users` / `read` |
 | create (`GET`/`POST`) | + `Users` / `create` |
-| save, enable, disable | + `Users` / `update` |
+| save, enable, disable, reset two-step verification | + `Users` / `update` |
 | delete | + `Users` / `delete` |
 
 Defaults: Super Admin and Admin. Without `update` the form is read-only ("View only"). Rules that hold regardless of
@@ -131,6 +134,7 @@ Search, filter, sort and page the list; open a user; edit and save; enable/disab
 UsersController
 ├── DotNetForgeDbContext (reads)
 ├── IRoleGrantStore        effective permissions
+├── MfaService             the Two-step verification card, reset (user.mfa.reset)
 └── UserManagementService
     ├── DotNetForgeDbContext
     ├── IPasswordHasher
@@ -146,12 +150,13 @@ flowchart LR
     E --> S["POST /admin/users/{id}"] -->|ok| E
     S -->|error| E2["form + error"]
     E --> T["POST {id}/enable | disable"] --> E
+    E --> M["POST {id}/mfa/reset"] --> E
     E --> X["POST {id}/delete"] --> L
 ```
 
 ## Related pages
 
-[Roles](roles.md), [Dashboard](dashboard.md), [Audit Logs](audit-logs.md), `GET /api/users`
+[Roles](roles.md), [Dashboard](dashboard.md), [Audit Logs](audit-logs.md), [Sign-in security](sign-in-security.md) (where users set up their own methods), [Two-factor authentication](mfa.md), `GET /api/users`
 ([headless API](../features/headless-api.md)).
 
 ## Important implementation details

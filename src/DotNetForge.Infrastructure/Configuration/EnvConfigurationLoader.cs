@@ -40,6 +40,10 @@ public static class EnvConfigurationLoader
     public const string SmtpFromKey = "SMTP_FROM";
     public const string SmtpFromNameKey = "SMTP_FROM_NAME";
     public const string SmtpTlsKey = "SMTP_TLS";
+    public const string FfmpegPathKey = "FFMPEG_PATH";
+    public const string TwilioAccountSidKey = "TWILIO_ACCOUNT_SID";
+    public const string TwilioAuthTokenKey = "TWILIO_AUTH_TOKEN";
+    public const string TwilioFromKey = "TWILIO_FROM";
 
     /// <summary>Suffixes of <c>DATABASES_&lt;NAME&gt;_*</c> keys.</summary>
     private static readonly string[] AdditionalDatabaseSuffixes = { "_CONNECTION_STRING", "_PROVIDER" };
@@ -102,7 +106,9 @@ public static class EnvConfigurationLoader
             AppUrl = appUrl,
             Storage = LoadStorage(Get, contentRoot, isDevelopment),
             Email = LoadEmail(Get),
+            Sms = LoadSms(Get),
             ExtensionsPath = ResolveExtensionsPath(Get(ExtensionsPathKey), contentRoot),
+            FfmpegPath = Get(FfmpegPathKey)?.Trim(),
             Lookup = Get,
         };
     }
@@ -149,6 +155,18 @@ public static class EnvConfigurationLoader
             UseTls = !string.Equals(get(SmtpTlsKey)?.Trim(), "false", StringComparison.OrdinalIgnoreCase),
         };
     }
+
+    /// <summary>
+    /// Twilio for SMS sign-in codes (.docs/features/mfa.md#sms). They need all three values; with fewer, SMS codes
+    /// are simply unavailable - not a startup error, because the SMS Notifications sample extension uses the account
+    /// SID and auth token alone (its sending number is in its own settings).
+    /// </summary>
+    private static SmsSettings LoadSms(Func<string, string?> get) => new()
+    {
+        AccountSid = get(TwilioAccountSidKey)?.Trim(),
+        AuthToken = get(TwilioAuthTokenKey)?.Trim(),
+        From = get(TwilioFromKey)?.Trim(),
+    };
 
     /// <summary>
     /// Named databases for <c>IDatabaseService</c>: <c>DATABASES_&lt;NAME&gt;_PROVIDER</c> and

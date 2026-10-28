@@ -1,16 +1,39 @@
 @using DotNetForge.Web.Services
+@using DotNetForge.Shared.Enums
 @model MediaIndexViewModel
 @{
     ViewData["Title"] = "Media";
     ViewData["Description"] = "Images, documents and other files for your pages. Public files are reachable by anyone with the link.";
     var accept = string.Join(",", MediaService.AllowedTypes.Keys);
+    string Extensions(MediaKind kind) => string.Join(",", MediaService.AllowedTypes.Where(t => MediaSettings.KindOf(t.Value) == kind).Select(t => t.Key));
+    static long Mb(int mb) => mb * 1024L * 1024;
     var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
     var anyDeletable = Model.Files.Any(f => f.CanDelete);
-    var anySelectable = Model.Files.Any(f => f.CanDelete || f.CanChangeVisibility);
-    var anyMovable = Model.Files.Any(f => f.CanChangeVisibility);
+    var anySelectable = Model.Files.Any(f => f.CanDelete || f.CanEdit);
+    var anyMovable = Model.Files.Any(f => f.CanEdit);
     var here = Model.Current?.Id;
     var empty = Model.Files.Count == 0 && Model.Folders.Count == 0;
     static string Count(int n, string noun) => n == 1 ? $"1 {noun}" : $"{n} {noun}s";
+    var anyRenamable = Model.Files.Any(f => f.CanEdit);
+    // Info (media.js fills #file-info-dialog from it; the text is set as text, never as HTML).
+    string Info(MediaRowViewModel file)
+    {
+        var saved = file.OriginalSizeBytes is > 0 and var before && before > file.SizeBytes
+            ? $" - optimized from {MediaPresentation.Size(before)}, {(int)Math.Round(100 - file.SizeBytes * 100d / before)}% smaller"
+            : null;
+        return System.Text.Json.JsonSerializer.Serialize(new[]
+        {
+            new[] { "Name", file.FileName },
+            new[] { "Uploaded as", string.IsNullOrEmpty(file.OriginalName) || file.OriginalName == file.FileName ? null : file.OriginalName },
+            new[] { "Type", file.ContentType },
+            new[] { "Size", MediaPresentation.Size(file.SizeBytes) + saved },
+            new[] { "Access", file.IsPublic ? "Public - anyone with the link can open it" : "Private - only signed-in admin users can open it" },
+            new[] { "Folder", Model.Current is null ? "Library (top level)" : "Library" + Model.Current.Path },
+            new[] { "Uploaded", DotNetForge.Web.Ui.TimestampTagHelper.Format(file.UploadedDate) + (file.UploadedBy is null ? null : " by " + file.UploadedBy) },
+            new[] { "Link", origin + file.Url },
+            new[] { "Id", file.Id.ToString() },
+        }.Where(row => row[1] is not null));
+    }
 }
 
 @section Actions {
@@ -170,8 +193,8 @@
                     var (kind, icon) = MediaPresentation.Classify(file.ContentType);
                     <article class="media-card" data-item data-kind="@kind" data-access="@(file.IsPublic ? "public" : "private")"
                              data-search="@file.FileName @file.ContentType"
-                             draggable="@(file.CanChangeVisibility ? "true" : null)" data-drag-file="@(file.CanChangeVisibility ? (Guid?)file.Id : null)">
-                        @if (file.CanDelete || file.CanChangeVisibility)
+                             draggable="@(file.CanEdit ? "true" : null)" data-drag-file="@(file.CanEdit ? (Guid?)file.Id : null)">
+                        @if (file.CanDelete || file.CanEdit)
                         {
                             <label class="media-select" aria-label="Select @file.FileName">
                                 <input type="checkbox" name="ids" value="@file.Id" form="bulkForm" data-select-item />
@@ -199,14 +222,21 @@
                                 {
                                     <badge tone="Warning"><icon name="lock" size="sm" /> Private</badge>
                                 }
-                                <span class="media-type text-xs text-subtle">@file.ContentType</span>
+                                @* Type and optimization savings are in Info. *@
+                                @if (file.Optimization is MediaOptimization.Pending or MediaOptimization.Processing)
+                                {
+                                    <badge data-tooltip="The video is being compressed in the background">Optimizing…</badge>
+                                }
                             </span>
                         </div>
                         <action-menu class="media-actions" variant="secondary" label="Actions for @file.FileName">
                             <menu-link href="@file.Url" icon="external-link" new-tab="true">Open</menu-link>
                             <menu-button icon="link" data-copy-text="@origin@file.Url">Copy link</menu-button>
-                            @if (file.CanChangeVisibility)
+                            <menu-button icon="info" data-file-info="@Info(file)" data-js-only hidden>Info</menu-button>
+                            @if (file.CanEdit)
                             {
+                                <menu-button icon="pencil" data-file-rename="@file.Id" data-file-name="@System.IO.Path.GetFileNameWithoutExtension(file.FileName)"
+                                             data-file-extension="@System.IO.Path.GetExtension(file.FileName)" data-js-only hidden>Rename…</menu-button>
                                 @if (file.IsPublic)
                                 {
                                     <menu-post action="/admin/media/visibility/@file.Id" icon="lock" field-isPublic="false"
@@ -241,13 +271,19 @@
     @* Upload (header), a file drag onto the page or #upload opens this; media.js shows it again after a failed upload. *@
     <dialog class="dialog upload-dialog" aria-labelledby="upload-title">
         <section class="card upload-panel" id="upload" aria-labelledby="upload-title" data-upload-panel
-                 data-upload-open="@(ViewData.ModelState.IsValid ? null : "true")" data-max-bytes="@MediaService.MaxUploadBytes">
+                 data-upload-open="@(ViewData.ModelState.IsValid ? null : "true")"
+                 data-max-image="@Mb(Model.Limits.MaxImageMb)" data-max-video="@Mb(Model.Limits.MaxVideoMb)" data-max-other="@Mb(Model.Limits.MaxOtherMb)"
+                 data-image-types="@Extensions(MediaKind.Image)" data-video-types="@Extensions(MediaKind.Video)">
             <div class="card-header">
                 <div>
                     <h2 class="card-title" id="upload-title">Upload</h2>
                     <p class="card-description">
-                        Up to @MediaService.MaxFilesPerUpload files, @(MediaService.MaxUploadBytes / (1024 * 1024)) MB each, into
-                        <strong>@(Model.Current?.Path ?? "the top level")</strong>.
+                        Up to @MediaService.MaxFilesPerUpload files into <strong>@(Model.Current?.Path ?? "the top level")</strong>:
+                        images up to @Model.Limits.MaxImageMb MB, videos and audio up to @Model.Limits.MaxVideoMb MB, other files up to @Model.Limits.MaxOtherMb MB.
+                        @if (Model.Limits.OptimizeImages)
+                        {
+                            <text>Images are optimized@(Model.Limits.ConvertToWebP ? " and stored as WebP" : null).</text>
+                        }
                     </p>
                 </div>
                 <button type="button" class="btn btn-ghost btn-icon btn-sm" data-upload-close aria-label="Close upload" data-tooltip="Close">
@@ -333,6 +369,45 @@
         </div>
         <form method="dialog" class="dialog-footer">
             <button type="submit" class="btn">Close</button>
+        </form>
+    </dialog>
+}
+
+@if (Model.Files.Count > 0)
+{
+    @* Info in a file's menu opens this (media.js fills in the file). *@
+    <dialog class="dialog file-dialog" id="file-info-dialog" aria-labelledby="file-info-title">
+        <div class="dialog-body stack">
+            <h2 class="dialog-title" id="file-info-title">File info</h2>
+            <dl class="dl dl-compact file-info" data-file-info-list></dl>
+        </div>
+        <form method="dialog" class="dialog-footer">
+            <button type="submit" class="btn">Close</button>
+        </form>
+    </dialog>
+}
+
+@if (anyRenamable)
+{
+    @* Rename… in a file's menu opens this (media.js sets the form's action, the name and the extension). *@
+    <dialog class="dialog file-dialog" id="file-rename-dialog" aria-labelledby="file-rename-title">
+        <div class="dialog-body stack">
+            <div>
+                <h2 class="dialog-title" id="file-rename-title">Rename file</h2>
+                <p class="dialog-text">The file keeps its type and its links - links with the old name keep working.</p>
+            </div>
+            <form method="post" id="file-rename" class="field">
+                @Html.AntiForgeryToken()
+                <label class="field-label" for="file-rename-name">Name</label>
+                <div class="file-name-row">
+                    <input id="file-rename-name" name="name" required maxlength="@MediaService.MaxFileNameLength" />
+                    <span class="file-name-extension" data-file-rename-extension></span>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="dialog-footer">
+            <button type="submit" class="btn">Cancel</button>
+            <button type="submit" class="btn btn-primary" form="file-rename"><icon name="pencil" /> Rename</button>
         </form>
     </dialog>
 }

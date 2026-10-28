@@ -85,6 +85,10 @@ All versions are pinned centrally in `Directory.Packages.props` (`ManagePackageV
 | `Microsoft.AspNetCore.OpenApi` | 10.0.12 | Web | builds the OpenAPI document of the headless API (`AddOpenApi`, `MapOpenApi`) that the [API docs](../features/api-docs.md) render; extended by `ApiDocsTransformers.cs` with the token schemes, permission keys and custom endpoints |
 | `Scalar.AspNetCore` | 2.18.3 | Web | the interactive API reference (Scalar) at `/admin/api-docs/reference/` (`MapScalarApiReference`); its scripts are served by the package from this origin - font CDN, telemetry, "Ask AI" agent, MCP and developer tools switched off ([API docs](../features/api-docs.md)) |
 | `System.Security.Cryptography.Pkcs` / `.Xml` | 10.0.13 | none directly - transitive pins (`CentralPackageTransitivePinningEnabled`) | security fix: Pkcs comes from `Microsoft.Data.SqlClient` (SQL Server provider, additional databases), Xml from `Microsoft.AspNetCore.DataProtection`; their 10.0.12 / 9.0.11 versions are affected by NU1902/NU1903 advisories (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-r955-8q5j-3h83, GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj) |
+| `SkiaSharp` | 4.153.1 | Web | image optimization on upload (`ImageOptimizer`: decode, EXIF orientation, resize, re-encode as JPEG/PNG/WebP - [media storage → images](../features/media-storage.md#images)) |
+| `SkiaSharp.NativeAssets.Linux.NoDependencies` | 4.153.1 | Web | SkiaSharp's native library for Linux without system font/graphics libraries, so the slim Docker image needs nothing extra (Windows and macOS assets come with `SkiaSharp`) |
+| `Fido2` | 4.2.0 | Web | passkeys and security keys (WebAuthn): registration and assertion checks in `MfaService` ([MFA → passkeys](../features/mfa.md#passkeys)); MIT |
+| `QRCoder` | 1.8.0 | Web | the QR code (PNG) of the authenticator-app setup on Sign-in security; MIT |
 | `Microsoft.NET.Test.Sdk` | 17.12.0 | tests | test host |
 | `xunit` / `xunit.runner.visualstudio` | 2.9.2 / 2.8.2 | tests | test framework |
 | `Microsoft.AspNetCore.Mvc.Testing` | 10.0.12 | IntegrationTests | `WebApplicationFactory<Program>` |
@@ -111,7 +115,12 @@ files from the same paths of a newer `monaco-editor` package (`min/vs/...`). The
 hashing and signing are deliberately in-house; `AWSSDK.S3` is the exception, for S3 request signing.
 `Microsoft.AspNetCore.OpenApi` is ASP.NET Core's own OpenAPI generator (not part of the shared framework), and
 `Scalar.AspNetCore` is there because ASP.NET Core ships no UI to read and try an OpenAPI document, Monaco because
-the browser has no code editor (IntelliSense, validation markers, colorization).
+the browser has no code editor (IntelliSense, validation markers, colorization), SkiaSharp because .NET has no
+cross-platform image codec (`System.Drawing` is Windows-only), `Fido2` because WebAuthn attestation and assertion
+verification (CBOR, COSE keys, many signature formats) is too large and security-critical to write in-house, and
+`QRCoder` because .NET has no QR encoder. Video compression uses no package: it runs an external ffmpeg
+(`FFMPEG_PATH`, optional) as a process; SMS codes call Twilio's REST API with `HttpClient` (no SDK); TOTP and the
+built-in OAuth providers use the BCL and ASP.NET Core's `OAuthHandler`.
 
 ## DI registrations
 
@@ -121,15 +130,15 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 
 | Service | Implementation | Lifetime | Injected by |
 | --- | --- | --- | --- |
-| `AppEnvironment` | instance from `EnvConfigurationLoader` | singleton | `AccountController`, `SetupController`, `HomeController`, `DashboardController`, `SettingsController` |
-| `IMemoryCache` | `AddMemoryCache()` | singleton | cookie session check (`ValidateSessionAsync`, key `dnf:session:{userId}`), `ApiTokenAuthenticationHandler` (key `dnf:apitoken:{sha256}`) |
+| `AppEnvironment` | instance from `EnvConfigurationLoader` | singleton | `AccountController`, `SetupController`, `HomeController`, `DashboardController`, `SettingsController`, `Ffmpeg` (`FfmpegPath`) |
+| `IMemoryCache` | `AddMemoryCache()` | singleton | cookie session check (`ValidateSessionAsync`, key `dnf:session:{userId}`), `ApiTokenAuthenticationHandler` (key `dnf:apitoken:{sha256}`), `MfaSettingsService` (`dnf:mfa:required`), `MfaService` (`dnf:mfa:enrolled:{userId}`) - 30 s each |
 | `DotNetForgeDbContext` | `AddDbContext<DotNetForgeDbContext, PostgreSqlDbContext>` by `PostgreSqlDatabaseProvider.AddDbContext` (the CMS database is PostgreSQL) | scoped | almost every controller, all API controllers, `MediaFilesController`, `AuthService`, `AuditService`, `PageService`, `MediaService`, `InstallationStore`, `ApiTokenAuthenticationHandler`, the Data Protection key repository, admin extension views (`@inject`) |
 | `DatabaseProviderRegistry`, `DatabaseCatalog` | `AddDotNetForgeDatabases` (built during registration from `AddDatabaseProvider<T>(name)` calls) | singleton | `QueryRouter`, `Program.cs` (schema initialization), `SqlEndpointRunner`, `DatabaseTransferService` (export choices) |
 | `QueryRouter` | `AddDotNetForgeDatabases` | singleton | `DatabaseService` |
 | `IDatabaseService` → `DatabaseService` | `AddDotNetForgeDatabases` | singleton | `DatabaseTransferService` (export of an additional database); extensions and tooling ([database layer](../database/architecture.md)) |
 | Data Protection | `AddDataProtection().SetApplicationName("DotNetForge").PersistKeysToDbContext<DotNetForgeDbContext>()` | framework | auth cookie, antiforgery, TempData |
 | keyed `IFileStorage` `"core"` (`ExtensionMediaStorage.CoreStorageKey`) | `S3FileStorage(env.Storage)`; `LocalFileStorage(env.Storage.LocalPath)` only in Development without `STORAGE_S3_*` | keyed singleton (factory) | `ExtensionMediaStorage`; replaced by `DotNetForgeWebFactory` in tests |
-| `IFileStorage` | `ExtensionMediaStorage` (core storage + every `MediaStorageContribution`) | singleton (factory) | `MediaService`, `MediaFilesController`, extensions (Contact Form) |
+| `IFileStorage` | `ExtensionMediaStorage` (core storage + every `MediaStorageContribution`) | singleton (factory) | `MediaService`, `MediaFilesController`, `MediaExportService`, `VideoOptimizationService` (per run, from its scope), extensions (Contact Form) |
 | `IPasswordHasher` | `Pbkdf2PasswordHasher` | singleton | `AuthService`, `InstallationService`, `UserManagementService` |
 | `IDateTimeProvider` | `SystemClock` | singleton | `AuthService`, `ApiTokensController`, `ApiTokenAuthenticationHandler` |
 | `IApiTokenFactory` | `ApiTokenFactory` | singleton | `ApiTokensController`, `ApiTokenAuthenticationHandler` |
@@ -157,7 +166,7 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | `AdminNavigationService` | self (`src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs`) | scoped (builds the sidebar once per request) | `_AdminLayout`, `Dashboard/Index.cshtml` (`@inject`; quick actions via `Allows`) |
 | `ExtensionViewRenderer` | self | singleton | `HomeController`, `ExtensionViewController`, widget and module view components |
 | `ThemeResolver` | self (reads `ExtensionCatalog` and, for theme inheritance, `DotNetForgeDbContext`) | scoped | `HomeController`, `PageBuilderController` (canvas, preview); the static `InheritedFrom`: `PagesController` (Theme tab) |
-| `LoginProviders` | self (every `LoginProviderContribution`) | singleton | `AccountController`, `ExternalLoginController` |
+| `LoginProviders` | self (every `LoginProviderContribution` + `OAuthProviderRegistry`) | singleton | `AccountController`, `ExternalLoginController`, `AuthProvidersController` |
 | `AuditEventDispatcher` | self (every `AuditHandlerContribution`), also `AddHostedService` | singleton (hosted) | `AuditService` |
 | `IPublishedPages` | `PublishedPageService` | scoped | `HomeController` and `PageBuilderController` (header menu, `ViewData["Menu"]`), extensions (SEO Toolkit sitemap) |
 | contribution records (`MediaStorageContribution`, `LoginProviderContribution`, `AuditHandlerContribution`) | registered by the SDK helpers in an extension's `ConfigureServices` | singleton | `ExtensionMediaStorage`, `LoginProviders`, `AuditEventDispatcher` |
@@ -166,15 +175,26 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | `IInstallationService` | `InstallationService` | scoped | `SetupController` |
 | `InstallationStatusCache` | self | singleton | `InstallationMiddleware`, `SetupController` |
 | `IHttpContextAccessor` | framework | singleton | `AuditService` |
-| `AuthService` | self | scoped | `AccountController`, `ExternalLoginController`, `SetupController`, `ValidateSessionAsync` |
+| `AuthService` | self | scoped | `AccountController`, `ExternalLoginController`, `MfaLoginController`, `SetupController`, `ProfileController`, `ValidateSessionAsync` |
+| `MfaSettingsService` | self (`src/DotNetForge.Web/Services/Mfa/MfaSettings.cs`) | scoped | `MfaService`, `MfaSettingsController`, `SecurityController`, `AdminControllerBase` (the requirement, from `RequestServices`) |
+| `MfaService` | self (`src/DotNetForge.Web/Services/Mfa/MfaService.cs`) | scoped | `AuthService`, `MfaLoginController`, `SecurityController`, `ProfileController`, `UsersController` (reset), `AdminControllerBase` (from `RequestServices`) |
+| `ISmsSender` | `TwilioSmsSender` (typed `HttpClient`, 15 s timeout; `TWILIO_*`) | transient (`AddHttpClient`) | `MfaService` |
+| `AuthProviderService` | self (`src/DotNetForge.Web/Authentication/AuthProviderService.cs`) | scoped | `AuthProvidersController` |
+| `OAuthProviderRegistry` | self (`src/DotNetForge.Web/Authentication/OAuthProviderRegistry.cs`) | singleton | `OAuthProviderRefreshMiddleware`, `LoginProviders`, `AuthProviderService`, `ConfigureOAuthProviderOptions` |
+| `IConfigureOptions<OAuthProviderOptions>` / `IPostConfigureOptions<OAuthProviderOptions>` | `ConfigureOAuthProviderOptions` / `OAuthPostConfigureOptions<OAuthProviderOptions, OAuthProviderHandler>` | singleton | the `oauth-<key>` schemes' options (named per scheme) |
 | `IEmailSender` | `SmtpEmailSender` (`DotNetForge.Infrastructure.Messaging`) | scoped | `AccountService`, `EmailConfigurationController` (test send) |
 | `EmailConfigurationService`, `IEmailSettingsSource` (the same instance) | self (`src/DotNetForge.Web/Services/EmailConfigurationService.cs`) | scoped | `SmtpEmailSender`, `AccountService`, `UserAccountSettingsService`, `AdvancedSettingsController`, `EmailConfigurationController` |
 | `UserAccountSettingsService` | self (`src/DotNetForge.Web/Services/UserAccountSettings.cs`) | scoped | `AuthService` (email confirmation), `AccountService`, `AccountController`, `AdvancedSettingsController` |
-| `AccountService` | self | scoped | `AccountController` (registration, password reset, email confirmation), `AuthService` (account-locked email) |
+| `AccountService` | self | scoped | `AccountController` (registration, password reset, email confirmation), `AuthService` (account-locked email), `ExternalLoginController` (sign-up through a provider), `MfaService` (sign-in code email) |
 | `EmailTemplateService` | self | scoped | `AccountService` (rendering), `EmailTemplatesController` |
-| `IAuditService` | `AuditService` | scoped | `AccountController`, `AccountService`, `UserAccountSettingsService`, `EmailConfigurationService`, `EmailConfigurationController`, `ExternalLoginController`, `SetupController`, `PagesController`, `ContentTypeService`, `ContentEntryService`, `SettingsController`, `ApiTokensController`, `MediaService`, `UserManagementService`, `RoleManagementService`, `ProfileService`, `PageBuilderService`, `PagePermissionService`, `ContentApiController`, `ExtensionLifecycleService`, `CustomEndpointService`, `ApiEndpointsController` (test run), `CustomEndpointsApiController`, extensions (Contact Form) |
+| `IAuditService` | `AuditService` | scoped | `AccountController`, `AccountService`, `UserAccountSettingsService`, `EmailConfigurationService`, `EmailConfigurationController`, `ExternalLoginController`, `MfaLoginController`, `MfaService`, `MfaSettingsService`, `AuthProviderService`, `SetupController`, `PagesController`, `ContentTypeService`, `ContentEntryService`, `SettingsController`, `ApiTokensController`, `MediaService`, `MediaSettingsService`, `MediaExportService`, `UserManagementService`, `RoleManagementService`, `ProfileService`, `PageBuilderService`, `PagePermissionService`, `ContentApiController`, `ExtensionLifecycleService`, `CustomEndpointService`, `ApiEndpointsController` (test run), `CustomEndpointsApiController`, extensions (Contact Form) |
 | `IPageService` | `PageService` | scoped | `PagesController`, `ContentApiController` |
-| `MediaService` | self | scoped | `MediaController`, `ContentController` (uploads from entry forms), `PageBuilderController` |
+| `MediaService` | self | scoped | `MediaController`, `ContentController` (uploads from entry forms), `PageBuilderController`, `[MediaUploadLimit]` (from `RequestServices`, for the request size) |
+| `MediaSettingsService` | self (`src/DotNetForge.Web/Services/MediaSettings.cs`) | scoped | `MediaService`, `MediaSettingsController`, `VideoOptimizationService` (per run) |
+| `MediaExportService` | self | scoped | `DataManagementController` (media export) |
+| `Ffmpeg` | self (`src/DotNetForge.Web/Services/VideoCompression.cs`; `FFMPEG_PATH`, probed once) | singleton | `MediaService`, `MediaSettingsController`, `VideoOptimizationService` |
+| `VideoOptimizationQueue` | self (a signal) | singleton | `MediaService` (notify), `VideoOptimizationService` (wait) |
+| `VideoOptimizationService` | `AddHostedService` | singleton (hosted) | host - compresses queued videos ([media storage → videos](../features/media-storage.md#videos)) |
 | `UserManagementService` | self (`src/DotNetForge.Web/Services/`) | scoped | `UsersController` |
 | `RoleManagementService` | self (`src/DotNetForge.Web/Services/`) | scoped | `RolesController` |
 | `ScheduledPublishingService` | `AddHostedService` | singleton (hosted) | host |
@@ -185,8 +205,10 @@ Framework services also configured there:
 
 - cookie authentication (`dnf.auth`, 8 h sliding, `HttpOnly`, `SameSite=Lax`, `SecurePolicy` `Always` outside
   Development / `SameAsRequest` in Development, `OnValidatePrincipal = ValidateSessionAsync`), the external cookie
-  scheme `ExternalLogin.SignInScheme` (`dnf.external`, 10 min) and the `ApiToken` scheme; extensions add their own
-  remote schemes;
+  scheme `ExternalLogin.SignInScheme` (`dnf.external`, 10 min), the pending second-step cookie scheme
+  `PendingSignIn.Scheme` (`dnf.mfa`, 10 min, not sliding) and the `ApiToken` scheme; the built-in OAuth providers'
+  `oauth-<key>` schemes are added and removed at runtime by `OAuthProviderRegistry` (through
+  `IAuthenticationSchemeProvider`); extensions add their own remote schemes;
 - the `AuthorizationPolicies.AdminArea` authorization policy (`Roles.CanEnterAdmin`: any role except `Authenticated` /
   `Public`) and `AuthorizationPolicies.ApiDocs` (signed in as `Super Admin` or `Developer`; the API Docs screen, the
   OpenAPI document and Scalar);

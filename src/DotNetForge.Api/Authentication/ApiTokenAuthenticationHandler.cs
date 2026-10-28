@@ -17,6 +17,16 @@ namespace DotNetForge.Api.Authentication;
 public static class ApiTokenDefaults
 {
     public const string Scheme = "ApiToken";
+
+    /// <summary>
+    /// What the API controllers authenticate with: <see cref="Scheme"/> when the request has an <c>Authorization</c>
+    /// header, else <see cref="SessionScheme"/> - never both, so a token is tested with its own permissions only.
+    /// </summary>
+    public const string RequestScheme = "Api";
+
+    /// <summary>A signed-in Super Admin's admin session (<see cref="AdminSessionAuthenticationHandler"/>).</summary>
+    public const string SessionScheme = "ApiSession";
+
     public const string PermissionClaimType = "dnf:permission";
     public const string TokenIdClaimType = "dnf:token";
 }

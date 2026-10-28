@@ -1,0 +1,134 @@
+@using DotNetForge.Web.Authentication
+@model AuthProvidersController.ProviderEditViewModel
+@{
+    var provider = Model.Provider;
+    var input = Model.Input;
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = provider.Name;
+    ViewData["Description"] = $"Sign in with {provider.Name}: the app you register at {provider.Name} and whether the sign-in page offers it.";
+    bool Uses(ProviderField field) => provider.Fields.Contains(field);
+}
+
+<form method="post" action="/admin/providers/@provider.Key" class="stack-lg" autocomplete="off">
+    @Html.AntiForgeryToken()
+    <form-errors />
+    @if (Model.Unreadable)
+    {
+        <alert tone="Warning" title="The saved secret can't be read here">It was saved on another site (an imported export) and is encrypted with that site's keys. Enter it again.</alert>
+    }
+
+    <fieldset class="fieldset stack-lg" disabled="@(Model.CanEdit ? null : "disabled")">
+        <legend class="sr-only">@provider.Name settings</legend>
+
+        <section class="card" aria-labelledby="register-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="register-title">1. Register this site at @provider.Name</h2>
+                    <p class="card-description">@provider.Help</p>
+                </div>
+                <a class="btn btn-secondary btn-sm" href="@provider.ConsoleUrl" target="_blank" rel="noopener noreferrer"><icon name="external-link" size="sm" /> Open</a>
+            </div>
+            <div class="card-body stack">
+                <div class="field">
+                    <span class="field-label" id="callback-label">@(provider.FormPost ? "Return URL" : "Callback / redirect URL")</span>
+                    <pre class="code-block" aria-labelledby="callback-label">@Model.CallbackUrl<button type="button" class="btn btn-secondary btn-sm" data-copy-target="#callback-url" data-js-only hidden><icon name="copy" size="sm" /> Copy</button></pre>
+                    <span id="callback-url" hidden>@Model.CallbackUrl</span>
+                    <span class="field-hint">From <code>APP_URL</code>: people must open the site at this address for the provider to send them back.</span>
+                </div>
+                <dl class="dl dl-compact">
+                    <dt>Scopes</dt>
+                    <dd><code>@string.Join(" ", provider.Scopes)</code></dd>
+                </dl>
+            </div>
+        </section>
+
+        <section class="card" aria-labelledby="credentials-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="credentials-title">2. Enter its credentials</h2>
+                    <p class="card-description">Secrets are stored encrypted and never shown again; leave a secret empty to keep the saved one.</p>
+                </div>
+            </div>
+            <div class="card-body stack">
+                <div class="field">
+                    <label class="field-label" for="ClientId">@(provider.SignedClientSecret ? "Services ID" : "Client ID")</label>
+                    <input id="ClientId" name="ClientId" value="@input.ClientId" maxlength="@AuthProviderService.MaxClientIdLength" spellcheck="false" />
+                </div>
+                @if (Uses(ProviderField.ClientSecret))
+                {
+                    <div class="field">
+                        <label class="field-label" for="ClientSecret">Client secret</label>
+                        <input id="ClientSecret" name="ClientSecret" type="password" maxlength="@AuthProviderService.MaxSecretLength" autocomplete="new-password"
+                               placeholder="@(Model.HasClientSecret ? "Saved - leave empty to keep it" : "")" aria-describedby="secret-hint" />
+                        <span class="field-hint" id="secret-hint">@(Model.HasClientSecret ? "A secret is saved." : "No secret saved yet.")</span>
+                    </div>
+                }
+                @if (Uses(ProviderField.TeamId))
+                {
+                    <div class="form-grid">
+                        <div class="field">
+                            <label class="field-label" for="TeamId">Team ID</label>
+                            <input id="TeamId" name="TeamId" value="@input.TeamId" maxlength="20" spellcheck="false" placeholder="ABCDE12345" />
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="KeyId">Key ID</label>
+                            <input id="KeyId" name="KeyId" value="@input.KeyId" maxlength="20" spellcheck="false" placeholder="FGHIJ67890" />
+                        </div>
+                    </div>
+                }
+                @if (Uses(ProviderField.PrivateKey))
+                {
+                    <div class="field">
+                        <label class="field-label" for="PrivateKey">Private key (.p8)</label>
+                        <textarea id="PrivateKey" name="PrivateKey" rows="5" maxlength="@AuthProviderService.MaxPrivateKeyLength" spellcheck="false" class="text-mono"
+                                  placeholder="@(Model.HasPrivateKey ? "Saved - leave empty to keep it" : "-----BEGIN PRIVATE KEY-----")" aria-describedby="key-hint"></textarea>
+                        <span class="field-hint" id="key-hint">The contents of the AuthKey_….p8 file. The client secret Apple wants is signed with it for each sign-in.</span>
+                    </div>
+                }
+                @if (Uses(ProviderField.Tenant))
+                {
+                    <div class="field">
+                        <label class="field-label" for="Tenant">Tenant<span class="field-optional">optional</span></label>
+                        <input id="Tenant" name="Tenant" value="@input.Tenant" maxlength="100" spellcheck="false" placeholder="common" aria-describedby="tenant-hint" />
+                        <span class="field-hint" id="tenant-hint"><code>common</code> (any Microsoft account, the default), <code>consumers</code>, <code>organizations</code>, or your tenant ID to allow only your organization.</span>
+                    </div>
+                }
+                @if (Uses(ProviderField.ServerUrl))
+                {
+                    <div class="field">
+                        <label class="field-label" for="ServerUrl">Server<span class="field-optional">optional</span></label>
+                        <input id="ServerUrl" name="ServerUrl" type="url" value="@input.ServerUrl" maxlength="200" placeholder="https://gitlab.com" aria-describedby="server-hint" />
+                        <span class="field-hint" id="server-hint">Empty for gitlab.com; the address of a self-managed GitLab otherwise.</span>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="card" aria-labelledby="enable-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="enable-title">3. Turn it on</h2>
+                    <p class="card-description">Changes apply within seconds; no restart needed.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <label class="switch-row">
+                    <span class="check-text">
+                        <span>Offer "Sign in with @provider.Name"</span>
+                        <span class="check-hint">Off: the button disappears and sign-ins through @provider.Name stop. Accounts are kept; those made through @provider.Name have no password until they set one (Forgot password, or Profile).</span>
+                    </span>
+                    @* The checkbox first: a bound bool takes the first posted value. *@
+                    <input type="checkbox" class="switch" role="switch" name="Enabled" value="true" checked="@(input.Enabled ? "checked" : null)" />
+                    <input type="hidden" name="Enabled" value="false" />
+                </label>
+            </div>
+            @if (Model.CanEdit)
+            {
+                <div class="card-footer">
+                    <a class="btn" href="/admin/providers">Cancel</a>
+                    <button type="submit" class="btn btn-primary"><icon name="check" /> Save</button>
+                </div>
+            }
+        </section>
+    </fieldset>
+</form>

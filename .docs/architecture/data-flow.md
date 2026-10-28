@@ -184,12 +184,17 @@ sequenceDiagram
     else wrong password
         AS->>DB: FailedLoginCount++ (5th → LockoutEndUtc = now + 15 min, count reset)
         AS-->>AC: InvalidCredentials
+    else ok, user has a usable second factor
+        AS->>DB: reset counters
+        AS-->>AC: SecondFactorRequired
     else ok
         AS->>DB: reset counters, LastLoginDate = now
         AS->>DB: role names via UserRoles ⨝ Roles
         AS-->>AC: Success + ClaimsPrincipal
     end
-    alt Success
+    alt SecondFactorRequired
+        AC-->>User: dnf.mfa cookie, 302 /login/mfa (MfaLoginController finishes: cookie + user.login)
+    else Success
         AC->>AC: SignInAsync(cookie scheme), HttpContext.User = principal
         AC->>Aud: user.login (entry carries the signed-in user)
         AC-->>User: LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/admin")
@@ -202,10 +207,11 @@ sequenceDiagram
 The cookie principal carries `NameIdentifier` (user id), `Name` (display name), `Email` and one `Role` claim
 per role. Roles are read **only at sign-in**; changing a user's roles takes effect after they sign in
 again. A non-local or missing `returnUrl` goes to `/admin`. `POST /setup` follows the same pattern (rate-limited,
-signs the new Super Admin in, audits `cms.installed`). Sign-in through an authentication extension
-(`POST /account/external/{scheme}` → provider → `GET /account/external/callback`) ends in the same
-`AuthService` principal and cookie, for existing users only:
-[external sign-in extensions](../features/authentication.md#external-sign-in-extensions). Full details:
+signs the new Super Admin in, audits `cms.installed`). Sign-in through a provider - built in or from an
+authentication extension (`POST /account/external/{scheme}` → "Continuing to" page → provider →
+`GET /account/external/callback`) - ends in the same `AuthService` principal and cookie, creating the account first
+while sign-ups are on: [external sign-in](../features/authentication.md#external-sign-in). An account with a second
+factor goes through `/login/mfa` either way ([MFA → sign-in](../features/mfa.md#sign-in)). Full details:
 [authentication](../features/authentication.md).
 
 ### Session validation (every cookie request)
@@ -350,18 +356,21 @@ sequenceDiagram
     participant DB as DotNetForgeDbContext
     participant Aud as IAuditService
     User->>MC: POST /admin/media/upload (multipart files, isPublic, antiforgery)
-    Note over MC: RequestSizeLimit = 25 MB x 10 + 1 MB<br/>bodies over 64 KB are buffered in the OS temp dir
+    Note over MC: [MediaUploadLimit] = largest per-kind limit x 10 + 1 MB<br/>bodies over 64 KB are buffered in the OS temp dir
     MC->>MC: Can(Media, create) else Forbid(), then 1 to 10 files
     loop each file
         MC->>MS: UploadAsync(file, isPublic, CurrentUserId)
-        MS->>MS: reject empty, over 25 MB, extension not in AllowedTypes
+        MS->>MS: reject empty, extension not in AllowedTypes, over the limit of its kind, duplicate
+        opt image optimization on
+            MS->>MS: ImageOptimizer (kept only when smaller)
+        end
         MS->>MS: key = {yyyy}/{MM}/{guid:N}{ext}, content type from extension
         MS->>FS: SaveAsync(key, stream, contentType)
         alt storage throws
             MS->>FS: DeleteAsync(key) (best effort)
             MS-->>MC: "'x' could not be stored right now. Try again later." (LogError)
         else stored
-            MS->>DB: add MediaFile, SaveChangesAsync
+            MS->>DB: add MediaFile (MP4 to compress: Optimization Pending), SaveChangesAsync
             opt save throws
                 MS->>FS: DeleteAsync(key), rethrow (no orphaned object)
             end

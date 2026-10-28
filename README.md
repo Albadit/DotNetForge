@@ -142,7 +142,9 @@ Built screens: Dashboard, **Content Manager** (entries of your content types, ge
 **Content types** (visual field builder, templates), **Pages** (page tree, settings, SEO, scheduling, permissions) with
 the visual **page builder**, **Media** (upload, download,
 delete and bulk delete; local or S3-compatible storage), Settings, Users, Roles, Audit Logs, Plugins (enable/disable extensions),
-API Tokens. Remaining planned areas link to documented placeholders.
+API Tokens, **Providers** (sign in with Google, Microsoft, Apple, GitHub and six more) and **Two-factor
+authentication** (authenticator app, passkeys, email or SMS codes). Remaining planned areas link to documented
+placeholders.
 
 ## Extensions
 
@@ -188,7 +190,9 @@ dotnet format --verify-no-changes                # style check (.editorconfig)
 
 ## Security highlights
 
-- PBKDF2 (salted, adaptive) password hashing; per-account lockout after 5 failed sign-ins; rate-limited sign-in.
+- PBKDF2 (salted, adaptive) password hashing; per-account lockout after 5 failed sign-ins; rate-limited sign-in;
+  optional two-factor authentication (authenticator app, passkeys, email or SMS codes; can be required for admin
+  users); sign-in providers accept only verified emails and their secrets are stored encrypted.
 - Role-gated admin screens (six built-in roles), own-vs-any content/media permissions, and a granular permission key
   on every API action.
 - Content-Security-Policy and security headers; Secure cookies outside Development; sessions end when a user is

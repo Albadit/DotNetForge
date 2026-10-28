@@ -2,6 +2,7 @@ using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -64,13 +65,13 @@ public sealed class AccountController : Controller
 
         switch (result.Status)
         {
+            case SignInStatus.SecondFactorRequired when result.User is not null:
+                // Two-factor authentication: no session yet - the code page finishes the sign-in (MfaLoginController).
+                await PendingSignIn.StartAsync(HttpContext, result.User.Id, rememberMe, Url.IsLocalUrl(returnUrl) ? returnUrl : null, via: null);
+                return Redirect("/login/mfa");
+
             case SignInStatus.Success when result.Principal is not null:
-                // Remember me: a persistent cookie that outlives the browser session, valid for RememberMeLifetime
-                // (renewed while in use). Without it the cookie ends with the browser session or after 8 hours.
-                var properties = rememberMe
-                    ? new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.Add(RememberMeLifetime) }
-                    : new AuthenticationProperties();
-                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, result.Principal, properties);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, result.Principal, SessionProperties(rememberMe));
 
                 // SignInAsync only writes the cookie; make this request's audit entry carry the signed-in user.
                 HttpContext.User = result.Principal;
@@ -282,8 +283,17 @@ public sealed class AccountController : Controller
         ViewData["CanResetPassword"] = await _accounts.EmailEnabledAsync(HttpContext.RequestAborted);
     }
 
+    /// <summary>
+    /// The session cookie's properties. Remember me: a persistent cookie that outlives the browser session, valid for
+    /// <see cref="RememberMeLifetime"/> (renewed while in use). Without it the cookie ends with the browser session or
+    /// after 8 hours.
+    /// </summary>
+    public static AuthenticationProperties SessionProperties(bool rememberMe) => rememberMe
+        ? new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.Add(RememberMeLifetime) }
+        : new AuthenticationProperties();
+
     /// <summary>The admin for admin-capable roles, the site for everyone else (e.g. a registered "Authenticated" user).</summary>
-    private static string Home(System.Security.Claims.ClaimsPrincipal user) =>
+    public static string Home(System.Security.Claims.ClaimsPrincipal user) =>
         Roles.CanEnterAdmin(user.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value)) ? "/admin" : "/";
 
     private ViewResult Notice(string title, string text, bool problem = false)

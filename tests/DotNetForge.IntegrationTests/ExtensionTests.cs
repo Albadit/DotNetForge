@@ -205,13 +205,19 @@ public sealed class ExtensionTests
             a.Action == AuditActions.UserLogin && a.Details == "via Test Kit")));
     }
 
-    /// <summary>Clicks "Sign in with Test Kit" and follows the provider round trip to the host callback.</summary>
+    /// <summary>
+    /// Clicks "Sign in with Test Kit" and follows the provider round trip to the host callback. The button's post is
+    /// answered with the "Continuing to ..." page, whose meta refresh goes to the provider (form-action 'self').
+    /// </summary>
     private static async Task<HttpResponseMessage> ExternalSignInAsync(HttpClient client, string email)
     {
         var challenge = await DotNetForgeWebFactory.PostFormAsync(client, "/login", "/account/external/testkit",
             new Dictionary<string, string> { ["email"] = email });
-        Assert.Equal(HttpStatusCode.Redirect, challenge.StatusCode);
-        return await client.GetAsync(challenge.Headers.Location);
+        Assert.Equal(HttpStatusCode.OK, challenge.StatusCode);
+        var page = await challenge.Content.ReadAsStringAsync();
+        var refresh = System.Text.RegularExpressions.Regex.Match(page, "http-equiv=\"refresh\" content=\"0;url=([^\"]+)\"");
+        Assert.True(refresh.Success, "The continue page has no meta refresh.");
+        return await client.GetAsync(WebUtility.HtmlDecode(refresh.Groups[1].Value));
     }
 
     private static async Task<bool> Delay()

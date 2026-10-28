@@ -98,6 +98,9 @@ button { cursor: pointer; }
 .text-nowrap { white-space: nowrap; }
 .text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .text-danger { color: var(--color-danger); }
+/* A short note led by an icon: the icon sits centred on the first line, wrapped lines align with the text. */
+.note { display: flex; align-items: flex-start; gap: var(--space-2); }
+.note > .icon { height: 1lh; } /* one line tall: the SVG centres its drawing on the first line */
 .text-success { color: var(--color-success); }
 .weight-medium { font-weight: var(--weight-medium); }
 .weight-semibold { font-weight: var(--weight-semibold); }

@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="~/css/forge/components.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/forge/auth.css" asp-append-version="true" />
     <script src="~/js/forge/ui.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Head", required: false)
 </head>
 @*
     Setup, sign-in and access denied (.docs/architecture/design-system.md#auth-layout). Built-in and isolated from
@@ -53,5 +54,6 @@
         </main>
     </div>
     <partial name="_Feedback" />
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -11,17 +11,14 @@ namespace DotNetForge.Web.Areas.Admin.Controllers;
 /// <summary>
 /// Media library (.docs/pages/media.md): browse folders, upload, change visibility, move and delete. File bytes
 /// live in <c>IFileStorage</c>; rules are in <see cref="MediaService"/> and <see cref="MediaFolderService"/> (folders
-/// are virtual). Upload and creating folders need <c>Media/create</c>; changing public/private and moving files need
-/// <c>Media/update</c> (or <c>update.own</c>); renaming and moving folders <c>Media/update</c>; delete needs
+/// are virtual). Upload and creating folders need <c>Media/create</c>; changing public/private, moving and renaming
+/// files need <c>Media/update</c> (or <c>update.own</c>); renaming and moving folders <c>Media/update</c>; delete needs
 /// <c>Media/delete</c> (or <c>delete.own</c> for files) - the "own" grants for files the user uploaded.
 /// </summary>
 [Route("admin/media")]
 [RequirePermission(PermissionAreas.Media, PermissionActions.Read)]
 public sealed class MediaController : AdminControllerBase
 {
-    /// <summary>Request cap: the per-file limit times the file count, plus room for the multipart envelope.</summary>
-    private const long MaxRequestBytes = MediaService.MaxUploadBytes * MediaService.MaxFilesPerUpload + 1024 * 1024;
-
     private readonly DotNetForgeDbContext _db;
     private readonly MediaService _media;
     private readonly MediaFolderService _folders;
@@ -172,8 +169,7 @@ public sealed class MediaController : AdminControllerBase
 
     [HttpPost("upload")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(MaxRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestBytes)]
+    [MediaUploadLimit(Files = MediaService.MaxFilesPerUpload)]
     public async Task<IActionResult> Upload(List<IFormFile> files, bool isPublic, Guid? folderId)
     {
         if (!Can(PermissionAreas.Media, PermissionActions.Create))
@@ -244,6 +240,28 @@ public sealed class MediaController : AdminControllerBase
         TempData["Success"] = isPublic
             ? $"'{file.FileName}' is now public: anyone with the link can open it."
             : $"'{file.FileName}' is now private: only signed-in admin users can open it.";
+        return Back(file.FolderId);
+    }
+
+    [HttpPost("{id:guid}/rename")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Rename(Guid id, string? name)
+    {
+        var file = await _db.MediaFiles.FirstOrDefaultAsync(m => m.Id == id);
+        if (file is null)
+        {
+            return NotFound();
+        }
+
+        if (!CanModify(PermissionAreas.Media, PermissionActions.Update, PermissionActions.UpdateOwn, file.UploadedById))
+        {
+            return Forbid();
+        }
+
+        var before = file.FileName;
+        // RenameAsync writes the MediaUpdated audit entry.
+        var error = await _media.RenameAsync(file, name, HttpContext.RequestAborted);
+        TempData[error is null ? "Success" : "Error"] = error ?? (file.FileName == before ? "The name is unchanged." : $"Renamed to '{file.FileName}'.");
         return Back(file.FolderId);
     }
 
@@ -329,8 +347,10 @@ public sealed class MediaController : AdminControllerBase
             .AsNoTracking()
             .Where(m => m.FolderId == folderId)
             .OrderByDescending(m => m.UploadedDate)
-            .Select(m => new { m.Id, m.FileName, m.ContentType, m.SizeBytes, m.IsPublic, m.UploadedDate, m.UploadedById })
+            .Select(m => new { m.Id, m.FileName, m.OriginalName, m.ContentType, m.SizeBytes, m.OriginalSizeBytes, m.Optimization, m.IsPublic, m.UploadedDate, m.UploadedById })
             .ToListAsync();
+        var uploaderIds = rows.Where(m => m.UploadedById is not null).Select(m => m.UploadedById!.Value).Distinct().ToList();
+        var uploaders = await _db.Users.AsNoTracking().Where(u => uploaderIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Email);
 
         // Content counts of the subfolders shown here (single-table queries, combined in memory).
         var children = folders.Where(f => f.ParentId == folderId).ToList();
@@ -355,6 +375,7 @@ public sealed class MediaController : AdminControllerBase
         return new MediaIndexViewModel
         {
             CanUpload = Can(PermissionAreas.Media, PermissionActions.Create),
+            Limits = await _media.SettingsAsync(HttpContext.RequestAborted),
             CanEditFolders = canUpdateAny,
             CanDeleteFolders = canDeleteAny,
             Current = current is null ? null : new MediaFolderLink(current.Id, current.Name, current.Path),
@@ -372,13 +393,17 @@ public sealed class MediaController : AdminControllerBase
             {
                 Id = m.Id,
                 FileName = m.FileName,
+                OriginalName = m.OriginalName,
                 ContentType = m.ContentType,
                 SizeBytes = m.SizeBytes,
+                OriginalSizeBytes = m.OriginalSizeBytes,
+                Optimization = m.Optimization,
                 IsPublic = m.IsPublic,
                 UploadedDate = m.UploadedDate,
+                UploadedBy = m.UploadedById is { } by ? uploaders.GetValueOrDefault(by) : null,
                 Url = MediaService.UrlFor(m.Id, m.FileName),
                 CanDelete = canDeleteAny || (canDeleteOwn && m.UploadedById is not null && m.UploadedById == CurrentUserId),
-                CanChangeVisibility = canUpdateAny || (canUpdateOwn && m.UploadedById is not null && m.UploadedById == CurrentUserId),
+                CanEdit = canUpdateAny || (canUpdateOwn && m.UploadedById is not null && m.UploadedById == CurrentUserId),
             }).ToList(),
         };
     }

@@ -41,7 +41,9 @@ flowchart TD
 
 All responses are `application/json`. All require `Authorization: Bearer <API token>` - except
 [custom endpoints](custom-endpoints.md), which take their own endpoint token (`dnfe_…`) or, when public, none; an API
-token never opens them.
+token never opens them. One more way in, for trying the API from the admin: a same-origin browser request without a
+token from a signed-in **Super Admin** uses the admin session with every permission key (the [API docs](api-docs.md)'
+**Send**); a token, when sent, always wins ([authentication](authentication.md#api-token-authentication)).
 
 | Method | Route | Permission | Response | Controller |
 | --- | --- | --- | --- | --- |

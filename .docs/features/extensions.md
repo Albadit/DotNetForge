@@ -136,7 +136,7 @@ every type.
 | Page module | `type: module` + `Views/Module.cshtml` + setting `pages` | `ExtensionModules` view component in the page view (built-in and themes) |
 | Endpoints | `IExtension.MapEndpoints` (minimal APIs) or MVC controllers in the assembly | mapped at startup; `ExtensionEndpointGateMiddleware` answers 404 while inactive |
 | Media storage | `services.AddMediaStorage(context, factory)` | `ExtensionMediaStorage` routes `IFileStorage` to it - [media storage](media-storage.md#storage-connectors) |
-| Sign-in provider | own auth scheme + `services.AddLoginProvider(context, scheme, name)` | "Sign in with ..." button, `ExternalLoginController` - [authentication](authentication.md#external-sign-in-extensions) |
+| Sign-in provider | own auth scheme + `services.AddLoginProvider(context, scheme, name)` | "Sign in with ..." button, `ExternalLoginController` - [authentication](authentication.md#extension-providers); listed read-only on [Providers](../pages/providers.md) |
 | Audit events | `services.AddAuditEventHandler<T>(context)` | `AuditEventDispatcher` (background) - [audit logging](audit-logging.md#extension-handlers) |
 | Any service | `IExtension.ConfigureServices` | the host container; other extensions and views can inject it |
 
@@ -221,7 +221,7 @@ Each sample is runnable; [extensions/README.md](../../extensions/README.md) says
 | `extensions/libraries/markdown-kit` | `dotnetforge.library.markdown-kit` | library | ✔ | safe Markdown → HTML (`IMarkdownRenderer`), used by Contact Form |
 | `extensions/plugins/seo-toolkit` | `dotnetforge.plugin.seo-toolkit` | plugin | ✔ | `/sitemap.xml` of live pages and `/robots.txt` |
 | `extensions/connectors/s3-storage` | `dotnetforge.connector.s3` | connector | ✔ | media storage in its own S3-compatible bucket (defaults: the `docker/s3/seaweedfs.yml` server) |
-| `extensions/authentication/discord-login` | `dotnetforge.auth.discord` | authentication | ✔ | "Sign in with Discord" for users with a matching verified email (needs `DISCORD_CLIENT_ID`/`_SECRET`) |
+| `extensions/authentication/discord-login` | `dotnetforge.auth.discord` | authentication | ✔ | "Sign in with Discord" with a verified Discord email: the matching account, or a new one while sign-ups are on (needs `DISCORD_CLIENT_ID`/`_SECRET`); Discord is also one of the [built-in providers](authentication.md#built-in-oauth-providers), which need no extension |
 | `extensions/providers/sms-notifications` | `dotnetforge.provider.sms` | provider | ✔ | SMS for selected audit events (`log` gateway offline, `twilio`) |
 
 Fixture extensions for the integration tests live in `tests/fixtures/extensions/` ([testing](../guides/testing.md)).

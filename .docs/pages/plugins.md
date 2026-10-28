@@ -40,7 +40,7 @@ Plugins (_AdminLayout; header "Plugins" + description "Extensions found in the e
     │   ├── status tabs: All N · Enabled N · Disabled N · Needs attention N (only when a problem exists)
     │   └── search "Search extensions" · "All types" ▾ (the types found)
     ├── .extension-list: one article.extension-card per manifest (.is-enabled when enabled)
-    │   ├── type icon · **name** v<version> · id (tooltip: id · extensions/<folder>) · [problem icon] · badge Enabled / Disabled
+    │   ├── type icon · **name** v<version> [problem icon] · id below (tooltip: id · extensions/<folder>) · badge Enabled / Disabled
     │   ├── description
     │   ├── badges: <type> · Code (manifest names an assembly) · one per dependency (tooltip "Needs <id>")
     │   └── footer: "by <author>" · [Disable] (confirm) or [Enable]
@@ -67,7 +67,7 @@ by type, then name. Component mechanics: [design system](../architecture/design-
 | Card part | Rule |
 | --- | --- |
 | Type icon | `theme` palette, `authentication` log-in, `connector` plug, `library` package, `admin` panel, `widget` gauge, `provider` bell, `module` box, other puzzle |
-| Problem | only an icon button in the header when `Problem` is set - triangle-alert (warning, **Not running**) or circle-x (danger, **Invalid manifest**), tooltip with that title; clicking it opens a popover (`.menu-list[popover]`, placed by `ui.js`, closes on Escape / outside click) with the alert and the problem text |
+| Problem | only an icon button right after the name and version when `Problem` is set - triangle-alert (warning, **Not running**) or circle-x (danger, **Invalid manifest**), tooltip with that title; clicking it opens a popover (`.menu-list[popover]`, placed by `ui.js` below the icon, left-aligned (`bottom-start`), closes on Escape / outside click) with the alert and the problem text |
 | Action | **Disable** when `CanToggle` and enabled (even with a problem); **Enable** when `CanToggle`, disabled and no problem; nothing otherwise |
 | Filters | items carry `data-state` (`enabled` / `disabled`, plus `problem`) for the status tabs and `data-type` for the type filter |
 

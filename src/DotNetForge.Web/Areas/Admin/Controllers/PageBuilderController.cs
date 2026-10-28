@@ -299,8 +299,7 @@ public sealed class PageBuilderController : AdminControllerBase
     /// <summary>Uploads one image into the media library (public, so visitors can see it) and returns its URL.</summary>
     [HttpPost("upload")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(MediaService.MaxUploadBytes + 1024 * 1024)]
-    [RequestFormLimits(MultipartBodyLengthLimit = MediaService.MaxUploadBytes + 1024 * 1024)]
+    [MediaUploadLimit]
     public async Task<IActionResult> Upload(Guid id, IFormFile? file)
     {
         var (page, denied) = await LoadAsync(id);

@@ -1,0 +1,117 @@
+@using DotNetForge.Shared.Enums
+@using DotNetForge.Web.Services.Mfa
+@model DotNetForge.Web.Controllers.MfaLoginController.MfaLoginViewModel
+@*
+    The second step of signing in (.docs/pages/login.md#two-factor-step): one method at a time, the others under
+    "Try another way". Passkeys need JavaScript (passkeys.js); every other method is a plain form.
+*@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Two-step verification";
+    var selected = Model.Selected;
+    var at = Model.Email.IndexOf('@');
+    var masked = at > 1 ? Model.Email[0] + new string('•', Math.Min(at - 1, 6)) + Model.Email[at..] : Model.Email;
+    string Icon(MfaMethodType type) => type switch
+    {
+        MfaMethodType.AuthenticatorApp => "smartphone",
+        MfaMethodType.Passkey => "key",
+        MfaMethodType.Sms => "message",
+        _ => "mail",
+    };
+}
+
+<div class="auth-heading">
+    <h1>Two-step verification</h1>
+    <p class="text-muted">Signing in as @masked@(Model.Via is null ? "" : $" with {Model.Via}").</p>
+</div>
+
+<form-errors />
+
+@if (Model.Recovery)
+{
+    <form method="post" action="/login/mfa" class="form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="recovery" value="true" />
+        <div class="field">
+            <label class="field-label" for="code">Recovery code</label>
+            <input id="code" name="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus
+                   placeholder="XXXXX-XXXXX" aria-describedby="code-hint" />
+            <span class="field-hint" id="code-hint">One of the codes you saved when you set up two-step verification. Each works once.</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Verify</button>
+    </form>
+}
+else if (selected?.Type == MfaMethodType.Passkey)
+{
+    <div class="stack" data-passkey-signin>
+        <p class="text-muted">Use the passkey or security key you added to your account: Face ID, Touch ID, Windows Hello, your phone or a USB key.</p>
+        @Html.AntiForgeryToken()
+        <p class="text-sm text-danger" data-passkey-error role="alert" hidden></p>
+        <button type="button" class="btn btn-primary btn-lg btn-block" data-passkey-start data-js-only hidden><icon name="key" /> Use passkey</button>
+        <noscript><p class="text-sm text-muted">Passkeys need JavaScript. Use another way below.</p></noscript>
+    </div>
+}
+else if (selected is { Type: MfaMethodType.Email or MfaMethodType.Sms } && !Model.CodeSent)
+{
+    <form method="post" action="/login/mfa/send" class="form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="method" value="@selected.Id" />
+        <p class="text-muted">
+            @(selected.Type == MfaMethodType.Sms ? $"We'll text a 6-digit code to {selected.Name}." : $"We'll email a 6-digit code to {masked}.")
+            It works for @MfaService.CodeLifetime.TotalMinutes.ToString("0") minutes.
+        </p>
+        <button type="submit" class="btn btn-primary btn-lg btn-block"><icon name="@Icon(selected.Type)" /> Send code</button>
+    </form>
+}
+else if (selected is not null)
+{
+    <form method="post" action="/login/mfa" class="form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="method" value="@selected.Id" />
+        <div class="field">
+            <label class="field-label" for="code">@(selected.Type switch
+            {
+                MfaMethodType.AuthenticatorApp => "Code from your authenticator app",
+                MfaMethodType.Sms => $"Code we texted to {selected.Name}",
+                _ => "Code we emailed you",
+            })</label>
+            <input id="code" name="code" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" autofocus
+                   class="input-code" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Verify</button>
+    </form>
+    @if (selected.Type is MfaMethodType.Email or MfaMethodType.Sms)
+    {
+        <form method="post" action="/login/mfa/send">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="method" value="@selected.Id" />
+            <button type="submit" class="btn btn-ghost btn-block">Send a new code</button>
+        </form>
+    }
+}
+
+<div class="auth-divider"><span>Try another way</span></div>
+<ul class="mfa-ways">
+    @foreach (var method in Model.Methods.Where(m => Model.Recovery || m.Id != selected?.Id))
+    {
+        <li>
+            <a href="/login/mfa?method=@method.Id">
+                <icon name="@Icon(method.Type)" />
+                <span>@MfaService.Label(method.Type)<span class="text-xs text-muted">@(method.Type is MfaMethodType.Passkey or MfaMethodType.Sms ? method.Name : null)</span></span>
+            </a>
+        </li>
+    }
+    @if (!Model.Recovery)
+    {
+        <li><a href="/login/mfa?recovery=true"><icon name="shield" /><span>Use a recovery code</span></a></li>
+    }
+</ul>
+
+<form method="post" action="/login/mfa/cancel" class="auth-switch">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn btn-ghost">Cancel and sign in again</button>
+</form>
+
+@section Scripts {
+    <script src="~/js/forge/passkeys.js" asp-append-version="true" defer></script>
+}

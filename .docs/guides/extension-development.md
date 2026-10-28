@@ -223,10 +223,15 @@ services.AddAuthentication().AddOAuth("myprovider", options =>
 services.AddLoginProvider(context, "myprovider", "My Provider");
 ```
 
-The host signs in the existing CMS user with exactly that email; it never creates accounts. Only emit an email the
-provider has verified. A remote scheme is consulted on every request, so register it only when configured (throw
-from `ConfigureServices` otherwise - the reason appears on Plugins). Sample: `extensions/authentication/discord-login`
-([external sign-in](../features/authentication.md#external-sign-in-extensions)).
+The host signs in the CMS user with that email - or, while **Enable sign-ups** is on, creates one with the default
+role ([sign-up through a provider](../features/authentication.md#sign-up-through-a-provider)) - and asks for the
+second factor when the account has one. Only emit an email the provider has verified: the host trusts it to find or
+create the account. A remote scheme is consulted on every request, so register it only when configured (throw from
+`ConfigureServices` otherwise - the reason appears on Plugins). Don't use a scheme name starting with `oauth-`: those
+belong to the built-in providers. For the ten providers built in (Google, Microsoft, Apple, Facebook, GitHub,
+LinkedIn, X, Discord, GitLab, Twitch) no extension is needed - they are configured on
+[Providers](../pages/providers.md). Sample: `extensions/authentication/discord-login`
+([external sign-in](../features/authentication.md#external-sign-in)).
 
 ### Provider (`type: provider`)
 

@@ -285,4 +285,70 @@ public sealed class SecurityTests
             Assert.StartsWith("API token", entry.UserDisplaySnapshot);
         });
     }
+
+    [Fact]
+    public async Task A_signed_in_super_admin_calls_the_api_from_the_admin_without_a_token()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        await factory.CreateUserAsync("admin2@example.com", "Adm1nPassword!", Roles.Admin);
+        var superAdmin = await factory.SignInAsync();
+        var admin = await factory.SignInAsync("admin2@example.com", "Adm1nPassword!");
+
+        static HttpRequestMessage Get(string fetchSite, string? authorization = null)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "/api/content/pages");
+            if (fetchSite.Length > 0)
+            {
+                request.Headers.Add("Sec-Fetch-Site", fetchSite);
+            }
+
+            if (authorization is not null)
+            {
+                request.Headers.TryAddWithoutValidation("Authorization", authorization);
+            }
+
+            return request;
+        }
+
+        // Same-origin (the API docs' Send), also with the bare "Bearer" an empty token field sends.
+        Assert.Equal(HttpStatusCode.OK, (await superAdmin.SendAsync(Get("same-origin"))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await superAdmin.SendAsync(Get("same-origin", "Bearer "))).StatusCode);
+        // Not from this origin (another site, the address bar, a non-browser client): the session doesn't count.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await superAdmin.SendAsync(Get("cross-site"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await superAdmin.SendAsync(Get("none"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await superAdmin.SendAsync(Get(""))).StatusCode);
+        // Only Super Admins; everyone else uses a token.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await admin.SendAsync(Get("same-origin"))).StatusCode);
+
+        // A token wins over the session, with its own permissions only.
+        string plaintext = string.Empty;
+        await factory.WithDbAsync(async db =>
+        {
+            var generated = factory.Services.GetRequiredService<IApiTokenFactory>().Generate();
+            plaintext = generated.Plaintext;
+            db.ApiTokens.Add(new ApiToken
+            {
+                Name = "limited",
+                PermissionsCsv = PermissionKeys.MediaRead,
+                TokenHash = generated.Hash,
+                TokenPrefix = generated.Prefix,
+                ExpirationDate = DateTime.UtcNow.AddDays(1),
+            });
+            await db.SaveChangesAsync();
+        });
+        Assert.Equal(HttpStatusCode.Forbidden, (await superAdmin.SendAsync(Get("same-origin", "Bearer " + plaintext))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await superAdmin.SendAsync(Get("same-origin", "Bearer wrong"))).StatusCode);
+
+        // A write through the session is audited as the user.
+        var create = new HttpRequestMessage(HttpMethod.Post, "/api/content/pages") { Content = JsonContent.Create(new { title = "Session page", slug = "session-page" }) };
+        create.Headers.Add("Sec-Fetch-Site", "same-origin");
+        Assert.Equal(HttpStatusCode.Created, (await superAdmin.SendAsync(create)).StatusCode);
+        await factory.WithDbAsync(async db =>
+        {
+            var entry = await db.AuditLogs.SingleAsync(a => a.Action == AuditActions.ContentCreated);
+            Assert.NotNull(entry.UserId);
+            Assert.DoesNotContain("API token", entry.UserDisplaySnapshot ?? string.Empty);
+        });
+    }
 }

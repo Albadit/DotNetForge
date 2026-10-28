@@ -108,7 +108,10 @@ Key required (trimmed). Key ≤ 200 characters (after trimming), value ≤ 4000 
 before saving so PostgreSQL never rejects the insert. No key format, no duplicate warning. Keys owned by screens with
 their own rules are refused ("'<key>' is managed on <screen>; change it there."): `users.*`
 ([Advanced Settings](advanced-settings.md) - e.g. a Super Admin default role) and `transfer.*` (the backup schedule,
-[Data Management](data-management.md)). SMTP is not a setting here: it comes from `SMTP_*` in `.env`.
+[Data Management](data-management.md)), `media.*` (upload limits and optimization, [Media Library](media-settings.md)
+- its range checks) and `mfa.*` (two-factor methods and requirement, [Two-factor authentication](mfa.md) - its
+SMTP/Twilio checks). SMTP is not a setting here: it comes from
+`SMTP_*` in `.env`.
 
 ## Error handling
 
@@ -218,13 +221,13 @@ override; public [themes](../features/themes.md) never affect it.
 | API Tokens | Global Settings | [API Tokens](api-tokens.md) |
 | Content History | Global Settings | [Content Manager](content-manager.md) (placeholder today) |
 | Internationalization | Global Settings | [internationalization](../features/internationalization.md) |
-| File Manager | Global Settings | [media storage](../features/media-storage.md) |
+| File Manager (sidebar: **Media Library**) | Global Settings | [Media Library settings](media-settings.md) |
 | Plugins | Global Settings | [Plugins](plugins.md) |
 | Transfer (sidebar: **Data Management**) | Global Settings | [Data Management](data-management.md) |
 | Webhooks | Global Settings | [webhooks](../features/webhooks.md) |
 | Roles, Users, Audit Logs | Administration Panel | [Roles](roles.md), [Users](users.md), [Audit Logs](audit-logs.md) |
 | Configuration, Templates | Email | [email](../features/email.md) |
-| Roles, Providers, Advanced Settings | Users & Permissions Plugin | [Roles](roles.md), [authentication](../features/authentication.md) |
+| Roles, Providers, Two-factor (MFA), Advanced Settings | Users & Permissions Plugin | [Roles](roles.md), [Providers](providers.md), [Two-factor authentication](mfa.md), [Advanced Settings](advanced-settings.md) |
 
 Marketplace is not part of the hub; it lives in the sidebar's **Main** group ✔
 ([extensions](../features/extensions.md)). A hub link is shown only to users holding the target screen's permission

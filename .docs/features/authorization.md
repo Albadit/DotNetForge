@@ -86,6 +86,7 @@ screen; on an action it adds to the controller's requirement (both must pass).
 | Screen / endpoint | Requires | Defaults: Super Admin · Admin · Developer · Editor · Author |
 | --- | --- | :-: |
 | Dashboard, enabled admin extension tabs and `/admin/ext/{id}/resources`, module placeholders | `AdminArea` only | ✔ ✔ ✔ ✔ ✔ |
+| Profile and [Sign-in security](../pages/sign-in-security.md) `/admin/profile/security/*` (the user's own account and second factors only) | `AdminArea` only | ✔ ✔ ✔ ✔ ✔ |
 | Pages (every screen and action) | `Collection types` / `read` on `PagesController` | ✔ ✔ ✘ ✔ ✔ |
 | Pages: create page `POST /admin/pages/create` | `Collection types` / `create` (`Can`) | ✔ ✔ ✘ ✔ ✔ |
 | Pages: update page `POST /admin/pages/update/{id}` | `update`, or `update.own` on own pages (`CanModify`) | ✔ ✔ ✘ ✔ own |
@@ -104,8 +105,12 @@ screen; on an action it adds to the controller's requirement (both must pass).
 | Media: make private/public `POST /admin/media/visibility/{id}` | `update`, or `update.own` on own files | ✔ ✔ ✘ ✔ own |
 | Media: delete `POST /admin/media/delete/{id}` and `delete-selected` | `delete`, or `delete.own` on own files | ✔ ✔ ✘ ✔ own |
 | Settings `GET /admin/settings` / save `POST /admin/settings/save` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
+| Media Library settings `GET` / save `POST /admin/media-settings` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
+| [Providers](../pages/providers.md) `GET /admin/providers`, `GET /admin/providers/{key}` / save `POST /admin/providers/{key}` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
+| [Two-factor authentication](../pages/mfa.md) `GET` / save `POST /admin/mfa` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | API Tokens list / create / revoke | `API` / `read` / + `create` / + `delete` | ✔ ✔ ✔ ✘ ✘ |
 | Users list and edit screen / create / save, enable, disable / delete | `Users` / `read` / + `create` / + `update` / + `delete` | ✔ ✔ ✘ ✘ ✘ |
+| Users: reset a user's two-step verification `POST /admin/users/{id}/mfa/reset` | `Users` / `update`; never one's own account | ✔ ✔ ✘ ✘ ✘ |
 | Roles list and edit screen / create, duplicate / save / delete | `Roles` / `read` / + `create` / + `update` / + `delete` | ✔ ✔ ✘ ✘ ✘ |
 | Audit Logs | `Audit logs` / `read` | ✔ ✔ ✘ ✘ ✘ |
 | Plugins: list, enable, disable | `[Authorize(Roles = "Super Admin")]` (not a grant) | ✔ ✘ ✘ ✘ ✘ |
@@ -115,6 +120,10 @@ screen; on an action it adds to the controller's requirement (both must pass).
 The defaults are the seeded grants; a custom role or an edited built-in role gets exactly what it is granted. A
 custom role with `Collection types` / `read` only, for example, opens Pages but not Settings; a role without
 `Collection types`, `Entries` or `Media` `read` (such as `Developer`) can't open Pages, the Content Manager or Media.
+
+While [two-factor authentication is required](mfa.md#requirement), a signed-in user without a second factor is
+redirected from every admin screen (`AdminControllerBase`, an action filter - it runs after these checks passed) to
+Sign-in security.
 
 - **Own** = the record's creator is the signed-in user: `Page.CreatedById` (set by `ContentController.Create`) or
   `MediaFile.UploadedById`. Seeded pages have no `CreatedById`, so an `Author` cannot edit or delete them.

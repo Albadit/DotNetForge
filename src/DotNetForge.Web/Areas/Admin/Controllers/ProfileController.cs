@@ -1,5 +1,6 @@
 using DotNetForge.Data;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -17,12 +18,14 @@ public sealed class ProfileController : AdminControllerBase
     private readonly DotNetForgeDbContext _db;
     private readonly ProfileService _profile;
     private readonly AuthService _auth;
+    private readonly MfaService _mfa;
 
-    public ProfileController(DotNetForgeDbContext db, ProfileService profile, AuthService auth)
+    public ProfileController(DotNetForgeDbContext db, ProfileService profile, AuthService auth, MfaService mfa)
     {
         _db = db;
         _profile = profile;
         _auth = auth;
+        _mfa = mfa;
     }
 
     [HttpGet("")]
@@ -67,7 +70,9 @@ public sealed class ProfileController : AdminControllerBase
             return model is null ? NotFound() : View(nameof(Index), model with { Form = "password" });
         }
 
-        TempData["Success"] = "Your password is changed. Use it the next time you sign in.";
+        TempData["Success"] = input.CurrentPassword is null or ""
+            ? "Your password is set. You can also sign in with your email and password now."
+            : "Your password is changed. Use it the next time you sign in.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -84,10 +89,14 @@ public sealed class ProfileController : AdminControllerBase
         var roles = await _db.Roles.AsNoTracking().Where(r => roleIds.Contains(r.Id)).OrderBy(r => r.Name).Select(r => r.Name).ToListAsync();
         return new ProfileViewModel(
             details ?? new ProfileInput { FirstName = user.FirstName, LastName = user.LastName, Email = user.Email },
-            user.DisplayName, user.Email, roles, user.CreatedDate, user.LastLoginDate, Form: null);
+            user.DisplayName, user.Email, roles, user.CreatedDate, user.LastLoginDate, Form: null,
+            HasPassword: !string.IsNullOrEmpty(user.PasswordHash), MfaMethods: (await _mfa.MethodsAsync(id, HttpContext.RequestAborted)).Count);
     }
 
-    /// <summary>The screen; <see cref="Form"/> names the form whose errors are shown (<c>details</c> / <c>password</c>).</summary>
+    /// <summary>
+    /// The screen; <see cref="Form"/> names the form whose errors are shown (<c>details</c> / <c>password</c>).
+    /// <see cref="HasPassword"/> is false for an account made through a sign-in provider (it sets a first password).
+    /// </summary>
     public sealed record ProfileViewModel(ProfileInput Details, string DisplayName, string Email, IReadOnlyList<string> Roles,
-        DateTime Created, DateTime? LastLogin, string? Form);
+        DateTime Created, DateTime? LastLogin, string? Form, bool HasPassword, int MfaMethods);
 }

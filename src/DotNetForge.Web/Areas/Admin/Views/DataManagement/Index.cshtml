@@ -4,7 +4,7 @@
 @{
     ViewData["PageWidth"] = "medium";
     ViewData["Title"] = "Data Management";
-    ViewData["Description"] = "Export the CMS data, keep backups, and - in Development - import an export into this site.";
+    ViewData["Description"] = "Export the CMS data and the media files, keep backups, and - in Development - import an export into this site.";
     static string Size(long bytes) => bytes switch
     {
         < 1024 => bytes + " B",
@@ -22,9 +22,10 @@
         <div class="card-header">
             <div>
                 <h2 class="card-title" id="export-title">Export</h2>
-                <p class="card-description">Download a database as one .zip file - to keep, or to bring this site's data into another site.</p>
+                <p class="card-description">Download the database, the media files, or both as one .zip file - to keep, or to bring this site's data into another site.</p>
             </div>
         </div>
+        @* One form, one button per export: each button posts to its own action. *@
         <form method="post" action="/admin/data/export">
             @Html.AntiForgeryToken()
             <div class="card-body stack">
@@ -38,19 +39,23 @@
                                 <option value="@name">@label</option>
                             }
                         </select>
-                        <span class="field-hint" id="database-hint">The CMS database is the default. An additional database (<code>DATABASES_&lt;NAME&gt;_*</code>) is exported table by table as JSON - for your own use; only CMS exports can be imported.</span>
+                        <span class="field-hint" id="database-hint">For Database and Database and media. The CMS database is the default. An additional database (<code>DATABASES_&lt;NAME&gt;_*</code>) is exported table by table as JSON - for your own use; only CMS exports can be imported.</span>
                     </div>
                 }
                 <dl class="dl dl-compact">
-                    <dt>CMS database</dt>
-                    <dd>@Model.Provider: pages, content types and entries, media details, users and roles, settings, email templates, API tokens and endpoints, webhooks, extensions and the audit log.</dd>
-                    <dt>Not included</dt>
-                    <dd>Uploaded files (they stay in the media storage) and this site's encryption keys - so on another site custom API endpoint tokens must be regenerated.</dd>
+                    <dt>Database</dt>
+                    <dd>@Model.Provider: pages, content types and entries, media details, users and roles, settings, email templates, API tokens and endpoints, webhooks, extensions and the audit log - not the uploaded files, and not this site's encryption keys (on another site custom API endpoint tokens must be regenerated).</dd>
+                    <dt>Media</dt>
+                    <dd>@Model.Media.Files.ToString("N0") files (@Size(Model.Media.Bytes)) in their library folders, e.g. <code>Photos/2026/beach.jpg</code>, private files too, plus <code>media.json</code> with every file's id, link, folder, visibility and sizes. A download only; it is not imported.</dd>
+                    <dt>Database and media</dt>
+                    <dd>Both in one file: the database export unchanged at the top (import it as it is), the files under <code>media/</code>.</dd>
                 </dl>
-                <p class="text-sm text-muted"><icon name="shield" size="sm" /> The file contains password hashes and personal data: store it like a database backup.</p>
+                <p class="note text-sm text-muted"><icon name="shield" size="sm" /><span>The database export contains password hashes and personal data: store it like a database backup. Media is streamed straight from the storage, so a large library takes a while.</span></p>
             </div>
             <div class="card-footer">
-                <button type="submit" class="btn btn-primary"><icon name="download" /> Download export</button>
+                <button type="submit" class="btn btn-secondary" formaction="/admin/data/export-media" disabled="@(Model.Media.Files == 0 ? "disabled" : null)"><icon name="download" /> Media</button>
+                <button type="submit" class="btn btn-secondary"><icon name="download" /> Database</button>
+                <button type="submit" class="btn btn-primary" formaction="/admin/data/export-all"><icon name="download" /> Database and media</button>
             </div>
         </form>
     </section>
@@ -244,10 +249,14 @@
                                     <span class="cell-sub">@run.FileName</span>
                                 </td>
                                 <td data-label="Operation">
-                                    @run.Operation
+                                    @(run.Operation == TransferOperation.MediaExport ? "Media export" : run.Operation.ToString())
                                     @if (run.SourceProvider is not null)
                                     {
                                         <span class="cell-sub">@run.SourceProvider → @run.Provider</span>
+                                    }
+                                    else if (run.Operation == TransferOperation.MediaExport && run.Note is not null)
+                                    {
+                                        <span class="cell-sub">@run.Note</span>
                                     }
                                 </td>
                                 <td data-label="Result">

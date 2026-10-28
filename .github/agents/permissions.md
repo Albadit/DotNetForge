@@ -14,7 +14,7 @@ API Docs - beyond those only what every admin user opens (Dashboard, Profile, pl
 | Mechanism | Where | Enforced |
 | --- | --- | --- |
 | `AdminArea` policy (`AuthorizationPolicies.AdminArea`: any role except Authenticated/Public, `Roles.CanEnterAdmin`) | every admin controller via `AdminControllerBase`, `ExtensionViewController` | yes |
-| `[RequirePermission(area, action)]` (stored grants) | Users, Roles, Audit Logs, API Tokens, Settings, Content types, Pages (`Collection types`), Content Manager (`Entries`), Media - screen (`read`) and mutating actions | yes |
+| `[RequirePermission(area, action)]` (stored grants) | Users, Roles, Audit Logs, API Tokens, Settings (also Media Library settings, Providers, Two-factor authentication), Content types, Pages (`Collection types`), Content Manager (`Entries`), Media - screen (`read`) and mutating actions | yes |
 | `[Authorize(Roles = "Super Admin")]` | Plugins (list, enable, disable) | yes |
 | `[Authorize(Roles = "Super Admin,Developer")]` | API Endpoints (custom SQL endpoints, their tokens) | yes |
 | `AuthorizationPolicies.ApiDocs` (signed in as Super Admin or Developer) | API Docs screen, `/admin/api-docs/reference/` (Scalar), `GET /admin/api-docs/openapi/v1.json` | yes |

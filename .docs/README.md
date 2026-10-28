@@ -76,7 +76,8 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | --- | --- |
 | Install gate + first Super Admin | [installation.md](features/installation.md) |
 | `.env` configuration | [configuration.md](features/configuration.md) |
-| Cookie sign-in, lockout, external sign-in extensions, API token authentication, hashing | [authentication.md](features/authentication.md) |
+| Cookie sign-in, lockout, sign-in providers (10 built-in OAuth providers, extension providers), sign-up through a provider, API token authentication, hashing | [authentication.md](features/authentication.md) |
+| Two-factor authentication: authenticator app, passkeys, email and SMS codes, recovery codes, the requirement for admin users | [mfa.md](features/mfa.md) |
 | Roles (incl. Developer), permission evaluation, screen access, permission catalog, API permission keys | [authorization.md](features/authorization.md) |
 | Content pages, tree rules, liveness, page permissions, public URL resolution | [content-pages-and-routing.md](features/content-pages-and-routing.md) |
 | Structured content: content types and fields, entries, querying, content lists and data binding in layouts | [structured-content.md](features/structured-content.md) |
@@ -101,7 +102,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Area | Screen | Route | Document |
 | --- | --- | --- | --- |
 | First run | Setup wizard | `/setup` | [setup.md](pages/setup.md) |
-| Account | Sign in | `/login` | [login.md](pages/login.md) |
+| Account | Sign in (and the two-factor step) | `/login`, `/login/mfa` | [login.md](pages/login.md) |
 | Account | Register, forgot / reset password, confirm email | `/register`, `/forgot-password`, `/reset-password`, `/confirm-email` | [account-self-service.md](pages/account-self-service.md) |
 | Account | Access denied | `/account/denied` | [access-denied.md](pages/access-denied.md) |
 | Public | Home | `/` | [public-home.md](pages/public-home.md) |
@@ -113,12 +114,16 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Admin | Pages (page tree) | `/admin/pages` | [pages.md](pages/pages.md) |
 | Admin | Page builder | `/admin/pages/{id}/builder` | [page-builder.md](pages/page-builder.md) |
 | Admin | Profile | `/admin/profile` | [profile.md](pages/profile.md) |
+| Admin | Sign-in security (own two-step methods, recovery codes) | `/admin/profile/security` | [sign-in-security.md](pages/sign-in-security.md) |
 | Admin | Media | `/admin/media` | [media.md](pages/media.md) |
+| Admin | Media Library settings (upload limits, image optimization, video compression) | `/admin/media-settings` | [media-settings.md](pages/media-settings.md) |
 | Admin | Settings | `/admin/settings` | [settings.md](pages/settings.md) |
+| Admin | Providers (sign-in providers) | `/admin/providers` | [providers.md](pages/providers.md) |
+| Admin | Two-factor authentication (methods, requirement) | `/admin/mfa` | [mfa.md](pages/mfa.md) |
 | Admin | Advanced Settings (Advanced User Settings) | `/admin/advanced-settings` | [advanced-settings.md](pages/advanced-settings.md) |
 | Admin | Email Configuration (SMTP from .env read-only, connection test, test sends, email log) | `/admin/email/configuration` | [email-configuration.md](pages/email-configuration.md) |
 | Admin | Email Templates | `/admin/email/templates` | [email-templates.md](pages/email-templates.md) |
-| Admin | Data Management (export, backups, import) | `/admin/data` | [data-management.md](pages/data-management.md) |
+| Admin | Data Management (database and media export, backups, import) | `/admin/data` | [data-management.md](pages/data-management.md) |
 | Admin | API Tokens | `/admin/api-tokens` | [api-tokens.md](pages/api-tokens.md) |
 | Admin | API Endpoints | `/admin/api-endpoints` | [api-endpoints.md](pages/api-endpoints.md) |
 | Admin | API Docs (Scalar) | `/admin/api-docs` | [api-docs.md](features/api-docs.md) |
@@ -127,7 +132,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Admin | Audit Logs | `/admin/audit-logs` | [audit-logs.md](pages/audit-logs.md) |
 | Admin | Plugins | `/admin/plugins` | [plugins.md](pages/plugins.md) |
 | Admin | Admin extension tab | `/admin/ext/{id}` | [extension-host.md](pages/extension-host.md) |
-| Admin | Unbuilt modules (9 placeholders) | `/admin/marketplace`, `/admin/webhooks`, ... | [module-placeholders.md](pages/module-placeholders.md) |
+| Admin | Unbuilt modules (4 placeholders) | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization`, `/admin/webhooks` | [module-placeholders.md](pages/module-placeholders.md) |
 
 ## Guides
 

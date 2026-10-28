@@ -3,6 +3,7 @@ using DotNetForge.Data;
 using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
+using DotNetForge.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DotNetForge.Web.Services;
@@ -14,8 +15,11 @@ namespace DotNetForge.Web.Services;
 /// </summary>
 public sealed class MediaService
 {
-    /// <summary>Largest accepted file. Also bounds the upload request size (see the admin MediaController).</summary>
-    public const long MaxUploadBytes = 25L * 1024 * 1024;
+    /// <summary>
+    /// Images up to this size are optimized (read into memory to re-encode); larger ones are stored as uploaded. The
+    /// upload limits themselves are the Media Library settings (<see cref="MediaSettings"/>).
+    /// </summary>
+    public const long MaxOptimizedImageBytes = 64L * 1024 * 1024;
 
     /// <summary>Largest number of files in one upload request.</summary>
     public const int MaxFilesPerUpload = 10;
@@ -48,35 +52,44 @@ public sealed class MediaService
     private readonly DotNetForgeDbContext _db;
     private readonly IFileStorage _storage;
     private readonly IAuditService _audit;
+    private readonly MediaSettingsService _settings;
+    private readonly VideoOptimizationQueue _videos;
+    private readonly Ffmpeg _ffmpeg;
     private readonly ILogger<MediaService> _logger;
+    private MediaSettings? _current;
 
-    public MediaService(DotNetForgeDbContext db, IFileStorage storage, IAuditService audit, ILogger<MediaService> logger)
+    public MediaService(DotNetForgeDbContext db, IFileStorage storage, IAuditService audit, MediaSettingsService settings,
+        VideoOptimizationQueue videos, Ffmpeg ffmpeg, ILogger<MediaService> logger)
     {
         _db = db;
         _storage = storage;
         _audit = audit;
+        _settings = settings;
+        _videos = videos;
+        _ffmpeg = ffmpeg;
         _logger = logger;
     }
 
+    /// <summary>The Media Library settings, read once per request.</summary>
+    public async Task<MediaSettings> SettingsAsync(CancellationToken ct = default) => _current ??= await _settings.GetAsync(ct);
+
     /// <summary>
-    /// Validates and stores one uploaded file. A file with the same name and size already in <paramref name="folderId"/>
-    /// is a duplicate: refused, or - with <paramref name="reuseDuplicate"/> (the pickers, which need a file back) and the
-    /// same visibility - that existing file is returned instead of storing a second copy.
+    /// Validates and stores one uploaded file. A file with the same name and size (as uploaded) already in
+    /// <paramref name="folderId"/> is a duplicate: refused, or - with <paramref name="reuseDuplicate"/> (the pickers, which
+    /// need a file back) and the same visibility - that existing file is returned instead of storing a second copy.
+    /// Images are optimized on the way in and videos queued for compression, as the Media Library settings say
+    /// (.docs/features/media-storage.md#optimization).
     /// </summary>
     /// <returns>The new (or reused) row, or a user-facing error message.</returns>
     public async Task<(MediaFile? File, string? Error)> UploadAsync(
         IFormFile upload, bool isPublic, Guid? userId, Guid? folderId = null, bool reuseDuplicate = false, CancellationToken ct = default)
     {
         var originalName = Path.GetFileName(upload.FileName ?? string.Empty);
+        var storedOriginalName = Truncate(originalName, 400);
         var displayName = SanitizeFileName(originalName);
         if (upload.Length == 0)
         {
             return (null, $"'{displayName}' is empty.");
-        }
-
-        if (upload.Length > MaxUploadBytes)
-        {
-            return (null, $"'{displayName}' is larger than {MaxUploadBytes / (1024 * 1024)} MB.");
         }
 
         var extension = Path.GetExtension(originalName);
@@ -85,8 +98,21 @@ public sealed class MediaService
             return (null, $"'{displayName}' has a file type that is not allowed.");
         }
 
+        var settings = await SettingsAsync(ct);
+        var limit = settings.MaxBytesFor(contentType);
+        if (upload.Length > limit)
+        {
+            var kind = MediaSettings.KindOf(contentType) switch
+            {
+                MediaKind.Image => "images",
+                MediaKind.Video => "videos and audio",
+                _ => "this kind of file",
+            };
+            return (null, $"'{displayName}' is larger than {limit / (1024 * 1024)} MB, the limit for {kind}.");
+        }
+
         var duplicate = await _db.MediaFiles
-            .Where(m => m.FolderId == folderId && m.FileName == displayName && m.SizeBytes == upload.Length)
+            .Where(m => m.FolderId == folderId && m.OriginalName == storedOriginalName && (m.OriginalSizeBytes ?? m.SizeBytes) == upload.Length)
             .OrderByDescending(m => m.UploadedDate)
             .FirstOrDefaultAsync(ct);
         if (duplicate is not null)
@@ -102,13 +128,25 @@ public sealed class MediaService
             }
         }
 
+        var optimized = settings.OptimizeImages && ImageOptimizer.Handles(extension) && upload.Length <= MaxOptimizedImageBytes
+            ? await OptimizeImageAsync(upload, extension, settings, displayName, ct)
+            : null;
+        if (optimized is not null)
+        {
+            extension = optimized.Extension;
+            contentType = optimized.ContentType;
+            displayName = Truncate(Path.GetFileNameWithoutExtension(displayName) + extension, MaxFileNameLength);
+        }
+
+        var queueVideo = settings.CompressVideos && contentType == "video/mp4" && (await _ffmpeg.GetInfoAsync()).Available;
+
         // The key never contains user input: year / month / random id + normalized extension.
         var now = DateTime.UtcNow;
         var key = $"{now:yyyy}/{now:MM}/{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
 
         try
         {
-            await using var content = upload.OpenReadStream();
+            await using var content = optimized is not null ? new MemoryStream(optimized.Data, writable: false) : upload.OpenReadStream();
             await _storage.SaveAsync(key, content, contentType, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -123,9 +161,11 @@ public sealed class MediaService
         var file = new MediaFile
         {
             FileName = displayName,
-            OriginalName = Truncate(originalName, 400),
+            OriginalName = storedOriginalName,
             ContentType = contentType,
-            SizeBytes = upload.Length,
+            SizeBytes = optimized?.Data.LongLength ?? upload.Length,
+            OriginalSizeBytes = optimized is not null ? upload.Length : null,
+            Optimization = optimized is not null ? MediaOptimization.Optimized : queueVideo ? MediaOptimization.Pending : MediaOptimization.None,
             RelativePath = key,
             FolderId = folderId,
             IsPublic = isPublic,
@@ -146,8 +186,34 @@ public sealed class MediaService
         }
 
         await _audit.LogAsync(AuditActions.MediaUploaded, "MediaFile", file.Id.ToString(), file.FileName,
-            cancellationToken: ct);
+            details: optimized is not null ? $"Optimized from {upload.Length:N0} to {file.SizeBytes:N0} bytes" : null, cancellationToken: ct);
+        if (queueVideo)
+        {
+            _videos.Notify();
+        }
+
         return (file, null);
+    }
+
+    /// <summary>The smaller version of an uploaded image, or null (not smaller, not decodable, or the optimizer failed).</summary>
+    private async Task<ImageOptimizer.Result?> OptimizeImageAsync(IFormFile upload, string extension, MediaSettings settings, string displayName, CancellationToken ct)
+    {
+        try
+        {
+            using var buffer = new MemoryStream((int)upload.Length);
+            await using (var content = upload.OpenReadStream())
+            {
+                await content.CopyToAsync(buffer, ct);
+            }
+
+            return ImageOptimizer.Optimize(buffer.ToArray(), extension, settings);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Never lose an upload over optimization: store it as it came.
+            _logger.LogWarning(ex, "Optimizing image '{FileName}' failed; it is stored as uploaded.", displayName);
+            return null;
+        }
     }
 
     /// <summary>
@@ -165,6 +231,49 @@ public sealed class MediaService
         await _db.SaveChangesAsync(ct);
         await _audit.LogAsync(AuditActions.MediaUpdated, "MediaFile", file.Id.ToString(), file.FileName,
             details: isPublic ? "Made public" : "Made private", cancellationToken: ct);
+    }
+
+    /// <summary>Longest file name (with the extension).</summary>
+    public const int MaxFileNameLength = 200;
+
+    /// <summary>
+    /// Renames a file: only its display and download name changes. The extension stays - the stored and served type
+    /// depends on it - so a typed extension is ignored and the file's own is kept. The stored object and the id stay,
+    /// and <c>MediaFilesController</c> finds a file by its id alone, so links with the old name keep working.
+    /// </summary>
+    /// <returns>A user-facing error, or null (renamed, or the name is unchanged).</returns>
+    public async Task<string?> RenameAsync(MediaFile file, string? name, CancellationToken ct = default)
+    {
+        var extension = Path.GetExtension(file.FileName);
+        var stem = (name ?? string.Empty).Trim();
+        if (extension.Length > 0 && stem.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+        {
+            stem = stem[..^extension.Length];
+        }
+
+        stem = new string(stem.Where(c => !char.IsControl(c) && c is not ('"' or '\\' or '/')).ToArray()).Trim().TrimEnd('.');
+        if (stem.Length == 0)
+        {
+            return "Enter a name.";
+        }
+
+        if (stem.Length + extension.Length > MaxFileNameLength)
+        {
+            return $"The name can have at most {MaxFileNameLength - extension.Length} characters.";
+        }
+
+        var renamed = stem + extension;
+        if (renamed == file.FileName)
+        {
+            return null;
+        }
+
+        var before = file.FileName;
+        file.FileName = renamed;
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.MediaUpdated, "MediaFile", file.Id.ToString(), file.FileName,
+            details: $"Renamed from '{before}'", cancellationToken: ct);
+        return null;
     }
 
     /// <summary>Deletes the row first (so nothing references a missing object), then the stored object.</summary>
@@ -206,7 +315,7 @@ public sealed class MediaService
     private static string SanitizeFileName(string name)
     {
         var cleaned = new string(name.Where(c => !char.IsControl(c) && c is not ('"' or '\\' or '/')).ToArray()).Trim();
-        return Truncate(cleaned.Length == 0 ? "file" : cleaned, 200);
+        return Truncate(cleaned.Length == 0 ? "file" : cleaned, MaxFileNameLength);
     }
 
     private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max];

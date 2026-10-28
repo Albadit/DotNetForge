@@ -87,9 +87,12 @@ reachable (the dashboard's quick actions do). Details: [pages → navigation](pa
 
 ### Auth layout
 
-`Views/Shared/_AuthLayout.cshtml` (setup, sign-in, access denied): a brand panel (white with `logo.svg` in light,
-charcoal with `logo-dark.svg` in dark) and the form column; one
-column below 56rem. Never affected by public themes.
+`Views/Shared/_AuthLayout.cshtml` (setup, sign-in, the two-factor step, "Continuing to" a provider, access denied): a
+brand panel (white with `logo.svg` in light, charcoal with `logo-dark.svg` in dark) and the form column; one
+column below 56rem. Never affected by public themes. Optional sections: `Head` (extra `<head>` elements, e.g. the
+provider page's meta refresh) and `Scripts` (page scripts, e.g. `passkeys.js` on the two-factor step). `auth.css`
+also holds the two-factor step's `.input-code` (large monospaced code field) and `.mfa-ways` (the "Try another way"
+list).
 
 ### Public fallback
 
@@ -107,7 +110,7 @@ Class names are the API. Combine them; don't restyle them per screen.
 | Component | Markup |
 | --- | --- |
 | Button | `.btn` + `.btn-primary` (one per area) / `.btn-secondary` (default look) / `.btn-ghost` / `.btn-danger` / `.btn-danger-soft`; sizes `.btn-sm`, `.btn-lg`; `.btn-icon` (square, needs `aria-label`), `.btn-block`; groups `.btn-group` |
-| Form | `<form class="form">` (vertical rhythm), `.form-narrow`, `.form-grid` (two columns, `.span-2`), `.form-actions` (`.end`) |
+| Form | `<form class="form">` (vertical rhythm), `.form-narrow`, `.form-grid` (two columns, `.span-2`; `.form-grid-3` three columns, one below 40rem), `.form-actions` (`.end`) |
 | Field | `.field` > `label.field-label` (+ `span.field-required` / `span.field-optional`) + control + `span.field-hint` (link with `aria-describedby`) |
 | Controls | inputs, `select` and `textarea` are styled without classes; `.input-sm`; `.input-icon` (leading icon), `.input-affix` (trailing button) |
 | Choices | `label.check` (+ `.check-text`, `.check-hint`); switch `input.switch[role=switch]` in a `label.switch-row`; radio cards `.choice-cards` > `label.choice-card`; `fieldset.fieldset` + `legend` |
@@ -117,14 +120,14 @@ Class names are the API. Combine them; don't restyle them per screen.
 | Status | `<badge tone="Success" dot="true">`, `.dot` + `.dot-success/warning/danger` (with an `sr-only` label) |
 | Messages | `<alert tone="Warning" title="…">`, `<form-errors />` (all model-state errors - never `asp-validation-summary`, whose empty state has an inline style) |
 | Empty state | `<empty-state icon="…" title="…" text="…">actions</empty-state>` (`heading-level="1"` when it is the page's heading, e.g. the error page) |
-| KPI | `<stat-card icon="…" label="…" value="…" href="…" />` |
+| KPI | `<stat-card icon="…" label="…" value="…" href="…" />`; inside a card, `.stat-grid` lays out three `.stat` figures in a row (one column below 40rem; [Media Library settings](../pages/media-settings.md)) |
 | Time | `<timestamp value="@utc" />` ("5 min ago", exact UTC in the tooltip; `absolute="true"`, `empty="…"`) |
 | Table | `.table-wrap` > `table.table` (+ `.table-stack` and `data-label` on each cell for phone layout; first cell `.cell-lead`); `.cell-primary`, `.cell-sub`, `.col-actions`, `.col-check`; `tr.table-empty` |
 | Toolbar | `.toolbar` (`.toolbar-search`, `.toolbar-spacer`), `.collection-bar` + `.bulk-bar`, `.pagination` |
 | Navigation | `.breadcrumbs`, `.tabs` > `.tab[aria-current]`, `.segmented` (filter buttons with `aria-pressed`) |
 | Menu | one component for every menu - [menus](#menus): `<action-menu>` for "⋯" row/card actions; the account and theme menus use the same markup with their own button |
 | Dialog | the shared confirm dialog (below); `dialog.dialog` with `.dialog-body/-icon/-title/-text/-footer` for others. Fades (and its backdrop) in on `showModal()` and out on `close()` - CSS transitions with `@starting-style` and `overlay`/`display` `allow-discrete`; browsers without that close at once, `prefers-reduced-motion` turns it off |
-| Other | `.avatar`, `.dl` (description list), `.code-block` (+ copy button), `.list`, `.skeleton` (`-line`, `-title`), `[data-tooltip]`, `.sr-only`, `.text-muted/-subtle/-sm/-xs/-mono` |
+| Other | `.list-icon` (a square icon tile at the start of a `.list` row - Sign-in security), `.avatar`, `.dl` (description list), `.code-block` (+ copy button), `.list`, `.skeleton` (`-line`, `-title`), `[data-tooltip]`, `.sr-only`, `.text-muted/-subtle/-sm/-xs/-mono`, `.note` (an icon + `<span>` text: the icon centred on the first line, e.g. `<p class="note text-sm text-muted"><icon name="info" size="sm" /><span>…</span></p>`) |
 
 ### Icons
 
@@ -132,7 +135,7 @@ Class names are the API. Combine them; don't restyle them per screen.
 (`aria-hidden`) unless `label="…"` is given; `size="sm|lg|xl"`. The sprite holds Lucide paths (ISC licence, noted in the
 file). To add one: copy the Lucide `<path>`s into a new `<symbol id="name" viewBox="0 0 24 24">` - the test
 `AdminUiTests.Every_icon_the_ui_uses_exists_in_the_sprite` fails when a view, the navigation or a presentation helper
-names an icon the sprite lacks.
+names an icon the sprite lacks. `smartphone` (authenticator app) was added for two-factor authentication.
 
 ### Tag helpers
 

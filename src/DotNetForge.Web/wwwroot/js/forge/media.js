@@ -2,6 +2,7 @@
 // - Upload panel: hidden until Upload is clicked or files are dragged onto the page (open after a failed upload);
 //   the chosen files are previewed (image thumbnails, size, too large / type not allowed) and can be removed.
 // - Edit folder: "Edit…" in a folder's menu opens #folder-dialog (rename, move) for that folder.
+// - File info / rename: "Info" and "Rename…" in a file's menu open #file-info-dialog and #file-rename-dialog.
 // - Drag and drop (#folders): drag files - or every selected file - and folders onto a folder tile, or onto a
 //   breadcrumb to move them up. A drop posts the same forms as the Move buttons (#dragMove), so the server's rules and
 //   permission checks apply; the page reloads with the result. Without JavaScript (or on touch screens) the Move
@@ -13,6 +14,7 @@
     uploadPanel();
     folderDialog();
     newFolderDialog();
+    fileDialogs();
 
     var form = document.getElementById("dragMove");
     if (!form) { return; }
@@ -122,7 +124,14 @@
         var zone = panel.querySelector(".dropzone");
         var preview = panel.querySelector("[data-upload-preview]");
         var icons = document.getElementById("upload-icons");
-        var maxBytes = parseInt(panel.getAttribute("data-max-bytes"), 10) || 0;
+        // Upload limits per kind of file (Media Library settings); the server checks them again.
+        function list(name) { return (panel.getAttribute(name) || "").toLowerCase().split(",").filter(Boolean); }
+        function bytes(name) { return parseInt(panel.getAttribute(name), 10) || 0; }
+        var imageTypes = list("data-image-types"), videoTypes = list("data-video-types");
+        var limits = { image: bytes("data-max-image"), video: bytes("data-max-video"), other: bytes("data-max-other") };
+        function limitFor(ext) {
+            return imageTypes.indexOf(ext) >= 0 ? limits.image : videoTypes.indexOf(ext) >= 0 ? limits.video : limits.other;
+        }
         var accept = (input.getAttribute("accept") || "").toLowerCase().split(",").filter(Boolean);
         var toggles = document.querySelectorAll("[data-upload-toggle]");
         var chosen = [];
@@ -221,7 +230,8 @@
             var dot = file.name.lastIndexOf(".");
             var ext = dot >= 0 ? file.name.substring(dot).toLowerCase() : "";
             if (accept.length && accept.indexOf(ext) < 0) { return "Type not allowed"; }
-            if (maxBytes && file.size > maxBytes) { return "Too large (max " + size(maxBytes) + ")"; }
+            var max = limitFor(ext);
+            if (max && file.size > max) { return "Too large (max " + size(max) + ")"; }
             return null;
         }
 
@@ -316,6 +326,39 @@
             select.value = button.getAttribute("data-folder-parent") || "";
             dialog.showModal();
             rename.elements.name.select();
+        });
+    }
+
+    // File info (the rows come from the button's data-file-info, set as text) and Rename (the name without its
+    // extension; the server keeps the extension). Esc, Close/Cancel or the backdrop close them.
+    function fileDialogs() {
+        var info = document.getElementById("file-info-dialog");
+        var rename = document.getElementById("file-rename-dialog");
+        [info, rename].forEach(function (dialog) {
+            if (dialog) { dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } }); }
+        });
+        document.addEventListener("click", function (event) {
+            var button = event.target.closest && event.target.closest("[data-file-info], [data-file-rename]");
+            if (!button) { return; }
+            if (button.hasAttribute("data-file-info") && info && typeof info.showModal === "function") {
+                var list = info.querySelector("[data-file-info-list]");
+                list.textContent = "";
+                JSON.parse(button.getAttribute("data-file-info")).forEach(function (row) {
+                    var term = document.createElement("dt");
+                    var value = document.createElement("dd");
+                    term.textContent = row[0];
+                    value.textContent = row[1];
+                    list.append(term, value);
+                });
+                info.showModal();
+            } else if (button.hasAttribute("data-file-rename") && rename && typeof rename.showModal === "function") {
+                var form = rename.querySelector("form[method=post]");
+                form.action = "/admin/media/" + button.getAttribute("data-file-rename") + "/rename";
+                form.elements.name.value = button.getAttribute("data-file-name");
+                rename.querySelector("[data-file-rename-extension]").textContent = button.getAttribute("data-file-extension");
+                rename.showModal();
+                form.elements.name.select();
+            }
         });
     }
 

@@ -69,9 +69,12 @@ Disabled endpoints are left out.
 
 ## Tokens in Scalar
 
-- **Headless API** - Scalar asks for the `ApiToken` bearer value. Paste an API token created on
-  [API Tokens](../pages/api-tokens.md) (its secret is shown once, at creation). The app stores nothing that is typed
-  into Scalar.
+- **Headless API** - Scalar asks for the `ApiToken` bearer value. **Super Admins can leave it empty:** Scalar's
+  **Send** is a same-origin request from the signed-in browser, so the API uses the admin session with every
+  permission ([authentication](authentication.md#api-token-authentication)); the scheme's description says so.
+  Developers (and Super Admins trying a token's own permissions) paste an API token created on
+  [API Tokens](../pages/api-tokens.md) (its secret is shown once, at creation) - a token, when filled in, is always
+  what counts. The app stores nothing that is typed into Scalar.
 - **Custom endpoints** - `MapScalarApiReference` runs per request and calls
   `options.AddHttpAuthentication("Endpoint <id8>", token)` for each enabled token-protected endpoint whose token can be
   decrypted (`CustomEndpointService.TokenOf`), so its token is already filled in. The tokens are therefore in the
@@ -95,11 +98,13 @@ keeps the strict policy. "Test Request" calls go to this origin, so `connect-src
 ## Using it
 
 1. Open **Settings › API Docs** (or **Open full screen** for more room).
-2. **An API token** - create one on API Tokens with the keys you want to try, pick an operation (e.g. *Structured
+2. **As a Super Admin** - pick an operation and press **Test Request** → **Send**; no token needed. Calls are real
+   (writes are committed and audited under your name).
+3. **An API token** - create one on API Tokens with the keys you want to try, pick an operation (e.g. *Structured
    content › GET /api/entries/{type}*), paste the token into the `ApiToken` authentication field, fill in the
    parameters and press **Test Request**. The operation's description names the key it needs; a token without it
    answers `403`.
-3. **A custom endpoint** - open the endpoint's group (its name), pick an operation, fill in its values and press
+4. **A custom endpoint** - open the endpoint's group (its name), pick an operation, fill in its values and press
    **Test Request**; the token is already set. The editor's **Try it in the API docs** link ([API Endpoints](../pages/api-endpoints.md))
    leads here. Unlike the editor's test run, this is a real call: writes are committed and audited.
 

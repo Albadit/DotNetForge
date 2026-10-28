@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using DotNetForge.Abstractions.Storage;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
+using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -232,4 +233,54 @@ public sealed class MediaTests
         Assert.Contains("/account/denied", delete.Headers.Location?.OriginalString);
         Assert.True(File.Exists(Path.Combine(factory.StoragePath, media.RelativePath)));
     }
+
+    [Fact]
+    public async Task Rename_keeps_the_extension_and_the_old_links()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        var admin = await factory.SignInAsync();
+        await UploadAsync(admin, "slides.txt", "hello"u8.ToArray(), isPublic: true);
+        var media = await SingleMediaAsync(factory);
+
+        var page = WebUtility.HtmlDecode(await admin.GetStringAsync("/admin/media"));
+        Assert.Contains($"data-file-rename=\"{media.Id}\"", page);
+        Assert.Contains("data-file-info=", page);
+
+        // A typed extension (the file's own or another) never changes the type; slashes are removed.
+        Assert.Equal(HttpStatusCode.Redirect, (await RenameAsync(admin, media.Id, "Q3/report.pdf")).StatusCode);
+        Assert.Equal("Q3report.pdf.txt", (await SingleMediaAsync(factory)).FileName);
+        await RenameAsync(admin, media.Id, "  Quarterly report.TXT ");
+        var renamed = await SingleMediaAsync(factory);
+        Assert.Equal("Quarterly report.txt", renamed.FileName);
+        Assert.Equal("text/plain", renamed.ContentType);
+        Assert.Equal(media.RelativePath, renamed.RelativePath);
+        Assert.Equal("slides.txt", renamed.OriginalName);
+        Assert.Contains("Renamed to 'Quarterly report.txt'.", WebUtility.HtmlDecode(await admin.GetStringAsync("/admin/media")));
+
+        // Old and new links both work; the download carries the new name.
+        using var anonymous = factory.CreateNoRedirectClient();
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync($"/media/{media.Id}/slides.txt")).StatusCode);
+        var download = await anonymous.GetAsync(MediaService.UrlFor(renamed));
+        Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+        Assert.Equal("Quarterly report.txt", download.Content.Headers.ContentDisposition?.FileNameStar);
+
+        await RenameAsync(admin, media.Id, " .txt ");
+        Assert.Contains("Enter a name.", WebUtility.HtmlDecode(await admin.GetStringAsync("/admin/media")));
+        await RenameAsync(admin, media.Id, new string('a', 300));
+        Assert.Equal("Quarterly report.txt", (await SingleMediaAsync(factory)).FileName);
+
+        await factory.WithDbAsync(async db => Assert.True(await db.AuditLogs.AnyAsync(a =>
+            a.Action == AuditActions.MediaUpdated && a.Details == "Renamed from 'Q3report.pdf.txt'")));
+
+        // An Author may only rename their own uploads.
+        await factory.CreateUserAsync("author@example.com", "Auth0rPass1", Roles.Author);
+        var author = await factory.SignInAsync("author@example.com", "Auth0rPass1");
+        Assert.Contains("/account/denied", (await RenameAsync(author, media.Id, "mine")).Headers.Location?.OriginalString);
+        Assert.Equal("Quarterly report.txt", (await SingleMediaAsync(factory)).FileName);
+    }
+
+    private static Task<HttpResponseMessage> RenameAsync(HttpClient client, Guid id, string name) =>
+        DotNetForgeWebFactory.PostFormAsync(client, "/admin/media", $"/admin/media/{id}/rename",
+            new Dictionary<string, string> { ["name"] = name });
 }

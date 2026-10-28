@@ -19,6 +19,7 @@ public sealed class EnvConfigurationTests
         "STORAGE_S3_SERVICE_URL", "STORAGE_S3_BUCKET",
         "STORAGE_S3_ACCESS_KEY_ID", "STORAGE_S3_SECRET_ACCESS_KEY", "STORAGE_S3_REGION", "STORAGE_S3_FORCE_PATH_STYLE",
         "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM", "SMTP_FROM_NAME", "SMTP_TLS",
+        "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM",
         "DOTNETFORGE_ENV_FILE",
     };
 
@@ -80,6 +81,20 @@ public sealed class EnvConfigurationTests
     public void A_partial_or_invalid_smtp_configuration_fails_at_startup(string envFile)
     {
         Assert.Throws<ConfigurationException>(() => WithCleanEnv(d => EnvConfigurationLoader.Load(d), envFile));
+    }
+
+    [Fact]
+    public void Sms_is_off_until_all_three_twilio_values_are_set()
+    {
+        Assert.False(WithCleanEnv(d => EnvConfigurationLoader.Load(d), "TWILIO_FROM=\n").Sms.IsConfigured);
+
+        var sms = WithCleanEnv(d => EnvConfigurationLoader.Load(d),
+            "TWILIO_ACCOUNT_SID=AC123\nTWILIO_AUTH_TOKEN=secret\nTWILIO_FROM=+15551234567\n").Sms;
+        Assert.True(sms.IsConfigured);
+        Assert.Equal("+15551234567", sms.From);
+
+        // Two values (the SMS Notifications sample needs only these) start fine; SMS codes stay off.
+        Assert.False(WithCleanEnv(d => EnvConfigurationLoader.Load(d), "TWILIO_ACCOUNT_SID=AC123\nTWILIO_AUTH_TOKEN=secret\n").Sms.IsConfigured);
     }
 
     [Fact]

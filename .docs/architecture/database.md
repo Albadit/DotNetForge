@@ -40,6 +40,8 @@ in `Database/Providers/PostgreSql/Migrations/` - then `DataSeeder` ([Seeding](#s
 ```mermaid
 erDiagram
     User ||--o{ UserRole : "cascade"
+    User ||--o{ UserMfaMethod : "cascade"
+    User ||--o{ UserRecoveryCode : "cascade"
     Role ||--o{ UserRole : "cascade"
     Role ||--o{ RolePermission : "cascade"
     Page |o--o{ Page : "ParentPageId (no FK)"
@@ -53,7 +55,7 @@ erDiagram
     CustomEndpoint ||--o{ CustomEndpointOperation : "EndpointId (no FK)"
 ```
 
-Only the four "cascade" relationships are real foreign keys. `ParentPageId` is a plain column with no FK constraint - integrity is maintained by application code (e.g. `PageService.DeleteAsync` re-parents children).
+Only the six "cascade" relationships are real foreign keys. `ParentPageId` is a plain column with no FK constraint - integrity is maintained by application code (e.g. `PageService.DeleteAsync` re-parents children).
 `PagePermission.PageId` / `RoleId` are plain columns too (`PagesController.Delete` removes a page's grants;
 `PagePermissionService` ignores grants of roles that no longer exist). `ContentEntry.ContentTypeId` and
 `ContentEntryValue.EntryId` are plain columns as well: `ContentEntryService` and `ContentTypeService` remove an entry's
@@ -69,14 +71,14 @@ removed by the `RemoveTenants` migrations).
 
 | Table (`DbSet`) | Key | Important columns | Unique indexes / constraints | Written by |
 | --- | --- | --- | --- | --- |
-| `Users` | `Guid Id` | `Email`(256), `FirstName`(100), `LastName`(100), `PasswordHash`, `Status`, `EmailConfirmed`, `FailedLoginCount`, `LockoutEndUtc`, `LastLoginDate` | `Email` unique; `DisplayName` is computed, not stored | `InstallationStore`, `AuthService` (counters, last login), `UserManagementService`, `ProfileService` |
+| `Users` | `Guid Id` | `Email`(256), `FirstName`(100), `LastName`(100), `PasswordHash` (empty for an account created through a sign-in provider until it sets a password), `Status`, `EmailConfirmed`, `FailedLoginCount`, `LockoutEndUtc`, `LastLoginDate` | `Email` unique; `DisplayName` is computed, not stored | `InstallationStore`, `AuthService` (counters, last login), `UserManagementService`, `ProfileService` |
 | `Roles` | `Guid Id` | `Name`(100), `Description`(500), `IsBuiltIn` | `Name` unique | `DataSeeder`, `RoleManagementService` |
 | `RolePermissions` | `Guid Id` | `RoleId`, `Area`(100), `Action`(100) | (`RoleId`, `Area`, `Action`) unique | `DataSeeder`, `RoleManagementService`; read by `RoleGrantStore` |
 | `UserRoles` | (`UserId`, `RoleId`) | - | composite PK | `InstallationStore`, `UserManagementService` |
 | `Pages` | `Guid Id` | `Slug`(200), `Title`(300), `MetaTitle`, `MetaDescription`, `SeoKeywords`, `CanonicalUrl`, `Published`, `Disabled`, `DisplayInMenu`, `ParentPageId`, `SortOrder`, `PageType`, `TargetUrl`, `FileReference`, `ScheduledPublishDate`, `ScheduledUnpublishDate`, `NoIndex`, `SocialImageUrl`(2000), `ThemeId`(100), `ThemeForChildren`, `LayoutJson` / `DraftLayoutJson` (unbounded text: `text` / `nvarchar(max)` / `longtext`), `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`, `CreatedById`, dates | (`ParentPageId`, `Slug`) unique | `PagesController` and `ContentApiController` through `IPageService`, `PageBuilderService` (layout columns), `ScheduledPublishingService`, `DataSeeder` |
 | `PagePermissions` | `Guid Id` | `PageId`, `RoleId`, `Permission`(20: `view` / `edit`) | (`PageId`, `RoleId`, `Permission`) unique | `PagePermissionService` ([page permissions](../features/content-pages-and-routing.md#page-permissions)) |
 | `PageUserPermissions` | `Guid Id` | `PageId`, `UserId`, `Permission`(20), `Allow` (false = blocked) | (`PageId`, `UserId`, `Permission`) unique | `PagePermissionService`; removed by `UserManagementService.DeleteAsync` with the user |
-| `MediaFiles` | `Guid Id` | `FileName`(400, sanitized display name ≤ 200), `OriginalName`(400), `ContentType`(200, from the extension), `SizeBytes`, `RelativePath`(1000, the `IFileStorage` key `{yyyy}/{MM}/{guid:N}{ext}`; older uploads keep their earlier keys), `FolderId`? (the `MediaFolders` row; null = top level), `IsPublic`, `UploadedById`, `UploadedDate` | `FolderId` | `MediaService` (upload adds, delete removes), `MediaFolderService` (moves) |
+| `MediaFiles` | `Guid Id` | `FileName`(400, sanitized display name ≤ 200), `OriginalName`(400), `ContentType`(200, from the extension), `SizeBytes` (the stored object), `OriginalSizeBytes`? (the size as uploaded when optimization stored a smaller version), `Optimization` (`MediaOptimization`: `None`, `Optimized`, `Pending`, `Processing`, `Failed`), `OptimizationStartedDate`? (when the video compression claimed it), `RelativePath`(1000, the `IFileStorage` key `{yyyy}/{MM}/{guid:N}{ext}`; older uploads keep their earlier keys), `FolderId`? (the `MediaFolders` row; null = top level), `IsPublic`, `UploadedById`, `UploadedDate` | `FolderId`, `Optimization` | `MediaService` (upload adds, delete removes), `MediaFolderService` (moves), `VideoOptimizationService` (compression state, key and sizes - [optimization](../features/media-storage.md#optimization)) |
 | `MediaFolders` | `Guid Id` | `Name`(100), `ParentId`?, `Path`(1000, "/Photos/2026"), `CreatedById`?, `CreatedDate` | `Path` unique, `ParentId` | `MediaFolderService` - virtual library folders ([media → folders](../pages/media.md#folders)) |
 | `ApiTokens` | `Guid Id` | `Name`(200), `Description`(1000), `Duration`, `ExpirationDate`, `PermissionsCsv`, `CreatedById`, `CreatedDate`, `LastUsedDate`, `Revoked`, `TokenHash`, `TokenPrefix`(64) | `Name` unique; index on `TokenPrefix`; `Permissions` computed from CSV | `ApiTokensController`, `ApiTokenAuthenticationHandler` (`LastUsedDate`, at most every 5 min) |
 | `Webhooks` | `Guid Id` | `Name`, `Url`, `HeadersJson`, `EventsCsv`, `Enabled`, `Secret`, `LastDelivery` | - | **nothing** |
@@ -91,20 +93,24 @@ removed by the `RemoveTenants` migrations).
 | `EmailLog` | `Guid Id` | `SentAt`, `Recipient`(320), `Subject`(500), `Template`(100)?, `Success`, `Error`(300)? | `SentAt` | `LoggingEmailSender` - one row per send attempt, kept 30 days ([Email Configuration](../pages/email-configuration.md#email-log)) |
 | `EmailTemplates` | `Guid Id` | `Key`(100), `Subject`(500), `Body` (unbounded; the service caps it at 20 000), `UpdatedDate`, `UpdatedById` | `Key` unique | `EmailTemplateService` - a row only while a template is customized ([email templates](../pages/email-templates.md)) |
 | `CustomEndpointOperations` | `Guid Id` | `EndpointId`, `Name`(100, nullable), `Method`(10), `Path`(200, the sub-path; empty = the endpoint's path), `Sql` and `ParametersJson` (unbounded), `Result` (`EndpointResultShape`), `TimeoutSeconds`, `MaxRows`, `SortOrder` | (`EndpointId`, `Method`, `Path`) unique; one method + path shape across all endpoints is checked by `CustomEndpointService` | `CustomEndpointService` (saved and deleted with the endpoint); run by `SqlEndpointRunner` |
-| `Settings` | `Guid Id` | `Key`(200), `Value`(4000) | `Key` unique (one value per key) | `SettingsController` |
-| `TransferRecords` | `Guid Id` | `Operation`, `Status` (enums), `Provider`(50), `SourceProvider`(50)?, `FileName`(260), `StorageKey`(500)?, `SizeBytes`, `RecordCount`, `Checksum`(64)?, `Automatic`, `Note`(200)?, `Error`(2000)?, `StartedAt`, `CompletedAt`?, `InitiatedById`? | `StartedAt` | `DatabaseTransferService` - one row per export, backup, import or restore; never exported or replaced by an import ([Data Management](../pages/data-management.md)) |
-| `AuthProviders` | `Guid Id` | `Name`(100), `Enabled`, `IsBuiltIn`, `SettingsJson` | `Name` unique | `DataSeeder` |
+| `Settings` | `Guid Id` | `Key`(200), `Value`(4000) | `Key` unique (one value per key) | `SettingsController`; screens with their own rows: `UserAccountSettingsService` (`users.*`), `DatabaseTransferService` (`transfer.backup.*`), `MediaSettingsService` (`media.*`, [Media Library settings](../pages/media-settings.md)), `MfaSettingsService` (`mfa.*`, [Two-factor authentication](../pages/mfa.md)) |
+| `TransferRecords` | `Guid Id` | `Operation`, `Status` (enums), `Provider`(50), `SourceProvider`(50)?, `FileName`(260), `StorageKey`(500)?, `SizeBytes`, `RecordCount`, `Checksum`(64)?, `Automatic`, `Note`(200)?, `Error`(2000)?, `StartedAt`, `CompletedAt`?, `InitiatedById`? | `StartedAt` | `DatabaseTransferService` - one row per export, backup, import or restore; `MediaExportService` - one per media export (`TransferOperation.MediaExport` = 4); never exported or replaced by an import ([Data Management](../pages/data-management.md)) |
+| `AuthProviders` | `Guid Id` | `Key`(50, `AuthProviderKeys`: `email`, `google`, ...), `Name`(100), `Enabled`, `IsBuiltIn` (Email), `SettingsJson`(8000: `ProviderSettings` JSON, client secret and Apple key protected with Data Protection), `UpdatedDate` (moves on every save; other instances reload the sign-in schemes when it does) | `Key` unique, `Name` unique | `DataSeeder` (one row per provider), `AuthProviderService` (Providers screen); read by `OAuthProviderRegistry` ([authentication → providers](../features/authentication.md#providers)) |
+| `UserMfaMethods` | `Guid Id` | `UserId` (FK, cascade), `Type` (`MfaMethodType`: 1 authenticator app, 2 email, 3 SMS, 4 passkey), `Name`(100), `Secret`(1000, TOTP secret protected with Data Protection), `PhoneNumber`(20, E.164), `CredentialId`(bytea, 1024) and `PublicKey`(bytea, 2048) of a passkey, `Counter` (last TOTP step / passkey signature counter), `CreatedDate`, `LastUsedDate` | indexes `UserId`, `CredentialId` (uniqueness of a credential checked by `MfaService`) | `MfaService` ([MFA](../features/mfa.md)) |
+| `UserRecoveryCodes` | `Guid Id` | `UserId` (FK, cascade), `CodeHash`(64, SHA-256 hex), `CreatedDate`, `UsedDate` | index `UserId` | `MfaService` ([recovery codes](../features/mfa.md#recovery-codes)) |
 | `DataProtectionKeys` | `int Id` (auto-increment) | `FriendlyName`, `Xml` | - | ASP.NET Core Data Protection (`PersistKeysToDbContext<DotNetForgeDbContext>`) |
 
 Enums are stored as integers (`UserStatus`, `PageType`, `TokenDuration`, `ExtensionType`, `ExtensionStatus`,
- `WebhookOutcome`, `ContentTypeKind` - values in `src/DotNetForge.Shared/Enums/Enums.cs`). CSV columns (`PermissionsCsv`,
+ `WebhookOutcome`, `ContentTypeKind`, `TransferOperation`, `MediaOptimization`, `MfaMethodType` - values in `src/DotNetForge.Shared/Enums/Enums.cs`). CSV columns (`PermissionsCsv`,
 `EventsCsv`) are split by computed properties ignored by EF (`ApiToken.Permissions`, `Webhook.Events`).
 
-`DataProtectionKeys` holds the key ring for the auth cookie, antiforgery tokens, TempData and the custom endpoint
-tokens (`CustomEndpoints.TokenProtected`), so every instance shares it and sessions survive restarts on a read-only
+`DataProtectionKeys` holds the key ring for the auth cookie, antiforgery tokens, TempData, the custom endpoint
+tokens (`CustomEndpoints.TokenProtected`), the sign-in providers' secrets (`AuthProviders.SettingsJson`) and the
+authenticator-app secrets (`UserMfaMethods.Secret`), so every instance shares it and sessions survive restarts on a read-only
 filesystem. The key XML is stored **unencrypted**: anyone who can read this table can forge cookies and decrypt the
 endpoint tokens. Deleting the rows signs everyone out and makes every endpoint token unreadable (callers get `401`
-until each endpoint gets a new token with **Generate token**).
+until each endpoint gets a new token with **Generate token**), and likewise makes provider secrets (re-enter them on
+[Providers](../pages/providers.md)) and authenticator apps (set up again) unusable.
 
 ### Column lengths
 
@@ -146,6 +152,8 @@ automatically at startup:
 | `20261027135904_AddEndpointDatabase` | `CustomEndpoints.Database` (`character varying(64)`, nullable) |
 | `20261027145210_AddEmailLog` | table `EmailLog` with an index on `SentAt` |
 | `20261027153504_AddMediaFolders` | table `MediaFolders` (unique `Path`, index `ParentId`); `MediaFiles.FolderPath` dropped, `MediaFiles.FolderId` added (index) |
+| `20261028111036_AddMediaOptimization` | `MediaFiles.Optimization` (integer, not null, default 0 = `None`: existing files count as stored as uploaded), `MediaFiles.OptimizationStartedDate` (nullable), `MediaFiles.OriginalSizeBytes` (bigint, nullable); index `IX_MediaFiles_Optimization` |
+| `20261028135245_AddSignInProvidersAndMfa` | `AuthProviders.Key` (`character varying(50)`, unique index) and `UpdatedDate`; `AuthProviders.SettingsJson` 4000 → 8000; tables `UserMfaMethods` and `UserRecoveryCodes` (FKs to `Users`, cascade). Existing rows get their key from the name before the unique index (`Twitter/X` → `x`, otherwise the name lower-cased without non-alphanumerics: `GitHub` → `github`); `DataSeeder` then adds the missing providers and removes the never-configured old ones |
 
 **Every schema change needs one migration** for `PostgreSqlDbContext`. Use the
 [database-change skill](../../.claude/skills/database-change/SKILL.md) or, from the repository root:
@@ -176,13 +184,13 @@ After generating:
 | --- | --- | --- |
 | Built-in roles | per role name missing | the seven roles (`IsBuiltIn = true`; a database seeded before `Developer` existed gets it on the next start) with `RolePermission` rows from `PermissionMatrix.GrantsFor(role)` |
 | Starter pages | no pages | `Home` (`/`, published), `About` (`about`, published), `News` (`news`, published), `Contact` (`contact`, not published), and under About: `Team` (`team`, published), `History` (`history`, not published) |
-| Auth providers | table empty | `Email` (enabled, built-in) + 16 disabled OAuth entries: Auth0, CAS, Cognito, Discord, Facebook, GitHub, Google, Instagram, Keycloak, LinkedIn, Microsoft, Patreon, Reddit, Twitch, Twitter/X, VK |
+| Auth providers (`SeedAuthProvidersAsync`) | **every start** | one row per `AuthProviderKeys` key that is missing: `email` (Email, enabled, built-in) and the ten OAuth providers `google`, `microsoft`, `apple`, `facebook`, `github`, `linkedin`, `x`, `discord`, `gitlab`, `twitch` (disabled); renames a row whose name differs from the catalog; removes rows whose key is not in the catalog while they are disabled and their `SettingsJson` is empty or `{}` (the Auth0, CAS, Cognito, Instagram, Keycloak, Patreon, Reddit and VK rows of earlier versions) - a configured one is kept ([authentication → providers](../features/authentication.md#providers)) |
 | System state | no row | `SystemState { Id = 1, Installed = false }` |
 | One-time updates (`UpgradeAsync`) | `SystemState.SeedVersion < DataSeeder.CurrentSeedVersion` | each missing step once, then `SeedVersion = CurrentSeedVersion`. Step 1: built-in roles with no grant in `Content types` / `Entries` get the matrix defaults of those areas ([authorization](../features/authorization.md#permission-matrix-default-grants)). Step 2: every existing user gets `EmailConfirmed = true`, so turning on email confirmation never locks out accounts that predate it ([authentication](../features/authentication.md#self-service-accounts)) |
 
 Deleting all pages therefore re-creates the starter tree on the next restart. Seeded pages have no `CreatedById`, so
 Authors (who may only edit their own pages) cannot edit them. Nothing seeds `Settings`, `MediaFiles`, `Webhooks`,
-`ApiTokens`, `InstalledExtensions`, `DataProtectionKeys` or the content tables (content types come from templates on
+`ApiTokens`, `InstalledExtensions`, `DataProtectionKeys`, `UserMfaMethods`, `UserRecoveryCodes` or the content tables (content types come from templates on
 the [Content types](../pages/content-types.md) screen).
 
 ## Delete behaviour
@@ -191,7 +199,7 @@ the [Content types](../pages/content-types.md) screen).
 | --- | --- |
 | Delete a content page (`PageService.DeleteAsync`) | children are re-parented to the deleted page's parent, then the page is removed; refused when that would create a duplicate slug or a second dynamic segment under the parent |
 | Delete a media file (`MediaService.DeleteAsync`) | the `MediaFiles` row is removed first, then the stored object; a failed object delete leaves an orphaned object (logged as a warning) |
-| Delete a role / user | `RoleManagementService` / `UserManagementService` remove `RolePermissions` / `UserRoles` first; a role still held by users can't be deleted |
+| Delete a role / user | `RoleManagementService` / `UserManagementService` remove `RolePermissions` / `UserRoles` first; a role still held by users can't be deleted; a user's `UserMfaMethods` and `UserRecoveryCodes` go with the user (cascade) |
 | Delete a content page | `PagesController.Delete` removes its `PagePermissions` and `PageUserPermissions` before `PageService.DeleteAsync` |
 | Delete an entry / several | `ContentEntryService.DeleteAsync` / `DeleteManyAsync` remove the entries' `ContentEntryValues` with them; entries that linked to it keep the id (skipped when rendering) |
 | Delete a custom endpoint | `CustomEndpointService.DeleteAsync` removes its `CustomEndpointOperations` in the same save |

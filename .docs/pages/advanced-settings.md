@@ -2,8 +2,9 @@
 
 ## Purpose
 
-The **Advanced User Settings**: how people get an account on the site - whether visitors may sign up at `/register`,
-the role new accounts get, whether they must confirm their email first, and where the email links point for a front
+The **Advanced User Settings**: how people get an account on the site - whether visitors may sign up at `/register`
+and through a sign-in provider ([sign-up through a provider](../features/authentication.md#sign-up-through-a-provider);
+the switch's hint mentions only `/register`), the role new accounts get, whether they must confirm their email first, and where the email links point for a front
 end with its own pages. Mechanism: [authentication → advanced user settings](../features/authentication.md#advanced-user-settings);
 the visitor screens: [self-service account screens](account-self-service.md).
 

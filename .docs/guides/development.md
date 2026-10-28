@@ -86,7 +86,7 @@ so a service started from its own file and from a combined file is the same cont
 | File | Starts | Ports |
 | --- | --- | --- |
 | `docker/compose.dev.yml` | PostgreSQL + RustFS + Mailpit - the services `.env.developer` is filled in for | 5432, 9000/9001, 1026/8026 |
-| `docker/compose.app.yml` | the app built from `docker/Dockerfile` (Production, read-only) + the `compose.dev.yml` services | 8080 + the above |
+| `docker/compose.app.yml` | the app built from `docker/Dockerfile` (Production, read-only, with ffmpeg: build argument `WITH_FFMPEG`) + the `compose.dev.yml` services | 8080 + the above |
 | `docker/databases/postgres.yml` | PostgreSQL 17 - the CMS database (`DNF_POSTGRES_PORT` changes the host port) | 5432 |
 | `docker/databases/mongodb.yml` | MongoDB 8, single-node replica set - additional databases, tests | 27017 |
 | `docker/databases/sqlserver.yml` | SQL Server 2022 - additional databases, tests | 1433 |

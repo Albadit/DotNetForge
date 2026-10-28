@@ -172,6 +172,41 @@
                 </div>
             </section>
 
+            @if (ViewData["MfaMethods"] is List<DotNetForge.Shared.Entities.UserMfaMethod> mfaMethods)
+            {
+                <section class="card" aria-labelledby="mfa-title">
+                    <div class="card-header">
+                        <h2 class="card-title" id="mfa-title">Two-step verification</h2>
+                        <badge tone="@(mfaMethods.Count > 0 ? Tone.Success : Tone.Neutral)" dot="true">@(mfaMethods.Count > 0 ? "On" : "Off")</badge>
+                    </div>
+                    <div class="card-body stack-sm">
+                        @if (mfaMethods.Count == 0)
+                        {
+                            <p class="text-sm text-muted">@(Model.IsSelf ? "Set it up on Profile → Sign-in security." : "The user hasn't set up a second step.")</p>
+                        }
+                        else
+                        {
+                            <span class="cluster">
+                                @foreach (var method in mfaMethods)
+                                {
+                                    <badge>@DotNetForge.Web.Services.Mfa.MfaService.Label(method.Type)</badge>
+                                }
+                            </span>
+                            @if (Model.CanSave && !Model.IsSelf)
+                            {
+                                <p class="text-sm text-muted">Lost their phone or key? Remove every method: they sign in with their password and set up a new one.</p>
+                                <form method="post" action="/admin/users/@Model.Id/mfa/reset"
+                                      data-confirm="Remove every two-step method and recovery code of @saved.Email? Until they set up a new one, their password alone signs them in."
+                                      data-confirm-title="Reset two-step verification" data-confirm-action="Remove methods">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-secondary btn-sm"><icon name="rotate-ccw" /> Reset two-step verification</button>
+                                </form>
+                            }
+                        }
+                    </div>
+                </section>
+            }
+
             @if (Model.CanSave && !Model.IsSelf)
             {
                 <section class="card" aria-labelledby="status-title">

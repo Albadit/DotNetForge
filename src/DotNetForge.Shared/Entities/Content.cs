@@ -149,7 +149,20 @@ public class MediaFile
 
     public string ContentType { get; set; } = "application/octet-stream";
 
+    /// <summary>The size of the stored object (after optimization, when that made it smaller).</summary>
     public long SizeBytes { get; set; }
+
+    /// <summary>
+    /// The size as uploaded, when optimization replaced the upload with a smaller version (.docs/features/media-storage.md#optimization);
+    /// null = stored as uploaded. Duplicate checks compare uploads with this size.
+    /// </summary>
+    public long? OriginalSizeBytes { get; set; }
+
+    /// <summary>Where the file is in optimization: videos wait for ffmpeg in the background.</summary>
+    public MediaOptimization Optimization { get; set; }
+
+    /// <summary>When the background compression took the file (UTC); a run that never finished is retried later.</summary>
+    public DateTime? OptimizationStartedDate { get; set; }
 
     public string RelativePath { get; set; } = string.Empty;
 

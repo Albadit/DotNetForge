@@ -1,7 +1,7 @@
 {
   "id": "dotnetforge.auth.discord",
   "name": "Discord Login",
-  "description": "Adds \"Sign in with Discord\" to the sign-in screen for users whose verified Discord email matches their CMS account.",
+  "description": "Adds \"Sign in with Discord\" to the sign-in screen: a verified Discord email signs in the CMS account with that email, or creates one while sign-ups are on.",
   "version": "2.0.0",
   "type": "authentication",
   "author": "Nimbus Integrations",

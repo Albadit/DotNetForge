@@ -21,12 +21,14 @@ public sealed class UsersController : AdminControllerBase
     private readonly DotNetForgeDbContext _db;
     private readonly UserManagementService _users;
     private readonly IRoleGrantStore _grants;
+    private readonly DotNetForge.Web.Services.Mfa.MfaService _mfa;
 
-    public UsersController(DotNetForgeDbContext db, UserManagementService users, IRoleGrantStore grants)
+    public UsersController(DotNetForgeDbContext db, UserManagementService users, IRoleGrantStore grants, DotNetForge.Web.Services.Mfa.MfaService mfa)
     {
         _db = db;
         _users = users;
         _grants = grants;
+        _mfa = mfa;
     }
 
     [HttpGet("")]
@@ -124,6 +126,35 @@ public sealed class UsersController : AdminControllerBase
     [RequirePermission(PermissionAreas.Users, PermissionActions.Update)]
     public Task<IActionResult> Disable(Guid id) => SetStatusAsync(id, enabled: false);
 
+    /// <summary>
+    /// Removes every second factor and recovery code of a user who lost them (.docs/features/mfa.md#lost-access); they
+    /// sign in with their password alone and set up a new method. Not for one's own account (use Sign-in security).
+    /// </summary>
+    [HttpPost("{id:guid}/mfa/reset")]
+    [ValidateAntiForgeryToken]
+    [RequirePermission(PermissionAreas.Users, PermissionActions.Update)]
+    public async Task<IActionResult> ResetMfa(Guid id)
+    {
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        if (id == CurrentUserId)
+        {
+            TempData["Error"] = "Change your own methods on Profile → Sign-in security.";
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        // ResetAsync writes the user.mfa.reset audit entry.
+        var removed = await _mfa.ResetAsync(user, HttpContext.RequestAborted);
+        TempData["Success"] = removed == 0
+            ? $"{user.Email} has no two-step methods."
+            : $"Two-step verification is off for {user.Email}. They sign in with their password and can set it up again.";
+        return RedirectToAction(nameof(Edit), new { id });
+    }
+
     [HttpPost("{id:guid}/delete")]
     [ValidateAntiForgeryToken]
     [RequirePermission(PermissionAreas.Users, PermissionActions.Delete)]
@@ -155,6 +186,8 @@ public sealed class UsersController : AdminControllerBase
 
     private async Task<UserFormModel> BuildFormAsync(Guid? id, UserInput input)
     {
+        // The aside's Two-step verification card.
+        ViewData["MfaMethods"] = id is { } editedId ? await _mfa.MethodsAsync(editedId, HttpContext.RequestAborted) : null;
         var roles = await _db.Roles.AsNoTracking()
             .OrderByDescending(r => r.IsBuiltIn).ThenBy(r => r.Name)
             .Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn })

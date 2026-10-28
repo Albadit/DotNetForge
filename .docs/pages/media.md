@@ -11,7 +11,7 @@ except `Developer`); what each role may do differs (see [Permissions](#permissio
 
 | Item | Value |
 | --- | --- |
-| Routes | `GET /admin/media` (`?folder={id}` shows a folder; unknown id → 404), `POST /admin/media/upload` (multipart, field `folderId`), `POST /admin/media/visibility/{id:guid}` (form field `isPublic`), `POST /admin/media/delete/{id:guid}`, `POST /admin/media/delete-selected` and `POST /admin/media/move-selected` (fields `ids` repeated, `folderId`, `returnFolder`), `POST /admin/media/folders` (`name`, `parentId`), `POST /admin/media/folders/{id:guid}/rename` (`name`), `/move` (`parentId`), `/delete` |
+| Routes | `GET /admin/media` (`?folder={id}` shows a folder; unknown id → 404), `POST /admin/media/upload` (multipart, field `folderId`), `POST /admin/media/visibility/{id:guid}` (form field `isPublic`), `POST /admin/media/{id:guid}/rename` (form field `name`), `POST /admin/media/delete/{id:guid}`, `POST /admin/media/delete-selected` and `POST /admin/media/move-selected` (fields `ids` repeated, `folderId`, `returnFolder`), `POST /admin/media/folders` (`name`, `parentId`), `POST /admin/media/folders/{id:guid}/rename` (`name`), `/move` (`parentId`), `/delete` |
 | Public file URLs | `GET /media/{id}/{fileName}` - served by `MediaFilesController` ([download flow](../features/media-storage.md#download-flow)) |
 | Navigation entry | Sidebar → **Main** → **Media** (`AdminNavigation.Tree`); breadcrumbs **Main / Media** |
 | Linked from | Dashboard: quick action **Upload media** (`/admin/media#upload`, shown when permitted) and the **Media files** KPI card (a link only for users who may open this screen) |
@@ -20,15 +20,16 @@ except `Developer`); what each role may do differs (see [Permissions](#permissio
 ## Relevant source files
 
 ```text
-src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs     list, upload, delete, DeleteSelected (MaxBulkDelete = 100); permission checks; request size limits
-src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs          MediaIndexViewModel (CanUpload, folder rights, Current, Breadcrumbs, Folders, AllFolders, Files), MediaFolderLink, MediaFolderRowViewModel, MediaRowViewModel (+ Url, CanDelete)
+src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs     list, upload ([MediaUploadLimit(Files = 10)]), delete, DeleteSelected (MaxBulkDelete = 100); permission checks
+src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs          MediaIndexViewModel (CanUpload, Limits, folder rights, Current, Breadcrumbs, Folders, AllFolders, Files), MediaFolderLink, MediaFolderRowViewModel, MediaRowViewModel (+ Url, CanDelete, OriginalSizeBytes, Optimization)
 src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml           Upload card (dropzone), Library card (toolbar, bulk bar, media cards, per-file menu)
 src/DotNetForge.Web/Ui/MediaPresentation.cs                        Classify (filter kind + icon), Size ("3.4 KB")
 src/DotNetForge.Web/Ui/UiTagHelpers.cs                             <icon>, <badge>, <timestamp>, <empty-state>, <form-errors>
-src/DotNetForge.Web/Services/MediaService.cs                       upload/delete rules, allowed types, size cap, keys, audit
+src/DotNetForge.Web/Services/MediaService.cs                       upload/delete rules, allowed types, per-kind limits, duplicates, image optimization, keys, audit
+src/DotNetForge.Web/Services/MediaSettings.cs                      the Media Library settings (upload limits, optimization) - edited on Settings → Media Library
 src/DotNetForge.Web/Services/MediaFolderService.cs                 folders: create, rename, move, delete (empty only), paths, moving files, audit
 src/DotNetForge.Web/Controllers/MediaFilesController.cs            the /media/{id} links and thumbnails
-src/DotNetForge.Web/wwwroot/js/forge/media.js                      drag and drop of files and folders onto folders and breadcrumbs
+src/DotNetForge.Web/wwwroot/js/forge/media.js                      Upload dialog (preview, per-kind size check), drag and drop of files and folders onto folders and breadcrumbs
 src/DotNetForge.Web/wwwroot/js/forge/ui.js                         collection (search/filter/paging), selection + bulk bar, view switch, dropzone, copy, confirm dialog
 src/DotNetForge.Web/wwwroot/css/forge/admin.css                    .media-items / .media-card grid and list layouts
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                  toasts (TempData) + confirm dialog, rendered by _AdminLayout
@@ -42,8 +43,9 @@ Media (_AdminLayout; header "Media" + description "Images, documents and other f
 ├── <dialog class="upload-dialog"> > card "Upload" (id upload)   only when CanUpload; never part of the page until opened: by [Upload], a file drag onto the page or #upload, and again after a failed upload; closed by [×] (clears the files), Esc or a click on the backdrop
 │   └── form (POST /admin/media/upload, multipart, antiforgery, hidden folderId = the folder shown)
 │       ├── <form-errors />                     one line per rejected file / problem
+│       ├── description "Up to 10 files into <folder>: images up to N MB, videos and audio up to N MB, other files up to N MB." (+ "Images are optimized[ and stored as WebP].")
 │       ├── .dropzone "Drop files here or click to choose"   allowed extensions; input type=file multiple required accept=…
-│       ├── preview (JS): one tile per chosen file - image thumbnail or file icon, name, size, "Too large" / "Type not allowed", [×] remove
+│       ├── preview (JS): one tile per chosen file - image thumbnail or file icon, name, size, "Too large (max …)" / "Type not allowed", [×] remove
 │       └── ☑ Public "Anyone with the link can open it. Private files need an admin sign-in."  (checked) · [Upload]
 ├── <dialog #new-folder-dialog> "New folder" / "In Library/…"   only when CanUpload: form#folder-create (POST /admin/media/folders, hidden parentId) Name · footer [Cancel] [Create folder]
 └── card "Library" [data-collection, 48 per page]   title = breadcrumbs "Library / Photos / 2026" (links); "N total" / "x of N"
@@ -54,9 +56,9 @@ Media (_AdminLayout; header "Media" + description "Images, documents and other f
     │       Move to ▾ [Move] (when a file may be moved) · [Delete selected] (when a file may be deleted; confirm)
     ├── .media-items (data-view-mode grid|list): the subfolders first (folder tiles), then one article.media-card per file
     │   ├── folder tile: folder icon · name (opens it) · "n folders · n files" · ⋯ Open · Edit… (Media update; dialog) · Delete (Media delete)
-    │   ├── file: ☐ select (CanDelete or CanChangeVisibility) · thumbnail or type icon → opens the file
-    │   │   name (link, new tab) · size · <timestamp> · badge Public / Private (lock) · content type (list view)
-    │   └── file ⋯ menu: Open · Copy link · Make private / Make public (CanChangeVisibility) · Delete (CanDelete)
+    │   ├── file: ☐ select (CanDelete or CanEdit) · thumbnail or type icon → opens the file
+    │   │   name (link, new tab) · size · <timestamp> · badge Public / Private (lock) · badge "Optimizing…" (video queued) - type and savings only in Info
+    │   └── file ⋯ menu: Open · Copy link · Info · Rename… (CanEdit) · Make private / Make public (CanEdit) · Delete (CanDelete)
     ├── empty state "No matching files"         [data-collection-empty]
     └── pagination                              JS, more than 48 matching items
     (nothing here → "No media yet" at the top level, "This folder is empty" inside a folder)
@@ -69,10 +71,10 @@ Component mechanics (cards, dropzone, collection, bulk bar, menu, toasts, confir
 
 | Component | Inputs | Behaviour |
 | --- | --- | --- |
-| Upload card | `CanUpload` (`Media/create`), `MediaService.AllowedTypes`, `MaxFilesPerUpload`, `MaxUploadBytes` | posts `files` (1-10) and `isPublic`; the file input covers the dropzone, so dropping files selects them natively (they upload on **Upload**) |
+| Upload card | `CanUpload` (`Media/create`), `MediaService.AllowedTypes`, `MaxFilesPerUpload`, `Limits` (the [Media Library settings](media-settings.md): per-kind limits as `data-max-image` / `data-max-video` / `data-max-other` in bytes, extensions per kind as `data-image-types` / `data-video-types`; `OptimizeImages`, `ConvertToWebP` for the description) | posts `files` (1-10) and `isPublic`; the file input covers the dropzone, so dropping files selects them natively (they upload on **Upload**) |
 | Library toolbar | items' `data-search` (name + content type), `data-kind`, `data-access` | search; type filter `image` / `video` / `audio` / `document` / `archive` (`MediaPresentation.Classify`); access filter `public` / `private` |
-| Media card | `MediaRowViewModel`, newest first | image files show the file itself as a lazy-loaded thumbnail (`/media/{id}/{name}`), others an icon by kind; size from `MediaPresentation.Size`; uploaded time relative, exact UTC in the tooltip |
-| Per-file menu | `Url`, `CanChangeVisibility`, `CanDelete` | **Open** (new tab), **Copy link** (absolute URL, toast), **Make private** / **Make public** (POST form with `data-confirm`), **Delete** (POST form with `data-confirm`) |
+| Media card | `MediaRowViewModel`, newest first | image files show the file itself as a lazy-loaded thumbnail (`/media/{id}/{name}`), others an icon by kind; size (the stored size) from `MediaPresentation.Size`; uploaded time relative, exact UTC in the tooltip; no content type and no saving on the card (both in [Info](#file-info)); `Pending` or `Processing` → badge **Optimizing…** (tooltip "The video is being compressed in the background") |
+| Per-file menu | `Url`, `CanEdit`, `CanDelete`, `OriginalName`, `UploadedBy` | **Open** (new tab), **Copy link** (absolute URL, toast), **Info** ([file info](#file-info)), **Rename…** ([rename](#rename-a-file)), **Make private** / **Make public** (POST form with `data-confirm`), **Delete** (POST form with `data-confirm`) |
 | Selection + bulk bar | rendered only when at least one file has `CanDelete`; checkboxes only on deletable files | each checkbox posts `ids` with `form="bulkDelete"`; **Delete selected** confirms first |
 
 ## Functionality
@@ -111,17 +113,23 @@ change when it moves. Folders nest without limit (the materialized path is at mo
 
 1. **Trigger:** click **Upload** in the header (or follow `#upload`), or drag files from the computer anywhere onto
    the page - the Upload popup opens (a modal `<dialog>`, focus on the file picker) and the dropped files are added. Each chosen file shows a preview (an image
-   thumbnail drawn as a `data:` image - the policy allows no `blob:` URLs - or a file icon, its size, and "Too large" /
-   "Type not allowed" when it will be refused) with a remove button. The same file (name, size, last change) is added
+   thumbnail drawn as a `data:` image - the policy allows no `blob:` URLs - or a file icon, its size, and "Too large
+   (max N MB)" - checked against the limit of the file's kind - or "Type not allowed" when it will be refused) with a
+   remove button. The same file (name, size, last change) is added
    only once however often it is dropped or picked, and **Upload** locks after the first click; optionally untick
    **Public**; **Upload**.
 2. **Validation:** `Media/create` permission (else `Forbid` → [Access denied](access-denied.md)); 1-10 files; the
-   request limit (25 MB × 10 + 1 MB); per file in `MediaService`: not empty, ≤ 25 MB, extension in `AllowedTypes`,
-   not a duplicate - a file with the same name and size already in that folder is refused ("'x' is already in this
-   folder (same name and size)."). The page builder's and the Content Manager's pickers get the existing file back
-   instead (`reuseDuplicate`, when its visibility matches).
-3. **Service:** `MediaService.UploadAsync` per file: generated storage key (`yyyy/MM/<random>.<ext>`),
-   `IFileStorage.SaveAsync`, `MediaFile` row, audit `media.uploaded` ([upload flow](../features/media-storage.md#upload-flow)).
+   request limit (the largest per-kind limit × 10 + 1 MB, `[MediaUploadLimit]`); per file in `MediaService`: not
+   empty, extension in `AllowedTypes`, not over the limit of its kind
+   ([upload limits](../features/media-storage.md#upload-limits): images, videos and audio, other files - by default
+   25 / 100 / 25 MB), not a duplicate - a file with the same original name and the same size as uploaded (also when
+   the stored copy was optimized) already in that folder is refused ("'x' is already in this folder (same name and
+   size)."). The page builder's and the Content Manager's pickers get the existing file back instead
+   (`reuseDuplicate`, when its visibility matches).
+3. **Service:** `MediaService.UploadAsync` per file: images optimized when on (a smaller re-encoded version replaces
+   the upload, possibly as `.webp`), generated storage key (`yyyy/MM/<random>.<ext>`), `IFileStorage.SaveAsync`,
+   `MediaFile` row (an MP4 is queued for background compression when that is on), audit `media.uploaded`
+   ([upload flow](../features/media-storage.md#upload-flow), [optimization](../features/media-storage.md#optimization)).
 4. **Result:** all stored → redirect with the toast "Uploaded N files." ("Uploaded 1 file."); any rejected → the same
    screen with one message per rejected file in `<form-errors />` (accepted files are stored and listed).
 
@@ -173,6 +181,26 @@ The name, thumbnail and **Open** open `/media/{id}/{name}` in a new tab: public 
 for signed-in admin-capable users. With S3 storage the browser is redirected to a short-lived presigned URL; with
 local storage the app streams the file. **Copy link** copies the absolute URL (`scheme://host/media/...`).
 
+### File info
+
+**Info** in a file's ⋯ menu opens the *File info* dialog (`#file-info-dialog`): Name, Uploaded as (the original name,
+when it differs), Type (the content type - not shown on the card), Size (plus "optimized from X, N% smaller" - the only place
+the saving is shown), Access, Folder, Uploaded (date in UTC and the uploader's
+email), Link (absolute) and Id. The view renders the rows as JSON in the button's `data-file-info`; `media.js` writes
+them as text. Needs JavaScript (the item is `data-js-only`).
+
+### Rename a file
+
+**Rename…** (shown with `CanEdit`; JavaScript) opens the *Rename file* dialog (`#file-rename-dialog`): the name without
+its extension, the extension shown beside the field, Cancel and Rename. It posts `/admin/media/{id}/rename` →
+`MediaService.RenameAsync`: the extension always stays (the stored and served type depends on it - a typed extension is
+dropped, another one becomes part of the name: `report.pdf` on a `.txt` file → `report.pdf.txt`), quotes, backslashes, slashes
+and control characters are removed, at most 200 characters with the extension. Only `FileName` changes - the id,
+the stored object and `OriginalName` stay - so links with the old name keep working (`/media/{id}/{any name}`) and
+downloads get the new name. Audit `media.updated` "Renamed from '<old>'"; toast "Renamed to '<new>'." (or "The name
+is unchanged."). Permission: `Media/update`, or `update.own` for the user's own uploads (otherwise
+`/account/denied`). Covered by `MediaTests.Rename_keeps_the_extension_and_the_old_links`.
+
 ### Make a file private or public
 
 **Make private** / **Make public** in a file's ⋯ menu, after a confirmation dialog, posts
@@ -191,9 +219,10 @@ and New folder are dialogs and need JavaScript.
 
 ## Data used by the page
 
-All `MediaFiles` (projected: id, name, type, size, public flag, upload date, uploader); the user's
-role claims for `CanUpload`/`CanDelete`; `MediaService` constants for the hint and `accept` list; the request scheme
-and host for **Copy link**.
+All `MediaFiles` (projected: id, name, type, size, uploaded size, optimization state, public flag, upload date,
+uploader); the user's role claims for `CanUpload`/`CanDelete`; `MediaService` constants and the Media Library settings
+(`MediaService.SettingsAsync`) for the hint, the per-kind limits and the `accept` list; the request scheme and host for
+**Copy link**.
 
 ## State
 
@@ -203,7 +232,7 @@ and host for **Copy link**.
 | Upload errors | `ModelState` | failed upload (same request, no redirect) |
 | Search, filters, page, selection | DOM only (`ui.js`) | lost on reload or after any POST |
 | Grid / list view | `localStorage` `dnf-view:media` | the view switch |
-| Files | `MediaFiles` rows + stored objects | upload, delete |
+| Files | `MediaFiles` rows + stored objects | upload, delete; a queued video's object, size and badge when the background compression finishes |
 
 ## Permissions
 
@@ -234,9 +263,12 @@ files removes nothing; the admin's removes exactly the selected files with one `
 | No file chosen | "Choose at least one file to upload." (the browser's `required` normally stops this first) |
 | More than 10 files | "Upload at most 10 files at a time." |
 | Empty file | "'name' is empty." |
-| Over 25 MB | "'name' is larger than 25 MB." |
+| Over the limit of its kind | "'name' is larger than N MB, the limit for images." (`videos and audio`, `this kind of file`) |
+| Same original name and uploaded size in the folder | "'name' is already in this folder (same name and size)." |
 | Extension not allowed (HTML, SVG, scripts, unknown) | "'name' has a file type that is not allowed." |
 | Storage unavailable | "'name' could not be stored right now. Try again later." |
+| Rename to an empty name | "Enter a name." (error toast) |
+| Rename to a longer name | "The name can have at most N characters." (200 minus the extension; error toast) |
 | Bulk delete with no file | "Select at least one file." (error toast) |
 | Bulk delete with more than 100 files | "Delete at most 100 files at a time." (error toast) |
 
@@ -278,7 +310,7 @@ pagination; file links (new tab); ⋯ menu (Open, Copy link, Delete with confirm
 ```text
 MediaController
 ├── DotNetForgeDbContext
-├── MediaService → IFileStorage, DotNetForgeDbContext, IAuditService, ILogger
+├── MediaService → IFileStorage, DotNetForgeDbContext, IAuditService, MediaSettingsService, VideoOptimizationQueue, Ffmpeg, ILogger
 └── AdminControllerBase (Can / CanModify → IPermissionService)
 ```
 
@@ -298,7 +330,8 @@ flowchart TD
 
 ## Related pages
 
-[Dashboard](dashboard.md) (**Media files** card, **Upload media** quick action), `GET /api/media`
+[Dashboard](dashboard.md) (**Media files** card, **Upload media** quick action), [Media Library settings](media-settings.md)
+(upload limits, optimization), [Data Management → media export](data-management.md#media-export) (all files as a .zip), `GET /api/media`
 ([headless API](../features/headless-api.md)), the download endpoint
 ([media storage](../features/media-storage.md#download-flow)).
 
@@ -321,7 +354,8 @@ flowchart TD
   filters work only on the items of the folder shown, in the browser. Folders have no visibility of their own.
 - The media pickers of the page builder and the Content Manager list all files, not by folder.
 - Bulk delete needs JavaScript (the bulk bar is hidden without it); single delete works without.
-- Allowed types and size limit are constants in `MediaService`, not settings.
+- Allowed types are constants in `MediaService`, not settings (the size limits are - [Media Library](media-settings.md)).
+- The card shows the stored size; an optimized file's uploaded size and saving are only in Info.
 - No content sniffing or malware scanning (types are decided by extension; active formats are not allowed).
 - Private files are visible to every signed-in admin-capable user (no per-file grants).
 

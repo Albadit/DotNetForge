@@ -254,7 +254,6 @@
 .media-meta { display: flex; flex-direction: column; gap: 0.2rem; padding: var(--space-2) var(--space-3) var(--space-3); min-width: 0; }
 .media-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text); font-weight: var(--weight-semibold); }
 .media-badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.media-type { display: none; }
 .media-select { position: absolute; z-index: 1; top: var(--space-2); left: var(--space-2); padding: 0.25rem; line-height: 0;
     border-radius: var(--radius-sm); background: var(--color-surface); box-shadow: var(--shadow-sm); }
 .media-actions { position: absolute; z-index: 1; top: var(--space-2); right: var(--space-2); }
@@ -269,7 +268,6 @@
 .media-items[data-view-mode="list"] .media-thumb .icon { width: 1.25rem; height: 1.25rem; }
 .media-items[data-view-mode="list"] .media-meta { flex: 1 1 auto; flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--space-4); padding: 0; }
 .media-items[data-view-mode="list"] .media-name { flex: 1 1 14rem; }
-.media-items[data-view-mode="list"] .media-type { display: inline; }
 .media-items[data-view-mode="list"] .media-actions { position: static; }
 
 /* ==== Plugins ============================================================================================== */
@@ -278,7 +276,9 @@
 .extension-card { min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
 .extension-card.is-enabled { border-color: var(--color-accent-soft-border); }
 .extension-head { display: flex; align-items: flex-start; gap: var(--space-3); min-width: 0; }
-/* A problem is an icon in the header; its details open in a popover (.docs/pages/plugins.md). */
+/* A problem is an icon next to the name; its details open in a popover (.docs/pages/plugins.md). The negative
+   margin keeps the name line as tall as without it. */
+.extension-head .extension-problem-button { margin-block: calc(var(--space-1) * -1); }
 .extension-problem-button.is-warning { color: var(--color-warning); }
 .extension-problem-button.is-danger { color: var(--color-danger); }
 .extension-problem { min-width: 0; width: min(24rem, calc(100vw - 2rem)); padding: 0; border: 0; background: transparent; box-shadow: var(--shadow-md); }
@@ -328,8 +328,10 @@
 .choice-row:has(input:disabled) { cursor: default; opacity: 0.75; }
 .effective-list { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .effective-list > li { display: flex; flex-direction: column; gap: var(--space-1); }
-.dl-compact { grid-template-columns: auto 1fr; column-gap: var(--space-4); }
+/* No column-gap: it would break the row lines between label and value; the label carries the space. */
+.dl-compact { grid-template-columns: auto 1fr; }
 .dl-compact > dt, .dl-compact > dd { padding: var(--space-2) 0; }
+.dl-compact > dt { padding-inline-end: var(--space-4); }
 .member-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 .member-list > li { padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
 .member-list > li:last-child { border-bottom: 0; }
@@ -575,6 +577,27 @@ button.code-status-item:focus-visible { outline: none; box-shadow: var(--focus-r
 .folder-dialog { width: min(32rem, calc(100vw - 2rem)); }
 .folder-dialog .dialog-body { display: flex; flex-direction: column; }
 .folder-dialog-row { flex-wrap: nowrap; }
+.file-dialog { width: min(36rem, calc(100vw - 2rem)); }
+.file-info > dd { overflow-wrap: anywhere; }
+.file-name-row { display: flex; align-items: center; gap: var(--space-2); }
+.file-name-row > input { flex: 1 1 auto; min-width: 0; }
+.file-name-extension { color: var(--color-text-muted); font-family: var(--font-mono); font-size: var(--text-sm); }
 /* The Upload card is the content of a <dialog class="dialog upload-dialog">, which fades it in and out. */
 .upload-dialog { width: min(46rem, calc(100vw - 2rem)); max-height: calc(100vh - 4rem); padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: auto; }
 .upload-dialog > .card { margin: 0; box-shadow: var(--shadow-lg); }
+
+/* ==== Media Library settings: the storage figures and three-column field rows =============================== */
+.stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--color-border); }
+.form-grid.form-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 40rem) { .stat-grid, .form-grid.form-grid-3 { grid-template-columns: 1fr; } }
+
+/* ==== Sign-in security, providers (.docs/pages/sign-in-security.md, .docs/pages/providers.md) ================ */
+.list-icon { display: grid; place-items: center; flex: 0 0 auto; width: 2.25rem; height: 2.25rem; border-radius: var(--radius);
+    background: var(--color-surface-muted); color: var(--color-text-muted); }
+.mfa-text { gap: 0.125rem; }
+.mfa-passkey-add { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.mfa-passkey-add > input { flex: 1 1 12rem; min-width: 0; max-width: 18rem; }
+.mfa-qr { align-self: flex-start; width: 12rem; height: 12rem; padding: var(--space-2); border-radius: var(--radius); background: #fff; image-rendering: pixelated; }
+.mfa-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-6); margin: 0; padding-left: 1.5rem; }
+.mfa-codes code { font-size: var(--text-base); letter-spacing: 0.05em; }
+@media (max-width: 30rem) { .mfa-codes { grid-template-columns: 1fr; } }

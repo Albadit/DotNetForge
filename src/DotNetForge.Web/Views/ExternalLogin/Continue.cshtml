@@ -1,0 +1,24 @@
+@model string
+@*
+    Between the "Sign in with ..." button and the provider (.docs/features/authentication.md#external-sign-in): a meta
+    refresh to the provider's sign-in page. A redirect from the button's form post would be blocked by the site's
+    Content-Security-Policy (form-action 'self').
+*@
+@{
+    Layout = "_AuthLayout";
+    var provider = ViewData["Provider"] as string ?? "the provider";
+    ViewData["Title"] = "Continuing to " + provider;
+}
+
+@section Head {
+    <meta name="referrer" content="no-referrer" />
+    <meta http-equiv="refresh" content="0;url=@Model" />
+}
+
+<div class="auth-heading auth-state">
+    <span class="dialog-icon" aria-hidden="true"><icon name="log-in" /></span>
+    <h1>Continuing to @provider…</h1>
+    <p class="text-muted">Sign in there, then you come back here.</p>
+</div>
+
+<a class="btn btn-primary btn-lg btn-block" href="@Model" rel="noreferrer">Continue to @provider</a>

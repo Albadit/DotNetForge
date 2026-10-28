@@ -40,7 +40,7 @@ behaviour under **Planned (not implemented)**; the gap is tracked in
 | Runtime view compilation | `Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation` (always on) - compiles extension views from `extensions/` **in memory** | `DependencyRegistration` |
 | Extension code | one non-collectible `AssemblyLoadContext` per extension (`ExtensionLoadContext`), host assemblies shared; extensions compile against `DotNetForge.Sdk` | `src/DotNetForge.Extensions`, `src/DotNetForge.Sdk` |
 | ORM | EF Core 10 on PostgreSQL (the CMS database, one migration set); provider registry + `IDatabaseService` for additional SQLite, PostgreSQL, SQL Server, MySQL or MongoDB databases ([database layer](../database/architecture.md)) | `src/DotNetForge.Data` |
-| Auth | ASP.NET Core cookie authentication + a custom `ApiToken` bearer scheme; Data Protection key ring persisted to the database | `DependencyRegistration`, `ApiTokenAuthenticationHandler` |
+| Auth | ASP.NET Core cookie authentication + a custom `ApiToken` bearer scheme; built-in OAuth providers on ASP.NET Core's `OAuthHandler`; two-factor authentication (TOTP in-house, passkeys with `Fido2`); Data Protection key ring persisted to the database | `DependencyRegistration`, `ApiTokenAuthenticationHandler`, `src/DotNetForge.Web/Authentication/`, `src/DotNetForge.Web/Services/Mfa/` |
 | File storage | `IFileStorage`: local directory or any S3-compatible service (`AWSSDK.S3`) | `src/DotNetForge.Infrastructure/Storage` |
 | Request hardening | `SecurityHeadersMiddleware` (CSP and friends), built-in rate limiter (`AddRateLimiter`) | `src/DotNetForge.Web/Middleware/`, `DependencyRegistration` |
 | API docs | `Microsoft.AspNetCore.OpenApi` builds the OpenAPI document of `/api/*` and the custom endpoints; `Scalar.AspNetCore` renders it at `/admin/api-docs/reference/` ([API docs](../features/api-docs.md)) | `src/DotNetForge.Web/ApiDocs/`, `DependencyRegistration` (`AddOpenApi`) |
@@ -60,7 +60,7 @@ flowchart TB
         Program["src/DotNetForge.Web/Program.cs"]
         DI["src/DotNetForge.Web/Startup/DependencyRegistration.cs"]
         MW["src/DotNetForge.Web/Middleware/ (SecurityHeaders, Installation) + Startup/ExtensionHosting.cs (extension gate)"]
-        PubCtl["src/DotNetForge.Web/Controllers/ (Home, Account, ExternalLogin, Setup, MediaFiles, ExtensionView)"]
+        PubCtl["src/DotNetForge.Web/Controllers/ (Home, Account, ExternalLogin, MfaLogin, Setup, MediaFiles, ExtensionView)"]
         AdminCtl["src/DotNetForge.Web/Areas/Admin/Controllers"]
         Svc["src/DotNetForge.Web/Services/ (AuthService, AuditService, PageService, MediaService, ...)"]
     end
@@ -131,8 +131,9 @@ DotNetForge/                         repository root
 │   │   ├── Middleware/
 │   │   │   ├── SecurityHeadersMiddleware.cs  CSP (a nonce'd script-src for the Scalar page only), nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
 │   │   │   └── InstallationMiddleware.cs     redirects to /setup until installed; blocks /setup after
-│   │   ├── Services/                web-host application services (need HttpContext or the DbContext)
-│   │   ├── Controllers/             non-area controllers: public site, media files, account, external sign-in, setup, extension views/resources
+│   │   ├── Services/                web-host application services (need HttpContext or the DbContext); Mfa/ = two-factor authentication
+│   │   ├── Authentication/          the built-in OAuth providers: catalog, handler, runtime scheme registry, settings service
+│   │   ├── Controllers/             non-area controllers: public site, media files, account, external sign-in, two-factor step, setup, extension views/resources
 │   │   ├── Components/              public view components (ExtensionModules)
 │   │   ├── Ui/                      UI tag helpers (UiTagHelpers.cs) + presentation helpers (AuditPresentation, MediaPresentation)
 │   │   ├── Areas/Admin/
@@ -229,10 +230,17 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 
 | Class | Registered as | Lifetime | Responsibility | Used by |
 | --- | --- | --- | --- | --- |
-| `AuthService` | self | scoped | Email/password validation with lockout; builds the cookie `ClaimsPrincipal` (user id, name, email, roles); `IsActiveAsync` (user exists and is `Enabled`). Defines `SignInStatus`, `SignInResult`. | `AccountController`, `SetupController`, `DependencyRegistration.ValidateSessionAsync` |
+| `AuthService` | self | scoped | Email/password validation with lockout; matching a provider's verified email (`ValidateExternalAsync`); the hand-over to and from the second step (`SecondFactorRequired`, `CompleteSecondFactorAsync`, `RecordFailedSecondFactorAsync`); builds the cookie `ClaimsPrincipal` (user id, name, email, roles); `IsActiveAsync` (user exists and is `Enabled`). Defines `SignInStatus`, `SignInResult`. | `AccountController`, `ExternalLoginController`, `MfaLoginController`, `SetupController`, `ProfileController`, `DependencyRegistration.ValidateSessionAsync` |
+| `AccountService` | self | scoped | Self-service accounts: registration (also `RegisterExternalAsync`, sign-up through a provider), reset and confirmation links, the template emails (incl. the two-factor **Sign-in code**). | `AccountController`, `AuthService`, `ExternalLoginController`, `MfaService` |
+| `LoginProviders` | self | singleton | The "Sign in with ..." buttons: enabled built-in OAuth providers, then those of active `authentication` extensions (`LoginOption`). | `AccountController`, `ExternalLoginController`, `AuthProvidersController` |
+| `Mfa/MfaService`, `Mfa/MfaSettingsService` (+ `MfaSettings`, `Totp`, `PendingSignIn`, `ISmsSender`/`TwilioSmsSender`) | self / self / `ISmsSender` | scoped (SMS: typed `HttpClient`) | Two-factor authentication: methods (authenticator app, passkeys, email and SMS codes), recovery codes, reset, the `mfa.*` settings and the requirement, the `dnf.mfa` pending sign-in ([MFA](../features/mfa.md)). | `AuthService`, `MfaLoginController`, `SecurityController`, `MfaSettingsController`, `ProfileController`, `UsersController`, `AdminControllerBase` |
 | `AuditService` | `IAuditService` | scoped | Appends an `AuditLogEntry` with the acting user (or `API token {id}` with `UserId = null`), IP and user agent; truncates snapshots to the column lengths. | `AccountController`, `SetupController`, `PagesController`, `SettingsController`, `ApiTokensController`, `MediaService`, `ContentApiController`, the `DotNetForge.Content` services |
 | `PageService` | `IPageService` | scoped | Every content-page rule: `ApplyAsync`, `ReorderAsync`, `DeleteAsync` (validate and mutate, **never save**); static `Slugify`, `ToUtc`, `IsDynamic`. | `PagesController`, `ContentApiController` |
-| `MediaService` | self | scoped | Upload rules (`AllowedTypes`, `MaxUploadBytes` 25 MB, `MaxFilesPerUpload` 10), generated storage keys, `MediaFile` rows, delete, audit; static `IsInline`, `UrlFor`. | `MediaController`; statics also by `MediaFilesController` and `Media/Index.cshtml` |
+| `MediaService` | self | scoped | Upload rules (`AllowedTypes`, per-kind limits from the Media Library settings, `MaxFilesPerUpload` 10, duplicates), image optimization, queueing videos for compression, generated storage keys, `MediaFile` rows, delete, audit; static `IsInline`, `UrlFor`. | `MediaController`, `ContentController`, `PageBuilderController`, `[MediaUploadLimit]`; statics also by `MediaFilesController` and `Media/Index.cshtml` |
+| `MediaSettingsService` (+ `MediaSettings`, `MediaUploadLimitAttribute`) | self | scoped | The Media Library settings (`Settings` rows `media.*`): read, validate, save + audit; the attribute sizes upload requests to them ([media storage → upload limits](../features/media-storage.md#upload-limits)). | `MediaService`, `MediaSettingsController`, `VideoOptimizationService` |
+| `ImageOptimizer` | static | - | Re-encodes an uploaded image with SkiaSharp (upright, scaled, quality, optional WebP); pure, no I/O. | `MediaService` |
+| `Ffmpeg`, `VideoOptimizationQueue`, `VideoOptimizationService` | self / self / hosted | singleton | ffmpeg from `FFMPEG_PATH` (probe, compress); the wake-up signal; the background job that compresses queued MP4 uploads one at a time ([media storage → videos](../features/media-storage.md#videos)). | `MediaService`, `MediaSettingsController`; host |
+| `MediaExportService` | self | scoped | Streams every media file in its folders plus `media.json` as a .zip; transfer record + audit ([media export](../pages/data-management.md#media-export)). | `DataManagementController` |
 | `InstallationStatusCache` | self | singleton | Caches the one-way "installed" flag so the middleware stops querying the DB after install. | `InstallationMiddleware`, `SetupController`, integration tests |
 | `ScheduledPublishingService` | hosted | singleton | Every 15 s finalizes due publish/unpublish schedules. | host |
 | `ContentRenderService` | self | scoped | The entries every content list of a layout shows (queries, media, linked entries → item data); flags a missing detail entry | `HomeController`, `PageLayoutViewComponent`, `PageBuilderController` (preview), `ContentController` (list columns) |
@@ -253,6 +261,8 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 | `HomeController` | `GET /`, fallback `{*path:nonfile}` → `RenderPage`, `/error` (any HTTP method) | Public site and the error screen |
 | `MediaFilesController` | `GET /media/{id:guid}/{fileName?}` | Media downloads: redirect to a presigned URL (S3) or stream (local). Private files only for admin-capable users, else 404. |
 | `AccountController` | `/login` (GET/POST, POST rate-limited; `/account/login` → 301), `/register`, `/forgot-password`, `/reset-password`, `/confirm-email`, `/confirm-email/resend`, `/account/logout` (POST), `/account/denied` | Cookie sign-in/out, self-service accounts ([authentication](../features/authentication.md#self-service-accounts)) |
+| `ExternalLoginController` | `POST /account/external/{scheme}`, `GET /account/external/callback`, `GET /account/external/failed` | Sign-in (and sign-up) with a built-in or extension provider ([external sign-in](../features/authentication.md#external-sign-in)) |
+| `MfaLoginController` | `/login/mfa` (+ `send`, `passkey/options`, `passkey`, `cancel`) | The second sign-in step ([MFA → sign-in](../features/mfa.md#sign-in)) |
 | `SetupController` | `/setup` (GET/POST, POST rate-limited) | Setup wizard; writes `cms.installed` |
 | `ExtensionViewController` | `/admin/ext/{id}/raw`, `/admin/ext/{id}/resources/{**path}` | Renders an admin extension's own Razor document and assets. Lives outside the area so its views resolve from `extensions/` with no admin layout. Protected by the `AdminArea` policy. |
 
@@ -317,7 +327,7 @@ The shared kernel referenced by everything above `Abstractions`.
 
 | Folder | Contents |
 | --- | --- |
-| `Entities/` | `User`, `Role`, `RolePermission`, `UserRole`, `Page`, `MediaFile`, `ApiToken`, `Webhook`, `WebhookDelivery`, `AuditLogEntry`, `InstalledExtension`, `SystemState`, `Setting`, `AuthProvider`, `ContentType`, `ContentEntry`, `ContentEntryValue` (`StructuredContent.cs`) |
+| `Entities/` | `User`, `Role`, `RolePermission`, `UserRole`, `Page`, `MediaFile`, `ApiToken`, `Webhook`, `WebhookDelivery`, `AuditLogEntry`, `InstalledExtension`, `SystemState`, `Setting`, `AuthProvider`, `UserMfaMethod`, `UserRecoveryCode` (`UserMfa.cs`), `ContentType`, `ContentEntry`, `ContentEntryValue` (`StructuredContent.cs`) |
 | `Enums/Enums.cs` | `StorageProvider`, `UserStatus`, `ExtensionType`, `ExtensionStatus`, `TokenDuration`, `PageType`, `WebhookOutcome`, `ContentTypeKind` |
 | `Media/MediaUrls.cs` | `MediaUrls.For(id, fileName)` - the `/media/{id}/{name}` path (admin, renderer and API) |
 | `Constants/` | `Roles`, `PermissionAreas`, `PermissionActions`, `PermissionKeys`, `AuditActions`, `WebhookEvents`, `RateLimitPolicies`, `AuthorizationPolicies` |
@@ -460,7 +470,7 @@ Outside Development `DATABASE_CONNECTION_STRING` and the `STORAGE_S3_*` settings
 | Domain | Entities | Owning code | Screens / endpoints |
 | --- | --- | --- | --- |
 | Installation | `SystemState` | `InstallationService`, `InstallationStore`, `InstallationMiddleware`, `InstallationStatusCache` | [Setup](../pages/setup.md) |
-| Identity & access | `User`, `Role`, `RolePermission`, `UserRole`, `AuthProvider` | `AuthService`, `AccountController`, `PermissionMatrix`, `PermissionService`, `AdminControllerBase.Can`/`CanModify` | [Login](../pages/login.md), [Users](../pages/users.md), [Roles](../pages/roles.md) |
+| Identity & access | `User`, `Role`, `RolePermission`, `UserRole`, `AuthProvider`, `UserMfaMethod`, `UserRecoveryCode` | `AuthService`, `AccountController`, `ExternalLoginController`, `OAuthProviderRegistry`, `MfaService`, `PermissionMatrix`, `PermissionService`, `AdminControllerBase.Can`/`CanModify` | [Login](../pages/login.md), [Users](../pages/users.md), [Roles](../pages/roles.md), [Providers](../pages/providers.md), [Two-factor authentication](../pages/mfa.md), [Sign-in security](../pages/sign-in-security.md) |
 | Pages | `Page` | `IPageService`/`PageService`, `PagesController`, `ContentApiController`, `HomeController`, `ScheduledPublishingService` | [Pages](../pages/pages.md), [public site](../pages/public-home.md) |
 | Structured content | `ContentType`, `ContentEntry`, `ContentEntryValue` | `Core/Content`, `DotNetForge.Content`, `ContentController`, `ContentTypesController`, `ContentRenderService`, `EntriesApiController` | [Content Manager](../pages/content-manager.md), [Content types](../pages/content-types.md), `/api/entries` |
 | Media | `MediaFile` (+ objects in `IFileStorage`) | `MediaService`, `MediaController`, `MediaFilesController`, `MediaApiController` (read-only) | [Media](../pages/media.md), `/media/{id}/{fileName}` |
@@ -542,7 +552,9 @@ All registrations are in `src/DotNetForge.Web/Startup/DependencyRegistration.Add
 Two schemes: the default **cookie** scheme (`dnf.auth`, 8 h sliding, `Secure` always outside Development) for the
 admin, and **`ApiToken`** (bearer) selected only by `ApiControllerBase` (custom endpoints compare their own token in
 `CustomEndpointsApiController` instead); plus the 10-minute `dnf.external` cookie that
-carries a sign-in extension's result to `ExternalLoginController`. Every cookie request is re-validated
+carries a provider's result (built-in `oauth-<key>` schemes, added at runtime by `OAuthProviderRegistry`, or an
+extension's) to `ExternalLoginController`, and the 10-minute `dnf.mfa` cookie of a sign-in waiting for its
+[second factor](../features/mfa.md). Every cookie request is re-validated
 (`OnValidatePrincipal` → `AuthService.IsActiveAsync`, cached 30 s), so disabled or deleted users are signed out.
 The Data Protection key ring that protects cookies, antiforgery tokens and TempData is stored in the
 `DataProtectionKeys` table, so sessions survive restarts and work across instances. See
@@ -663,7 +675,7 @@ runs `docker/compose.app.yml` - read-only root filesystem, `/tmp` tmpfs - and ch
 | Extension code | memory (assemblies are read into memory, files never locked; built `bin/` folders ship with the publish output) |
 | Enabled extensions | `InstalledExtensions` table (cached 30 s per instance) |
 | Multipart bodies over 64 KB | OS temp directory (`ASPNETCORE_TEMP` or `/tmp`) - must be writable (tmpfs in containers) |
-| Session/token caches, rate-limit counters, extension caches, audit event queue | process memory, per instance |
+| Session/token caches, two-factor caches, the built-in OAuth schemes (re-read every 30 s), rate-limit counters, extension caches, audit event queue | process memory, per instance |
 
 Pipeline and hosting choices outside Development: `UseExceptionHandler("/error")` + `UseHsts()`;
 `SecurityHeadersMiddleware` with an enforced CSP; cookie `SecurePolicy = Always`; `UseRateLimiter()` after
@@ -731,9 +743,10 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
   (`Database/Providers/PostgreSql/Migrations/`, [database](database.md)); model-driven
   import/export ([transfer and updates](../features/transfer-and-updates.md)).
 - **Authentication:** pluggable providers registered through DI and supplied by `authentication` extensions in
-  `extensions/authentication/` (✔ `AddLoginProvider`, [external sign-in](../features/authentication.md#external-sign-in-extensions));
-  built-in Email provider ✔; external providers (Auth0, GitHub, Google, Microsoft, ...) with Name, Status and a
-  Settings action; rate limiting ✔ (`credentials` policy on sign-in and setup); advanced user
+  `extensions/authentication/` (✔ `AddLoginProvider`, [extension providers](../features/authentication.md#extension-providers));
+  built-in Email provider ✔; external providers with Name, Status and a Settings action (✔ ten built-in OAuth
+  providers on the [Providers](../pages/providers.md) screen; ✘ Auth0, CAS, Cognito, Keycloak and the other OIDC
+  ones); rate limiting ✔ (`credentials` policy on sign-in and setup); advanced user
   settings ([authentication](../features/authentication.md)).
 - **Authorization:** a permission check on every admin and API action (✔ API keys; ✔ Pages, Content Manager and Media
   `(area, action)` checks; other admin screens use role checks); roles created, edited, duplicated, deleted and
@@ -743,10 +756,10 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
   history with rollback; dynamic routes resolve content, modules, controllers or extension handlers
   ([content pages and routing](../features/content-pages-and-routing.md)).
 - **Media:** storage behind an interface ✔ (`IFileStorage`, local and S3 built in); external connectors from
-  `extensions/connectors/` ✔ ([storage connectors](../features/media-storage.md#storage-connectors)); type and size validation ✔ (fixed list and 25 MB in `MediaService`), configurable allowed
-  types and max size; public/private with access control ✔ (`MediaFilesController`); unsafe-upload scanning;
-  optional small/medium/large variants, optimisation, EXIF auto-orientation
-  ([media storage](../features/media-storage.md)).
+  `extensions/connectors/` ✔ ([storage connectors](../features/media-storage.md#storage-connectors)); type and size validation ✔ (fixed type list in `MediaService`, per-kind size limits ✔ on
+  [Media Library settings](../pages/media-settings.md)), configurable allowed types; public/private with access
+  control ✔ (`MediaFilesController`); unsafe-upload scanning; optional small/medium/large variants, optimisation ✔
+  (images on upload, MP4 videos with ffmpeg), EXIF auto-orientation ✔ ([media storage](../features/media-storage.md)).
 - **Themes:** `theme` extensions in `extensions/themes/` with layouts, page templates, assets, settings and preview;
   per-page theme, default site theme (✔ one site-wide theme with views, assets and read-only
   settings - [themes](../features/themes.md)).
@@ -787,8 +800,8 @@ Update/rollback and import/export criteria are tracked in [transfer and updates]
   additional database.
 - [x] The database is configured from `.env` (`DATABASE_CONNECTION_STRING`, always PostgreSQL, resolved by
   `DatabaseProviderRegistry`; additional databases `DATABASES_<NAME>_*`).
-- [ ] Authentication providers are pluggable via DI and extensions, with Email built in (✔ extensions via
-  `AddLoginProvider`, existing users only; no provider management).
+- [x] Authentication providers are pluggable via DI and extensions, with Email built in (extensions via
+  `AddLoginProvider`; ten built-in OAuth providers managed on the Providers screen).
 - [ ] RBAC enforces a permission check on every admin and API action with the six default roles (roles ✔ seeded;
   API ✔; Pages, Content Manager and Media ✔ via `Can`/`CanModify`; other admin screens use role checks).
 - [x] Permission areas cover Collection types, Single types, Plugins, Settings, Extensions, Media, Users, Roles, API,

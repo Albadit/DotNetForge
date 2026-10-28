@@ -48,8 +48,8 @@
             <section class="card" aria-labelledby="password-title">
                 <div class="card-header">
                     <div>
-                        <h2 class="card-title" id="password-title">Password</h2>
-                        <p class="card-description">At least 8 characters with a letter and a number.</p>
+                        <h2 class="card-title" id="password-title">@(Model.HasPassword ? "Password" : "Set a password")</h2>
+                        <p class="card-description">@(Model.HasPassword ? "" : "You signed up with a sign-in provider. With a password you can also sign in with your email. ")At least 8 characters with a letter and a number.</p>
                     </div>
                 </div>
                 <div class="card-body stack">
@@ -57,10 +57,13 @@
                     {
                         <form-errors />
                     }
-                    <div class="field">
-                        <label class="field-label" for="CurrentPassword">Current password<span class="field-required" aria-hidden="true">*</span></label>
-                        <input id="CurrentPassword" name="CurrentPassword" type="password" required autocomplete="current-password" />
-                    </div>
+                    @if (Model.HasPassword)
+                    {
+                        <div class="field">
+                            <label class="field-label" for="CurrentPassword">Current password<span class="field-required" aria-hidden="true">*</span></label>
+                            <input id="CurrentPassword" name="CurrentPassword" type="password" required autocomplete="current-password" />
+                        </div>
+                    }
                     <div class="form-grid">
                         <div class="field">
                             <label class="field-label" for="NewPassword">New password<span class="field-required" aria-hidden="true">*</span></label>
@@ -73,10 +76,23 @@
                     </div>
                 </div>
                 <div class="card-footer">
-                    <button type="submit" class="btn btn-primary"><icon name="key" /> Change password</button>
+                    <button type="submit" class="btn btn-primary"><icon name="key" /> @(Model.HasPassword ? "Change password" : "Set password")</button>
                 </div>
             </section>
         </form>
+
+        <section class="card" aria-labelledby="security-title">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="security-title">Two-step verification</h2>
+                    <p class="card-description">@(Model.MfaMethods > 0 ? "After your password you confirm with an authenticator app, a passkey or a code." : "Add a second step after your password: an authenticator app, a passkey or a code.")</p>
+                </div>
+                <badge tone="@(Model.MfaMethods > 0 ? Tone.Success : Tone.Neutral)" dot="true">@(Model.MfaMethods > 0 ? "On" : "Off")</badge>
+            </div>
+            <div class="card-footer">
+                <a class="btn btn-secondary" href="/admin/profile/security"><icon name="shield" /> Sign-in security</a>
+            </div>
+        </section>
     </div>
 
     <aside class="editor-aside">

@@ -24,11 +24,13 @@ public sealed class DataManagementController : AdminControllerBase
     public const long MaxImportBytes = 512L * 1024 * 1024;
 
     private readonly DatabaseTransferService _transfer;
+    private readonly MediaExportService _mediaExport;
     private readonly DotNetForgeDbContext _db;
 
-    public DataManagementController(DatabaseTransferService transfer, DotNetForgeDbContext db)
+    public DataManagementController(DatabaseTransferService transfer, MediaExportService mediaExport, DotNetForgeDbContext db)
     {
         _transfer = transfer;
+        _mediaExport = mediaExport;
         _db = db;
     }
 
@@ -42,6 +44,9 @@ public sealed class DataManagementController : AdminControllerBase
         public required DatabaseTransferService.BackupSchedule Schedule { get; init; }
         public required List<TransferRecord> Backups { get; init; }
         public required List<TransferRecord> History { get; init; }
+
+        /// <summary>What the media export holds: files and their stored size.</summary>
+        public required (int Files, long Bytes) Media { get; init; }
 
         /// <summary>Who started a run (email), by user id.</summary>
         public required Dictionary<Guid, string> Users { get; init; }
@@ -64,6 +69,53 @@ public sealed class DataManagementController : AdminControllerBase
 
         // FileStreamResult disposes the temporary file (deleted on close) after the response.
         return File(file.Content, "application/zip", file.FileName);
+    }
+
+    /// <summary>
+    /// Every media file in its library folders plus <c>media.json</c>, streamed as it is read from the storage (no
+    /// temporary copy, however large the library). <see cref="MediaExportService"/> records it and writes the audit entry.
+    /// </summary>
+    [HttpPost("export-media")]
+    [ValidateAntiForgeryToken]
+    public async Task ExportMedia()
+    {
+        var fileName = MediaExportService.FileName(DateTime.UtcNow);
+        StartZipDownload(fileName);
+        await _mediaExport.WriteAsync(Response.Body, fileName, CurrentUserId, HttpContext.RequestAborted);
+    }
+
+    /// <summary>
+    /// "Database and media": the database export (recorded by <see cref="DatabaseTransferService"/>) and the media
+    /// export in one .zip - the export file unchanged at the root, the files under <c>media/</c>.
+    /// </summary>
+    [HttpPost("export-all")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ExportAll(string? database)
+    {
+        // ExportAsync writes the TransferExported audit entry of the database part.
+        var (file, error) = await _transfer.ExportAsync(CurrentUserId, database, HttpContext.RequestAborted);
+        if (file is null)
+        {
+            TempData["Error"] = error;
+            return RedirectToAction(nameof(Index));
+        }
+
+        await using (file)
+        {
+            var fileName = MediaExportService.FileName(DateTime.UtcNow, withDatabase: true);
+            StartZipDownload(fileName);
+            await _mediaExport.WriteAsync(Response.Body, fileName, CurrentUserId, HttpContext.RequestAborted, file);
+        }
+
+        return new EmptyResult();
+    }
+
+    private void StartZipDownload(string fileName)
+    {
+        var disposition = new ContentDispositionHeaderValue("attachment");
+        disposition.SetHttpFileName(fileName);
+        Response.ContentType = "application/zip";
+        Response.Headers.ContentDisposition = disposition.ToString();
     }
 
     [HttpPost("backups")]
@@ -226,6 +278,7 @@ public sealed class DataManagementController : AdminControllerBase
             Schedule = await _transfer.GetScheduleAsync(ct),
             Backups = backups,
             History = history,
+            Media = await _mediaExport.SummaryAsync(ct),
             Users = await _db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Email, ct),
         };
     }
