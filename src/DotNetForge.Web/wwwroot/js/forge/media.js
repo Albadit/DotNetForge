@@ -3,6 +3,8 @@
 //   the chosen files are previewed (image thumbnails, size, too large / type not allowed) and can be removed.
 // - Edit folder: "Edit…" in a folder's menu opens #folder-dialog (rename, move) for that folder.
 // - File info / rename: "Info" and "Rename…" in a file's menu open #file-info-dialog and #file-rename-dialog.
+// - Preview: a file's thumbnail, name or "Preview" opens #media-preview (← / → step through the shown files);
+//   Ctrl/Cmd/Shift/middle click still opens the file in a new tab.
 // - Drag and drop (#folders): drag files - or every selected file - and folders onto a folder tile, or onto a
 //   breadcrumb to move them up. A drop posts the same forms as the Move buttons (#dragMove), so the server's rules and
 //   permission checks apply; the page reloads with the result. Without JavaScript (or on touch screens) the Move
@@ -15,6 +17,7 @@
     folderDialog();
     newFolderDialog();
     fileDialogs();
+    previewDialog();
 
     var form = document.getElementById("dragMove");
     if (!form) { return; }
@@ -22,7 +25,7 @@
     var dragged = null; // { kind: "file" | "folder", ids: [...] }
 
     function selectedFileIds() {
-        return Array.prototype.slice.call(document.querySelectorAll("[data-select-item]:checked"))
+        return Array.prototype.slice.call(document.querySelectorAll("input[name=ids][data-select-item]:checked"))
             .map(function (box) { return box.value; });
     }
 
@@ -360,6 +363,161 @@
                 form.elements.name.select();
             }
         });
+    }
+
+    // ---- Preview dialog ---------------------------------------------------------------------------------------------
+    function previewDialog() {
+        var dialog = document.getElementById("media-preview");
+        if (!dialog || typeof dialog.showModal !== "function") { return; }
+        var stage = dialog.querySelector("[data-preview-stage]");
+        var title = dialog.querySelector("[data-preview-title]");
+        var subtitle = dialog.querySelector("[data-preview-subtitle]");
+        var copy = dialog.querySelector("[data-preview-copy]");
+        var tab = dialog.querySelector("[data-preview-tab]");
+        var download = dialog.querySelector("[data-preview-download]");
+        var icons = document.getElementById("media-preview-icons");
+        var current = null;
+
+        function icon(name) {
+            var source = icons.content.querySelector("[data-icon='" + name + "']");
+            var copyOf = source.cloneNode(true);
+            copyOf.removeAttribute("data-icon");
+            return copyOf;
+        }
+
+        function el(tag, className, text) {
+            var node = document.createElement(tag);
+            if (className) { node.className = className; }
+            if (text !== undefined) { node.textContent = text; }
+            return node;
+        }
+
+        // The files shown right now (search, filter and paging respected), in screen order.
+        function shown() {
+            return Array.prototype.slice.call(document.querySelectorAll("[data-preview]")).filter(function (card) { return !card.hidden; });
+        }
+
+        function size(bytes) {
+            return bytes < 1024 ? bytes + " B" : bytes < 1048576 ? (bytes / 1024).toFixed(1) + " KB" : (bytes / 1048576).toFixed(1) + " MB";
+        }
+
+        function fallback(card, note) {
+            var box = el("div", "media-preview-fallback");
+            box.appendChild(icon("file"));
+            box.appendChild(el("strong", null, card.getAttribute("data-preview-name")));
+            box.appendChild(el("span", "text-sm text-muted", note || "No preview for this kind of file. Download it, or open it in a new tab."));
+            return box;
+        }
+
+        function zipListing(card) {
+            var box = el("div", "media-preview-zip");
+            box.appendChild(el("p", "text-sm text-muted", "Reading the archive…"));
+            fetch("/admin/media/" + card.getAttribute("data-preview") + "/zip", { credentials: "same-origin", headers: { "Accept": "application/json" } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (current !== card) { return; }
+                    box.textContent = "";
+                    if (data.error) { box.appendChild(fallback(card, data.error)); return; }
+                    box.appendChild(el("p", "text-sm text-muted", data.total + (data.total === 1 ? " item" : " items") + (data.total > data.entries.length ? ", the first " + data.entries.length + " listed" : "")));
+                    var list = el("ul", "media-preview-entries");
+                    data.entries.forEach(function (entry) {
+                        var row = el("li");
+                        if (entry.folder) { row.appendChild(icon("folder")); }
+                        row.appendChild(el("span", "grow text-truncate", entry.name));
+                        if (!entry.folder) { row.appendChild(el("span", "text-xs text-muted", size(entry.size))); }
+                        list.appendChild(row);
+                    });
+                    box.appendChild(list);
+                })
+                .catch(function () { if (current === card) { box.textContent = ""; box.appendChild(fallback(card, "The archive couldn't be read. Download it instead.")); } });
+            return box;
+        }
+
+        function content(card) {
+            var type = card.getAttribute("data-preview-type") || "";
+            var url = card.getAttribute("data-preview-url");
+            var inline = "/admin/media/" + card.getAttribute("data-preview") + "/inline";
+            var node;
+            if (type.indexOf("image/") === 0) {
+                node = el("img", "media-preview-image");
+                node.alt = card.getAttribute("data-preview-name");
+                node.src = url;
+            } else if (type.indexOf("video/") === 0) {
+                node = el("video", "media-preview-video");
+                node.controls = true;
+                node.preload = "metadata";
+                node.src = url;
+            } else if (type.indexOf("audio/") === 0) {
+                node = el("div", "media-preview-audio");
+                var audio = el("audio");
+                audio.controls = true;
+                audio.preload = "metadata";
+                audio.src = url;
+                node.appendChild(audio);
+            } else if (type === "application/pdf" || type.indexOf("text/") === 0) {
+                // From this site's own origin: object storage can't be framed (CSP frame-src).
+                node = el("iframe", "media-preview-frame");
+                node.title = card.getAttribute("data-preview-name");
+                node.src = inline;
+            } else if (type === "application/zip") {
+                node = zipListing(card);
+            } else {
+                node = fallback(card);
+            }
+            return node;
+        }
+
+        function show(card) {
+            current = card;
+            stage.textContent = "";
+            stage.appendChild(content(card));
+            title.textContent = card.getAttribute("data-preview-name");
+            subtitle.textContent = card.getAttribute("data-preview-meta");
+            copy.setAttribute("data-copy-text", card.getAttribute("data-preview-link"));
+            tab.href = card.getAttribute("data-preview-url");
+            download.href = "/admin/media/" + card.getAttribute("data-preview") + "/inline?download=true";
+            var list = shown();
+            var index = list.indexOf(card);
+            Array.prototype.forEach.call(dialog.querySelectorAll("[data-preview-step]"), function (button) {
+                var step = parseInt(button.getAttribute("data-preview-step"), 10);
+                button.disabled = index < 0 || !list[index + step];
+            });
+            if (!dialog.open) {
+                dialog.showModal();
+                // The dialog itself, not its first button: arrows step through files, no tooltip pops up.
+                dialog.focus();
+            }
+        }
+
+        function step(by) {
+            var list = shown();
+            var index = list.indexOf(current);
+            if (index >= 0 && list[index + by]) { show(list[index + by]); }
+        }
+
+        document.addEventListener("click", function (event) {
+            var open = event.target.closest && event.target.closest("[data-preview-open]");
+            if (!open || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) { return; }
+            var card = open.closest("[data-preview]");
+            if (!card) { return; }
+            event.preventDefault();
+            // "Preview" sits in an action menu (a popover): close it first.
+            var menu = open.closest("[popover]");
+            if (menu && typeof menu.hidePopover === "function" && menu.matches(":popover-open")) { menu.hidePopover(); }
+            show(card);
+        });
+        Array.prototype.forEach.call(dialog.querySelectorAll("[data-preview-step]"), function (button) {
+            button.addEventListener("click", function () { step(parseInt(button.getAttribute("data-preview-step"), 10)); });
+        });
+        dialog.querySelector("[data-preview-close]").addEventListener("click", function () { dialog.close(); });
+        dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } });
+        dialog.addEventListener("keydown", function (event) {
+            if (event.target.closest && event.target.closest("video, audio, input")) { return; }
+            if (event.key === "ArrowLeft") { event.preventDefault(); step(-1); }
+            if (event.key === "ArrowRight") { event.preventDefault(); step(1); }
+        });
+        // Stop video/audio and drop the frame when closed.
+        dialog.addEventListener("close", function () { stage.textContent = ""; current = null; });
     }
 
     // New folder: the header button opens the dialog with an empty name (Esc, Cancel or the backdrop close it).

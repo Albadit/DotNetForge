@@ -33,8 +33,9 @@ public sealed record AdminNavModel(IReadOnlyList<NavSectionView> Sections, IRead
 
 /// <summary>
 /// The admin sidebar tree - the canonical spec tree (.docs/architecture/pages.md#canonical-sidebar-tree-vs-the-sidebar):
-/// <b>Main</b> and one <b>Settings</b> section with four sub-groups, in spec order, plus <b>Extensions</b> for enabled
-/// admin extensions. The only place navigation is defined; the sidebar and the breadcrumbs are built from it.
+/// <b>Main</b> and one <b>Settings</b> section with five sub-groups (the spec's four plus <b>API &amp; Webhooks</b>, split
+/// out of Global Settings), plus <b>Extensions</b> for enabled admin extensions. The only place navigation is defined;
+/// the sidebar and the breadcrumbs are built from it.
 /// </summary>
 public static class AdminNavigation
 {
@@ -55,15 +56,19 @@ public static class AdminNavigation
             new NavGroup("Global Settings", new[]
             {
                 new NavLink("Settings", "/admin/settings", "settings", typeof(SettingsController)),
-                new NavLink("API Tokens", "/admin/api-tokens", "key", typeof(ApiTokensController)),
-                new NavLink("API Endpoints", "/admin/api-endpoints", "code", typeof(ApiEndpointsController)),
-                new NavLink("API Docs", "/admin/api-docs", "book", typeof(ApiDocsController)),
                 new NavLink("Content History", "/admin/content-history", "history", typeof(ModulesController), Planned: true),
                 new NavLink("Internationalization", "/admin/internationalization", "globe", typeof(ModulesController), Planned: true),
                 new NavLink("Media Library", "/admin/media-settings", "image", typeof(MediaSettingsController)),
                 new NavLink("Plugins", "/admin/plugins", "puzzle", typeof(PluginsController)),
                 new NavLink("Data Management", "/admin/data", "database", typeof(DataManagementController)),
-                new NavLink("Webhooks", "/admin/webhooks", "webhook", typeof(ModulesController), Planned: true),
+            }),
+            // Everything for developers and integrations, apart from the site's own settings.
+            new NavGroup("API & Webhooks", new[]
+            {
+                new NavLink("API Tokens", "/admin/api-tokens", "key", typeof(ApiTokensController)),
+                new NavLink("API Endpoints", "/admin/api-endpoints", "code", typeof(ApiEndpointsController)),
+                new NavLink("API Docs", "/admin/api-docs", "book", typeof(ApiDocsController)),
+                new NavLink("Webhooks", "/admin/webhooks", "webhook", typeof(WebhooksController)),
             }),
             new NavGroup("Administration Panel", new[]
             {

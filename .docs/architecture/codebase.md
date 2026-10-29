@@ -22,11 +22,13 @@ DotNetForge CMS is a server-rendered ASP.NET Core MVC content-management system 
   plugs enabled ones into fixed slots - admin tabs, dashboard widgets, the public theme, page modules, endpoints,
   media storage, sign-in providers, audit handlers ([extensions](../features/extensions.md));
 - runs one background job that finalizes **publish schedules** ([scheduled publishing](../features/scheduled-publishing.md));
+- sends signed **webhooks** for entry and media changes, retried in the background
+  ([webhooks](../features/webhooks.md));
 - runs from a **read-only deployment directory**: database rows, uploaded files and the Data Protection key ring all
   live outside it ([deployment](../guides/deployment.md#read-only-deployment-requirements)).
 
-Much of the target product ([product overview](../product.md): webhook delivery, email, i18n,
-per-page themes, page builder) has data models or contracts in place but no behaviour. Each feature document lists its target
+Some of the target product ([product overview](../product.md): i18n, core updates, the marketplace) has data
+models, contracts or a placeholder screen in place but no behaviour. Each feature document lists its target
 behaviour under **Planned (not implemented)**; the gap is tracked in
 [implementation-status.md](../implementation-status.md). The target architecture is in
 [Planned](#planned-not-implemented) below.
@@ -107,6 +109,7 @@ host at runtime; the host shares its own copies of those assemblies with them.
 | `public partial class Program` (end of `Program.cs`) | Exposed so `WebApplicationFactory<Program>` can host the app in integration tests. |
 | `src/DotNetForge.Web/Services/ScheduledPublishingService` | `BackgroundService` started by the host. |
 | `src/DotNetForge.Web/Services/AuditEventDispatcher` | `BackgroundService` delivering audit events to extension handlers ([audit logging](../features/audit-logging.md#extension-handlers)). |
+| `src/DotNetForge.Web/Services/Webhooks/WebhookDispatcher` | `BackgroundService` turning entry and media changes into webhook deliveries and sending them, with retries ([webhooks](../features/webhooks.md#delivery)). |
 | `IExtension.ConfigureServices` / `MapEndpoints` of each extension | called once at startup by `DependencyRegistration.AddExtensionHost` and `await app.MapDotNetForgeExtensionsAsync()` ([extensions → Loading code](../features/extensions.md#loading-code)). |
 | `src/DotNetForge.Data/DesignTimeDbContextFactory.cs` | `PostgreSqlDesignTimeDbContextFactory` - the entry point for `dotnet ef` design-time tooling (does not boot the web host or connect). |
 | `docker/Dockerfile` | `ENTRYPOINT ["dotnet", "DotNetForge.Web.dll"]` with `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=8080`. |
@@ -131,7 +134,7 @@ DotNetForge/                         repository root
 │   │   ├── Middleware/
 │   │   │   ├── SecurityHeadersMiddleware.cs  CSP (a nonce'd script-src for the Scalar page only), nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
 │   │   │   └── InstallationMiddleware.cs     redirects to /setup until installed; blocks /setup after
-│   │   ├── Services/                web-host application services (need HttpContext or the DbContext); Mfa/ = two-factor authentication
+│   │   ├── Services/                web-host application services (need HttpContext or the DbContext); Mfa/ = two-factor authentication, Webhooks/ = webhooks
 │   │   ├── Authentication/          the built-in OAuth providers: catalog, handler, runtime scheme registry, settings service
 │   │   ├── Controllers/             non-area controllers: public site, media files, account, external sign-in, two-factor step, setup, extension views/resources
 │   │   ├── Components/              public view components (ExtensionModules)
@@ -234,7 +237,7 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 | `AccountService` | self | scoped | Self-service accounts: registration (also `RegisterExternalAsync`, sign-up through a provider), reset and confirmation links, the template emails (incl. the two-factor **Sign-in code**). | `AccountController`, `AuthService`, `ExternalLoginController`, `MfaService` |
 | `LoginProviders` | self | singleton | The "Sign in with ..." buttons: enabled built-in OAuth providers, then those of active `authentication` extensions (`LoginOption`). | `AccountController`, `ExternalLoginController`, `AuthProvidersController` |
 | `Mfa/MfaService`, `Mfa/MfaSettingsService` (+ `MfaSettings`, `Totp`, `PendingSignIn`, `ISmsSender`/`TwilioSmsSender`) | self / self / `ISmsSender` | scoped (SMS: typed `HttpClient`) | Two-factor authentication: methods (authenticator app, passkeys, email and SMS codes), recovery codes, reset, the `mfa.*` settings and the requirement, the `dnf.mfa` pending sign-in ([MFA](../features/mfa.md)). | `AuthService`, `MfaLoginController`, `SecurityController`, `MfaSettingsController`, `ProfileController`, `UsersController`, `AdminControllerBase` |
-| `AuditService` | `IAuditService` | scoped | Appends an `AuditLogEntry` with the acting user (or `API token {id}` with `UserId = null`), IP and user agent; truncates snapshots to the column lengths. | `AccountController`, `SetupController`, `PagesController`, `SettingsController`, `ApiTokensController`, `MediaService`, `ContentApiController`, the `DotNetForge.Content` services |
+| `AuditService` | `IAuditService` | scoped | Appends an `AuditLogEntry` with the acting user (or `API token {id}` with `UserId = null`), IP and user agent; truncates snapshots to the column lengths; then hands the entry to `AuditEventDispatcher` and `WebhookDispatcher.Raise`. | `AccountController`, `SetupController`, `PagesController`, `SettingsController`, `ApiTokensController`, `MediaService`, `ContentApiController`, the `DotNetForge.Content` services |
 | `PageService` | `IPageService` | scoped | Every content-page rule: `ApplyAsync`, `ReorderAsync`, `DeleteAsync` (validate and mutate, **never save**); static `Slugify`, `ToUtc`, `IsDynamic`. | `PagesController`, `ContentApiController` |
 | `MediaService` | self | scoped | Upload rules (`AllowedTypes`, per-kind limits from the Media Library settings, `MaxFilesPerUpload` 10, duplicates), image optimization, queueing videos for compression, generated storage keys, `MediaFile` rows, delete, audit; static `IsInline`, `UrlFor`. | `MediaController`, `ContentController`, `PageBuilderController`, `[MediaUploadLimit]`; statics also by `MediaFilesController` and `Media/Index.cshtml` |
 | `MediaSettingsService` (+ `MediaSettings`, `MediaUploadLimitAttribute`) | self | scoped | The Media Library settings (`Settings` rows `media.*`): read, validate, save + audit; the attribute sizes upload requests to them ([media storage → upload limits](../features/media-storage.md#upload-limits)). | `MediaService`, `MediaSettingsController`, `VideoOptimizationService` |
@@ -243,6 +246,10 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 | `MediaExportService` | self | scoped | Streams every media file in its folders plus `media.json` as a .zip; transfer record + audit ([media export](../pages/data-management.md#media-export)). | `DataManagementController` |
 | `InstallationStatusCache` | self | singleton | Caches the one-way "installed" flag so the middleware stops querying the DB after install. | `InstallationMiddleware`, `SetupController`, integration tests |
 | `ScheduledPublishingService` | hosted | singleton | Every 15 s finalizes due publish/unpublish schedules. | host |
+| `Webhooks/WebhookService` (+ `WebhookInput`, `WebhookHeader`) | self | scoped | Webhook rules: validation, create/update/enable/disable/delete, signing secrets (generated, stored protected, returned once), test deliveries, `webhook.*` audit ([webhooks](../features/webhooks.md)). | `WebhooksController` |
+| `Webhooks/WebhookSender` | self | singleton | Sends one delivery attempt: signed `POST` through the named `HttpClient` `"webhooks"` (10 s, no redirects), fills the attempt's log fields. | `WebhookService`, `WebhookDispatcher` |
+| `Webhooks/WebhookDispatcher` (+ `WebhookEvent`) | self + hosted (same instance) | singleton | In-memory queue fed by `AuditService` (`Raise`), pending attempts in `WebhookDeliveries`, retries with backoff, loop guard, 30-day log pruning ([delivery](../features/webhooks.md#delivery)). | `AuditService`; host |
+| `Webhooks/WebhookPayload` | static | - | The JSON body and the audit action → event mapping ([payload](../features/webhooks.md#payload)). | `WebhookService`, `WebhookDispatcher` |
 | `ContentRenderService` | self | scoped | The entries every content list of a layout shows (queries, media, linked entries → item data); flags a missing detail entry | `HomeController`, `PageLayoutViewComponent`, `PageBuilderController` (preview), `ContentController` (list columns) |
 | `EntryForm` | static | - | Reads the Content Manager's entry form (`f.` + field path) into entry values | `ContentController` |
 
@@ -398,7 +405,7 @@ Implementations of `Abstractions` contracts plus configuration loading. BCL only
 | `Security/Pbkdf2PasswordHasher.cs` | `IPasswordHasher` (`pbkdf2-sha256$120000$salt$hash`) | yes |
 | `Security/ApiTokenFactory.cs` | `IApiTokenFactory` (`dnf_<hex>_<secret>`, hash `60000$salt$hash`) | yes |
 | `Security/SystemClock.cs` | `IDateTimeProvider` | yes |
-| `Security/HmacWebhookSigner.cs` | `IWebhookSigner` | no - not registered (kept, with tests, for planned webhooks) |
+| `Security/HmacWebhookSigner.cs` | `IWebhookSigner` (HMAC-SHA256 hex signature, 64-hex-character secrets) | yes (singleton; `WebhookService`, `WebhookSender`) |
 | `Storage/LocalFileStorage.cs` | `IFileStorage` on a directory: atomic writes (temp sibling + move), path containment, no download URLs | Development fallback when no `STORAGE_S3_*` key is set |
 | `Storage/S3FileStorage.cs` | `IFileStorage` on any S3-compatible service: private objects, presigned GET URLs with `response-content-disposition` | when `STORAGE_S3_*` is set (always outside Development) |
 
@@ -478,7 +485,7 @@ Outside Development `DATABASE_CONNECTION_STRING` and the `STORAGE_S3_*` settings
 | Headless API | `ApiToken`, `CustomEndpoint`, `CustomEndpointOperation` | `ApiTokensController`, `ApiEndpointsController`, `ApiDocsController`, `src/DotNetForge.Api`, `DotNetForge.Content/Endpoints`, `src/DotNetForge.Web/ApiDocs` | [API Tokens](../pages/api-tokens.md), [API Endpoints](../pages/api-endpoints.md), [API Docs](../pages/api-docs.md) |
 | Audit | `AuditLogEntry` | `IAuditService`/`AuditService`, `AuditLogsController` | [Audit Logs](../pages/audit-logs.md) |
 | Extensions | `InstalledExtension` (enabled state) | `ExtensionLoader`, `ManifestValidator`, `ExtensionRuntime`, `ExtensionCatalog`, `ExtensionState`, `ExtensionLifecycleService`, `PluginsController`, slot code ([extensions → Where to change things](../features/extensions.md#where-to-change-things)) | [Plugins](../pages/plugins.md), [Extension host](../pages/extension-host.md), [Dashboard](../pages/dashboard.md#widgets) |
-| Webhooks | `Webhook`, `WebhookDelivery` | `HmacWebhookSigner` (not registered) | placeholder only |
+| Webhooks | `Webhook`, `WebhookDelivery` | `WebhookService`, `WebhookSender`, `WebhookDispatcher`, `WebhookPayload` (`src/DotNetForge.Web/Services/Webhooks/`), `HmacWebhookSigner`, `WebhooksController` | [Webhooks](../pages/webhooks.md) |
 | Platform | `DataProtectionKey` | `AddDataProtection().PersistKeysToDbContext<DotNetForgeDbContext>()` | none |
 
 ## Layer-by-layer reference
@@ -601,7 +608,9 @@ Validation errors → `ModelState` + re-render; not-found → `NotFound()` (empt
 
 `ScheduledPublishingService`, on every instance (idempotent) - see
 [scheduled publishing](../features/scheduled-publishing.md); `AuditEventDispatcher` (in-memory queue to extension
-handlers) - see [audit logging](../features/audit-logging.md#extension-handlers). Extensions may register their own
+handlers) - see [audit logging](../features/audit-logging.md#extension-handlers); `WebhookDispatcher` (in-memory
+queue per instance, pending attempts in the database shared by all instances) - see
+[webhooks](../features/webhooks.md#delivery). Extensions may register their own
 hosted services (they should check `IExtensionState`).
 
 ### External integrations
@@ -609,8 +618,8 @@ hosted services (they should check `IExtensionState`).
 The PostgreSQL server, any additional database servers (`DATABASES_<NAME>_*`) and an S3-compatible object store
 (`S3FileStorage`; browsers download directly from it through presigned URLs). Anything else comes from extensions
 (the samples call Open-Meteo, Discord OAuth, Twilio, a second S3 bucket). An SMTP server, when `SMTP_*` is
-configured, receives the password-reset and confirmation emails ([email](../features/email.md)). Webhook delivery
-exists only as entities and contracts.
+configured, receives the password-reset and confirmation emails ([email](../features/email.md)). Webhook receivers
+get signed `POST`s from `WebhookSender` ([webhooks](../features/webhooks.md)).
 
 ### Shared utilities
 
@@ -729,7 +738,7 @@ unless the architecture is changed on purpose (the web host in `src/DotNetForge.
 | --- | --- |
 | `DotNetForge.Core` | content system, media, themes, settings, extension management, update/rollback orchestration (permission checks used at request time ✔ via `PermissionService`) |
 | `DotNetForge.Data` | repository/data interfaces for `Core` (PostgreSQL migrations ✔; other databases as additional databases ✔) |
-| `DotNetForge.Infrastructure` | SMTP email, webhook delivery, background jobs, logging, external connectors (today: file storage providers ✔ used; `HmacWebhookSigner` unregistered) |
+| `DotNetForge.Infrastructure` | SMTP email, webhook delivery, background jobs, logging, external connectors (today: file storage providers ✔ and `HmacWebhookSigner` ✔ used; webhook delivery lives in the web host, `Services/Webhooks/`) |
 | `DotNetForge.Extensions` | lifecycle install / update / remove (✔ dependency resolution, code loading and DI registration of each extension's services; enable/disable ✔ in `ExtensionLifecycleService` in the web host) |
 | `DotNetForge.Api` | full surface: content, media, users, roles, settings, extensions, dynamic routes, custom extension permissions; no direct `Data` reference |
 | `DotNetForge.Web` | page builder, per-page themes (✔ site-wide theme slot) |

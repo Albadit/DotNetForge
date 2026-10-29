@@ -1,0 +1,98 @@
+@using DotNetForge.Shared.Enums
+@model WebhooksController.WebhooksViewModel
+@{
+    ViewData["Title"] = "Webhooks";
+    ViewData["Description"] = "Notify other systems - a search index, a cache, a build - with a signed POST when entries or media change.";
+}
+
+@section Actions {
+    @if (Model.CanCreate)
+    {
+        <a class="btn btn-primary" href="/admin/webhooks/create"><icon name="plus" /> Create webhook</a>
+    }
+}
+
+<section class="card" aria-labelledby="webhooks-title">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" id="webhooks-title">Webhooks</h2>
+            <p class="card-description">@Model.Rows.Count total · @Model.Rows.Count(r => r.Webhook.Enabled) enabled</p>
+        </div>
+    </div>
+    @if (Model.Rows.Count == 0)
+    {
+        <empty-state icon="webhook" title="No webhooks yet" text="Create one to send entry and media changes to another system as they happen." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table table-stack">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Events</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Last delivery</th>
+                        <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        var w = row.Webhook;
+                        <tr>
+                            <td class="cell-lead">
+                                <a class="cell-primary" href="/admin/webhooks/@w.Id">@w.Name</a>
+                                <span class="cell-sub text-truncate webhook-url" title="@w.Url">@w.Url</span>
+                            </td>
+                            <td data-label="Events">
+                                <span class="cluster">
+                                    @foreach (var e in w.Events)
+                                    {
+                                        <badge><code>@e</code></badge>
+                                    }
+                                </span>
+                            </td>
+                            <td data-label="Status"><badge tone="@(w.Enabled ? Tone.Success : Tone.Neutral)" dot="true">@(w.Enabled ? "Enabled" : "Disabled")</badge></td>
+                            <td data-label="Last delivery">
+                                @if (row.Last is { } last)
+                                {
+                                    <span class="cluster">
+                                        <badge tone="@(last.Outcome == WebhookOutcome.Success ? Tone.Success : Tone.Danger)">@(last.ResponseStatusCode?.ToString() ?? "failed")</badge>
+                                        <timestamp value="@last.RequestTimestamp" />
+                                    </span>
+                                    @if (row.Failures24h > 0)
+                                    {
+                                        <span class="cell-sub">@row.Failures24h failed attempt@(row.Failures24h == 1 ? "" : "s") in 24 h</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-subtle">Never</span>
+                                }
+                            </td>
+                            <td class="col-actions">
+                                <action-menu label="Actions for @w.Name">
+                                    <menu-link href="/admin/webhooks/@w.Id" icon="pencil">@(Model.CanUpdate ? "Edit" : "View")</menu-link>
+                                    <menu-link href="/admin/webhooks/@w.Id/deliveries" icon="list">Delivery log</menu-link>
+                                    @if (Model.CanUpdate)
+                                    {
+                                        <menu-post action="/admin/webhooks/@w.Id/test" icon="send">Send test delivery</menu-post>
+                                        <menu-post action="/admin/webhooks/@w.Id/@(w.Enabled ? "disable" : "enable")" icon="power">@(w.Enabled ? "Disable" : "Enable")</menu-post>
+                                    }
+                                    @if (Model.CanDelete)
+                                    {
+                                        <menu-separator />
+                                        <menu-post action="/admin/webhooks/@w.Id/delete" icon="trash" danger="true"
+                                                   confirm="Delete '@w.Name' and its delivery log? Its receiver gets nothing more."
+                                                   confirm-title="Delete webhook" confirm-action="Delete">Delete</menu-post>
+                                    }
+                                </action-menu>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

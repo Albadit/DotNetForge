@@ -2,7 +2,7 @@
 
 An interactive reference of the [headless API](headless-api.md) and the [custom endpoints](custom-endpoints.md),
 rendered by [Scalar](https://scalar.com) from an OpenAPI document the app builds itself. It lives inside the admin, at
-**Settings › Global Settings › API Docs** (`/admin/api-docs`), and is meant for trying calls: paste an API token and
+**Settings › API & Webhooks › API Docs** (`/admin/api-docs`), and is meant for trying calls: paste an API token and
 send a request, or call a custom endpoint whose token is already filled in.
 
 Only **Super Admins** and **Developers** open it ([authorization](authorization.md#the-developer-role)).

@@ -42,6 +42,14 @@ public static class AuditActions
     public const string ApiTokenRevoked = "apitoken.revoked";
     public const string ContentReordered = "content.reordered";
     public const string WebhookCreated = "webhook.created";
+    public const string WebhookUpdated = "webhook.updated";
+    public const string WebhookEnabled = "webhook.enabled";
+    public const string WebhookDisabled = "webhook.disabled";
+    public const string WebhookDeleted = "webhook.deleted";
+    public const string WebhookSecretRotated = "webhook.secret.rotated";
+
+    /// <summary>A test delivery was sent from the Webhooks screen (details: the outcome).</summary>
+    public const string WebhookTested = "webhook.tested";
     public const string AuditExported = "audit.exported";
     public const string CmsInstalled = "cms.installed";
     public const string ContentTypeCreated = "contenttype.created";

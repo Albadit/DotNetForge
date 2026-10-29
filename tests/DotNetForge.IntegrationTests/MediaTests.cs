@@ -280,6 +280,98 @@ public sealed class MediaTests
         Assert.Equal("Quarterly report.txt", (await SingleMediaAsync(factory)).FileName);
     }
 
+    [Fact]
+    public async Task Folders_can_be_selected_to_move_and_delete_with_the_files()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        var admin = await factory.SignInAsync();
+        foreach (var name in new[] { "Archive", "Old", "Full" })
+        {
+            await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/media", "/admin/media/folders", new Dictionary<string, string> { ["name"] = name });
+        }
+
+        Dictionary<string, Guid> folders = new();
+        await factory.WithDbAsync(async db => folders = await db.MediaFolders.ToDictionaryAsync(f => f.Name, f => f.Id));
+        await UploadAsync(admin, "keep.txt", "x"u8.ToArray(), isPublic: true);
+        Guid file = default;
+        await factory.WithDbAsync(async db => file = (await db.MediaFiles.SingleAsync()).Id);
+        Assert.Contains($"name=\"folderIds\" value=\"{folders["Old"]}\"", await admin.GetStringAsync("/admin/media"));
+
+        // Move a folder and a file into Archive in one go; a folder can't go into itself.
+        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/media", "/admin/media/move-selected", new Dictionary<string, string>
+        {
+            ["folderIds[0]"] = folders["Old"].ToString(),
+            ["folderIds[1]"] = folders["Archive"].ToString(),
+            ["ids[0]"] = file.ToString(),
+            ["folderId"] = folders["Archive"].ToString(),
+        });
+        await factory.WithDbAsync(async db =>
+        {
+            Assert.Equal(folders["Archive"], (await db.MediaFolders.SingleAsync(f => f.Name == "Old")).ParentId);
+            Assert.Null((await db.MediaFolders.SingleAsync(f => f.Name == "Archive")).ParentId);
+            Assert.Equal(folders["Archive"], (await db.MediaFiles.SingleAsync()).FolderId);
+        });
+
+        // Delete: the empty folder goes, the one with content stays and is reported.
+        var deleted = await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/media", "/admin/media/delete-selected", new Dictionary<string, string>
+        {
+            ["folderIds[0]"] = folders["Full"].ToString(),
+            ["folderIds[1]"] = folders["Archive"].ToString(),
+        });
+        var page = WebUtility.HtmlDecode(await admin.GetStringAsync(deleted.Headers.Location!.OriginalString));
+        Assert.Contains("Deleted 1 item.", page);
+        Assert.Contains("only empty folders can be deleted", page);
+        await factory.WithDbAsync(async db =>
+        {
+            Assert.False(await db.MediaFolders.AnyAsync(f => f.Name == "Full"));
+            Assert.True(await db.MediaFolders.AnyAsync(f => f.Name == "Archive"));
+        });
+    }
+
+    [Fact]
+    public async Task The_preview_serves_text_and_pdf_from_this_site_and_lists_zip_archives()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        var admin = await factory.SignInAsync();
+        await UploadAsync(admin, "notes.csv", "a,b\n1,2"u8.ToArray(), isPublic: false);
+        using (var buffer = new MemoryStream())
+        {
+            using (var zip = new System.IO.Compression.ZipArchive(buffer, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+            {
+                zip.CreateEntry("docs/");
+                await using var entry = zip.CreateEntry("docs/readme.txt").Open();
+                await entry.WriteAsync("hello"u8.ToArray());
+            }
+
+            await UploadAsync(admin, "bundle.zip", buffer.ToArray(), isPublic: true);
+        }
+
+        Dictionary<string, Guid> files = new();
+        await factory.WithDbAsync(async db => files = await db.MediaFiles.ToDictionaryAsync(f => f.FileName, f => f.Id));
+        var page = await admin.GetStringAsync("/admin/media");
+        Assert.Contains("id=\"media-preview\"", page);
+        Assert.Contains($"data-preview=\"{files["notes.csv"]}\"", page);
+
+        // Text: shown as plain text inline (a private file too); with download=true as an attachment.
+        var inline = await admin.GetAsync($"/admin/media/{files["notes.csv"]}/inline");
+        Assert.Equal("text/plain", inline.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("inline", inline.Content.Headers.ContentDisposition?.DispositionType);
+        Assert.Equal("a,b\n1,2", await inline.Content.ReadAsStringAsync());
+        var download = await admin.GetAsync($"/admin/media/{files["notes.csv"]}/inline?download=true");
+        Assert.Equal("attachment", download.Content.Headers.ContentDisposition?.DispositionType);
+        Assert.Equal("text/csv", download.Content.Headers.ContentType?.MediaType);
+
+        var listing = System.Text.Json.JsonDocument.Parse(await admin.GetStringAsync($"/admin/media/{files["bundle.zip"]}/zip")).RootElement;
+        Assert.Equal(2, listing.GetProperty("total").GetInt32());
+        Assert.Contains(listing.GetProperty("entries").EnumerateArray(), e => e.GetProperty("name").GetString() == "docs/readme.txt" && e.GetProperty("size").GetInt64() == 5);
+
+        // Not for visitors: the admin preview needs a signed-in user who may read the library.
+        using var visitor = factory.CreateNoRedirectClient();
+        Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync($"/admin/media/{files["notes.csv"]}/inline")).StatusCode);
+    }
+
     private static Task<HttpResponseMessage> RenameAsync(HttpClient client, Guid id, string name) =>
         DotNetForgeWebFactory.PostFormAsync(client, "/admin/media", $"/admin/media/{id}/rename",
             new Dictionary<string, string> { ["name"] = name });

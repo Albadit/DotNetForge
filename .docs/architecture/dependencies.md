@@ -119,8 +119,8 @@ the browser has no code editor (IntelliSense, validation markers, colorization),
 cross-platform image codec (`System.Drawing` is Windows-only), `Fido2` because WebAuthn attestation and assertion
 verification (CBOR, COSE keys, many signature formats) is too large and security-critical to write in-house, and
 `QRCoder` because .NET has no QR encoder. Video compression uses no package: it runs an external ffmpeg
-(`FFMPEG_PATH`, optional) as a process; SMS codes call Twilio's REST API with `HttpClient` (no SDK); TOTP and the
-built-in OAuth providers use the BCL and ASP.NET Core's `OAuthHandler`.
+(`FFMPEG_PATH`, optional) as a process; SMS codes call Twilio's REST API with `HttpClient` (no SDK); webhooks are sent with `HttpClient` and
+signed with the BCL's HMAC-SHA256; TOTP and the built-in OAuth providers use the BCL and ASP.NET Core's `OAuthHandler`.
 
 ## DI registrations
 
@@ -187,7 +187,7 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | `UserAccountSettingsService` | self (`src/DotNetForge.Web/Services/UserAccountSettings.cs`) | scoped | `AuthService` (email confirmation), `AccountService`, `AccountController`, `AdvancedSettingsController` |
 | `AccountService` | self | scoped | `AccountController` (registration, password reset, email confirmation), `AuthService` (account-locked email), `ExternalLoginController` (sign-up through a provider), `MfaService` (sign-in code email) |
 | `EmailTemplateService` | self | scoped | `AccountService` (rendering), `EmailTemplatesController` |
-| `IAuditService` | `AuditService` | scoped | `AccountController`, `AccountService`, `UserAccountSettingsService`, `EmailConfigurationService`, `EmailConfigurationController`, `ExternalLoginController`, `MfaLoginController`, `MfaService`, `MfaSettingsService`, `AuthProviderService`, `SetupController`, `PagesController`, `ContentTypeService`, `ContentEntryService`, `SettingsController`, `ApiTokensController`, `MediaService`, `MediaSettingsService`, `MediaExportService`, `UserManagementService`, `RoleManagementService`, `ProfileService`, `PageBuilderService`, `PagePermissionService`, `ContentApiController`, `ExtensionLifecycleService`, `CustomEndpointService`, `ApiEndpointsController` (test run), `CustomEndpointsApiController`, extensions (Contact Form) |
+| `IAuditService` | `AuditService` | scoped | `AccountController`, `AccountService`, `UserAccountSettingsService`, `EmailConfigurationService`, `EmailConfigurationController`, `ExternalLoginController`, `MfaLoginController`, `MfaService`, `MfaSettingsService`, `AuthProviderService`, `SetupController`, `PagesController`, `ContentTypeService`, `ContentEntryService`, `SettingsController`, `ApiTokensController`, `MediaService`, `MediaSettingsService`, `MediaExportService`, `UserManagementService`, `RoleManagementService`, `ProfileService`, `PageBuilderService`, `PagePermissionService`, `ContentApiController`, `ExtensionLifecycleService`, `CustomEndpointService`, `ApiEndpointsController` (test run), `CustomEndpointsApiController`, `WebhookService`, extensions (Contact Form) |
 | `IPageService` | `PageService` | scoped | `PagesController`, `ContentApiController` |
 | `MediaService` | self | scoped | `MediaController`, `ContentController` (uploads from entry forms), `PageBuilderController`, `[MediaUploadLimit]` (from `RequestServices`, for the request size) |
 | `MediaSettingsService` | self (`src/DotNetForge.Web/Services/MediaSettings.cs`) | scoped | `MediaService`, `MediaSettingsController`, `VideoOptimizationService` (per run) |
@@ -198,8 +198,11 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | `UserManagementService` | self (`src/DotNetForge.Web/Services/`) | scoped | `UsersController` |
 | `RoleManagementService` | self (`src/DotNetForge.Web/Services/`) | scoped | `RolesController` |
 | `ScheduledPublishingService` | `AddHostedService` | singleton (hosted) | host |
-
-Not registered: `IWebhookSigner` (`HmacWebhookSigner` and its tests are kept for planned webhooks).
+| `IWebhookSigner` | `HmacWebhookSigner` (`DotNetForge.Infrastructure.Security`) | singleton | `WebhookService` (secrets), `WebhookSender` (signatures) |
+| `WebhookService` | self (`src/DotNetForge.Web/Services/Webhooks/WebhookService.cs`) | scoped | `WebhooksController` |
+| `WebhookSender` | self | singleton | `WebhookService` (test deliveries), `WebhookDispatcher` |
+| `WebhookDispatcher` | self, also `AddHostedService` (the same instance) | singleton (hosted) | `AuditService` (`Raise`), integration tests (`RunDueAsync`) - sends webhook deliveries ([webhooks → delivery](../features/webhooks.md#delivery)) |
+| named `HttpClient` `"webhooks"` (`WebhookSender.ClientName`) | `AddHttpClient` with a `SocketsHttpHandler` (`AllowAutoRedirect = false`, 10 s connect timeout) | factory | `WebhookSender` |
 
 Framework services also configured there:
 
@@ -234,7 +237,8 @@ the email template preview its own enforced sandbox policy (`EmailPreviewPolicy`
 | Hashing or comparing passwords yourself | `IPasswordHasher` | format `pbkdf2-sha256$iterations$salt$hash`, constant-time compare |
 | Generating/validating tokens yourself | `IApiTokenFactory` | prefix lookup + salted hash contract used by the auth handler |
 | `DateTime.UtcNow` in auth/token logic | `IDateTimeProvider` | testable time (the content code and scheduler still use `DateTime.UtcNow` directly) |
-| Writing `AuditLogEntry` rows directly, or injecting `AuditService` | `IAuditService.LogAsync` | captures user or API token, IP, user agent consistently; truncates snapshots |
+| Writing `AuditLogEntry` rows directly, or injecting `AuditService` | `IAuditService.LogAsync` | captures user or API token, IP, user agent consistently; truncates snapshots; the entry and media actions also fire [webhooks](../features/webhooks.md#events) - a change that skips it fires none |
+| Sending webhooks or signing payloads yourself, or writing `WebhookDeliveries` rows | `WebhookService` (screen rules, test deliveries), `WebhookDispatcher` (events, retries), `IWebhookSigner` | one signature format receivers rely on, the loop guard, the delivery log |
 | Validating or mutating content pages in a controller, or injecting `PageService` | `IPageService` (`ApplyAsync`, `ReorderAsync`, `DeleteAsync`) | single rule set for the admin and the API |
 | Validating entry values, writing `ContentEntries` / `ContentEntryValues` or querying entry JSON in a controller | `ContentEntryService`, `ContentQueryService`, `ContentTypeService` (`DotNetForge.Content`) | one rule set for the admin, the renderer and the API; the value index stays in step with the JSON |
 | Building `/media/...` URLs by hand | `MediaUrls.For` (or `MediaService.UrlFor`) | one URL format |

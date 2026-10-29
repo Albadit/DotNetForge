@@ -601,3 +601,32 @@ button.code-status-item:focus-visible { outline: none; box-shadow: var(--focus-r
 .mfa-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-6); margin: 0; padding-left: 1.5rem; }
 .mfa-codes code { font-size: var(--text-base); letter-spacing: 0.05em; }
 @media (max-width: 30rem) { .mfa-codes { grid-template-columns: 1fr; } }
+
+/* ==== Webhooks (.docs/pages/webhooks.md) ===================================================================== */
+.webhook-url { display: block; max-width: 28rem; }
+.webhook-header-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; gap: var(--space-2); align-items: center; }
+.webhook-header-add { align-self: flex-start; }
+.delivery-list > li { display: block; padding: 0; }
+.delivery > summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5); cursor: pointer; list-style: none; }
+.delivery > summary::-webkit-details-marker { display: none; }
+.delivery > summary:hover { background: var(--color-surface-hover); }
+.delivery-body { padding: 0 var(--space-5) var(--space-4); }
+.delivery-code { max-height: 18rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ==== Media preview dialog (.docs/pages/media.md#preview) =================================================== */
+.media-preview { width: min(64rem, calc(100vw - 2rem)); }
+.media-preview-head { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-4) var(--space-4) var(--space-3) var(--space-5); }
+.media-preview-title { flex: 1 1 auto; min-width: 0; }
+.media-preview-stage { display: grid; place-items: center; min-height: 16rem; max-height: calc(100vh - 14rem); margin: 0 var(--space-5);
+    overflow: auto; border-radius: var(--radius); background: var(--color-surface-muted); }
+.media-preview-image, .media-preview-video { display: block; max-width: 100%; max-height: calc(100vh - 14rem); object-fit: contain; }
+.media-preview-audio { padding: var(--space-8) var(--space-4); width: 100%; display: flex; justify-content: center; }
+.media-preview-audio > audio { width: min(32rem, 100%); }
+.media-preview-frame { width: 100%; height: calc(100vh - 14rem); min-height: 24rem; border: 0; background: var(--color-surface); }
+.media-preview-fallback { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-10) var(--space-4);
+    text-align: center; color: var(--color-text-subtle); }
+.media-preview-fallback > strong { color: var(--color-text); overflow-wrap: anywhere; }
+.media-preview-zip { align-self: stretch; width: 100%; padding: var(--space-4); }
+.media-preview-entries { margin: var(--space-2) 0 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+.media-preview-entries > li { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--color-border); }
+.media-preview-entries > li:last-child { border-bottom: 0; }

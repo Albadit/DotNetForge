@@ -54,12 +54,13 @@ and `Public` (the built-in `Super Admin`, `Admin`, `Developer`, `Editor`, `Autho
 | Page builder | `GET /admin/pages/{id}/builder` (+ `canvas`, `preview`, `draft.css`, `state`, `media`, `content/types`, `content/link-targets`, `content/entries`; `POST save`, `publish`, `unpublish`, `discard`, `heartbeat`, `upload`, `content/preview`) | `PageBuilderController` | `src/DotNetForge.Web/Areas/Admin/Views/PageBuilder/{Index,Canvas}.cshtml` (no admin shell) | AdminArea + may edit the page; publish/unpublish need `publish`, upload `Media`/`create` | [page-builder](../pages/page-builder.md) |
 | Profile | `GET /admin/profile`, `POST /admin/profile`, `POST /admin/profile/password` | `ProfileController` | `src/DotNetForge.Web/Areas/Admin/Views/Profile/Index.cshtml` | AdminArea (own account only) | [profile](../pages/profile.md) |
 | Sign-in security | `GET /admin/profile/security`, `GET/POST /admin/profile/security/authenticator`, `GET /admin/profile/security/sms`, `POST /admin/profile/security/code/send`, `POST /admin/profile/security/code`, `POST /admin/profile/security/passkey/options`, `POST /admin/profile/security/passkey` (JSON), `GET/POST /admin/profile/security/recovery-codes`, `POST /admin/profile/security/{id}/remove` | `SecurityController` | `src/DotNetForge.Web/Areas/Admin/Views/Security/{Index,Authenticator,Sms,Code,RecoveryCodes}.cshtml` | AdminArea (own account only); the only admin screen open while a required second factor is missing | [sign-in-security](../pages/sign-in-security.md) |
-| Media | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/visibility/{id}`, `POST /admin/media/{id}/rename`, `POST /admin/media/delete/{id}`, `POST /admin/media/delete-selected` (bulk, at most `MediaController.MaxBulkDelete` = 100 ids) | `MediaController` (`.Index`, `.Upload`, `.Visibility`, `.Rename`, `.Delete`, `.DeleteSelected`) | `src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml` | AdminArea + `[RequirePermission(Media, read)]` + perm (`Media`: upload needs `create`; public/private and rename need `update` or `update.own`; delete needs `delete`, or `delete.own` for files the user uploaded - checked per file in a bulk delete) | [media](../pages/media.md) |
+| Media | `GET /admin/media` (`?folder={id}`), `GET /admin/media/{id}/inline` (`?download=true`) and `GET /admin/media/{id}/zip` (JSON) for the preview dialog, `POST /admin/media/upload`, `POST /admin/media/visibility/{id}`, `POST /admin/media/{id}/rename`, `POST /admin/media/delete/{id}`, `POST /admin/media/delete-selected` and `POST /admin/media/move-selected` (bulk: `ids` files + `folderIds` folders, at most `MediaController.MaxBulkDelete` = 100 together), `POST /admin/media/folders`, `POST /admin/media/folders/{id}/{rename,move,delete}` | `MediaController` (`.Index`, `.Inline`, `.ZipEntries`, `.Upload`, `.Visibility`, `.Rename`, `.Delete`, `.DeleteSelected`, `.MoveSelected`, folder actions) | `src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml` | AdminArea + `[RequirePermission(Media, read)]` + perm (`Media`: upload needs `create`; public/private and rename need `update` or `update.own`; delete needs `delete`, or `delete.own` for files the user uploaded - checked per file in a bulk delete; folders: create `create`, rename/move `update`, delete `delete`; preview and download only `read`) | [media](../pages/media.md) |
 | Settings | `GET /admin/settings`, `POST /admin/settings/save` | `SettingsController` | `src/DotNetForge.Web/Areas/Admin/Views/Settings/Index.cshtml` | AdminArea + perm (`Settings`: `read`; save needs `update`) | [settings](../pages/settings.md) |
 | API Tokens | `GET /admin/api-tokens`, `GET/POST /admin/api-tokens/create`, `POST /admin/api-tokens/revoke/{id}` | `ApiTokensController` | `src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/{Index,Create,Created}.cshtml` | AdminArea + perm (`API`: `read`; create needs `create`, revoke `delete`) | [api-tokens](../pages/api-tokens.md) |
 | API Endpoints | `GET /admin/api-endpoints`, `GET/POST /admin/api-endpoints/new`, `GET/POST /admin/api-endpoints/{id}`, `POST /admin/api-endpoints/{id}/token`, `POST /admin/api-endpoints/{id}/delete`, `POST /admin/api-endpoints/test` | `ApiEndpointsController` | `src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/{Index,Edit}.cshtml` | AdminArea + SA/Dev (`[Authorize(Roles = "Super Admin,Developer")]`) | [api-endpoints](../pages/api-endpoints.md) |
 | API Docs | `GET /admin/api-docs` | `ApiDocsController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/ApiDocs/Index.cshtml` (frames the reference below) | AdminArea + SA/Dev (`ApiDocs` policy) | [api-docs](../pages/api-docs.md) |
 | API reference (Scalar) | `GET /admin/api-docs/reference/` (+ its scripts under that prefix), `GET /admin/api-docs/openapi/v1.json` | `MapApiDocs` (`src/DotNetForge.Web/ApiDocs/ApiDocsEndpoints.cs`): `MapScalarApiReference`, `MapOpenApi` | none - Scalar's own HTML page (no admin shell) and the OpenAPI JSON | SA/Dev (`ApiDocs` policy; anonymous → sign-in, other roles → denied) | [API docs](../features/api-docs.md) |
+| Webhooks | `GET /admin/webhooks`, `GET/POST /admin/webhooks/create`, `GET/POST /admin/webhooks/{id}`, `POST /admin/webhooks/{id}/{enable,disable,delete,rotate,test}` (enable/disable/test take `returnTo` = `edit` / `deliveries`), `GET /admin/webhooks/{id}/secret` (once, after create/rotate), `GET /admin/webhooks/{id}/deliveries?page=` | `WebhooksController` | `src/DotNetForge.Web/Areas/Admin/Views/Webhooks/{Index,Edit,Secret,Deliveries}.cshtml` | AdminArea + `[RequirePermission(Webhooks, read)]` + perm (`Webhooks`: create `create`; save, enable/disable, rotate, test `update`; delete `delete`) | [webhooks](../pages/webhooks.md) |
 | Roles | `GET /admin/roles`, `GET/POST /admin/roles/create`, `GET/POST /admin/roles/{id}`, `POST /admin/roles/{id}/duplicate`, `POST /admin/roles/{id}/delete` | `RolesController` | `src/DotNetForge.Web/Areas/Admin/Views/Roles/{Index,Edit}.cshtml` | AdminArea + perm (`Roles`: `read`; create/duplicate `create`, save `update`, delete `delete`) | [roles](../pages/roles.md) |
 | Users | `GET /admin/users`, `GET/POST /admin/users/create`, `GET/POST /admin/users/{id}`, `POST /admin/users/{id}/{enable,disable,delete}`, `POST /admin/users/{id}/mfa/reset` | `UsersController` | `src/DotNetForge.Web/Areas/Admin/Views/Users/{Index,Edit}.cshtml` | AdminArea + perm (`Users`: `read`; create `create`, save/enable/disable/reset two-step verification `update`, delete `delete`) | [users](../pages/users.md) |
 | Email Configuration | `GET /admin/email/configuration`, `POST /admin/email/configuration/connection`, `POST /admin/email/configuration/test` | `EmailConfigurationController.Index`, `.TestConnection`, `.Test` | `src/DotNetForge.Web/Areas/Admin/Views/EmailConfiguration/Index.cshtml` | AdminArea + perm (`Settings`: `read`; tests `update`) | [email-configuration](../pages/email-configuration.md) |
@@ -72,7 +73,7 @@ and `Public` (the built-in `Super Admin`, `Admin`, `Developer`, `Editor`, `Autho
 | Audit Logs | `GET /admin/audit-logs` | `AuditLogsController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/AuditLogs/Index.cshtml` | AdminArea + perm (`Audit logs`: `read`) | [audit-logs](../pages/audit-logs.md) |
 | Plugins | `GET /admin/plugins`, `POST /admin/plugins/{id}/enable`, `POST /admin/plugins/{id}/disable` | `PluginsController.Index`, `.Enable`, `.Disable` | `src/DotNetForge.Web/Areas/Admin/Views/Plugins/Index.cshtml` | SA | [plugins](../pages/plugins.md) |
 | Admin extension tab | `GET /admin/ext/{id}` (shell), `GET /admin/ext/{id}/raw` (active `admin` extensions), `GET /admin/ext/{id}/resources/{**path}` (any active extension) | `ExtensionsController.Host`, `ExtensionViewController.Render` / `.Resource` | `src/DotNetForge.Web/Areas/Admin/Views/Extensions/Host.cshtml` + the extension's own views | AdminArea | [extension-host](../pages/extension-host.md) |
-| Module placeholders | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization`, `/admin/webhooks` | `ModulesController` | `src/DotNetForge.Web/Areas/Admin/Views/Modules/Placeholder.cshtml` | AdminArea | [module-placeholders](../pages/module-placeholders.md) |
+| Module placeholders | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization` | `ModulesController` | `src/DotNetForge.Web/Areas/Admin/Views/Modules/Placeholder.cshtml` | AdminArea | [module-placeholders](../pages/module-placeholders.md) |
 
 Non-screen endpoints: `GET /health` (JSON, bypasses install gate), `/api/*` ([headless API](../features/headless-api.md))
 and `/api/custom/*` ([custom endpoints](../features/custom-endpoints.md)).
@@ -160,13 +161,13 @@ flowchart TB
     Model --> Crumbs["Top-bar breadcrumbs"]
     Model --> Screens["Screens: actions shown only when reachable<br/>(dashboard quick actions)"]
     Sidebar --> Main["Main: Dashboard, Pages, Content Manager, Content types, Media, Marketplace"]
-    Sidebar --> Settings["Settings (four collapsible groups):<br/>Global Settings · Administration Panel · Email · Users & Permissions Plugin"]
+    Sidebar --> Settings["Settings (five collapsible groups):<br/>Global Settings · API & Webhooks · Administration Panel · Email · Users & Permissions Plugin"]
     Sidebar --> Ext["Extensions: one link per enabled admin extension"]
 ```
 
 | Behaviour | How |
 | --- | --- |
-| Role-aware | A link is shown only when the user passes its controller's `[Authorize]` data - `AdminArea`, `[RequirePermission]`, role lists and named policies (collected from the class and its base classes, combined with `AuthorizationPolicy.CombineAsync`, evaluated with `IAuthorizationService`), so custom roles see what their grants open. With the default grants an Editor or Author sees Dashboard, Pages, Content Manager, Media and Marketplace in Main (not Content types) but in Settings only the placeholder links (`ModulesController` is AdminArea): no Settings, Media Library, API Tokens, API Endpoints, API Docs, Plugins, Data Management, Roles, Users, Audit Logs, Providers, Two-factor (MFA) or Advanced Settings, and no Administration Panel or Users & Permissions Plugin group. A `Developer` sees Dashboard and Marketplace in Main, and in Global Settings API Tokens, API Endpoints, API Docs and the placeholders - no Pages, Content Manager, Content types, Media, Settings, Media Library, Plugins or Data Management. Empty groups and sections are dropped. Hiding is never the gate - the controller still refuses a direct URL. |
+| Role-aware | A link is shown only when the user passes its controller's `[Authorize]` data - `AdminArea`, `[RequirePermission]`, role lists and named policies (collected from the class and its base classes, combined with `AuthorizationPolicy.CombineAsync`, evaluated with `IAuthorizationService`), so custom roles see what their grants open. With the default grants an Editor or Author sees Dashboard, Pages, Content Manager, Media and Marketplace in Main (not Content types) but in Settings only the placeholder links (`ModulesController` is AdminArea): no Settings, Media Library, API Tokens, API Endpoints, API Docs, Webhooks, Plugins, Data Management, Roles, Users, Audit Logs, Providers, Two-factor (MFA) or Advanced Settings, and no API & Webhooks, Administration Panel or Users & Permissions Plugin group. A `Developer` sees Dashboard and Marketplace in Main, API Tokens, API Endpoints and API Docs in API & Webhooks (not Webhooks: no `Webhooks` grant by default), and the placeholders in Global Settings - no Pages, Content Manager, Content types, Media, Settings, Media Library, Plugins or Data Management. Empty groups and sections are dropped. Hiding is never the gate - the controller still refuses a direct URL. |
 | Active link | The longest href that equals the request path or is a parent of it (`/admin` only matches itself), so `/admin/api-tokens/create` marks **API Tokens**; it gets `aria-current="page"`. If a link were listed twice, only its first occurrence would be marked. |
 | Groups | Settings sub-groups are `<details data-nav-group>`; the group holding the active link renders open, the others closed; `nav-state.js` remembers what the user opened or closed (`localStorage` `dnf-nav`) and counts the active group as opened, so a group stays open across screens (also after leaving it) until the user closes it. |
 | Stable between screens | Every screen is a full page load. `nav-state.js` loads synchronously right after `</aside>` (not deferred), so the remembered groups and the sidebar's scroll position (`sessionStorage` `dnf-nav-scroll`, per tab; otherwise the active link is scrolled into view) are in place before the first paint - no groups opening or closing and no jump after load. `admin.css` opts into cross-document view transitions (`@view-transition`): browsers that support them keep the old screen up until the new one can paint and swap the sidebar and the top bar without a fade (`view-transition-name: sidebar` / `topbar`), so only the content changes; no animation with `prefers-reduced-motion`. The top bar's theme menu is in the markup from the first paint (shown once `theme.js` has set `<html class="js">`), not revealed later by `ui.js`. |
@@ -297,7 +298,7 @@ What the view hides (never the gate - the server checks again):
 | --- | --- |
 | Sidebar links and groups | `AdminNavigationService` ([navigation](#navigation)) |
 | Dashboard quick actions and cards | `DashboardViewModel.CanCreatePages` / `CanUpload` and `AdminNavModel.Allows(href)` |
-| Media upload card, a file's **Delete**, its selection checkbox | `MediaIndexViewModel.CanUpload`, `MediaRowViewModel.CanDelete` |
+| Media upload card, a file's **Delete**, its selection checkbox; folder checkboxes and menu items | `MediaIndexViewModel.CanUpload`, `MediaRowViewModel.CanDelete` / `CanEdit`, `MediaIndexViewModel.CanEditFolders` / `CanDeleteFolders` |
 | Pages drag-to-reorder | `ViewData["CanReorder"]` (`Collection types`/`update`) |
 | Content Manager: **New entry**, row actions, bulk delete, reorder, publish buttons, read-only form | `ContentManagerViewModel` / `EntryListViewModel` / `EntryEditViewModel` flags (`Entries` grants) |
 | Content types: create, save, delete | `ContentTypesIndexViewModel` / `ContentTypeEditViewModel` flags (`Content types` grants) |
@@ -319,7 +320,7 @@ JavaScript the form submits directly. Mechanics: [design system → feedback](de
 | Pages | **Delete page** (`_PageForm`): "Delete this page? Its child pages move up a level." |
 | Content Manager | **Delete** an entry, **Delete selected**, **Unpublish** |
 | Content types | **Delete content type**, removing a field in the builder |
-| Media | a file's **Delete** and the bulk **Delete** of the selection |
+| Media | a file's or folder's **Delete**, **Make private** / **Make public**, and **Delete selected** (files and folders) |
 | API Tokens | **Revoke** |
 | API Endpoints | **Delete endpoint**, **Regenerate token** / **Generate token** |
 | Plugins | **Disable** (enable needs no confirmation) |
@@ -375,10 +376,11 @@ added, removed or reordered without a spec change. `AdminNavigation.Tree` follow
 | Global Settings → **Overview** | labelled **Settings** (`/admin/settings`, the key/value editor); the Overview screen is [planned](../pages/settings.md#planned-not-implemented) |
 | Global Settings → **Transfer** | labelled **Data Management** (`/admin/data`, icon `database`): export, backups and import ([Data Management](../pages/data-management.md)) |
 | Global Settings → **File Manager** (between Internationalization and Plugins) | labelled **Media Library** (`/admin/media-settings`, icon `image`): upload limits, image optimization and video compression ([Media Library settings](../pages/media-settings.md)) |
-| one Settings group with four collapsible sub-groups | ✔ one **Settings** section with four collapsible `<details>` sub-groups |
+| one Settings group with four collapsible sub-groups | one **Settings** section with **five** collapsible `<details>` sub-groups: **API & Webhooks** (after Global Settings) is an addition - see the next row |
+| Global Settings → API Tokens, Webhooks | moved into their own group **API & Webhooks** (after Global Settings) with **API Tokens**, **API Endpoints**, **API Docs** and **Webhooks** - the developer and integration screens apart from the site's own settings |
 | Users & Permissions Plugin → **Roles** | not repeated: **Roles** is listed once, under Administration Panel - two links to the same screen confused users |
 | Users & Permissions Plugin: Providers, then Advanced Settings | **Two-factor (MFA)** (`/admin/mfa`, icon `shield`) added between them - the [Two-factor authentication](../pages/mfa.md) settings, an addition the spec tree does not list; **Providers** (`/admin/providers`, icon `lock`) is the built [Providers](../pages/providers.md) screen |
-| Global Settings: API Tokens, then Content History | **API Endpoints** (`/admin/api-endpoints`, icon `code`) and **API Docs** (`/admin/api-docs`, icon `book`), both for Super Admins and Developers, added after API Tokens - [custom API endpoints](../features/custom-endpoints.md) and the [API docs](../features/api-docs.md), additions the spec tree does not list |
+| no API Endpoints, API Docs | **API Endpoints** (`/admin/api-endpoints`, icon `code`) and **API Docs** (`/admin/api-docs`, icon `book`), both for Super Admins and Developers, in API & Webhooks after API Tokens - [custom API endpoints](../features/custom-endpoints.md) and the [API docs](../features/api-docs.md), additions the spec tree does not list |
 | no Extensions group | `AdminNavigationService` appends an **Extensions** section (admin extension tabs) when at least one admin extension is enabled - an addition the spec tree does not list |
 
 All other entries and their order already match.
@@ -391,7 +393,7 @@ Default visibility; actual visibility follows the role's granted permissions ([a
 | --- | --- | --- |
 | `Super Admin` | yes | full tree |
 | `Admin` | yes | full tree except Plugins and Data Management (Super Admin only), API Endpoints and API Docs (Super Admin and Developer only) |
-| `Developer` | yes | ✔ Dashboard, API Tokens, API Endpoints, API Docs (+ the placeholder links); no content, media, settings or administration screens |
+| `Developer` | yes | ✔ Dashboard, API Tokens, API Endpoints, API Docs (+ the placeholder links); no Webhooks, content, media, settings or administration screens |
 | `Editor` | yes | items permitted by role (typically Content Manager, File Manager, Content History); Settings sub-groups hidden unless granted |
 | `Author` | yes | limited (typically Content Manager and File Manager, own content); no Administration Panel, Email or Users & Permissions Plugin unless granted |
 | `Authenticated` | no | none |
@@ -404,8 +406,8 @@ Default visibility; actual visibility follows the role's granted permissions ([a
   `CanModify`).
 - Hiding by role ✔: the sidebar drops links whose controller the role cannot open - also by granted read
   permissions where the controller requires one (Pages, Content Manager, Content types, Media, Settings, Media Library,
-  API Tokens, Users, Roles, Audit Logs, Providers, Two-factor (MFA)). Not yet for placeholders: every admin user still
-  sees the placeholder links (Content History, Internationalization, Webhooks, Marketplace), because
+  API Tokens, Webhooks, Users, Roles, Audit Logs, Providers, Two-factor (MFA)). Not yet for placeholders: every admin
+  user still sees the placeholder links (Content History, Internationalization, Marketplace), because
   `ModulesController` is AdminArea.
 
 ### User flows
@@ -437,8 +439,8 @@ Default visibility; actual visibility follows the role's granted permissions ([a
 ### Acceptance criteria
 
 - [ ] The sidebar renders the exact canonical tree (see differences above).
-- [ ] Every sidebar leaf routes to its owning module and no leaf is a dead link - no dead links today, but four
-  leaves are placeholders (Marketplace, Content History, Internationalization, Webhooks).
+- [ ] Every sidebar leaf routes to its owning module and no leaf is a dead link - no dead links today, but three
+  leaves are placeholders (Marketplace, Content History, Internationalization).
 - [x] The admin area is never restyled by a public theme and always uses the built-in admin layout -
   `src/DotNetForge.Web/Areas/Admin/Views/_ViewStart.cshtml` sets `_AdminLayout`; theme views are only used by
   `HomeController.ThemedViewAsync`.

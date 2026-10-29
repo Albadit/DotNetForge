@@ -18,8 +18,8 @@ those has its own token. To try a token, paste it into the `ApiToken` authentica
 
 | Item | Value |
 | --- | --- |
-| Sidebar entry | **Settings → Global Settings → API Tokens** (`AdminNavigation.Tree`); stays active on the child routes (longest matching href) |
-| Breadcrumbs | list: Settings › Global Settings › **API Tokens**; create: Settings › Global Settings › API Tokens › **Create API token**; after creating: … › API Tokens › **Token created** |
+| Sidebar entry | **Settings → API & Webhooks → API Tokens** (the first link of the group) (`AdminNavigation.Tree`); stays active on the child routes (longest matching href) |
+| Breadcrumbs | list: Settings › API & Webhooks › **API Tokens**; create: Settings › API & Webhooks › API Tokens › **Create API token**; after creating: … › API Tokens › **Token created** |
 | Child flow | list → **Create token** → create form → created view → **Done** → list |
 | Linked from | the sidebar; **New API token** quick action on the [Dashboard](dashboard.md) (→ `/admin/api-tokens/create`, shown only to users who may open this screen); **API tokens** button on the [API Docs](api-docs.md) screen |
 
@@ -51,7 +51,7 @@ API Tokens (h1) - "Scoped tokens for the headless API. A token's secret is shown
     ├── table.table.table-stack: **Name** ⇅ · **Token** · **Scopes** ⇅ · **Last used** ⇅ · **Expires** ⇅ · **Status** · actions
     │   └── row: name / "Created <timestamp>" · <code>prefix…</code> · key count · <timestamp> ("Never") ·
     │            <timestamp> ("Never") · Active | Expired | Revoked badge · [Revoke] (only for active tokens)
-    └── .pagination (JS, only when more than 25 rows match)
+    └── .pagination (JS, only when more than 10 rows match: **Rows per page** 10/25/50/100, default 25, remembered)
 
 Create API token (h1) - "Give the token a name you'll recognise, choose how long it lives and what it may do."
 └── form.form (POST) - centred narrow page (`ViewData["PageWidth"] = "narrow"`)
@@ -148,7 +148,8 @@ origin for the example.
 ## State
 
 Plaintext exists only in the `Created` response (and its hidden copy spans). `ModelState` and the posted form values on
-failures. Persisted token rows. DOM only: the list's filter, sort and page.
+failures. Persisted token rows. DOM only: the list's filter, sort and page; the rows per page are kept in
+`localStorage` (`dnf-page-size:/admin/api-tokens:0`).
 
 ## Permissions
 
@@ -188,12 +189,12 @@ unnoticeable.
 
 | Case | Text |
 | --- | --- |
-| No tokens yet | `<empty-state icon="key">` "No API tokens yet" - "Create a token to let an app or website read your content through the API." + **Create token** (the filter is not shown) |
+| No tokens yet | `<empty-state icon="key">` "No API tokens yet" - "Create a token to let an app or website read your content through the API." (no button of its own - **Create token** is in the header; the filter is not shown) |
 | Filter matches nothing (JS) | "No token matches the filter." (`[data-collection-empty]`) |
 
 ## User interactions
 
-**Create token** (header and empty state), **All / Active / Expired / Revoked** filter, sortable headers, pagination,
+**Create token** (header), **All / Active / Expired / Revoked** filter, sortable headers, pagination (**Rows per page**),
 **Revoke** with confirm dialog, expiry radio cards, "All of <group>" checkboxes, **Generate token**, **Cancel**,
 **Copy** (token, curl example), **Done**.
 

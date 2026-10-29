@@ -15,7 +15,7 @@ filters, sorting, the theme switch and multi-select bulk actions need them (each
 | Icons | `wwwroot/img/icons.svg` (sprite) + `<icon>` tag helper |
 | Tag helpers | `src/DotNetForge.Web/Ui/UiTagHelpers.cs` (`<icon>`, `<badge>`, `<alert>`, `<empty-state>`, `<stat-card>`, `<timestamp>`, `<form-errors>`) |
 | Presentation helpers | `Ui/AuditPresentation.cs` (audit action labels/icons), `Ui/MediaPresentation.cs` (file kind, size) |
-| Behaviours | `wwwroot/js/forge/theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `nav-state.js` (admin layout, synchronously after the sidebar: open groups and scroll before the first paint), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types builder) |
+| Behaviours | `wwwroot/js/forge/theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `nav-state.js` (admin layout, synchronously after the sidebar: open groups and scroll before the first paint), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types builder), `webhooks.js` (Webhooks editor: header rows) |
 | Shared partials | `Views/Shared/_Feedback.cshtml` (toasts + confirm dialog) and `_ThemeMenu.cshtml` - admin and auth layouts |
 | Navigation | `Areas/Admin/Navigation/AdminNavigation.cs` (tree + `AdminNavigationService`) |
 
@@ -77,8 +77,8 @@ A screen sets:
 | Header buttons | `@section Actions { … }` - the primary action goes last |
 | Page scripts | `@section Scripts { <script src="~/js/forge/….js" asp-append-version="true" defer></script> }` |
 
-Navigation is defined once in `AdminNavigation.Tree` (the spec tree: **Main**, **Settings** with four collapsible
-sub-groups, plus **Extensions** for enabled admin extensions) and built per request by `AdminNavigationService`: links
+Navigation is defined once in `AdminNavigation.Tree` (the spec tree: **Main**, **Settings** with five collapsible
+sub-groups - the spec's four plus **API & Webhooks** - plus **Extensions** for enabled admin extensions) and built per request by `AdminNavigationService`: links
 the user may not open are hidden (it evaluates each screen controller's `[Authorize]` data with
 `IAuthorizationService` - hiding is never the gate), the active link is the longest matching href (so
 `/admin/api-tokens/create` marks **API Tokens**), planned modules carry a "Soon" badge, and the breadcrumb trail is
@@ -119,11 +119,11 @@ Class names are the API. Combine them; don't restyle them per screen.
 | Grids | `.grid` + `.grid-2/3/4/auto`; `.stack`, `.stack-sm/-lg`, `.cluster`, `.spread` |
 | Status | `<badge tone="Success" dot="true">`, `.dot` + `.dot-success/warning/danger` (with an `sr-only` label) |
 | Messages | `<alert tone="Warning" title="…">`, `<form-errors />` (all model-state errors - never `asp-validation-summary`, whose empty state has an inline style) |
-| Empty state | `<empty-state icon="…" title="…" text="…">actions</empty-state>` (`heading-level="1"` when it is the page's heading, e.g. the error page) |
+| Empty state | `<empty-state icon="…" title="…" text="…">actions</empty-state>` (`heading-level="1"` when it is the page's heading, e.g. the error page). An action goes in only when the page header doesn't already offer it: API Tokens, API Endpoints, Webhooks and Content types use the self-closing form, their create button stays in the header |
 | KPI | `<stat-card icon="…" label="…" value="…" href="…" />`; inside a card, `.stat-grid` lays out three `.stat` figures in a row (one column below 40rem; [Media Library settings](../pages/media-settings.md)) |
 | Time | `<timestamp value="@utc" />` ("5 min ago", exact UTC in the tooltip; `absolute="true"`, `empty="…"`) |
 | Table | `.table-wrap` > `table.table` (+ `.table-stack` and `data-label` on each cell for phone layout; first cell `.cell-lead`); `.cell-primary`, `.cell-sub`, `.col-actions`, `.col-check`; `tr.table-empty` |
-| Toolbar | `.toolbar` (`.toolbar-search`, `.toolbar-spacer`), `.collection-bar` + `.bulk-bar`, `.pagination` |
+| Toolbar | `.toolbar` (`.toolbar-search`, `.toolbar-spacer`), `.collection-bar` + `.bulk-bar`, `.pagination`. A `select` in a `.toolbar` has the normal control height (`--control-h`, base font size) even with `.input-sm`, so it is as tall as the toolbar's search field - which keeps the normal height too, because `input[type="search"]` is more specific than `.input-sm` |
 | Navigation | `.breadcrumbs`, `.tabs` > `.tab[aria-current]`, `.segmented` (filter buttons with `aria-pressed`) |
 | Menu | one component for every menu - [menus](#menus): `<action-menu>` for "⋯" row/card actions; the account and theme menus use the same markup with their own button |
 | Dialog | the shared confirm dialog (below); `dialog.dialog` with `.dialog-body/-icon/-title/-text/-footer` for others. Fades (and its backdrop) in on `showModal()` and out on `close()` - CSS transitions with `@starting-style` and `overlay`/`display` `allow-discrete`; browsers without that close at once, `prefers-reduced-motion` turns it off |
@@ -193,7 +193,7 @@ Write row and card menus with the tag helpers (`src/DotNetForge.Web/Ui/MenuTagHe
 | Attribute | Behaviour |
 | --- | --- |
 | `data-js-only` (+ `hidden`) | revealed only when scripts run (search boxes, view switches, copy buttons) - by the deferred `ui.js`, so after the first paint. Controls that must not appear late (the theme menu) use `html:not(.js) … { display: none }` instead: `theme.js` sets `<html class="js">` in `<head>` |
-| `data-collection` on a container, `data-item` on rows/cards | client-side search (`data-collection-search`), filters (`select[data-collection-filter="key"]` or `button[data-collection-filter][data-value][aria-pressed]`, matching a token of the item's `data-<key>` attribute, e.g. `data-collection-filter="status"` ↔ `data-status="enabled"`), sort (`th[data-sort="text|number|date"]`, cell `data-sort-value`), pagination (`data-page-size`, `[data-collection-pagination]`), count (`[data-collection-count]`), no-match state (`[data-collection-empty]`) |
+| `data-collection` on a container, `data-item` on rows/cards | client-side search (`data-collection-search`), filters (`select[data-collection-filter="key"]` or `button[data-collection-filter][data-value][aria-pressed]`, matching a token of the item's `data-<key>` attribute, e.g. `data-collection-filter="status"` ↔ `data-status="enabled"`), sort (`th[data-sort="text|number|date"]`, cell `data-sort-value`), pagination (`data-page-size`, `[data-collection-pagination]`; [below](#collection-pagination)), count (`[data-collection-count]`), no-match state (`[data-collection-empty]`) |
 | `data-select-all`, `data-select-item`, `data-bulk-bar`, `data-bulk-count`, `data-bulk-clear` | selection with a bulk bar that overlays the toolbar (no layout shift); item checkboxes post with `form="…"` |
 | `data-view-switch` + `data-view-target` + `data-view-button` | grid/list switch, remembered per screen (`data-view-mode` on the target) |
 | `data-check-group` / `data-check-member` | "select all" per checkbox group |
@@ -203,6 +203,17 @@ Write row and card menus with the tag helpers (`src/DotNetForge.Web/Ui/MenuTagHe
 | `data-fill="#form"` + `data-fill-<field>` | fill a form from a row (Settings → Edit) |
 | `details[data-nav-group]` | sidebar sub-group open state remembered across screens (the active group opens and stays open after leaving it); applied by `nav-state.js`, not `ui.js`, so it is in place before the first paint |
 | `iframe[data-frame]` | hides the skeleton once an admin extension has loaded |
+
+### Collection pagination
+
+`initCollection` builds the pager into `[data-collection-pagination]` (the container sets the default size with
+`data-page-size`; every list with a pager does): a **Rows per page** select (10, 25, 50, 100, plus the screen's own `data-page-size` when it is none of these - e.g.
+48 on Media), the range ("26-50 of 120"), and page buttons with chevron icon buttons (`chevron-left` /
+`chevron-right`, `aria-label` "Previous page" / "Next page") around the numbers (first, last and the pages next to the
+current one, "…" between). The chosen size is remembered per screen and collection in `localStorage`
+(`dnf-page-size:<path>:<index>` - the URL path and the collection's position on the page); a stored value that is not
+10, 25, 50 or 100 is ignored. Changing it goes back to page 1. The whole pager is hidden while the matching items fit
+the smallest size (10 or fewer), so short lists show neither page buttons nor the select.
 
 ## Accessibility (WCAG 2.2 AA)
 

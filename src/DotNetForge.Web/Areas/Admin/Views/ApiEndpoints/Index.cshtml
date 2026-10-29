@@ -19,9 +19,7 @@
     </div>
     @if (Model.Endpoints.Count == 0)
     {
-        <empty-state icon="code" title="No API endpoints yet" text="Give it a path, add its operations - each a method with its own SQL - and call it at /api/custom/your-path.">
-            <a class="btn btn-primary" href="/admin/api-endpoints/new"><icon name="plus" /> New endpoint</a>
-        </empty-state>
+        <empty-state icon="code" title="No API endpoints yet" text="Give it a path, add its operations - each a method with its own SQL - and call it at /api/custom/your-path." />
     }
     else
     {

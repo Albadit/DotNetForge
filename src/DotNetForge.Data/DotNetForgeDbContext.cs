@@ -171,7 +171,11 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(d => d.TargetUrl).HasMaxLength(2000);
             e.Property(d => d.Event).HasMaxLength(100);
             e.Property(d => d.Detail).HasMaxLength(4000);
+            e.Property(d => d.RequestBody).HasMaxLength(65536);
+            e.Property(d => d.ResponseBody).HasMaxLength(4000);
             e.HasIndex(d => d.WebhookId);
+            // The delivery worker's query: due pending attempts.
+            e.HasIndex(d => new { d.Outcome, d.NextAttemptDate });
         });
 
         b.Entity<AuditLogEntry>(e =>

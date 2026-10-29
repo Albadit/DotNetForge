@@ -1202,11 +1202,25 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("NextAttemptDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("Outcome")
                         .HasColumnType("integer");
 
+                    b.Property<string>("RequestBody")
+                        .HasMaxLength(65536)
+                        .HasColumnType("character varying(65536)");
+
                     b.Property<DateTime>("RequestTimestamp")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResponseBody")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<int?>("ResponseStatusCode")
                         .HasColumnType("integer");
@@ -1225,6 +1239,8 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("WebhookId");
+
+                    b.HasIndex("Outcome", "NextAttemptDate");
 
                     b.ToTable("WebhookDeliveries");
                 });

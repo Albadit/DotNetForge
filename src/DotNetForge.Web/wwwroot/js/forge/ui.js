@@ -325,12 +325,18 @@
     //             <button data-collection-filter="status" data-value="enabled" aria-pressed="…">  (segmented)
     //   sort:     <th data-sort="text|number|date">          (cell text or data-sort-value; tables only)
     //   paging:   <div data-collection-pagination></div>      count:  <span data-collection-count></span>
+    //             (rows-per-page select, chevron buttons; the chosen size is remembered per screen in localStorage)
     //   no match: <… data-collection-empty hidden>
     //   select:   <input type="checkbox" data-select-all> / <input type="checkbox" data-select-item form="bulk" name="ids">
     //             <… data-bulk-bar hidden> <span data-bulk-count></span>
-    function initCollection(scope) {
+    var PageSizes = [10, 25, 50, 100];
+
+    function initCollection(scope, index) {
         var items = $all("[data-item]", scope);
         var pageSize = parseInt(scope.getAttribute("data-page-size") || "0", 10);
+        var sizeKey = "dnf-page-size:" + window.location.pathname + ":" + (index || 0);
+        var saved = parseInt(storage.get(sizeKey) || "", 10);
+        if (pageSize > 0 && PageSizes.indexOf(saved) !== -1) { pageSize = saved; }
         var page = 1;
         var search = scope.querySelector("[data-collection-search]");
         var pager = scope.querySelector("[data-collection-pagination]");
@@ -372,33 +378,69 @@
             if (count) { count.textContent = visible.length === items.length ? items.length + " total" : visible.length + " of " + items.length; }
             if (pager) { renderPager(pager, pages, visible.length, first, Math.min(last, visible.length)); }
         }
-        function renderPager(container, pages, total, first, last) {
-            container.hidden = pages <= 1;
+        // The pager's parts are made once and updated on each render, so the size select keeps its focus.
+        var pagerParts = null;
+        function buildPager(container) {
             container.textContent = "";
-            if (pages <= 1) { return; }
+            var info = doc.createElement("div");
+            info.className = "pagination-info";
+            var label = doc.createElement("label");
+            label.className = "pagination-size";
+            var labelText = doc.createElement("span");
+            labelText.textContent = "Rows per page";
+            var select = doc.createElement("select");
+            select.className = "input-sm";
+            PageSizes.concat(PageSizes.indexOf(pageSize) === -1 ? [pageSize] : []).sort(function (a, b) { return a - b; }).forEach(function (size) {
+                var option = doc.createElement("option");
+                option.value = String(size);
+                option.textContent = String(size);
+                select.appendChild(option);
+            });
+            select.value = String(pageSize);
+            select.addEventListener("change", function () {
+                pageSize = parseInt(select.value, 10);
+                storage.set(sizeKey, String(pageSize));
+                page = 1;
+                render();
+            });
+            label.appendChild(labelText);
+            label.appendChild(select);
             var summary = doc.createElement("span");
-            summary.textContent = (first + 1) + "-" + last + " of " + total;
-            var nav = doc.createElement("div");
+            summary.className = "pagination-summary";
+            info.appendChild(label);
+            info.appendChild(summary);
+            var nav = doc.createElement("nav");
             nav.className = "pagination-pages";
-            function add(label, target, current, aria) {
+            nav.setAttribute("aria-label", "Pages");
+            container.appendChild(info);
+            container.appendChild(nav);
+            return { summary: summary, nav: nav };
+        }
+        function renderPager(container, pages, total, first, last) {
+            // Nothing to page or resize while everything fits the smallest page.
+            container.hidden = total <= PageSizes[0];
+            if (container.hidden) { return; }
+            pagerParts = pagerParts || buildPager(container);
+            pagerParts.summary.textContent = total === 0 ? "0 of 0" : (first + 1) + "-" + last + " of " + total;
+            var nav = pagerParts.nav;
+            nav.textContent = "";
+            function add(content, target, current, aria, isIcon) {
                 var button = doc.createElement("button");
                 button.type = "button";
-                button.className = "btn btn-sm";
-                button.textContent = label;
+                button.className = "btn btn-sm" + (isIcon ? " btn-icon" : "");
+                if (isIcon) { button.innerHTML = content; } else { button.textContent = content; }
                 if (aria) { button.setAttribute("aria-label", aria); }
                 if (current) { button.setAttribute("aria-current", "page"); }
                 if (target < 1 || target > pages) { button.disabled = true; }
                 button.addEventListener("click", function () { page = target; render(); scope.scrollIntoView({ block: "nearest" }); });
                 nav.appendChild(button);
             }
-            add("‹", page - 1, false, "Previous page");
+            add(iconHtml("chevron-left", "sm"), page - 1, false, "Previous page", true);
             for (var p = 1; p <= pages; p++) {
                 if (p === 1 || p === pages || Math.abs(p - page) <= 1) { add(String(p), p, p === page, "Page " + p); }
-                else if (Math.abs(p - page) === 2) { var gap = doc.createElement("span"); gap.textContent = "…"; nav.appendChild(gap); }
+                else if (Math.abs(p - page) === 2) { var gap = doc.createElement("span"); gap.className = "pagination-gap"; gap.textContent = "…"; nav.appendChild(gap); }
             }
-            add("›", page + 1, false, "Next page");
-            container.appendChild(summary);
-            container.appendChild(nav);
+            add(iconHtml("chevron-right", "sm"), page + 1, false, "Next page", true);
         }
 
         if (search) { search.addEventListener("input", function () { page = 1; render(); }); }

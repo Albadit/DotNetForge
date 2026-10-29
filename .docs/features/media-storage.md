@@ -19,9 +19,10 @@ Screen: [Media](../pages/media.md). Still-unbuilt File Manager features: [Planne
 | `ImageOptimizer` | `src/DotNetForge.Web/Services/ImageOptimizer.cs` | Re-encodes uploaded images with SkiaSharp ([images](#images)) |
 | `Ffmpeg`, `VideoOptimizationQueue`, `VideoOptimizationService` | `src/DotNetForge.Web/Services/VideoCompression.cs` | ffmpeg from `FFMPEG_PATH`, and the background job that compresses queued MP4 uploads ([videos](#videos)) |
 | `MediaExportService` | `src/DotNetForge.Web/Services/MediaExportService.cs` | Every media file as one .zip in its library folders ([Data Management → media export](../pages/data-management.md#media-export)) |
-| Admin screen | `src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs` | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}`, `POST /admin/media/delete-selected` ([delete flow](#delete-flow)) |
+| Admin screen | `src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs` | `GET /admin/media`, `POST /admin/media/upload`, `POST /admin/media/delete/{id}`, `POST /admin/media/delete-selected` ([delete flow](#delete-flow)), `POST /admin/media/move-selected`, the preview's `GET /admin/media/{id}/inline` and `/zip` ([Media → preview](../pages/media.md#preview)) |
 | Download endpoint | `src/DotNetForge.Web/Controllers/MediaFilesController.cs` | `GET /media/{id}/{fileName?}`: authorization, then presigned redirect or stream |
 | `MediaFile` entity | `src/DotNetForge.Shared/Entities/Content.cs` | Metadata row (`RelativePath` holds the storage key) |
+| Webhooks | `WebhookDispatcher` (through the `media.*` audit entries) | upload → `media.create`; rename, public/private, move → `media.update`; delete → `media.delete` ([webhooks](webhooks.md#events)) |
 | API list | `GET /api/media` (`media.read`) | Lists the media files ([headless API](headless-api.md)) |
 | Configuration | `StorageSettings` on `AppEnvironment`; `STORAGE_S3_*` keys | Endpoint and credentials ([configuration](configuration.md)) |
 
@@ -288,6 +289,12 @@ sequenceDiagram
 Images, video, audio and PDF are served `inline`; everything else as `attachment`. Every response carries
 `X-Content-Type-Options: nosniff` (security headers middleware).
 
+The Media screen's preview dialog does not frame these links: with S3 they redirect to the bucket, which the CSP's
+`frame-src` does not allow. `GET /admin/media/{id}/inline` (`Media/read`, private files included) streams the stored
+object from this site instead - text as `text/plain; charset=utf-8`, `?download=true` as an attachment,
+`Cache-Control: private, no-store` - and `GET /admin/media/{id}/zip` lists a .zip of at most 64 MB
+([Media → preview](../pages/media.md#preview)).
+
 ## Delete flow
 
 `POST /admin/media/delete/{id}` needs `Media/delete`, or `Media/delete.own` for files the user uploaded
@@ -296,18 +303,19 @@ nothing ever points at a missing object), then the object; if the object delete 
 `media.deleted`.
 
 `POST /admin/media/delete-selected` (`MediaController.DeleteSelected`, the library's bulk action) applies the same
-rules to a list of files:
+rules to a list of files, then deletes the selected folders that are empty:
 
 | Rule | Behaviour |
 | --- | --- |
-| Input | form field `ids` (repeated), de-duplicated; 1 to `MediaController.MaxBulkDelete` = 100, else nothing is deleted and `TempData["Error"]` is "Select at least one file." / "Delete at most 100 files at a time." |
+| Input | form fields `ids` (files) and `folderIds` (folders), repeated, de-duplicated; 1 to `MediaController.MaxBulkDelete` = 100 together, else nothing is deleted and `TempData["Error"]` is "Select at least one file or folder." / "Delete at most 100 items at a time." |
 | Unknown ids | skipped silently |
 | Permission | per file, the same `CanModify(Media, delete, delete.own, UploadedById)` as the single delete; refused files are skipped and counted |
-| Deletion and audit | `MediaService.DeleteAsync` per permitted file - one `media.deleted` entry each, exactly like the single delete |
-| Result | redirect to `/admin/media`; `TempData["Success"]` "Deleted N files." when any were deleted; `TempData["Error"]` "N files were not deleted: your role may not delete them." for refused files, or "None of the selected files exist any more." when nothing was deleted or refused |
+| Deletion and audit | `MediaService.DeleteAsync` per permitted file - one `media.deleted` entry each, exactly like the single delete; then, with `Media/delete` (else all selected folders are refused), `MediaFolderService.DeleteAsync` per folder - only an empty one is deleted (`media.folder.deleted`) |
+| Result | redirect to the folder shown; `TempData["Success"]` "Deleted N items." when any were deleted; `TempData["Error"]` "N items not deleted: your role may not delete them." for refused items and "N folders were not deleted: only empty folders can be deleted.", or "None of the selected items exist any more." when nothing was deleted, refused or kept |
 
-Covered by `AdminUiTests.Bulk_delete_removes_the_selected_files_the_user_may_delete`. Screen details:
-[Media → Delete selected files](../pages/media.md#delete-selected-files).
+Covered by `AdminUiTests.Bulk_delete_removes_the_selected_files_the_user_may_delete` and
+`MediaTests.Folders_can_be_selected_to_move_and_delete_with_the_files`. Screen details:
+[Media → Delete selected files and folders](../pages/media.md#delete-selected-files-and-folders).
 
 ## Local development
 
@@ -345,7 +353,6 @@ Target behaviour from the original product specification. Nothing in this sectio
 - Compressing more video formats than MP4 (WebM, MOV - not allowed upload types today) and audio.
 - Toggle public/private after upload; update metadata (`media.update`).
 - API upload/update/delete with `media.upload`, `media.update`, `media.delete` permission keys.
-- Webhook events `media.create`, `media.update`, `media.delete` ([webhooks](webhooks.md)).
 - The screen is **File Manager** under *Main* with settings under *Settings → Global Settings → File Manager* (the
   settings screen ✔, labelled **Media Library** - [Media Library settings](../pages/media-settings.md);
   [Media screen → Planned](../pages/media.md#planned-not-implemented)).
@@ -404,7 +411,7 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
 - [ ] Local storage is the default and an external provider can be selected - deliberately not: deployments always use S3-compatible storage (any provider, chosen by endpoint); local storage remains only as the Development fallback.
 - [x] A broken storage provider fails gracefully and the failure is logged (`MediaService.UploadAsync` returns a message and logs; existing files are unaffected).
 - [ ] Deleting a file referenced by a page/content is blocked or needs explicit confirmation, with dependents listed.
-- [ ] `media.create`, `media.update` and `media.delete` webhook events fire.
+- [x] `media.create`, `media.update` and `media.delete` webhook events fire (`WebhookPayload.EventFor`; `WebhookTests.Media_changes_fire_subscribed_webhooks_and_failures_are_retried_with_backoff`).
 - [ ] Media settings (allowed types, max size, image toggles, default provider) are configurable by Super Admin and Admin only (max size per kind and image/video optimization ✔ on [Media Library settings](../pages/media-settings.md) with `Settings` read/update - by default Super Admin and Admin; no allowed types, no provider choice).
 - [x] Storage secrets come from `.env` / the environment and are never committed (`STORAGE_S3_SECRET_ACCESS_KEY`, `.gitignore`).
 
@@ -429,7 +436,8 @@ Access grant entity: `targetId`, `targetType` (`file` / `folder`), `roleId?`, `u
   `MediaFilesController.CanReadPrivate`.
 - **Entities** (folders, grants, variants): `src/DotNetForge.Shared/Entities`, the fluent configuration, and a migration
   for **each** SQL context (`database-change` skill).
-- **Webhooks**: raise `WebhookEvents.MediaCreate/MediaUpdate/MediaDelete` from `MediaService` once a dispatcher exists.
+- **Webhooks**: media events follow the `media.*` audit actions `MediaService` and `MediaFolderService` write
+  (`WebhookPayload.EventFor`); a new media change fires webhooks only if it is audited through `IAuditService`.
 - **Rule**: no code may write runtime files under the content root; use `IFileStorage` (or the OS temp directory for
   transient processing). `ReadOnlyDeploymentTests` fails if anything does.
 - Update this document, [pages/media.md](../pages/media.md) and [implementation-status.md](../implementation-status.md)

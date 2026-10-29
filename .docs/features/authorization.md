@@ -103,12 +103,14 @@ screen; on an action it adds to the controller's requirement (both must pass).
 | Media (every screen and action) | `Media` / `read` on `MediaController` | ✔ ✔ ✘ ✔ ✔ |
 | Media: upload `POST /admin/media/upload` | `Media` / `create` | ✔ ✔ ✘ ✔ ✔ |
 | Media: make private/public `POST /admin/media/visibility/{id}` | `update`, or `update.own` on own files | ✔ ✔ ✘ ✔ own |
-| Media: delete `POST /admin/media/delete/{id}` and `delete-selected` | `delete`, or `delete.own` on own files | ✔ ✔ ✘ ✔ own |
+| Media: delete `POST /admin/media/delete/{id}` and `delete-selected` | `delete`, or `delete.own` on own files; selected folders `delete` | ✔ ✔ ✘ ✔ own |
+| Media: move `POST /admin/media/move-selected` | files `update`, or `update.own` on own files; selected folders `update` | ✔ ✔ ✘ ✔ own |
 | Settings `GET /admin/settings` / save `POST /admin/settings/save` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | Media Library settings `GET` / save `POST /admin/media-settings` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | [Providers](../pages/providers.md) `GET /admin/providers`, `GET /admin/providers/{key}` / save `POST /admin/providers/{key}` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | [Two-factor authentication](../pages/mfa.md) `GET` / save `POST /admin/mfa` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | API Tokens list / create / revoke | `API` / `read` / + `create` / + `delete` | ✔ ✔ ✔ ✘ ✘ |
+| [Webhooks](../pages/webhooks.md) list, editor, delivery log, secret / create / save, enable, disable, rotate, test / delete | `Webhooks` / `read` / + `create` / + `update` / + `delete` | ✔ ✔ ✘ ✘ ✘ |
 | Users list and edit screen / create / save, enable, disable / delete | `Users` / `read` / + `create` / + `update` / + `delete` | ✔ ✔ ✘ ✘ ✘ |
 | Users: reset a user's two-step verification `POST /admin/users/{id}/mfa/reset` | `Users` / `update`; never one's own account | ✔ ✔ ✘ ✘ ✘ |
 | Roles list and edit screen / create, duplicate / save / delete | `Roles` / `read` / + `create` / + `update` / + `delete` | ✔ ✔ ✘ ✘ ✘ |
@@ -197,8 +199,9 @@ form `area|action`.
 | `Audit logs` | `read` |
 | `Updates` | `read`, `install` |
 
-`Single types`, `Webhooks`, `Plugins`, `Extensions` and `Updates` grants are stored and shown but not checked by any
-screen yet (no such screens, or gated by role - Plugins). Seeded rows outside the catalog (for example `Media` /
+`Single types`, `Plugins`, `Extensions` and `Updates` grants are stored and shown but not checked by any
+screen yet (no such screens, or gated by role - Plugins). `Webhooks` is checked by the [Webhooks](../pages/webhooks.md)
+screen. Seeded rows outside the catalog (for example `Media` /
 `publish`, which the matrix enumerates) are kept, copied by **Duplicate** and never shown.
 
 ## Permission matrix (default grants)
@@ -251,7 +254,7 @@ Target behaviour from the original product specification. Nothing in this sectio
 - **Enforce `(area, action)` on every action.** Every protected admin and API action is checked against the
   principal's effective permissions - the same model for admin screens and the headless API (API token scoping:
   [headless API](headless-api.md)). Today: ✔ API permission keys, ✔ `(area, action)` for Pages, Content Manager
-  (Entries), Content types, Media, Users, Roles, Settings, API tokens and Audit logs; Plugins is gated by role; Single types, Webhooks, Extensions and
+  (Entries), Content types, Media, Users, Roles, Settings, API tokens, Webhooks and Audit logs; Plugins is gated by role; Single types, Extensions and
   Updates have no screens that check them.
 - **Effective permissions** = union of all assigned roles (most permissive wins). No per-user deny override; restrict
   by changing role assignments. ✔ `PermissionService.IsGranted`.
@@ -369,7 +372,7 @@ Screen-specific criteria are listed on the [Users](../pages/users.md#acceptance-
 
 - [x] The six default roles of the spec (and `Developer`) exist out of the box with descriptions (`DataSeeder.RoleDefinitions`; condensed wording).
 - [x] A role exposes Name, Description, Permissions and a read-only number of users (`Role`, `RolesController.RoleListItem`).
-- [x] Permissions can be assigned across all ten permission areas, plus `Content types` and `Entries` (`PermissionCatalog`, [Roles](../pages/roles.md); Single types, Webhooks, Plugins, Extensions and Updates grants are stored but not yet checked).
+- [x] Permissions can be assigned across all ten permission areas, plus `Content types` and `Entries` (`PermissionCatalog`, [Roles](../pages/roles.md); Single types, Plugins, Extensions and Updates grants are stored but not yet checked).
 - [x] A user record exposes First name, Last name, Email, Password (hashed), Roles, Status, Created date and Last login date (`User`).
 - [x] Email is validated for format and uniqueness; duplicates are rejected (`UserManagementService`, case-insensitive; unique index on `Email`).
 - [x] Passwords are validated against the password policy, stored only as hashes, never returned or logged (`PasswordPolicy`, `Pbkdf2PasswordHasher`).

@@ -1,0 +1,108 @@
+@using DotNetForge.Shared.Enums
+@model WebhooksController.DeliveriesViewModel
+@{
+    var w = Model.Webhook;
+    var current = (int)ViewData["Page"]!;
+    var pages = (int)ViewData["Pages"]!;
+    // Indented for reading; what was sent (and signed) is the compact original.
+    static string? Pretty(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return json;
+        }
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return System.Text.Json.JsonSerializer.Serialize(doc.RootElement, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return json;
+        }
+    }
+    ViewData["Title"] = "Delivery log";
+    ViewData["Description"] = $"Every attempt of '{w.Name}' in the last 30 days, newest first.";
+}
+
+@section Actions {
+    <a class="btn btn-secondary" href="/admin/webhooks/@w.Id"><icon name="pencil" /> Edit webhook</a>
+    @if (Model.CanUpdate)
+    {
+        <form method="post" action="/admin/webhooks/@w.Id/test">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnTo" value="deliveries" />
+            <button type="submit" class="btn btn-primary"><icon name="send" /> Send test delivery</button>
+        </form>
+    }
+}
+
+<section class="card" aria-labelledby="log-title">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" id="log-title">Attempts</h2>
+            <p class="card-description">@Model.Total total · to <code>@w.Url</code></p>
+        </div>
+        <badge tone="@(w.Enabled ? Tone.Success : Tone.Neutral)" dot="true">@(w.Enabled ? "Enabled" : "Disabled")</badge>
+    </div>
+    @if (Model.Deliveries.Count == 0)
+    {
+        <empty-state icon="send" title="Nothing sent yet" text="Attempts appear here when a subscribed event happens, or after a test delivery." />
+    }
+    else
+    {
+        <ul class="list delivery-list">
+            @foreach (var d in Model.Deliveries)
+            {
+                var tone = d.Outcome switch { WebhookOutcome.Success => Tone.Success, WebhookOutcome.Failure => Tone.Danger, _ => Tone.Neutral };
+                var label = d.Outcome switch { WebhookOutcome.Success => d.ResponseStatusCode?.ToString() ?? "OK", WebhookOutcome.Failure => d.ResponseStatusCode?.ToString() ?? "Failed", _ => "Waiting" };
+                <li>
+                    <details class="delivery">
+                        <summary class="delivery-summary">
+                            <badge tone="@tone" dot="true">@label</badge>
+                            <code class="text-sm">@d.Event</code>
+                            <span class="text-sm text-muted">attempt @d.AttemptNumber</span>
+                            <span class="grow"></span>
+                            <span class="text-sm text-muted">@(d.ResponseTimeMs is { } ms ? $"{ms} ms" : "")</span>
+                            <timestamp value="@d.RequestTimestamp" absolute="true" />
+                        </summary>
+                        <div class="delivery-body stack-sm">
+                            @if (d.Detail is not null)
+                            {
+                                <p class="text-sm @(d.Outcome == WebhookOutcome.Failure ? "text-danger" : "text-muted")">@d.Detail</p>
+                            }
+                            <dl class="dl dl-compact">
+                                <dt>Event id</dt>
+                                <dd><code>@d.EventId</code></dd>
+                                <dt>Target</dt>
+                                <dd><code>@d.TargetUrl</code></dd>
+                            </dl>
+                            <span class="field-label">Request body</span>
+                            <pre class="code-block delivery-code">@Pretty(d.RequestBody)</pre>
+                            @if (d.ResponseBody is not null)
+                            {
+                                <span class="field-label">Response (start)</span>
+                                <pre class="code-block delivery-code">@Pretty(d.ResponseBody)</pre>
+                            }
+                        </div>
+                    </details>
+                </li>
+            }
+        </ul>
+        @if (pages > 1)
+        {
+            <div class="card-footer">
+                <span class="text-sm text-muted">Page @current of @pages</span>
+                @if (current > 1)
+                {
+                    <a class="btn btn-secondary btn-sm" href="?page=@(current - 1)"><icon name="chevron-left" size="sm" /> Newer</a>
+                }
+                @if (current < pages)
+                {
+                    <a class="btn btn-secondary btn-sm" href="?page=@(current + 1)">Older <icon name="chevron-right" size="sm" /></a>
+                }
+            </div>
+        }
+    }
+</section>

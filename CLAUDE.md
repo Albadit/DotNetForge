@@ -72,8 +72,8 @@ python .claude/skills/verify/check_links.py       # docs link check
   read-only with a connection test, test sends and the log). Email text comes only from templates (`EmailTemplateCatalog` in
   `src/DotNetForge.Core/Email/`, customized on Email → Templates) via `EmailTemplateService.RenderAsync` - never build
   bodies inline. Sign-in is `/login`; self-service accounts in `AccountService`, governed by the
-  Advanced User Settings (`UserAccountSettingsService`, `Settings` rows `users.*`). Webhooks are not delivered (see
-  `.docs/implementation-status.md`).
+  Advanced User Settings (`UserAccountSettingsService`, `Settings` rows `users.*`). Webhooks fire for entry and
+  media changes (`WebhookDispatcher`, fed by `AuditService`; `.docs/features/webhooks.md`).
 - Integration tests need PostgreSQL: `DNF_TEST_POSTGRES` (default `Host=localhost;Port=5432;Username=postgres;Password=postgres;GSS Encryption Mode=Disable`,
   a fresh database per factory). Optional: `DNF_TEST_SQLSERVER`/`_MYSQL`/`_MONGODB` for the additional-database tests,
   `DNF_TEST_S3_*` for live S3 tests (`docker/databases/*.yml`, `docker/s3/seaweedfs.yml`). Docker: `docker/compose.dev.yml` = PostgreSQL + RustFS +

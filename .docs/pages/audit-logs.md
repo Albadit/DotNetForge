@@ -37,7 +37,7 @@ Audit Logs (h1) - "The 100 most recent actions. Entries are append-only: they ca
     ├── card-header: **Activity** · "N total" (data-collection-count)
     ├── .toolbar (JS only): search "Search user, action, entity or IP" · **All areas** ▾ · **Any result** ▾ (Succeeded, Failed)
     ├── table.table.table-stack: **When** ⇅ · **Action** ⇅ · **User** ⇅ · **Entity** · **Result** · **IP address**
-    └── .pagination (JS, only when more than 25 entries match)
+    └── .pagination (JS, only when more than 10 entries match: **Rows per page** 10/25/50/100, default 25, remembered)
 ```
 
 ## Components
@@ -76,7 +76,8 @@ actions such as the Contact Form's `contactform.submitted`.
 
 ## State
 
-No server state. DOM only: search text, filters, sort and current page - lost on reload.
+No server state. DOM only: search text, filters, sort and current page - lost on reload. The rows per page are kept
+in `localStorage` (`dnf-page-size:/admin/audit-logs:0`).
 
 ## Permissions
 

@@ -81,8 +81,8 @@ removed by the `RemoveTenants` migrations).
 | `MediaFiles` | `Guid Id` | `FileName`(400, sanitized display name ≤ 200), `OriginalName`(400), `ContentType`(200, from the extension), `SizeBytes` (the stored object), `OriginalSizeBytes`? (the size as uploaded when optimization stored a smaller version), `Optimization` (`MediaOptimization`: `None`, `Optimized`, `Pending`, `Processing`, `Failed`), `OptimizationStartedDate`? (when the video compression claimed it), `RelativePath`(1000, the `IFileStorage` key `{yyyy}/{MM}/{guid:N}{ext}`; older uploads keep their earlier keys), `FolderId`? (the `MediaFolders` row; null = top level), `IsPublic`, `UploadedById`, `UploadedDate` | `FolderId`, `Optimization` | `MediaService` (upload adds, delete removes), `MediaFolderService` (moves), `VideoOptimizationService` (compression state, key and sizes - [optimization](../features/media-storage.md#optimization)) |
 | `MediaFolders` | `Guid Id` | `Name`(100), `ParentId`?, `Path`(1000, "/Photos/2026"), `CreatedById`?, `CreatedDate` | `Path` unique, `ParentId` | `MediaFolderService` - virtual library folders ([media → folders](../pages/media.md#folders)) |
 | `ApiTokens` | `Guid Id` | `Name`(200), `Description`(1000), `Duration`, `ExpirationDate`, `PermissionsCsv`, `CreatedById`, `CreatedDate`, `LastUsedDate`, `Revoked`, `TokenHash`, `TokenPrefix`(64) | `Name` unique; index on `TokenPrefix`; `Permissions` computed from CSV | `ApiTokensController`, `ApiTokenAuthenticationHandler` (`LastUsedDate`, at most every 5 min) |
-| `Webhooks` | `Guid Id` | `Name`, `Url`, `HeadersJson`, `EventsCsv`, `Enabled`, `Secret`, `LastDelivery` | - | **nothing** |
-| `WebhookDeliveries` | `Guid Id` | `WebhookId`, `TargetUrl`, `Event`, `ResponseStatusCode`, `ResponseTimeMs`, `AttemptNumber`, `Outcome`, `Detail` | index on `WebhookId` | **nothing** |
+| `Webhooks` | `Guid Id` | `Name`(200), `Url`(2000), `HeadersJson`(4000, `[{"key","value"}]`), `EventsCsv`(1000), `Enabled`, `Secret` (unbounded, protected with Data Protection), `CreatedDate`, `LastDelivery` | - (names unique case-insensitively, checked by `WebhookService`); `Events` computed from CSV | `WebhookService` (Webhooks screen); `LastDelivery` also by `WebhookDispatcher` ([webhooks](../features/webhooks.md)) |
+| `WebhookDeliveries` | `Guid Id` | `WebhookId` (FK, cascade), `EventId` (same for every attempt of one event), `Event`(100), `TargetUrl`(2000), `RequestTimestamp`, `NextAttemptDate`? (when a `Pending` attempt is due; also its lease while sending), `RequestBody`(65536), `ResponseStatusCode`?, `ResponseTimeMs`?, `ResponseBody`(4000)?, `AttemptNumber`, `Outcome` (`WebhookOutcome`), `Detail`(4000)? | indexes `WebhookId`, (`Outcome`, `NextAttemptDate`) | `WebhookDispatcher` (one row per attempt; finished rows older than 30 days pruned hourly), `WebhookService` (test deliveries, cancelling pending attempts on disable) |
 | `AuditLogs` | `long Id` (auto-increment) | `UserId` (null for API-token actions), `UserDisplaySnapshot`(256), `Action`(100), `EntityType`, `EntityId`(100), `EntityDisplaySnapshot`(400), `IpAddress`, `UserAgent`(512), `Timestamp`, `Details`, `Success` | indexes on `Timestamp` and `Action` | `AuditService` (`IAuditService`) only (append-only; snapshots truncated to the column lengths) |
 | `InstalledExtensions` | `string Id` (manifest id, 200) | `Name`, `Description`, `Version`, `Type`, `Author`, `Status`, `InstalledDate`, `UpdateAvailable`, `PermissionsCsv`, `Website`, `License` | - | `ExtensionLifecycleService` (upsert on enable from the manifest, `InstalledDate` on first enable; `Status` on disable; `UpdateAvailable` never); read by `ExtensionState` (enabled ids, cached 30 s), `PluginsController`, `DashboardController`, `GET /api/extensions` |
 | `SystemState` | `int Id` (always 1) | `Installed`, `InstalledAtUtc`, `CmsVersion` (default `"1.0.0"`), `SeedVersion` (one-time data updates applied, [Seeding](#seeding)) | single row | `DataSeeder`, `InstallationStore` |
@@ -105,12 +105,13 @@ Enums are stored as integers (`UserStatus`, `PageType`, `TokenDuration`, `Extens
 `EventsCsv`) are split by computed properties ignored by EF (`ApiToken.Permissions`, `Webhook.Events`).
 
 `DataProtectionKeys` holds the key ring for the auth cookie, antiforgery tokens, TempData, the custom endpoint
-tokens (`CustomEndpoints.TokenProtected`), the sign-in providers' secrets (`AuthProviders.SettingsJson`) and the
-authenticator-app secrets (`UserMfaMethods.Secret`), so every instance shares it and sessions survive restarts on a read-only
+tokens (`CustomEndpoints.TokenProtected`), the sign-in providers' secrets (`AuthProviders.SettingsJson`), the
+authenticator-app secrets (`UserMfaMethods.Secret`) and the webhook signing secrets (`Webhooks.Secret`), so every instance shares it and sessions survive restarts on a read-only
 filesystem. The key XML is stored **unencrypted**: anyone who can read this table can forge cookies and decrypt the
 endpoint tokens. Deleting the rows signs everyone out and makes every endpoint token unreadable (callers get `401`
 until each endpoint gets a new token with **Generate token**), and likewise makes provider secrets (re-enter them on
-[Providers](../pages/providers.md)) and authenticator apps (set up again) unusable.
+[Providers](../pages/providers.md)), authenticator apps (set up again) and webhook secrets (deliveries fail with "Not
+sent" until the secret is rotated on [Webhooks](../pages/webhooks.md)) unusable.
 
 ### Column lengths
 
@@ -154,6 +155,7 @@ automatically at startup:
 | `20261027153504_AddMediaFolders` | table `MediaFolders` (unique `Path`, index `ParentId`); `MediaFiles.FolderPath` dropped, `MediaFiles.FolderId` added (index) |
 | `20261028111036_AddMediaOptimization` | `MediaFiles.Optimization` (integer, not null, default 0 = `None`: existing files count as stored as uploaded), `MediaFiles.OptimizationStartedDate` (nullable), `MediaFiles.OriginalSizeBytes` (bigint, nullable); index `IX_MediaFiles_Optimization` |
 | `20261028135245_AddSignInProvidersAndMfa` | `AuthProviders.Key` (`character varying(50)`, unique index) and `UpdatedDate`; `AuthProviders.SettingsJson` 4000 → 8000; tables `UserMfaMethods` and `UserRecoveryCodes` (FKs to `Users`, cascade). Existing rows get their key from the name before the unique index (`Twitter/X` → `x`, otherwise the name lower-cased without non-alphanumerics: `GitHub` → `github`); `DataSeeder` then adds the missing providers and removes the never-configured old ones |
+| `20261029092426_AddWebhookDelivery` | `WebhookDeliveries.EventId` (uuid, not null, default empty GUID for existing rows), `NextAttemptDate` (nullable), `RequestBody` (`character varying(65536)`), `ResponseBody` (`character varying(4000)`); index `IX_WebhookDeliveries_Outcome_NextAttemptDate` |
 
 **Every schema change needs one migration** for `PostgreSqlDbContext`. Use the
 [database-change skill](../../.claude/skills/database-change/SKILL.md) or, from the repository root:
@@ -205,6 +207,7 @@ the [Content types](../pages/content-types.md) screen).
 | Delete a custom endpoint | `CustomEndpointService.DeleteAsync` removes its `CustomEndpointOperations` in the same save |
 | Delete a content type | `ContentTypeService.DeleteAsync`: refused while another type links to it; its entries and index rows go in the same save (a collection with entries only with explicit confirmation) |
 | Revoke an API token | soft: `Revoked = true`, row kept |
+| Delete a webhook | `WebhookService.DeleteAsync`: its `WebhookDeliveries` go with it (cascade), pending attempts included |
 | Audit entries | never updated or deleted by the application |
 
 ## Rules

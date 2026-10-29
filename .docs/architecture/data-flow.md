@@ -29,7 +29,7 @@ sequenceDiagram
     Note over DBI: PostgreSQL: the migrations of PostgreSqlDbContext
     DBI->>S: SeedAsync(db)
     P->>H: build pipeline, map routes + MapDotNetForgeExtensionsAsync (each extension's MapEndpoints), app.Run()
-    H->>H: start ScheduledPublishingService (waits 5 s), AuditEventDispatcher
+    H->>H: start ScheduledPublishingService (waits 5 s), AuditEventDispatcher, WebhookDispatcher
 ```
 
 Notes:
@@ -439,6 +439,11 @@ stateDiagram-v2
     Waiting --> [*] : stoppingToken cancelled
 ```
 
+`WebhookDispatcher` (hosted) turns entry and media changes, handed over by `AuditService`, into pending delivery
+attempts in the database and sends due ones - at start, after each new event on this instance and every 15 s - with
+retries after 30 s, 2 min, 8 min and 32 min. Every instance runs it; an attempt is claimed with a 2-minute lease before
+it is sent. See [webhooks → delivery](../features/webhooks.md#delivery).
+
 ## Configuration loading
 
 ```mermaid
@@ -485,6 +490,7 @@ See [configuration](../features/configuration.md) and
 | Unhandled exception (Development) | developer exception page | Stack trace page |
 | Unhandled exception (other environments) | `UseExceptionHandler("/error")` → `HomeController.Error` (`[Route("/error")]`, any method) | "Something went wrong" page, for GET and POST alike |
 | Background job exception | `ScheduledPublishingService` catch | Log warning; retried next tick |
+| Webhook receiver fails (non-2xx, timeout, connection error) | `WebhookSender` | Failed attempt in the delivery log; retried up to 5 attempts in all ([webhooks](../features/webhooks.md#delivery)) |
 
 Details and gaps: [logging and errors](../features/logging-and-error-handling.md).
 
@@ -493,5 +499,6 @@ Details and gaps: [logging and errors](../features/logging-and-error-handling.md
 Out-of-process dependencies at runtime: the PostgreSQL server, any additional databases (`DATABASES_<NAME>_*`) and an S3-compatible object
 store (outside Development always) - the app uploads, reads and deletes objects through
 `S3FileStorage` (or an enabled storage connector), and browsers download directly from presigned URLs. Enabled
-extensions may call their own services (the samples: Open-Meteo, Discord OAuth, Twilio, a second S3 bucket). Planned integrations and their current state
+extensions may call their own services (the samples: Open-Meteo, Discord OAuth, Twilio, a second S3 bucket). Webhook
+receivers get signed `POST`s from the app ([webhooks](../features/webhooks.md)). Planned integrations and their current state
 are listed in [implementation-status.md](../implementation-status.md).

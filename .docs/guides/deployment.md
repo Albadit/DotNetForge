@@ -139,6 +139,8 @@ address:
 - **Passkeys** ([MFA → Passkeys](../features/mfa.md#passkeys)) are bound to `APP_URL`'s host, and only `APP_URL`'s
   origin is accepted. Changing the domain later makes every registered passkey unusable (people sign in with another
   method or a recovery code and add the passkey again). Browsers allow WebAuthn only on `https` or `localhost`.
+- **Webhooks** ([webhooks → payload](../features/webhooks.md#payload)): a media event's `data.url` is `APP_URL` +
+  `/media/{id}/{fileName}`. Webhook receivers must be reachable from the app over `https` (outbound traffic).
 
 ## Behind a reverse proxy
 
@@ -192,14 +194,18 @@ Why R2 and how the alternatives compare: [media storage → Provider choice](../
 ## Scaling to several instances
 
 What already works across instances: Data Protection keys are shared through the database; media lives in object
-storage; the scheduled-publishing job is idempotent (running on every instance is harmless).
+storage; the scheduled-publishing job is idempotent (running on every instance is harmless); pending webhook
+attempts are database rows that any instance may send, each claimed with a lease first
+([webhooks → delivery](../features/webhooks.md#delivery)).
 
 What is per instance: rate limits (in memory, so N instances allow N× the limit), the API-token verification cache
 and the session-validation cache (both short-lived and self-correcting), the two-factor caches ("required?" and "has
 a method?", 30 s each), the built-in OAuth provider schemes (each instance re-reads the Providers settings at most
 every 30 s, so a change on one instance reaches the others within 30 s), the extension discovery cache, the
-enabled-extensions cache (30 s, so an enable/disable reaches other instances within 30 s) and the queue that feeds
-extension audit handlers (events are handled on the instance that wrote them).
+enabled-extensions cache (30 s, so an enable/disable reaches other instances within 30 s), the queue that feeds
+extension audit handlers (events are handled on the instance that wrote them) and the webhook event queue (an event is
+turned into delivery attempts on the instance where the change happened; other instances pick up due attempts within
+15 s).
 
 ## Backups
 

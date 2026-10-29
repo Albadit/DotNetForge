@@ -35,7 +35,7 @@ List - Users (h1) · [Create user]
     ├── card-header: **All users** · "N total"
     ├── .toolbar (JS only): search · All roles ▾ · Any status ▾
     ├── table: **User** ⇅ (avatar, name link, "You" badge, email) · **Roles** · **Status** ⇅ · **Last sign-in** ⇅ · row menu ⋯ (Edit/View, Enable/Disable, Delete)
-    └── .pagination (JS, more than 25 matching rows)
+    └── .pagination (JS, more than 10 matching rows: Rows per page 10/25/50/100, default 25, remembered)
 
 Form - "Create user" / "Edit user" (h1, the email as description)
 ├── form.editor-main
@@ -82,7 +82,8 @@ users, all `Roles`. Links to a role that no longer exists are dropped.
 
 ## State
 
-Server: the `Users` / `UserRoles` rows. Client: the list's search, filters, sort and page (lost on reload).
+Server: the `Users` / `UserRoles` rows. Client: the list's search, filters, sort and page (lost on reload); the rows per page in `localStorage`
+(`dnf-page-size:/admin/users:0`).
 
 ## Permissions
 

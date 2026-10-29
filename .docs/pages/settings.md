@@ -38,7 +38,7 @@ Settings (_AdminLayout; header "Settings" + description "Key/value settings for 
     │   ├── toolbar (JS only): search "Search keys and values"
     │   ├── table.table.table-stack: Key (sortable, <code>) · Value ("(empty)" when blank) · [Edit] (JS only)
     │   │   └── row "No setting matches the search."   [data-collection-empty]
-    │   └── pagination                                  JS, more than 25 matching rows
+    │   └── pagination                                  JS, more than 10 matching rows (Rows per page, default 25)
     │   (no settings → empty state "No settings yet" instead of toolbar and table)
     └── card "Add or update" - "An existing key is overwritten."
         └── form#settingForm (POST /admin/settings/save, antiforgery)
@@ -54,7 +54,7 @@ Component mechanics: [design system → components](../architecture/design-syste
 
 | Component | Inputs | Behaviour |
 | --- | --- | --- |
-| Settings table | `SettingsIndexViewModel.Settings` (`(Key, Value)` list ordered by key) | read-only; client-side search over key and value, sort by **Key**, 25 rows per page |
+| Settings table | `SettingsIndexViewModel.Settings` (`(Key, Value)` list ordered by key) | read-only; client-side search over key and value, sort by **Key**, 25 rows per page by default |
 | **Edit** button | `data-fill="#settingForm"` + `data-fill-key` / `data-fill-value` | copies the row's key and value into the form and focuses **Key**; nothing is saved until **Save setting** |
 | Add or update form | `key`, `value` (simple parameters) | posts to `SettingsController.Save`; **Clear** resets the fields |
 
@@ -91,6 +91,7 @@ All `Settings` rows (`Key`, `Value`, ordered by key); `AppEnvironment.AppName` (
 | Result message | `TempData["Success"]` → toast | after a save |
 | Errors | `ModelState` | failed save (same request) |
 | Search, sort, page, filled form | DOM only (`ui.js`) | lost on reload |
+| Rows per page | `localStorage` `dnf-page-size:/admin/settings:0` | the **Rows per page** select |
 | Settings | `Setting` rows | save |
 
 ## Permissions
@@ -161,7 +162,7 @@ flowchart TD
 ## Related pages
 
 [Dashboard](dashboard.md); API `GET /api/settings` ([headless API](../features/headless-api.md)). The other
-"Global Settings" sidebar items are separate screens ([API Tokens](api-tokens.md), [Plugins](plugins.md)) or
+"Global Settings" sidebar items are separate screens ([Plugins](plugins.md), [Data Management](data-management.md)) or
 [placeholders](module-placeholders.md).
 
 ## Important implementation details
@@ -218,13 +219,13 @@ override; public [themes](../features/themes.md) never affect it.
 | Screen | Group | Documented in |
 | --- | --- | --- |
 | Overview | Global Settings | this document |
-| API Tokens | Global Settings | [API Tokens](api-tokens.md) |
 | Content History | Global Settings | [Content Manager](content-manager.md) (placeholder today) |
 | Internationalization | Global Settings | [internationalization](../features/internationalization.md) |
 | File Manager (sidebar: **Media Library**) | Global Settings | [Media Library settings](media-settings.md) |
 | Plugins | Global Settings | [Plugins](plugins.md) |
 | Transfer (sidebar: **Data Management**) | Global Settings | [Data Management](data-management.md) |
-| Webhooks | Global Settings | [webhooks](../features/webhooks.md) |
+| API Tokens, API Endpoints, API Docs | API & Webhooks | [API Tokens](api-tokens.md), [API Endpoints](api-endpoints.md), [API Docs](api-docs.md) |
+| Webhooks | API & Webhooks | [Webhooks](webhooks.md) |
 | Roles, Users, Audit Logs | Administration Panel | [Roles](roles.md), [Users](users.md), [Audit Logs](audit-logs.md) |
 | Configuration, Templates | Email | [email](../features/email.md) |
 | Roles, Providers, Two-factor (MFA), Advanced Settings | Users & Permissions Plugin | [Roles](roles.md), [Providers](providers.md), [Two-factor authentication](mfa.md), [Advanced Settings](advanced-settings.md) |

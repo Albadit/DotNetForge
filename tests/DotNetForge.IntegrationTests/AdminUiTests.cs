@@ -110,7 +110,8 @@ public sealed partial class AdminUiTests
 
         // Only the group holding the active screen is marked active. nav-state.js keeps the others as the user left
         // them; it loads synchronously right after the sidebar so that state is in place before the first paint.
-        Assert.Matches("data-nav-group=\"Global Settings\" open=\"open\"\\s+data-nav-active=\"true\"", adminHtml);
+        Assert.Matches("data-nav-group=\"API &amp; Webhooks\" open=\"open\"\\s+data-nav-active=\"true\"", adminHtml);
+        Assert.Matches("data-nav-group=\"Global Settings\"\\s+data-nav-active=\"false\"", adminHtml);
         Assert.Matches("data-nav-group=\"Email\"\\s+data-nav-active=\"false\"", adminHtml);
         Assert.Matches("</aside>\\s*<script src=\"/js/forge/nav-state.js\\?v=[^\"]+\"></script>", adminHtml);
 
@@ -142,7 +143,7 @@ public sealed partial class AdminUiTests
         var response = await PostIdsAsync(admin, ids.Take(2));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         await factory.WithDbAsync(async db => Assert.Equal(ids[2], (await db.MediaFiles.SingleAsync()).Id));
-        Assert.Contains("Deleted 2 files.", await admin.GetStringAsync("/admin/media"));
+        Assert.Contains("Deleted 2 items.", await admin.GetStringAsync("/admin/media"));
         await factory.WithDbAsync(async db => Assert.Equal(2, await db.AuditLogs.CountAsync(a => a.Action == AuditActions.MediaDeleted)));
     }
 

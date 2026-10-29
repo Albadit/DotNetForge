@@ -36,7 +36,8 @@ src/DotNetForge.Core/Content/ContentTypeTemplates.cs                   the start
 
 ```text
 Content types (h1)  "Define the shape of your content: a type has fields, the Content Manager generates its forms, and pages show it with content lists."
-├── header: [Content Manager] [New content type]
+├── header: [Content Manager] [New content type] (with the right to create)
+├── no types: card <empty-state "No content types yet"> (no button - New content type is in the header)
 └── .type-grid of cards: icon, name, API id, Collection | Single, description, Fields / Entries / Published, [Edit fields] [Entries →]
 
 New content type (h1)
@@ -150,7 +151,8 @@ Server-rendered; the builder renders on load from the textarea.
 ## Empty states
 
 "No content types yet" - "A content type is a reusable shape for content - blog posts, products, events. Start from a
-template or build your own." In the builder: "No fields yet. Add the first one below."
+template or build your own." - without a button of its own: **New content type** is in the header (the
+[Content Manager](content-manager.md)'s empty state keeps one, since its header has none). In the builder: "No fields yet. Add the first one below."
 
 ## User interactions
 

@@ -18,12 +18,7 @@
     <section class="card">
         <div class="card-body">
             <empty-state icon="database" title="No content types yet"
-                         text="A content type is a reusable shape for content - blog posts, products, events. Start from a template or build your own.">
-                @if (Model.CanCreate)
-                {
-                    <a class="btn btn-primary" href="/admin/content-types/new"><icon name="plus" /> New content type</a>
-                }
-            </empty-state>
+                         text="A content type is a reusable shape for content - blog posts, products, events. Start from a template or build your own." />
         </div>
     </section>
 }

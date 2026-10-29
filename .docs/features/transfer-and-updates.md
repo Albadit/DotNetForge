@@ -52,9 +52,11 @@ tables/<Entity>.json     one per entity, a JSON array of row objects (property n
   [media export](../pages/data-management.md#media-export) downloads those.
 - Values protected with the key ring can't be decrypted on another site: the tokens of custom API endpoints (refused
   - regenerate them), the built-in sign-in providers' client secrets and Apple key (the [Providers](../pages/providers.md)
-  screen shows **Secret unreadable** and the provider is off until they are entered again) and authenticator-app
+  screen shows **Secret unreadable** and the provider is off until they are entered again), authenticator-app
   secrets (those apps stop working; the user signs in with another method or a recovery code and sets the app up
-  again). Recovery codes (hashes), passkeys (public keys - as long as `APP_URL`'s host is the same) and email/SMS
+  again) and webhook signing secrets (the imported webhooks stay as they were, enabled ones included, but every
+  attempt - pending ones from the export too - fails with "Not sent: …" without contacting the receiver until the
+  secret is rotated on [Webhooks](../pages/webhooks.md)). Webhook header values are in the file in clear. Recovery codes (hashes), passkeys (public keys - as long as `APP_URL`'s host is the same) and email/SMS
   methods keep working ([MFA → storage](mfa.md#storage-secrets-and-transfer)). A restore into the same site keeps
   everything. (SMTP settings live in `.env`, not in the data.)
 - The CMS database is read in one `RepeatableRead` transaction, so the tables agree with each other; dates without a

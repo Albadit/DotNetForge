@@ -14,7 +14,8 @@ Task LogAsync(string action, string? entityType = null, string? entityId = null,
 ```
 
 `AuditService` builds an `AuditLogEntry` from the current `HttpContext`, saves it immediately (its own
-`SaveChangesAsync`) and then queues it for [extension handlers](#extension-handlers):
+`SaveChangesAsync`) and then queues it for [extension handlers](#extension-handlers) and - for a successful entry or
+media change - for [webhooks](webhooks.md#events) (`WebhookDispatcher.Raise`):
 
 | Field | Source |
 | --- | --- |
@@ -82,6 +83,12 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 | `BackupRestored` | `transfer.backup.restored` | `DatabaseTransferService.RestoreAsync` (Development; like `TransferImported`) | `TransferRecord`, id, file name |
 | `ApiTokenCreated` | `apitoken.created` | `ApiTokensController.Create` | `ApiToken`, id, name |
 | `ApiTokenRevoked` | `apitoken.revoked` | `ApiTokensController.Revoke` | `ApiToken`, id, name |
+| `WebhookCreated` | `webhook.created` | `WebhookService.CreateAsync` (from `WebhooksController.Create`; details `<url>; events: <keys>`; never the secret) | `Webhook`, id, name |
+| `WebhookUpdated` | `webhook.updated` | `WebhookService.UpdateAsync` (from `WebhooksController.Edit`; details as above) | `Webhook`, id, name |
+| `WebhookEnabled` / `WebhookDisabled` | `webhook.enabled` / `webhook.disabled` | `WebhookService.SetEnabledAsync` (**Enable** / **Disable**) and `UpdateAsync` when the **Enabled** switch changed (written after `webhook.updated`) | `Webhook`, id, name |
+| `WebhookDeleted` | `webhook.deleted` | `WebhookService.DeleteAsync` (the delivery log goes with it) | `Webhook`, id, name |
+| `WebhookSecretRotated` | `webhook.secret.rotated` | `WebhookService.RotateSecretAsync` (never the secret) | `Webhook`, id, name |
+| `WebhookTested` | `webhook.tested` | `WebhookService.SendTestAsync` (details `Succeeded (<status>)` or `Failed: <detail>`; a failed test `success: false`) | `Webhook`, id, name |
 | `PluginEnabled` | `plugin.enabled` | `ExtensionLifecycleService.EnableAsync` (from `PluginsController.Enable`) | `Extension`, manifest id, name |
 | `PluginDisabled` | `plugin.disabled` | `ExtensionLifecycleService.DisableAsync` (from `PluginsController.Disable`) | `Extension`, manifest id, name |
 | `ProviderUpdated` | `provider.updated` | `AuthProviderService.SaveAsync` (from `AuthProvidersController.Edit`, only when something changed; details `Enabled` / `Disabled` and `Changed: <field names>` such as `ClientId, ClientSecret` - never values) | `AuthProvider`, id, provider name |
@@ -90,7 +97,8 @@ renamed or deleted. `Id` is an auto-increment `long`, so ordering by `Id` is sta
 | `RecoveryCodesGenerated` | `user.mfa.recovery.generated` | `MfaService.GenerateRecoveryCodesAsync` (with the first method, and **Make new codes**; never the codes) | `User`, id, email |
 | `MfaReset` | `user.mfa.reset` | `MfaService.ResetAsync` (from `UsersController.ResetMfa`; details `<n> method(s) removed`) | `User`, id, email |
 
-Defined but never written: `plugin.installed`, `webhook.created`, `audit.exported`.
+Defined but never written: `plugin.installed`, `audit.exported`. Webhook deliveries themselves are not audited - they
+are in each webhook's [delivery log](../pages/webhooks.md).
 
 **Extension-defined actions.** Extensions write through the same `IAuditService` with their own action strings
 (`LogAsync` accepts any string). The samples write `contactform.submitted` (Contact Form: entity `ContactMessage`, the
@@ -168,7 +176,7 @@ Tracked actions (minimum set):
 | Permission changed (grants of a role) | `Permission` / `Role` | `PermissionChanged` | ✔ (entity `Role`) |
 | Settings changed | `Setting` | `SettingsChanged` | ✔ |
 | API token created (metadata only) | `ApiToken` | `ApiTokenCreated` | ✔ |
-| Webhook created | `Webhook` | `WebhookCreated` | ✘ |
+| Webhook created | `Webhook` | `WebhookCreated` | ✔ (`WebhookService`; also updated, enabled, disabled, deleted, secret rotated, tested) |
 | Audit log exported (optional) | - | `AuditExported` | ✘ |
 
 ### User flows
@@ -215,7 +223,7 @@ must not silently swallow the underlying error.
 Viewer criteria (pagination, filters, search, export) are on the [Audit Logs screen](../pages/audit-logs.md#acceptance-criteria).
 
 - [x] Each entry records User, Action, Entity type, Entity ID, IP address, User agent, Timestamp (UTC) and Details (`AuditLogEntry`, `AuditService.LogAsync`; no caller fills Details yet).
-- [ ] Logged actions include user login, failed login, content created/updated/deleted, media uploaded, plugin installed, plugin disabled, role changed, permission changed, settings changed, API token created and webhook created (constants ✔; written ✔ except plugin installed and webhook created).
+- [ ] Logged actions include user login, failed login, content created/updated/deleted, media uploaded, plugin installed, plugin disabled, role changed, permission changed, settings changed, API token created and webhook created (constants ✔; written ✔ except plugin installed).
 - [ ] Failed actions, including failed logins with no resolved user, are recorded with a null user and without the attempted password (failed logins ✔ `AccountController`; other failures are not logged).
 - [ ] Only Super Admin and Admin can view, filter, search and export audit logs (viewing ✔ `AuditLogsController` role check; the rest does not exist).
 - [ ] Entries are append-only: no UI or API path edits or deletes an entry, and mutation attempts are rejected (no path ✔; no rejection guard).

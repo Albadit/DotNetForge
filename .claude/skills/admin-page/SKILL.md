@@ -5,7 +5,7 @@ description: >-
   AdminControllerBase, attribute route under /admin, role restriction, view model, Razor view built from the Forge
   design system, POST + antiforgery + audit for mutations, sidebar link, and the matching .docs/pages document. Use when
   asked to build an admin page/screen, replace one of the module placeholders (Marketplace, Content History,
-  Internationalization, Webhooks, Providers), or add an
+  Internationalization), or add an
   action/form to an existing admin screen.
 ---
 

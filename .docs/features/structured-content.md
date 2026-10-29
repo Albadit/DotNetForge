@@ -143,6 +143,10 @@ and the API get slugs too; the form script does the same while typing.
 | Delete, bulk delete | `DeleteAsync`, `DeleteManyAsync` | removes the index rows too; a single type's entry can't be deleted |
 | Reorder | `ReorderAsync` | the moved entries share their old positions in the new order |
 
+Every action except reorder writes an `entry.*` audit entry, which also fires the subscribed
+[webhooks](webhooks.md#events) (`entry.create`, `entry.update`, `entry.publish`, `entry.unpublish`, `entry.delete`) -
+from the Content Manager and from `/api/entries` alike.
+
 ## Querying
 
 Entry values live in JSON, which databases can't filter or sort the same way. Every save therefore writes
@@ -343,7 +347,6 @@ a case in `content-list-fixtures.mjs`, the Display segment in `data-panel.js`.
 - **Deeper relations**: binding and API expansion beyond one level; filtering by a linked entry's field
   (`category.slug`) - today filters take top-level fields only.
 - **Per-type permissions**: grants per content type instead of one `Entries` area.
-- **Webhooks** on entry events ([webhooks](webhooks.md)).
 - **Relationship ordering**: drag to order the entries of a multiple relationship.
 - **GraphQL** or a query language beyond the REST filters.
 

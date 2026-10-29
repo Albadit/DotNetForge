@@ -176,7 +176,7 @@ flowchart LR
 
 - No optimistic concurrency: two people saving the same role at once - the last save wins.
 - Role assignment happens per user ([Users](users.md)); there is no bulk "assign users" on the role.
-- Grants for areas without screens (Single types, Webhooks, Plugins, Extensions, Updates) are stored but not checked
+- Grants for areas without screens (Single types, Plugins, Extensions, Updates) are stored but not checked
   yet ([authorization → catalog](../features/authorization.md#permission-catalog)).
 
 ## Planned (not implemented)

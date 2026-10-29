@@ -22,8 +22,8 @@ The rules, the call flow and the responses are in [custom endpoints](../features
 
 | Item | Value |
 | --- | --- |
-| Sidebar entry | **Settings → Global Settings → API Endpoints**, after API Tokens and before API Docs (`AdminNavigation.Tree`), shown only to Super Admins and Developers |
-| Breadcrumbs | Settings › Global Settings › **API Endpoints**; editor: … › API Endpoints › **name** |
+| Sidebar entry | **Settings → API & Webhooks → API Endpoints**, after API Tokens and before API Docs (`AdminNavigation.Tree`), shown only to Super Admins and Developers |
+| Breadcrumbs | Settings › API & Webhooks › **API Endpoints**; editor: … › API Endpoints › **name** |
 | Child flow | list → **New endpoint** → editor → **Save** → editor (toast) |
 | Linked from | the sidebar; **API endpoints** button on the [API Docs](api-docs.md) screen |
 
@@ -45,8 +45,9 @@ src/DotNetForge.Content/Endpoints/SqlEndpointRunner.cs                  the data
 
 - **List** - one card: name (link) with description, `/api/custom/path` (with "on database <name>" under it when the
   endpoint runs on an additional database), one coloured badge per operation (method and sub-path; GET info, POST
-  success, PUT/PATCH warning, DELETE danger), access (`Token` / `Public`), status, updated; sortable, paged by 25.
-  Empty state with **New endpoint**.
+  success, PUT/PATCH warning, DELETE danger), access (`Token` / `Public`), status, updated; sortable, paged by 25 by default (**Rows per page**,
+  [collection pagination](../architecture/design-system.md#collection-pagination)). The empty state has no button:
+  **New endpoint** is in the header.
 - **Editor** (`.editor` two columns; a new endpoint starts with one GET operation on its own path):
   - **Path** - the base path with a fixed `/api/custom/` prefix.
   - **Operations** - "What the API answers: one per method and sub-path, each with its own SQL, parameters and test

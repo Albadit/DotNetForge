@@ -6,7 +6,7 @@ namespace DotNetForge.Web.Areas.Admin.Controllers;
 /// <summary>
 /// Routes the remaining planned-but-unbuilt sidebar items to a placeholder that names the document holding their
 /// planned behaviour, so the navigation has no dead links (.docs/pages/module-placeholders.md). The built screens
-/// (Content, Media, Settings, Advanced Settings, Providers, Two-factor authentication, Email Configuration, Email Templates, Users, Roles, Audit Logs, Plugins, API Tokens) have their own controllers.
+/// (Content, Media, Settings, Advanced Settings, Providers, Two-factor authentication, Webhooks, Email Configuration, Email Templates, Users, Roles, Audit Logs, Plugins, API Tokens) have their own controllers.
 /// </summary>
 public sealed class ModulesController : AdminControllerBase
 {
@@ -21,10 +21,6 @@ public sealed class ModulesController : AdminControllerBase
     [HttpGet("/admin/internationalization")]
     public IActionResult Internationalization() => Placeholder("Internationalization",
         ".docs/features/internationalization.md", "Locales, default-locale rules, and content localization.");
-
-    [HttpGet("/admin/webhooks")]
-    public IActionResult Webhooks() => Placeholder("Webhooks",
-        ".docs/features/webhooks.md", "Event subscriptions, custom headers, HMAC signing, retries, and delivery logging.");
 
     private IActionResult Placeholder(string title, string docPath, string description) =>
         View("Placeholder", new ModulePlaceholderViewModel

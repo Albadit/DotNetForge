@@ -8,9 +8,11 @@
     string Extensions(MediaKind kind) => string.Join(",", MediaService.AllowedTypes.Where(t => MediaSettings.KindOf(t.Value) == kind).Select(t => t.Key));
     static long Mb(int mb) => mb * 1024L * 1024;
     var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
-    var anyDeletable = Model.Files.Any(f => f.CanDelete);
-    var anySelectable = Model.Files.Any(f => f.CanDelete || f.CanEdit);
-    var anyMovable = Model.Files.Any(f => f.CanEdit);
+    // Folders are selectable too: moved with Media update, deleted (when empty) with Media delete.
+    var foldersSelectable = Model.Folders.Count > 0 && (Model.CanEditFolders || Model.CanDeleteFolders);
+    var anyDeletable = Model.Files.Any(f => f.CanDelete) || (Model.Folders.Count > 0 && Model.CanDeleteFolders);
+    var anySelectable = Model.Files.Any(f => f.CanDelete || f.CanEdit) || foldersSelectable;
+    var anyMovable = Model.Files.Any(f => f.CanEdit) || (Model.Folders.Count > 0 && Model.CanEditFolders);
     var here = Model.Current?.Id;
     var empty = Model.Files.Count == 0 && Model.Folders.Count == 0;
     static string Count(int n, string noun) => n == 1 ? $"1 {noun}" : $"{n} {noun}s";
@@ -100,7 +102,7 @@
             <div class="toolbar" data-js-only hidden>
                 @if (anySelectable)
                 {
-                    <label class="check" aria-label="Select all files"><input type="checkbox" data-select-all /></label>
+                    <label class="check" aria-label="Select all"><input type="checkbox" data-select-all /></label>
                 }
                 <div class="toolbar-search input-icon">
                     <icon name="search" size="sm" />
@@ -129,7 +131,7 @@
                 <form method="post" action="/admin/media/delete-selected" id="bulkForm" class="bulk-bar" data-bulk-bar hidden>
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="returnFolder" value="@here" />
-                    <label class="check" aria-label="Select all files"><input type="checkbox" data-select-all /></label>
+                    <label class="check" aria-label="Select all"><input type="checkbox" data-select-all /></label>
                     <span data-bulk-count>0 selected</span>
                     <span class="toolbar-spacer"></span>
                     <button type="button" class="btn btn-ghost btn-sm" data-bulk-clear>Clear</button>
@@ -148,7 +150,7 @@
                     @if (anyDeletable)
                     {
                         <button type="submit" class="btn btn-danger btn-sm"
-                                data-confirm="Delete the selected files? Links to them stop working." data-confirm-title="Delete files" data-confirm-action="Delete files">
+                                data-confirm="Delete the selected items? Links to deleted files stop working; only empty folders can be deleted." data-confirm-title="Delete selected" data-confirm-action="Delete">
                             <icon name="trash" size="sm" /> Delete selected
                         </button>
                     }
@@ -162,6 +164,12 @@
                     var inside = string.Join(" · ", new[] { folder.Folders > 0 ? Count(folder.Folders, "folder") : null, Count(folder.Files, "file") }.OfType<string>());
                     <article class="media-card media-folder" data-item data-kind="folder" data-access="" data-search="@folder.Name"
                              data-drop-folder="@folder.Id" draggable="@(Model.CanEditFolders ? "true" : null)" data-drag-folder="@(Model.CanEditFolders ? (Guid?)folder.Id : null)">
+                        @if (foldersSelectable)
+                        {
+                            <label class="media-select" aria-label="Select the folder @folder.Name">
+                                <input type="checkbox" name="folderIds" value="@folder.Id" form="bulkForm" data-select-item />
+                            </label>
+                        }
                         <a class="media-thumb" href="/admin/media?folder=@folder.Id" tabindex="-1" aria-hidden="true" draggable="false">
                             <icon name="folder" size="xl" />
                         </a>
@@ -193,6 +201,8 @@
                     var (kind, icon) = MediaPresentation.Classify(file.ContentType);
                     <article class="media-card" data-item data-kind="@kind" data-access="@(file.IsPublic ? "public" : "private")"
                              data-search="@file.FileName @file.ContentType"
+                             data-preview="@file.Id" data-preview-url="@file.Url" data-preview-name="@file.FileName" data-preview-type="@file.ContentType"
+                             data-preview-meta="@MediaPresentation.Size(file.SizeBytes) · @file.ContentType · @(file.IsPublic ? "Public" : "Private")" data-preview-link="@origin@file.Url"
                              draggable="@(file.CanEdit ? "true" : null)" data-drag-file="@(file.CanEdit ? (Guid?)file.Id : null)">
                         @if (file.CanDelete || file.CanEdit)
                         {
@@ -200,7 +210,7 @@
                                 <input type="checkbox" name="ids" value="@file.Id" form="bulkForm" data-select-item />
                             </label>
                         }
-                        <a class="media-thumb" href="@file.Url" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true" draggable="false">
+                        <a class="media-thumb" href="@file.Url" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true" draggable="false" data-preview-open>
                             @if (kind == "image")
                             {
                                 <img src="@file.Url" alt="" loading="lazy" decoding="async" draggable="false" />
@@ -211,7 +221,7 @@
                             }
                         </a>
                         <div class="media-meta">
-                            <a class="media-name" href="@file.Url" target="_blank" rel="noopener" title="@file.FileName" draggable="false">@file.FileName</a>
+                            <a class="media-name" href="@file.Url" target="_blank" rel="noopener" title="@file.FileName" draggable="false" data-preview-open>@file.FileName</a>
                             <span class="text-xs text-muted">@MediaPresentation.Size(file.SizeBytes) · <timestamp value="@file.UploadedDate" /></span>
                             <span class="media-badges">
                                 @if (file.IsPublic)
@@ -230,7 +240,8 @@
                             </span>
                         </div>
                         <action-menu class="media-actions" variant="secondary" label="Actions for @file.FileName">
-                            <menu-link href="@file.Url" icon="external-link" new-tab="true">Open</menu-link>
+                            <menu-button icon="eye" data-preview-open data-js-only hidden>Preview</menu-button>
+                            <menu-link href="@file.Url" icon="external-link" new-tab="true">Open in new tab</menu-link>
                             <menu-button icon="link" data-copy-text="@origin@file.Url">Copy link</menu-button>
                             <menu-button icon="info" data-file-info="@Info(file)" data-js-only hidden>Info</menu-button>
                             @if (file.CanEdit)
@@ -409,6 +420,33 @@
             <button type="submit" class="btn">Cancel</button>
             <button type="submit" class="btn btn-primary" form="file-rename"><icon name="pencil" /> Rename</button>
         </form>
+    </dialog>
+}
+
+@if (Model.Files.Count > 0)
+{
+    @* Clicking a file opens this (media.js): images, video, audio and PDF/text shown; .zip listed; anything else described. *@
+    <dialog class="dialog media-preview" id="media-preview" aria-labelledby="media-preview-title" tabindex="-1">
+        <div class="media-preview-head">
+            <div class="media-preview-title">
+                <h2 class="dialog-title text-truncate" id="media-preview-title" data-preview-title></h2>
+                <p class="text-xs text-muted text-truncate" data-preview-subtitle></p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-preview-step="-1" aria-label="Previous file" data-tooltip="Previous (←)"><icon name="chevron-left" /></button>
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-preview-step="1" aria-label="Next file" data-tooltip="Next (→)"><icon name="chevron-right" /></button>
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-preview-close aria-label="Close preview" data-tooltip="Close"><icon name="x" /></button>
+        </div>
+        <div class="media-preview-stage" data-preview-stage></div>
+        <div class="dialog-footer">
+            <button type="button" class="btn btn-secondary" data-copy-text="" data-preview-copy><icon name="link" /> Copy link</button>
+            <a class="btn btn-secondary" href="#" target="_blank" rel="noopener" data-preview-tab><icon name="external-link" /> Open in new tab</a>
+            <a class="btn btn-primary" href="#" data-preview-download><icon name="download" /> Download</a>
+        </div>
+        <template id="media-preview-icons">
+            <icon name="file" size="xl" data-icon="file" />
+            <icon name="archive" size="xl" data-icon="archive" />
+            <icon name="folder" size="sm" data-icon="folder" />
+        </template>
     </dialog>
 }
 

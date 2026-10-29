@@ -92,7 +92,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Security controls and known gaps | [security.md](features/security.md) |
 | Logging and error handling | [logging-and-error-handling.md](features/logging-and-error-handling.md) |
 | Themes (site-wide and per-page theme) | [themes.md](features/themes.md) |
-| Webhooks (planned) | [webhooks.md](features/webhooks.md) |
+| Webhooks: events, signed delivery, retries, delivery log | [webhooks.md](features/webhooks.md) |
 | Email (SMTP, templates) | [email.md](features/email.md) |
 | Internationalization (planned) | [internationalization.md](features/internationalization.md) |
 | Data Management: export (CMS or additional database), backups, import in Development; updates (planned) | [transfer-and-updates.md](features/transfer-and-updates.md) |
@@ -127,12 +127,13 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Admin | API Tokens | `/admin/api-tokens` | [api-tokens.md](pages/api-tokens.md) |
 | Admin | API Endpoints | `/admin/api-endpoints` | [api-endpoints.md](pages/api-endpoints.md) |
 | Admin | API Docs (Scalar) | `/admin/api-docs` | [api-docs.md](features/api-docs.md) |
+| Admin | Webhooks (list, editor, secret, delivery log) | `/admin/webhooks` | [webhooks.md](pages/webhooks.md) |
 | Admin | Roles | `/admin/roles` | [roles.md](pages/roles.md) |
 | Admin | Users | `/admin/users` | [users.md](pages/users.md) |
 | Admin | Audit Logs | `/admin/audit-logs` | [audit-logs.md](pages/audit-logs.md) |
 | Admin | Plugins | `/admin/plugins` | [plugins.md](pages/plugins.md) |
 | Admin | Admin extension tab | `/admin/ext/{id}` | [extension-host.md](pages/extension-host.md) |
-| Admin | Unbuilt modules (4 placeholders) | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization`, `/admin/webhooks` | [module-placeholders.md](pages/module-placeholders.md) |
+| Admin | Unbuilt modules (3 placeholders) | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization` | [module-placeholders.md](pages/module-placeholders.md) |
 
 ## Guides
 
@@ -148,7 +149,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 There is no separate specification folder. Each document that owns a topic ends with a
 **Planned (not implemented)** section holding the remaining requirements, user flows, rules, edge cases and
 acceptance criteria for that topic (criteria already met are ticked). Modules that do not exist yet at all
-(webhooks, internationalization, core updates) have a feature document with a short
+(internationalization, core updates) have a feature document with a short
 *Current state* and a *Planned* section. [implementation-status.md](implementation-status.md) links every module to
 its planned section; [product.md](product.md) holds the product goals and MVP scope.
 

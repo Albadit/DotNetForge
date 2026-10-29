@@ -158,7 +158,7 @@ reaction to audit events. Nine runnable samples ship with the repository - try t
 
 ## The headless API
 
-As a Super Admin or Admin, create a scoped token from the admin sidebar (**Settings → Global Settings → API Tokens**;
+As a Super Admin or Admin, create a scoped token from the admin sidebar (**Settings → API & Webhooks → API Tokens**;
 the full secret is shown once), then call the API with a bearer token:
 
 ```bash
@@ -169,6 +169,9 @@ curl -H "Authorization: Bearer <token>" "http://localhost:5000/api/entries/blog-
 Every endpoint enforces the token's granular permission (`content.read`, `entries.read`, `media.read`, ...).
 Missing authentication returns `401`; a missing permission returns `403`. Endpoint list:
 [.docs/features/headless-api.md](.docs/features/headless-api.md).
+
+To push changes instead, add a webhook (**Settings → API & Webhooks → Webhooks**): entry and media changes are sent
+as signed `POST`s and retried when the receiver fails ([webhooks](.docs/features/webhooks.md)).
 
 ## Testing & quality
 
@@ -200,7 +203,8 @@ dotnet format --verify-no-changes                # style check (.editorconfig)
 - Uploads: allowlisted types, size cap, generated storage keys; private files served only after authorization.
 - API tokens stored only as salted hashes; the plaintext is shown exactly once.
 - Extension manifests validated, extensions disabled until a Super Admin enables them (audited), endpoints of
-  inactive extensions answer 404; extension code itself is trusted. HMAC-SHA256 signer ready for webhooks.
+  inactive extensions answer 404; extension code itself is trusted. Webhooks are signed (HMAC-SHA256),
+  sent to `https://` addresses only and never follow redirects.
 - CSRF protection on forms, HttpOnly/SameSite cookies, secrets confined to `.env`.
 
 Controls, known gaps and remaining requirements: [.docs/features/security.md](.docs/features/security.md).

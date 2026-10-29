@@ -29,7 +29,8 @@ stored state after a schedule has passed. The fields are edited on the
 - Public visibility switches at the exact scheduled second (per-request check), while stored fields change up to
   ~15 s later. Lists in the admin (tree status dots) reflect stored fields, so a page can show "on" for a few seconds
   after its unpublish time.
-- No audit entries and no webhooks are produced (`entry.publish`/`entry.unpublish` exist only as constants).
+- No audit entries and no webhooks are produced ([webhooks](webhooks.md#events) fire for structured-content entries
+  and media only, never for content pages).
 - The job runs before installation too; it simply finds nothing due.
 - Setting or changing a schedule needs the `publish` permission
   ([content permissions](content-pages-and-routing.md#permissions)); the job itself runs without a user.

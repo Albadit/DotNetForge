@@ -26,6 +26,9 @@ Application log statements (all via `ILogger<T>` message templates):
 | `ExtensionViewRenderer` | Error | `Extension {ExtensionId} failed to render {View}.` | a widget or module view threw (with the exception); the visitor sees "<name> could not be displayed." |
 | `AuditEventDispatcher` | Warning | `Audit event queue is full; {Action} was not passed to extension handlers.` | more than 1000 queued audit events |
 | `AuditEventDispatcher` | Error | `Audit handler {Handler} of extension {ExtensionId} failed on {Action}.` | an extension's audit handler threw or timed out (with the exception) - [audit logging](audit-logging.md#extension-handlers) |
+| `WebhookDispatcher` | Information | `Webhook event {Event} not raised: the change came from a webhook delivery.` | a change made by a request carrying `X-DotNetForge-Delivery` (loop guard - [webhooks](webhooks.md#loop-guard)) |
+| `WebhookDispatcher` | Warning | `The webhook queue is full; {Event} for {EntityId} was dropped.` | more than 1000 webhook events waiting to be turned into deliveries |
+| `WebhookDispatcher` | Error | `Queuing webhook event {Event} for {EntityId} failed.` / `Sending webhook deliveries failed.` | the database failed while creating or sending attempts (with the exception); sending is tried again after 15 s. A receiver's own failure is not logged - it is in the [delivery log](../pages/webhooks.md) |
 
 Other controllers and services do not log (extensions may log through `ILogger<T>` themselves). When adding logs: inject `ILogger<T>`, use message templates (`{Name}`
 placeholders), never log secrets (tokens, connection strings, `STORAGE_S3_SECRET_ACCESS_KEY`), and keep hot paths
@@ -55,7 +58,7 @@ Seen on a healthy start; none needs action unless noted.
 | Rate limits | `429` with an empty body from `UseRateLimiter` (`credentials` for sign-in/setup/external sign-in, `api` for the API, `forms` for extension forms - [security](security.md), [headless API](headless-api.md#rate-limiting)) |
 | Extensions | failing extension code at startup → "not running", never a crash; endpoints of inactive extensions → `404`; a throwing widget/module view → a notice in its place; audit handler failures → logged only ([extensions](extensions.md)) |
 | API | `[ApiController]` automatic 400 ProblemDetails; explicit `BadRequest(new { error })`; 401/403 from auth (403 body `{ error }`) |
-| Background | `ScheduledPublishingService` catches everything per tick and logs a warning |
+| Background | `ScheduledPublishingService` catches everything per tick and logs a warning; `WebhookDispatcher` logs an error and tries again after 15 s; receiver failures of webhooks are delivery-log rows, not exceptions |
 | Client | `wwwroot/js/forge/pages.js` shows the server's `{ error }` message (or "Could not save the new order.") in a danger toast when a reorder fails, then reloads; `ui.js` shows toasts for copy failures |
 
 ### Storage failures

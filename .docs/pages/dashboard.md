@@ -94,7 +94,7 @@ UTC in the tooltip). **View all** links to [Audit Logs](audit-logs.md) only when
 | --- | --- |
 | Roles | `Roles.Count()` |
 | Active API tokens | `ApiTokens.Count(!Revoked && (ExpirationDate == null || ExpirationDate > now))` |
-| Webhooks | `Webhooks.Count()` (always 0 today) |
+| Webhooks | `Webhooks.Count()` (enabled and disabled) |
 | Audit entries | `AuditLogs.Count()` |
 | CMS version | `SystemState.CmsVersion` (default `1.0.0`), as an accent badge `v1.0.0` |
 | Installed | `SystemState.InstalledAtUtc` as `<timestamp absolute="true">` (`d MMM yyyy, HH:mm UTC`) or `-` |
@@ -183,7 +183,7 @@ flowchart LR
 Receives navigation from [Sign in](login.md), [Setup](setup.md), [Access denied](access-denied.md),
 [module placeholders](module-placeholders.md). Links to [Pages](pages.md), [Media](media.md),
 [Users](users.md), [Plugins](plugins.md) (also enables widgets), [Audit Logs](audit-logs.md),
-[API Tokens](api-tokens.md). Counts also cover [Roles](roles.md) and webhooks ([placeholder](module-placeholders.md)).
+[API Tokens](api-tokens.md). Counts also cover [Roles](roles.md) and [Webhooks](webhooks.md).
 
 ## Important implementation details
 

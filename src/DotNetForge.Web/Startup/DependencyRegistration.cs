@@ -117,6 +117,16 @@ public static class DependencyRegistration
         // Built-in OAuth providers (.docs/features/authentication.md#built-in-oauth-providers): settings on Providers,
         // schemes added and removed at runtime by the registry.
         services.AddScoped<AuthProviderService>();
+        // Webhooks (.docs/features/webhooks.md): the screen's rules, one-attempt sender, background delivery.
+        services.AddSingleton<IWebhookSigner, HmacWebhookSigner>();
+        services.AddScoped<DotNetForge.Web.Services.Webhooks.WebhookService>();
+        services.AddSingleton<DotNetForge.Web.Services.Webhooks.WebhookSender>();
+        services.AddSingleton<DotNetForge.Web.Services.Webhooks.WebhookDispatcher>();
+        services.AddHostedService(sp => sp.GetRequiredService<DotNetForge.Web.Services.Webhooks.WebhookDispatcher>());
+        // A redirect is an answer like any other (a failure unless 2xx): never followed, so a signed body can't be
+        // passed on to another address.
+        services.AddHttpClient(DotNetForge.Web.Services.Webhooks.WebhookSender.ClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, ConnectTimeout = TimeSpan.FromSeconds(10) });
         services.AddSingleton<OAuthProviderRegistry>();
         services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<OAuthProviderOptions>, ConfigureOAuthProviderOptions>();
         services.AddSingleton<Microsoft.Extensions.Options.IPostConfigureOptions<OAuthProviderOptions>,

@@ -18,8 +18,8 @@ from the site's OpenAPI document. What the document contains, how Scalar is conf
 
 | Item | Value |
 | --- | --- |
-| Sidebar entry | **Settings → Global Settings → API Docs** (icon `book`), right after API Endpoints (`AdminNavigation.Tree`); shown only to Super Admins and Developers |
-| Breadcrumbs | Settings › Global Settings › **API Docs** |
+| Sidebar entry | **Settings → API & Webhooks → API Docs** (icon `book`), right after API Endpoints (`AdminNavigation.Tree`); shown only to Super Admins and Developers |
+| Breadcrumbs | Settings › API & Webhooks › **API Docs** |
 | Child screens | none; **Open full screen** opens the reference in a new tab |
 | Linked from | the sidebar; **Try it in the API docs** on the [API Endpoints](api-endpoints.md) editor's **Call it** card |
 
@@ -196,7 +196,7 @@ View → ui.js (iframe[data-frame]), admin.css (.ext-frame-*), <icon>
 
 ```mermaid
 flowchart TD
-    N["Sidebar: Settings › Global Settings › API Docs"] --> A{"ApiDocs policy?"}
+    N["Sidebar: Settings › API & Webhooks › API Docs"] --> A{"ApiDocs policy?"}
     A -- "anonymous" --> L["/login"]
     A -- "other role" --> X["/account/denied"]
     A -- "Super Admin / Developer" --> P["GET /admin/api-docs"]

@@ -22,7 +22,7 @@ as a JSON copy for your own use. File format, rules and what is not built (core 
 | --- | --- |
 | Routes | `GET /admin/data`; `POST /admin/data/export` (form field `database`), `/export-media`, `/export-all` (form field `database`), `/backups`, `/backups/schedule`, `/backups/{id}/download`, `/backups/{id}/delete`, `/backups/{id}/restore`, `/import` |
 | Title (h1, last breadcrumb) | "Data Management" (description "Export the CMS data and the media files, keep backups, and - in Development - import an export into this site.") |
-| Navigation entry | sidebar **Settings → Global Settings → Data Management** (icon `database`), after Plugins and before Webhooks; shown only to Super Admins |
+| Navigation entry | sidebar **Settings → Global Settings → Data Management** (icon `database`), after Plugins, the last link of the group; shown only to Super Admins |
 | Children | none |
 
 ## Relevant source files
@@ -240,8 +240,9 @@ flowchart LR
 - Format and rules: [export file](../features/transfer-and-updates.md#export-file). The file holds password hashes,
   API token hashes and personal data - not this site's Data Protection keys, so values encrypted with them must be
   renewed after moving to another site: custom API endpoint tokens, the sign-in providers' secrets (re-enter them on
-  [Providers](providers.md)) and authenticator-app setups ([MFA](../features/mfa.md#storage-secrets-and-transfer)). A
-  restore into the same site keeps them.
+  [Providers](providers.md)), authenticator-app setups ([MFA](../features/mfa.md#storage-secrets-and-transfer)) and
+  webhook signing secrets (nothing is sent until the secret is rotated on [Webhooks](webhooks.md)). A restore into the
+  same site keeps them.
 - `SystemState` (installed flag, data version) and the transfer history are this site's own and never replaced.
 - Audit log entries are imported with new ids (in their original order); every other key keeps its value.
 - The CMS database is always PostgreSQL; an export made on another database by an earlier build imports when its

@@ -26,9 +26,7 @@
     </div>
     @if (Model.Count == 0)
     {
-        <empty-state icon="key" title="No API tokens yet" text="Create a token to let an app or website read your content through the API.">
-            <a class="btn btn-primary" href="/admin/api-tokens/create"><icon name="plus" /> Create token</a>
-        </empty-state>
+        <empty-state icon="key" title="No API tokens yet" text="Create a token to let an app or website read your content through the API." />
     }
     else
     {

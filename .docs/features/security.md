@@ -37,13 +37,13 @@ The protections that exist in the code, where they are, and the known gaps. Targ
 | Path traversal | extension resources confined to `Views/Resources/`; extensions found by manifest id, not by path; manifest `assembly` must be a relative `.dll` path inside the extension folder (no `..`, no rooted path); `StorageKey` validation + `LocalFileStorage` containment check | `ExtensionResources.Serve` (`ExtensionViewController.cs`), `ManifestValidator`, `StorageKey`, `LocalFileStorage` |
 | Extensions | nothing an extension offers is used until a Super Admin enables it (audited); an extension's endpoints answer `404` while it is inactive (`ExtensionEndpointGateMiddleware`); failing extension code is isolated to "not running" and never stops startup; a throwing widget/module view is replaced by a notice. Extension code itself is **trusted** - it runs in-process with full privileges ([extensions → Security model](extensions.md#security-model)) | `ExtensionCatalog`, `ExtensionLifecycleService`, `Startup/ExtensionHosting.cs`, `ExtensionViewRenderer` |
 | Secrets | `.env` git-ignored and excluded from the build | `.gitignore`, csproj |
-| Data Protection keys | the key ring (cookies, antiforgery, custom endpoint tokens, sign-in provider secrets, authenticator-app secrets) is stored in the database table `DataProtectionKeys`, shared by all instances and kept across restarts on a read-only filesystem | `DependencyRegistration` (`PersistKeysToDbContext<DotNetForgeDbContext>`) |
+| Data Protection keys | the key ring (cookies, antiforgery, custom endpoint tokens, sign-in provider secrets, authenticator-app secrets, webhook signing secrets) is stored in the database table `DataProtectionKeys`, shared by all instances and kept across restarts on a read-only filesystem | `DependencyRegistration` (`PersistKeysToDbContext<DotNetForgeDbContext>`) |
 | Transport | `UseHsts()` outside Development; HTTPS redirection is left to the TLS-terminating proxy ([deployment](../guides/deployment.md#behind-a-reverse-proxy)) | `Program.cs` |
 | Proxy awareness | `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` (built into ASP.NET Core) makes scheme and client IP - used by rate limits and audit - come from `X-Forwarded-*` | [deployment](../guides/deployment.md#behind-a-reverse-proxy) |
 | Error handling | `HomeController.Error` is `[Route("/error")]` for every method, so exceptions in POSTs render the error page | `HomeController` |
 | Audit trail | append-only `AuditLogs` | [audit logging](audit-logging.md) |
 | Dependencies | NU1903 (`SQLitePCLRaw` 2.1.11) fixed: EF Core / ASP.NET packages 10.0.12 (`SQLitePCLRaw` 2.1.12), Npgsql EF 10.0.3 | `Directory.Packages.props` ([dependencies](../architecture/dependencies.md#nuget-packages)) |
-| Webhook signing | HMAC-SHA256 hex (`HmacWebhookSigner`) - exists but no deliveries are made | `Infrastructure/Security` |
+| Webhooks | every delivery signed: `X-DotNetForge-Signature` = HMAC-SHA256 hex over the exact body with the webhook's secret (64 hex characters, generated, never typed in, stored protected with Data Protection (`DotNetForge.Webhooks.Secret.v1`), shown once after create/rotate, never audited); `https://` targets only (plain `http://` only to a loopback host in Development); redirects not followed (`AllowAutoRedirect = false`), so a signed body only goes to the configured address; 10 s per attempt, out of band; CMS headers can't be overridden by custom headers; loop guard: changes made by a request carrying `X-DotNetForge-Delivery` fire nothing, at most 120 events a minute per webhook; managed only with the `Webhooks` permission area | `src/DotNetForge.Web/Services/Webhooks/`, `HmacWebhookSigner`, `DependencyRegistration` ([webhooks](webhooks.md#security)) |
 
 Pipeline order (`Program.cs`): exception handler + HSTS (outside Development) → `SecurityHeadersMiddleware` → static
 files → routing → `InstallationMiddleware` → `ExtensionEndpointGateMiddleware` → authentication → rate limiter →
@@ -79,7 +79,12 @@ Verified in the current code; each is a candidate for a hardening change.
   reference page allows inline styles (`style-src 'unsafe-inline'`). Nonces exist only for Scalar's script, not for
   the app's own views.
 - **Data Protection keys are unencrypted at rest** in the database (ASP.NET Core logs "No XML encryptor configured"):
-  database access = key access, and so also access to every custom endpoint's token.
+  database access = key access, and so also access to every custom endpoint's token and webhook signing secret.
+- **Webhook targets are not restricted (no SSRF filter):** a webhook URL may name a private, internal or loopback-resolving
+  host; the server sends `POST`s there and stores the start of the answer in the delivery log, readable by anyone with
+  Webhooks `read`. Only roles with Webhooks `create`/`update` (by default Super Admin and Admin) can set URLs.
+  Custom header values (for example a receiver's `Authorization` token) are stored in clear and shown on the editor
+  ([webhooks → security](webhooks.md#security)).
 - **Concurrent setup on PostgreSQL** can create two Super Admins (no concurrency token on `SystemState`) - see
   [installation](installation.md#setup-sequence).
 - **Uploads:** type by extension only - no antivirus or content sniffing (mitigated by `nosniff` and `attachment` for
@@ -124,10 +129,10 @@ documents hold the details.
 | Input validation | All forms and all APIs reject malformed, out-of-range or unexpected input before business logic or storage; the shared base for upload, route-pattern and manifest validation (✔ lengths, reorder, uploads) | every controller |
 | XSS | Encode output **and** sanitize user-supplied content in Razor views and API responses, including content history diffs and extension/widget output | views, API serialization |
 | File uploads | Secure validation of every upload ✔; configurable allowed file types and max upload size (today constants in `MediaService`); block unsafe uploads where possible ✔ (allow-list); private media never served to unauthorized callers, including through generated URLs ✔ (presigned URLs for private files live 5 min) | [media storage](media-storage.md) |
-| Secrets | All secrets - connection string ✔, storage credentials ✔, SMTP credentials ✔, Twilio credentials ✔, provider client secrets, signing keys - from `.env` only (✘ by decision for the built-in sign-in providers: their client secrets and Apple key are entered on [Providers](../pages/providers.md) and stored in the database, protected with Data Protection, so they can change without a restart) | [configuration](configuration.md#secrets) |
+| Secrets | All secrets - connection string ✔, storage credentials ✔, SMTP credentials ✔, Twilio credentials ✔, provider client secrets, signing keys - from `.env` only (✘ by decision for the built-in sign-in providers: their client secrets and Apple key are entered on [Providers](../pages/providers.md) and stored in the database, protected with Data Protection, so they can change without a restart; ✘ by decision for webhook signing secrets: one generated per webhook, stored protected) | [configuration](configuration.md#secrets) |
 | Extensions | Validate the manifest before **installing**; refuse invalid, unsafe or incompatible extensions at install and load; reconcile requested permissions with the role model | [extensions](extensions.md#planned-not-implemented) |
-| Audit trail | Record login ✔, failed login ✔, role changes, permission changes, settings changes ✔, API token creation ✔, webhook creation, among others | [audit logging](audit-logging.md#planned-not-implemented) |
-| Webhook signing | Every delivery is a signed POST (✔ `HmacWebhookSigner` exists), retried on failure and logged; the signing key is a secret | [webhooks](webhooks.md#planned-not-implemented) |
+| Audit trail | Record login ✔, failed login ✔, role changes, permission changes, settings changes ✔, API token creation ✔, webhook creation ✔, among others | [audit logging](audit-logging.md#planned-not-implemented) |
+| Webhook signing | Every delivery is a signed POST ✔, retried on failure ✔ and logged ✔; the signing key is a secret ✔ (stored protected); target addresses restricted (SSRF) ✘ | [webhooks](webhooks.md#planned-not-implemented) |
 
 ### Acceptance criteria
 
@@ -150,4 +155,4 @@ documents hold the details.
 - [ ] Invalid, unsafe or incompatible extensions are refused at install and load time (invalid or failing extensions are never used ✔ `ExtensionCatalog`; no install flow, no safety or compatibility check).
 - [x] Secure HTTP response headers are sent on all responses (`SecurityHeadersMiddleware`; CSP is report-only in Development).
 - [x] Security-relevant events, including login and failed login, are written to the audit log with full context (`AccountController` → `AuditService`: user or typed email, IP, user agent, timestamp, success flag).
-- [ ] Outbound webhook requests are signed (signer ✔ `HmacWebhookSigner`; no deliveries exist).
+- [x] Outbound webhook requests are signed (`WebhookSender`: `X-DotNetForge-Signature`, HMAC-SHA256 over the body; `WebhookTests`).

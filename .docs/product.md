@@ -62,7 +62,7 @@ deliverables and the generated-solution deliverables of the specification.
 | Extension loading foundation | ✔ | discovery, code loading per extension (`DotNetForge.Sdk`), enable/disable, slots for every extension type; no install/update/remove or marketplace | [extensions](features/extensions.md) |
 | SQLite and PostgreSQL support | ✔ | the CMS on PostgreSQL only; SQLite, SQL Server, MySQL, MongoDB as additional databases | [database providers](database/providers.md) |
 | Import/export foundation | ✔ | Data Management: export, backups, import in Development | [transfer and updates](features/transfer-and-updates.md) |
-| Webhook foundation | ✘ | tables, event names and an unused signer; no CRUD or delivery | [webhooks](features/webhooks.md) |
+| Webhook foundation | ✔ | Webhooks screen, signed delivery of entry and media events with retries and a delivery log; no webhook API, no events for content pages | [webhooks](features/webhooks.md) |
 | Audit logging foundation | ✔ | | [audit logging](features/audit-logging.md) |
 | Theme foundation | ✔ | one site-wide active theme (views, layout, assets, menu) and an optional per-page theme | [themes](features/themes.md) |
 | Documentation (developer + extension development) | ✔ | `.docs/` | [README](README.md) |
@@ -121,7 +121,7 @@ private content pages ([authorization](features/authorization.md)).
 | 2. The token is shown once; only its hash is stored | ✔ |
 | 3. The integrator calls the API and the request is authorised against the token's keys | ✔ |
 | 4. Read and, where granted, create/update/delete content, media and dynamic routes | read ✔, create content page ✔, entries of content types read/create/update/publish/delete ✔ (`/api/entries`); no page update/delete, media writes or dynamic-route endpoints |
-| 5. Relevant actions emit [webhooks](features/webhooks.md) and are written as audit entries | ✘ (API actions are not audited) |
+| 5. Relevant actions emit [webhooks](features/webhooks.md) and are written as audit entries | partly: entry changes through `/api/entries` and `POST /api/content/pages` are audited, entry changes also fire webhooks; reads are not audited and content pages fire no webhooks |
 
 ### Rules and validation
 
