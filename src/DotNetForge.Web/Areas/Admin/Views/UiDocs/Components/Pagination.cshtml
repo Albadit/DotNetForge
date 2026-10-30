@@ -1,0 +1,200 @@
+@* Pagination (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines.
+   The pager is rendered by dnf.js: the examples are live collections. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/table.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (collections: paging)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>You don't write the pager: put an empty <code>&lt;div class="dnf-pagination" data-collection-pagination hidden&gt;</code>
+    at the end of a collection with <code>data-page-size</code>, and <code>dnf.js</code> renders the rows-per-page select, the
+    range and the page buttons into it. Paging is client-side, over the items already in the page.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-card" data-collection data-page-size="10">
+        <div class="dnf-card__header">
+            <h3 class="dnf-card__title">Revisions of Home</h3>
+            <span class="text-sm text-muted" data-collection-count></span>
+        </div>
+        <ul class="dnf-list">
+            @for (var revision = 42; revision >= 1; revision--)
+            {
+                <li class="dnf-list__item" data-item>
+                    <div class="dnf-list__content">
+                        <span class="font-semibold">Revision @revision</span>
+                        <span class="text-sm text-muted">Saved by Ada Lovelace</span>
+                    </div>
+                </li>
+            }
+        </ul>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="with-search" title="With search" description="Search, filter and page-size changes go back to page 1; the summary and the page buttons follow the matching items." layout="block">
+    <div class="dnf-card" data-collection data-page-size="10">
+        <div class="dnf-toolbar">
+            <div class="dnf-input-group dnf-toolbar__search">
+                <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                <input class="dnf-input" type="search" aria-label="Search deliveries" placeholder="Try 500" data-collection-search />
+            </div>
+            <span class="dnf-toolbar__spacer"></span>
+            <span class="text-sm text-muted" data-collection-count></span>
+        </div>
+        <ul class="dnf-list dnf-list--compact">
+            @for (var delivery = 1; delivery <= 36; delivery++)
+            {
+                var code = delivery % 7 == 0 ? 500 : 200;
+                <li class="dnf-list__item" data-item>
+                    <span class="dnf-badge dnf-badge--mono @(code == 200 ? "dnf-badge--success" : "dnf-badge--danger")">@code</span>
+                    <span class="dnf-list__content">Delivery @delivery</span>
+                    <code class="text-sm">entry.published</code>
+                </li>
+            }
+            <li class="dnf-list__item text-muted" data-collection-empty hidden>No deliveries match.</li>
+        </ul>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="page-size" title="Own page size" description="A data-page-size that is none of 10, 25, 50 or 100 joins the rows-per-page choices. The choice a user makes is remembered per screen in the browser." layout="block">
+    <div class="dnf-card" data-collection data-page-size="15">
+        <ul class="dnf-list dnf-list--compact">
+            @for (var user = 1; user <= 40; user++)
+            {
+                <li class="dnf-list__item" data-item>
+                    <dnf-avatar name="Editor @user" size="Sm" />
+                    <span class="dnf-list__content">Editor @user</span>
+                </li>
+            }
+        </ul>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="fits" title="Hidden when it fits" description="While the matching items fit the smallest page (10), the pager stays hidden - here six webhooks." layout="block">
+    <div class="dnf-card" data-collection data-page-size="10">
+        <ul class="dnf-list dnf-list--compact">
+            @foreach (var name in new[] { "Deploy preview", "Search index", "Slack", "CDN purge", "Newsletter", "Analytics" })
+            {
+                <li class="dnf-list__item" data-item>
+                    <span class="dnf-list__icon"><dnf-icon name="webhook" /></span>
+                    <span class="dnf-list__content">@name</span>
+                </li>
+            }
+        </ul>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
+    </div>
+</ui-doc-example>
+
+<p>What <code>dnf.js</code> renders into the pager (on page 2 of 120 items at 25 per page):</p>
+<ui-doc-code id="rendered" lang="html">
+<div class="dnf-pagination" data-collection-pagination>
+    <div class="dnf-pagination__info">
+        <label class="dnf-pagination__size"><span>Rows per page</span><select class="dnf-select dnf-select--sm">…</select></label>
+        <span class="dnf-pagination__summary">26-50 of 120</span>
+    </div>
+    <nav class="dnf-pagination__pages" aria-label="Pages">
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-button--icon-only" aria-label="Previous page">…</button>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" aria-label="Page 1">1</button>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" aria-label="Page 2" aria-current="page">2</button>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" aria-label="Page 3">3</button>
+        <span class="dnf-pagination__gap">…</span>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" aria-label="Page 5">5</button>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-button--icon-only" aria-label="Next page">…</button>
+    </nav>
+</div>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Classes on the placeholder stay on the rendered pager - here without the line above it." layout="block">
+    <div class="dnf-card" data-collection data-page-size="10">
+        <ul class="dnf-list dnf-list--compact">
+            @for (var file = 1; file <= 24; file++)
+            {
+                <li class="dnf-list__item" data-item>photo-@(file).jpg</li>
+            }
+        </ul>
+        <div class="dnf-pagination border-t-0" data-collection-pagination hidden></div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="The pager has no component tokens; restyle it in a scope with your own (unlayered) CSS - here centred." layout="block">
+    <div class="dnf-docs-demo-pagination">
+        <div class="dnf-card" data-collection data-page-size="10">
+            <ul class="dnf-list dnf-list--compact">
+                @for (var report = 1; report <= 24; report++)
+                {
+                    <li class="dnf-list__item" data-item>Weekly report @report</li>
+                }
+            </ul>
+            <div class="dnf-pagination" data-collection-pagination hidden></div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-pagination .dnf-pagination {
+    justify-content: center;
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-pagination</code></td><td>block</td><td>a wrapping row (info at the start, pages at the end), padding, a line above, muted <code>text-sm</code></td></tr>
+        <tr><td><code>dnf-pagination__info</code></td><td>element</td><td>the size select and the summary</td></tr>
+        <tr><td><code>dnf-pagination__size</code></td><td>element</td><td>the label and its select on one line (the select at least 4.5rem)</td></tr>
+        <tr><td><code>dnf-pagination__summary</code></td><td>element</td><td>the range ("26-50 of 120"): no wrap, tabular numbers</td></tr>
+        <tr><td><code>dnf-pagination__pages</code></td><td>element</td><td>the page buttons; each at least <code>--dnf-control-sm</code> wide</td></tr>
+        <tr><td><code>dnf-pagination__gap</code></td><td>element</td><td>the "…" between page ranges</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>current page</td><td><code>[aria-current="page"]</code> on its button</td><td>drawn as primary (the button's own style)</td></tr>
+        <tr><td>first or last page</td><td><code>:disabled</code> on Previous or Next</td><td>the disabled button</td></tr>
+        <tr><td>everything fits</td><td><code>.dnf-pagination[hidden]</code></td><td>hidden while the matching items fit 10 rows</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>The pagination has no tag helper and the library has no server-side paging: <code>dnf.js</code> renders it
+    (<a href="@UiDocsCatalog.Root/behaviours">Behaviours</a>).</p>
+<table>
+    <thead><tr><th>Hook</th><th>On</th><th>Behaviour</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-page-size="N"</code></td><td>the <code>[data-collection]</code></td><td>items per page; without it (or <code>0</code>) every item shows</td></tr>
+        <tr><td><code>data-collection-pagination</code></td><td>an empty <code>.dnf-pagination</code></td><td>the pager is rendered into it</td></tr>
+    </tbody>
+</table>
+<ul>
+    <li>Rows per page: 10, 25, 50 and 100, plus the collection's own <code>data-page-size</code> when it is none of them.</li>
+    <li>The chosen size is remembered in <code>localStorage</code> under <code>dnf-page-size:&lt;path&gt;:&lt;index&gt;</code> (the index of the collection on the page).</li>
+    <li>Page buttons: the first, the last, the current one and its neighbours, with a gap between ranges.</li>
+    <li>Changing the page scrolls the collection into view.</li>
+</ul>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The page buttons are in a <code>&lt;nav aria-label="Pages"&gt;</code>; every button has a name ("Page 3", "Previous page").</li>
+    <li>The current page carries <code>aria-current="page"</code>; the rows-per-page select has a visible label.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do set <code>data-page-size</code> on every collection that can grow.</li>
+    <li>Do put the pager last in the card, after the table or list.</li>
+    <li>Don't write your own pager markup into <code>[data-collection-pagination]</code> - <code>dnf.js</code> replaces it.</li>
+    <li>Don't page a collection whose items come from the server page by page; it pages only what is in the document.</li>
+</ul>

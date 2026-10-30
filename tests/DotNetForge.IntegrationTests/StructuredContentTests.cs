@@ -441,7 +441,7 @@ public sealed class StructuredContentTests
 
         // The page tree moved to /admin/pages; its forms post there, and old links still arrive.
         Guid pageId = default;
-        await factory.WithDbAsync(async db => pageId = await db.Pages.Select(p => p.Id).FirstAsync());
+        await factory.WithDbAsync(async db => pageId = await db.Pages.Where(p => p.Slug != "/").Select(p => p.Id).FirstAsync());
         var pages = await admin.GetStringAsync($"/admin/pages?selected={pageId}");
         Assert.Contains($"action=\"/admin/pages/update/{pageId}\"", pages);
         Assert.Contains($"action=\"/admin/pages/delete/{pageId}\"", pages);

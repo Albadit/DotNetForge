@@ -28,22 +28,22 @@ placeholders until they were built ([Providers](providers.md), [Webhooks](webhoo
 ```text
 src/DotNetForge.Web/Areas/Admin/Controllers/ModulesController.cs        one action per placeholder + Placeholder() helper
 src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs               ModulePlaceholderViewModel (Title, DocPath, Description)
-src/DotNetForge.Web/Areas/Admin/Views/Modules/Placeholder.cshtml        card with <empty-state> + Planned footer
+src/DotNetForge.Web/Areas/Admin/Views/Modules/Placeholder.cshtml        card with <dnf-empty-state> + Planned footer
 src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs           AdminNavigation.Tree (Planned: true links), AdminNavigationService
 src/DotNetForge.Web/Areas/Admin/Views/Shared/_NavLink.cshtml            "Soon" badge on planned links
-src/DotNetForge.Web/Ui/UiTagHelpers.cs                                  <empty-state>, <badge>, <icon>
+src/DotNetForge.UI/Components/BasicTagHelpers.cs                        <dnf-empty-state>, <dnf-badge>, <dnf-icon>
 ```
 
 ## Page layout
 
 ```text
 <Title> (_AdminLayout, h1 = Title)
-└── section.card
-    ├── <empty-state> icon = the sidebar link's icon (fallback "box")
+└── section.dnf-card
+    ├── <dnf-empty-state> icon = the sidebar link's icon (fallback "box")
     │   ├── title "<Title> is coming soon"
     │   ├── text <Description>
     │   └── [← Back to dashboard]                              link /admin
-    └── .card-footer: badge "Planned" + "The planned behaviour is described in <DocPath>, section "Planned (not implemented)"."
+    └── .dnf-card__footer: badge "Planned" + "The planned behaviour is described in <DocPath>, section "Planned (not implemented)"."
 ```
 
 ## Components, functionality, data, state

@@ -66,6 +66,25 @@ jobs:
             echo "::endgroup::"
           done
 
+  lint-js:
+    name: JavaScript lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install ESLint
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
   postgres-and-s3:
     # The integration tests on the CMS database (PostgreSQL, a fresh database per test) plus the live S3 contract
     # tests against an S3-compatible server (.docs/guides/testing.md).
@@ -108,6 +127,50 @@ jobs:
 
       - name: Integration tests on PostgreSQL
         run: dotnet test tests/DotNetForge.IntegrationTests --configuration Release
+
+  ui-tests:
+    # Browser tests of the UI library (.docs/guides/testing.md#ui-tests): the app on Kestrel, Chromium via Playwright.
+    name: UI tests (Chromium)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DNF_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build tests/DotNetForge.UiTests --configuration Release
+
+      - name: Install Chromium
+        run: pwsh tests/DotNetForge.UiTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: UI tests
+        run: dotnet test tests/DotNetForge.UiTests --configuration Release --no-build
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: |
+            tests/DotNetForge.UiTests/Baselines/linux/
+            tests/DotNetForge.UiTests/TestResults/ui-snapshots/
+          if-no-files-found: ignore
 
   additional-databases:
     # The other providers serve additional databases (DATABASES_<NAME>_*, .docs/database/providers.md#testing): the

@@ -28,8 +28,7 @@ public sealed class RolesController : AdminControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        // Separate single-table queries, combined in memory: they run on every provider, including MongoDB, which
-        // can't count across collections in one query (.docs/database/mongodb.md#query-rules).
+        // Separate single-table queries, combined in memory.
         var roles = await _db.Roles
             .AsNoTracking()
             .OrderByDescending(r => r.IsBuiltIn).ThenBy(r => r.Name)

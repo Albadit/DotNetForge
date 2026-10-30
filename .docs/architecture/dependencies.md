@@ -8,35 +8,37 @@ introduced. Layer responsibilities are in [codebase.md](codebase.md).
 | Project | References | Must never reference |
 | --- | --- | --- |
 | `DotNetForge.Abstractions` | - | anything |
-| `DotNetForge.Shared` | Abstractions | Core, Data, Infrastructure, Api, EF Core |
+| `DotNetForge.Shared` | nothing in the solution | Core, Data, Infrastructure, Api, EF Core |
 | `DotNetForge.Core` | Abstractions, Shared, PageBuilder (rich text of entries, `Core/Content`) | Data, Infrastructure, EF Core, ASP.NET Core |
 | `DotNetForge.Content` | Abstractions, Shared, Core, Data | Infrastructure, Api, the web host, ASP.NET Core |
 | `DotNetForge.Data` | Abstractions, Shared (+ EF Core packages, `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore`) | Core, Infrastructure, Api |
-| `DotNetForge.Infrastructure` | Abstractions, Shared, Core (+ `AWSSDK.S3`) | Data, Api |
-| `DotNetForge.Sdk` | Abstractions, Shared; `FrameworkReference Microsoft.AspNetCore.App` | Core, Data, Infrastructure, Extensions, Api, the web host (extensions compile against it - keep it small) |
+| `DotNetForge.Infrastructure` | Abstractions, Shared (+ `AWSSDK.S3`) | Data, Api |
+| `DotNetForge.Sdk` | Abstractions, Shared, UI; `FrameworkReference Microsoft.AspNetCore.App` | Core, Data, Infrastructure, Extensions, Api, the web host (extensions compile against it - keep it small) |
+| `DotNetForge.UI` | nothing in the solution; `FrameworkReference Microsoft.AspNetCore.App` (a Razor class library; Tailwind CSS is a build-time CLI, not a package - [styling → build](../ui/styling.md#build)) | every other project - it is the shared component library of the CMS and extensions and knows nothing about CMS data ([.docs/ui](../ui/README.md)) |
 | `DotNetForge.Extensions` | Abstractions, Shared, Core, Sdk | Data, Api |
 | `DotNetForge.Api` | Abstractions, Shared, Core, Data, Content; `FrameworkReference Microsoft.AspNetCore.App` | the web host |
 | `DotNetForge.PageBuilder` | nothing in the solution (+ `Newtonsoft.Json`); embeds `src/DotNetForge.Web/wwwroot/builder/schema/*.json` and `base.css` | everything else - pure document logic ([page builder](../features/page-builder.md)) |
-| `DotNetForge.Web` (root) | all ten `src/` projects | test projects, extension projects |
-| `DotNetForge.Tests` | Abstractions, Shared, Core, Data, Infrastructure, Extensions, PageBuilder, Content | Web, Api |
+| `DotNetForge.Web` (root) | all eleven `src/` projects | test projects, extension projects |
+| `DotNetForge.Tests` | Abstractions, Shared, Core, Data, Infrastructure, Extensions, PageBuilder, UI | Web, Api |
 | `DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj`; build-only (`ReferenceOutputAssembly="false"`): `tests/fixtures/extensions/test-kit`, the `markdown-kit`, `contact-form` and `seo-toolkit` samples | - |
-| Extension projects (`extensions/**/*.csproj`) | Sdk, Abstractions, Shared via `extensions/Directory.Build.props` (`Private="false"`: never copied into `bin/`); other extensions with `Private="false"` (Contact Form → Markdown Kit); their own NuGet packages with explicit versions (central package management is off for them) | `src/` projects other than those three; the host loads them, nothing references them |
+| `DotNetForge.UiTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj` (browser tests of the UI library, [testing](../guides/testing.md#ui-tests)) | - |
+| Extension projects (`extensions/**/*.csproj`) | Sdk, Abstractions, Shared, UI via `extensions/Directory.Build.props` (`Private="false"`: never copied into `bin/`); other extensions with `Private="false"` (Contact Form → Markdown Kit); their own NuGet packages with explicit versions (central package management is off for them) | `src/` projects other than those four; the host loads them, nothing references them |
 
 ```mermaid
 flowchart BT
     Abs[Abstractions]
-    Shared --> Abs
-    Core --> Shared
+    Core --> Shared & Abs
     Core --> PB[PageBuilder]
-    Data --> Shared
+    Data --> Shared & Abs
     Cnt[Content] --> Core
     Cnt --> Data
-    Infra[Infrastructure] --> Core
-    Sdk --> Shared
+    Infra[Infrastructure] --> Shared & Abs
+    Sdk --> Shared & Abs
+    Sdk --> UI[UI]
     Ext[Extensions] --> Core
     Ext --> Sdk
     Api --> Cnt
-    Web["Web (root)"] --> Api & Ext & Infra & Sdk
+    Web["Web (root)"] --> Api & Ext & Infra & Sdk & UI
     ExtProj["extensions/**/*.csproj"] -. compile only .-> Sdk
     Tests[DotNetForge.Tests] --> Infra & Ext & Data
     IT[IntegrationTests] --> Web
@@ -58,6 +60,9 @@ flowchart BT
   `RichText` normalizer, so a rich text field renders in a layout unchanged.
 - **`PermissionMatrix` in `Shared`** - so `Data` (seeder) and `Core` (`PermissionService`) share it without `Data`
   depending on `Core`.
+- **`UI` references nothing** - the component library is shared by the host and every extension (through `Sdk`), so
+  it must not pull CMS types into extensions; CMS-specific UI stays in `src/DotNetForge.Web` (screen CSS, page scripts,
+  `Ui/` presentation helpers).
 - **Extensions → `Sdk` only, never copied** - at runtime `ExtensionLoadContext` resolves every assembly the host ships
   from the host first, so `IExtension`, `IFileStorage`, `IAuditService` etc. are the same types on both sides. A
   package an extension shares with the host (the S3 sample's `AWSSDK.S3`, `ExcludeAssets="runtime"`) uses the host's
@@ -101,7 +106,10 @@ packages pull SQLitePCLRaw 2.1.12.
 Rate limiting (`AddRateLimiter`), Data Protection, `IMemoryCache` and forwarded headers come from the shared
 framework (`Microsoft.AspNetCore.App`) - no packages.
 
-There are no frontend packages: no `package.json`, no ESLint config. One vendored library: the **Monaco** code
+There are no frontend packages: no `package.json`, no ESLint config. The UI stylesheet is compiled by the **Tailwind
+CSS** standalone CLI (v4.3.3, MIT) at build time - a pinned, SHA-256-verified binary downloaded once into the
+git-ignored `tools/tailwind/` by `src/DotNetForge.UI/build/Tailwind.targets`; nothing of it ships except the generated
+`dnf.css` ([styling → build](../ui/styling.md#build)). One vendored library: the **Monaco** code
 editor (`monaco-editor` 0.52.2, MIT, Microsoft), the files of its AMD build that the HTML editor needs - loader,
 editor core, the HTML and CSS language services and their worker, and the HTML/CSS/JavaScript colorizers, about
 5.6 MB - copied into `src/DotNetForge.Web/wwwroot/lib/monaco/` with its `LICENSE` and `ThirdPartyNotices.txt`. It is
@@ -121,6 +129,11 @@ verification (CBOR, COSE keys, many signature formats) is too large and security
 `QRCoder` because .NET has no QR encoder. Video compression uses no package: it runs an external ffmpeg
 (`FFMPEG_PATH`, optional) as a process; SMS codes call Twilio's REST API with `HttpClient` (no SDK); webhooks are sent with `HttpClient` and
 signed with the BCL's HMAC-SHA256; TOTP and the built-in OAuth providers use the BCL and ASP.NET Core's `OAuthHandler`.
+
+## Development tooling
+
+`package.json` holds only ESLint (`eslint`, `@eslint/js`, `globals`), for the [JavaScript lint](../guides/testing.md#javascript).
+Nothing from npm is part of the application.
 
 ## DI registrations
 
@@ -250,7 +263,7 @@ the email template preview its own enforced sandbox policy (`EmailPreviewPolicy`
 | Deciding whether an extension may contribute (combining discovery, loaded code and enabled state) | `ExtensionCatalog` (`GetActiveAsync`, `FindActiveAsync`, `IsActiveAsync`) | one rule for every slot: valid, first with its id, enabled, code loaded |
 | Re-implementing the public "live" rule | `PageVisibility.Live` | one definition of what the public sees |
 | Hard-coding sidebar links or per-role link checks in a view | `AdminNavigation.Tree` + `AdminNavigationService` (`AdminNavModel.Allows`) | one tree for sidebar, active state and breadcrumbs; visibility follows the controllers' `[Authorize]` rules |
-| `asp-validation-summary`, inline styles, CSS/JS libraries in views | the [design system](design-system.md) (`<form-errors />`, `wwwroot/css/forge`, `ui.js`); for code, the vendored Monaco editor (email templates only) | CSP (`style-src 'self'`), one look across screens, no front-end dependencies beyond Monaco |
+| `asp-validation-summary`, inline styles, CSS/JS libraries in views | the [DotNetForge UI library](../ui/README.md) (`<dnf-validation-summary />`, Dnf components and Tailwind utilities, `dnf.js` hooks; [design system](design-system.md)); for code, the vendored Monaco editor (email templates only) | CSP (`style-src 'self'`), one look across screens and extensions, no front-end dependencies beyond Monaco |
 | Replacing `IFileStorage` or adding auth buttons/audit hooks from an extension with plain DI | `AddMediaStorage`, `AddLoginProvider`, `AddAuditEventHandler` (`DotNetForge.Sdk`) | the host can switch the contribution off while the extension is disabled |
 | Building your own sign-in principal | `AuthService.ValidateAsync` | lockout, claims shape (user id, name, email, roles) |
 | Hard-coding role names / permission keys / audit actions / rate-limit / authorization policy names | `Roles`, `PermissionKeys`, `PermissionAreas`, `PermissionActions`, `AuditActions`, `RateLimitPolicies`, `AuthorizationPolicies` | one source of truth |

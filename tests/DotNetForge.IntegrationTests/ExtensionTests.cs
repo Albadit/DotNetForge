@@ -44,7 +44,7 @@ public sealed class ExtensionTests
         Assert.Contains("Test Kit", html);
         Assert.Contains("tests.widget.hello", html);
         Assert.Contains("'bin/Missing.dll' was not found", html);
-        Assert.DoesNotContain("extension-card is-enabled", html);
+        Assert.DoesNotContain("data-enabled=\"true\"", html);
         Assert.Equal(HttpStatusCode.Redirect, (await EnableAsync(admin, "tests.plugin.broken")).StatusCode);
         Assert.Contains("can't be enabled", await PluginsMessageAsync(admin));
     }

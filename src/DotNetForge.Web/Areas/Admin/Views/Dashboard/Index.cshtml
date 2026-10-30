@@ -6,77 +6,77 @@
     var nav = await Navigation.BuildAsync(Context, "Dashboard");
 }
 
-<div class="stack-lg">
-    <section class="dashboard-hero" aria-labelledby="welcome">
+<div class="dnf-stack dnf-stack--lg">
+    <section class="dnf-dashboard-hero" aria-labelledby="welcome">
         <div>
-            <h2 id="welcome">Welcome back, @Model.Greeting</h2>
-            <p>Manage your pages, media and extensions from here.</p>
+            <h2 class="dnf-dashboard-hero__title" id="welcome">Welcome back, @Model.Greeting</h2>
+            <p class="dnf-dashboard-hero__text">Manage your pages, media and extensions from here.</p>
         </div>
-        <div class="btn-group">
+        <div class="dnf-button-group">
             @if (Model.CanCreatePages)
             {
                 <form method="post" action="/admin/pages/create" class="inline">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-primary"><icon name="plus" /> New page</button>
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="plus" /> New page</button>
                 </form>
             }
             @if (Model.CanUpload)
             {
-                <a class="btn" href="/admin/media#upload"><icon name="upload" /> Upload media</a>
+                <a class="dnf-button dnf-button--secondary" href="/admin/media#upload"><dnf-icon name="upload" /> Upload media</a>
             }
             @if (nav.Allows("/admin/api-tokens"))
             {
-                <a class="btn" href="/admin/api-tokens/create"><icon name="key" /> New API token</a>
+                <a class="dnf-button dnf-button--secondary" href="/admin/api-tokens/create"><dnf-icon name="key" /> New API token</a>
             }
         </div>
     </section>
 
-    <div class="grid grid-4">
-        <stat-card icon="pages" label="Pages" value="@Model.Pages.ToString()" href="@(nav.Allows("/admin/pages") ? "/admin/pages" : null)" />
-        <stat-card icon="image" label="Media files" value="@Model.Media.ToString()" href="@(nav.Allows("/admin/media") ? "/admin/media" : null)" />
+    <div class="dnf-grid dnf-grid--cols-4">
+        <dnf-stat-card icon="pages" label="Pages" value="@Model.Pages.ToString()" href="@(nav.Allows("/admin/pages") ? "/admin/pages" : null)" />
+        <dnf-stat-card icon="image" label="Media files" value="@Model.Media.ToString()" href="@(nav.Allows("/admin/media") ? "/admin/media" : null)" />
         @if (nav.Allows("/admin/users"))
         {
-            <stat-card icon="users" label="Users" value="@Model.Users.ToString()" href="/admin/users" />
+            <dnf-stat-card icon="users" label="Users" value="@Model.Users.ToString()" href="/admin/users" />
         }
         else
         {
-            <stat-card icon="users" label="Users" value="@Model.Users.ToString()" />
+            <dnf-stat-card icon="users" label="Users" value="@Model.Users.ToString()" />
         }
         @if (nav.Allows("/admin/plugins"))
         {
-            <stat-card icon="puzzle" label="Enabled extensions" value="@Model.Extensions.ToString()" href="/admin/plugins" />
+            <dnf-stat-card icon="puzzle" label="Enabled extensions" value="@Model.Extensions.ToString()" href="/admin/plugins" />
         }
         else
         {
-            <stat-card icon="puzzle" label="Enabled extensions" value="@Model.Extensions.ToString()" />
+            <dnf-stat-card icon="puzzle" label="Enabled extensions" value="@Model.Extensions.ToString()" />
         }
     </div>
 
-    <div class="dashboard-columns">
-        <section class="card" aria-labelledby="activity-title">
-            <div class="card-header">
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <section class="dnf-card" aria-labelledby="activity-title">
+            <div class="dnf-card__header">
                 <div>
-                    <h2 class="card-title" id="activity-title">Recent activity</h2>
-                    <p class="card-description">The latest actions.</p>
+                    <h2 class="dnf-card__title" id="activity-title">Recent activity</h2>
+                    <p class="dnf-card__description">The latest actions.</p>
                 </div>
                 @if (nav.Allows("/admin/audit-logs"))
                 {
-                    <a class="btn btn-ghost btn-sm" href="/admin/audit-logs">View all <icon name="arrow-right" size="sm" /></a>
+                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/audit-logs">View all <dnf-icon name="chevron-right" size="Sm" /></a>
                 }
             </div>
             @if (Model.RecentActivity.Count == 0)
             {
-                <empty-state icon="activity" title="No activity yet" text="Sign-ins, content changes and uploads appear here." compact="true" />
+                <dnf-empty-state icon="activity" title="No activity yet" description="Sign-ins, content changes and uploads appear here." compact="true" />
             }
             else
             {
-                <ul class="list">
+                <ul class="dnf-list">
                     @foreach (var entry in Model.RecentActivity)
                     {
-                        <li>
-                            <span class="activity-icon @(entry.Success ? null : "fail")"><icon name="@AuditPresentation.Icon(entry.Action)" size="sm" /></span>
-                            <div class="grow">
-                                <div class="weight-medium">
+                        <li class="dnf-list__item">
+                            <span class="dnf-list__icon dnf-list__icon--round@(entry.Success ? null : " dnf-list__icon--danger")"><dnf-icon name="@AuditPresentation.Icon(entry.Action)" size="Sm" /></span>
+                            <div class="grow min-w-0">
+                                <div class="font-medium">
                                     @AuditPresentation.Label(entry.Action)
                                     @if (!string.IsNullOrEmpty(entry.EntityDisplaySnapshot))
                                     {
@@ -87,20 +87,20 @@
                             </div>
                             @if (!entry.Success)
                             {
-                                <badge tone="Danger">Failed</badge>
+                                <dnf-badge tone="Danger">Failed</dnf-badge>
                             }
-                            <timestamp value="@entry.Timestamp" class="text-xs text-muted text-nowrap" />
+                            <dnf-timestamp value="@entry.Timestamp" class="text-xs text-muted text-nowrap" />
                         </li>
                     }
                 </ul>
             }
         </section>
 
-        <div class="stack">
-            <section class="card" aria-labelledby="glance-title">
-                <div class="card-header"><h2 class="card-title" id="glance-title">At a glance</h2></div>
-                <div class="card-body">
-                    <dl class="dl">
+        <div class="dnf-stack">
+            <section class="dnf-card" aria-labelledby="glance-title">
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="glance-title">At a glance</h2></div>
+                <div class="dnf-card__body">
+                    <dl class="dnf-description-list">
                         <dt>Roles</dt><dd>@Model.Roles</dd>
                         <dt>Active API tokens</dt><dd>@Model.ApiTokens</dd>
                         <dt>Webhooks</dt><dd>@Model.Webhooks</dd>
@@ -108,12 +108,12 @@
                     </dl>
                 </div>
             </section>
-            <section class="card" aria-labelledby="system-title">
-                <div class="card-header"><h2 class="card-title" id="system-title">System</h2></div>
-                <div class="card-body">
-                    <dl class="dl">
-                        <dt>CMS version</dt><dd><badge tone="Accent">v@(Model.CmsVersion)</badge></dd>
-                        <dt>Installed</dt><dd><timestamp value="@Model.InstalledAtUtc" absolute="true" empty="-" /></dd>
+            <section class="dnf-card" aria-labelledby="system-title">
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="system-title">System</h2></div>
+                <div class="dnf-card__body">
+                    <dl class="dnf-description-list">
+                        <dt>CMS version</dt><dd><dnf-badge tone="Primary">v@(Model.CmsVersion)</dnf-badge></dd>
+                        <dt>Installed</dt><dd><dnf-timestamp value="@Model.InstalledAtUtc" absolute="true" empty="-" /></dd>
                         <dt>Modes</dt><dd>Traditional · Headless · Hybrid</dd>
                     </dl>
                 </div>

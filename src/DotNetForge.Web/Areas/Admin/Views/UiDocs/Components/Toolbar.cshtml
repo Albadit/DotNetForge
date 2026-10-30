@@ -1,0 +1,230 @@
+@* Toolbar (UI docs): the toolbar, the bulk bar and the collection bar. Sections: Usage, Examples, Customization,
+   Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/table.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (collections: search, filters, selection)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A <code>dnf-toolbar</code> is the row above a collection: a search field, filters, then - after a spacer - the actions.
+    It sits directly in the card, between the card header and the <a href="@UiDocsCatalog.Root/components/table">table</a> or
+    <a href="@UiDocsCatalog.Root/components/list">list</a>, and draws a line below itself.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-card">
+        <div class="dnf-toolbar">
+            <div class="dnf-input-group dnf-toolbar__search">
+                <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                <input class="dnf-input" type="search" aria-label="Search pages" placeholder="Search pages" />
+            </div>
+            <select class="dnf-select" aria-label="Status">
+                <option value="">All statuses</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+            </select>
+            <span class="dnf-toolbar__spacer"></span>
+            <dnf-button variant="Primary" size="Sm" icon="plus">New page</dnf-button>
+        </div>
+        <p class="dnf-card__body text-muted">The rows go here.</p>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="filters" title="Several filters" description="Selects keep their natural width (at least 9rem) and are as tall as the search field; a segmented control works as a set of exclusive filter buttons." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-toolbar">
+            <div class="dnf-input-group dnf-toolbar__search">
+                <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                <input class="dnf-input" type="search" aria-label="Search users" placeholder="Search by name or email" />
+            </div>
+            <select class="dnf-select" aria-label="Role">
+                <option value="">All roles</option>
+                <option>Administrator</option>
+                <option>Editor</option>
+            </select>
+            <div class="dnf-segmented" role="group" aria-label="Status">
+                <button type="button" class="dnf-segmented__item" aria-pressed="true">All</button>
+                <button type="button" class="dnf-segmented__item" aria-pressed="false">Enabled</button>
+                <button type="button" class="dnf-segmented__item" aria-pressed="false">Disabled</button>
+            </div>
+        </div>
+        <p class="dnf-card__body text-muted">The rows go here.</p>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="actions-only" title="Actions only" description="Without a search field the spacer pushes the actions to the end of the row." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-toolbar">
+            <span class="text-sm text-muted">24 files</span>
+            <span class="dnf-toolbar__spacer"></span>
+            <dnf-button size="Sm" icon="download">Export</dnf-button>
+            <dnf-button variant="Primary" size="Sm" icon="upload">Upload</dnf-button>
+        </div>
+        <p class="dnf-card__body text-muted">The files go here.</p>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="bulk-bar" title="Bulk bar" description="While items are selected the bulk bar covers the toolbar - the collection bar positions it on top, so nothing below moves. At 64rem and below it wraps and replaces the toolbar instead. Here it is shown as if three items were selected." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-collection-bar">
+            <div class="dnf-toolbar">
+                <div class="dnf-input-group dnf-toolbar__search">
+                    <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                    <input class="dnf-input" type="search" aria-label="Search media" />
+                </div>
+            </div>
+            <div class="dnf-bulk-bar">
+                <span class="dnf-bulk-bar__count">3 selected</span>
+                <select class="dnf-select dnf-select--sm" aria-label="Bulk action">
+                    <option>Move to folder</option>
+                    <option>Delete</option>
+                </select>
+                <dnf-button size="Sm">Apply</dnf-button>
+                <dnf-button variant="Ghost" size="Sm">Clear</dnf-button>
+            </div>
+        </div>
+        <p class="dnf-card__body text-muted">The selected files go here.</p>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="wired" title="Wired to a collection" description="With data-collection on the card, dnf.js filters the items as you type or choose, shows the count, and swaps in the bulk bar when an item is checked." layout="block">
+    <div class="dnf-card" data-collection>
+        <div class="dnf-collection-bar">
+            <div class="dnf-toolbar">
+                <input type="checkbox" class="dnf-checkbox" data-select-all aria-label="Select all files" />
+                <div class="dnf-input-group dnf-toolbar__search">
+                    <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                    <input class="dnf-input" type="search" aria-label="Search files" data-collection-search />
+                </div>
+                <select class="dnf-select" aria-label="Type" data-collection-filter="type">
+                    <option value="">All types</option>
+                    <option value="image">Images</option>
+                    <option value="document">Documents</option>
+                </select>
+                <span class="dnf-toolbar__spacer"></span>
+                <span class="text-sm text-muted" data-collection-count></span>
+            </div>
+            <div class="dnf-bulk-bar" data-bulk-bar hidden>
+                <span class="dnf-bulk-bar__count" data-bulk-count aria-live="polite"></span>
+                <button type="button" class="dnf-button dnf-button--danger-soft dnf-button--sm"
+                        data-docs-confirm="Delete the selected files? This can't be undone." data-docs-confirm-title="Delete files" data-docs-confirm-action="Delete">Delete</button>
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" data-bulk-clear>Clear</button>
+            </div>
+        </div>
+        <ul class="dnf-list">
+            <li class="dnf-list__item" data-item data-type="image">
+                <input type="checkbox" class="dnf-checkbox" data-select-item aria-label="Select hero.jpg" />
+                <span class="dnf-list__icon"><dnf-icon name="image" /></span>
+                <div class="dnf-list__content"><span class="font-semibold">hero.jpg</span><span class="text-sm text-muted">1.2 MB</span></div>
+            </li>
+            <li class="dnf-list__item" data-item data-type="image">
+                <input type="checkbox" class="dnf-checkbox" data-select-item aria-label="Select team.png" />
+                <span class="dnf-list__icon"><dnf-icon name="image" /></span>
+                <div class="dnf-list__content"><span class="font-semibold">team.png</span><span class="text-sm text-muted">640 KB</span></div>
+            </li>
+            <li class="dnf-list__item" data-item data-type="document">
+                <input type="checkbox" class="dnf-checkbox" data-select-item aria-label="Select brochure.pdf" />
+                <span class="dnf-list__icon"><dnf-icon name="file" /></span>
+                <div class="dnf-list__content"><span class="font-semibold">brochure.pdf</span><span class="text-sm text-muted">840 KB</span></div>
+            </li>
+            <li class="dnf-list__item text-muted" data-collection-empty hidden>No files match.</li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Drop the line below a toolbar that ends the card, or let the search field grow without its maximum width." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-toolbar border-b-0">
+            <div class="dnf-input-group dnf-toolbar__search max-w-none">
+                <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                <input class="dnf-input" type="search" aria-label="Search the documentation" placeholder="Search the documentation" />
+            </div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="The toolbar has no component tokens; restyle it in a scope with your own (unlayered) CSS - here a tinted bar." layout="block">
+    <div class="dnf-docs-demo-toolbar">
+        <div class="dnf-card">
+            <div class="dnf-toolbar">
+                <div class="dnf-input-group dnf-toolbar__search">
+                    <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                    <input class="dnf-input" type="search" aria-label="Search reports" />
+                </div>
+                <span class="dnf-toolbar__spacer"></span>
+                <dnf-button size="Sm" icon="refresh-cw">Refresh</dnf-button>
+            </div>
+            <p class="dnf-card__body text-muted">The reports go here.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-toolbar .dnf-toolbar {
+    background: var(--dnf-surface-muted);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-toolbar</code></td><td>block</td><td>a wrapping row with padding and a line below</td></tr>
+        <tr><td><code>dnf-toolbar__search</code></td><td>element</td><td>grows from 14rem, at most 22rem (put it on the input group)</td></tr>
+        <tr><td><code>dnf-toolbar__spacer</code></td><td>element</td><td>pushes what follows to the end</td></tr>
+        <tr><td><code>dnf-toolbar .dnf-select</code></td><td>-</td><td><code>width: auto</code>, at least 9rem - as tall as the search field</td></tr>
+        <tr><td><code>dnf-collection-bar</code></td><td>block</td><td><code>position: relative</code>; its <code>&gt; .dnf-bulk-bar</code> covers the toolbar (absolute, <code>inset: 0</code>), so nothing below moves; at 64rem and below it wraps and replaces the toolbar</td></tr>
+        <tr><td><code>dnf-bulk-bar</code></td><td>block</td><td>an opaque primary-tinted row, medium weight, a primary-tinted line below</td></tr>
+        <tr><td><code>dnf-bulk-bar__count</code></td><td>element</td><td>the "3 selected" text; no wrap</td></tr>
+        <tr><td><code>dnf-bulk-bar .dnf-select</code></td><td>-</td><td><code>width: auto</code>, at most 16rem</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>nothing selected</td><td><code>.dnf-bulk-bar[hidden]</code></td><td>the toolbar shows</td></tr>
+        <tr><td>items selected</td><td><code>.dnf-bulk-bar</code> without <code>hidden</code></td><td>the bulk bar covers the toolbar; <code>dnf.js</code> toggles <code>hidden</code> and writes "N selected" into <code>[data-bulk-count]</code></td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>The toolbar has no tag helper: the classes above are its API. The controls in it work through the collection hooks of
+    <code>dnf.js</code> on an ancestor with <code>data-collection</code> (<a href="@UiDocsCatalog.Root/behaviours">Behaviours</a>):</p>
+<table>
+    <thead><tr><th>Hook</th><th>On</th><th>Behaviour</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-collection-search</code></td><td>the search input</td><td>keeps the items whose <code>data-search</code> (else their text) contains the query, ignoring case</td></tr>
+        <tr><td><code>data-collection-filter="key"</code></td><td>a <code>&lt;select&gt;</code></td><td>keeps the items whose <code>data-key</code> has the selected value among its words; an empty value is no filter</td></tr>
+        <tr><td><code>data-collection-filter="key"</code> + <code>data-value</code></td><td>buttons (a <a href="@UiDocsCatalog.Root/components/segmented">segmented</a> control)</td><td>the same as exclusive buttons: the clicked one gets <code>aria-pressed="true"</code>, the others <code>"false"</code></td></tr>
+        <tr><td><code>data-collection-count</code></td><td>any text element</td><td>"N total", or "X of N" while filtered</td></tr>
+        <tr><td><code>data-bulk-bar</code></td><td>the bulk bar</td><td>shown while at least one <code>[data-select-item]</code> is checked</td></tr>
+        <tr><td><code>data-bulk-count</code></td><td>the count</td><td>"N selected"</td></tr>
+        <tr><td><code>data-bulk-clear</code></td><td>a button</td><td>unchecks every item</td></tr>
+    </tbody>
+</table>
+<p>Search, filter and page-size changes go back to page 1. Item checkboxes can post with a bulk form elsewhere on the
+    page through <code>form="…"</code>.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Label every control - <code>aria-label</code> when there is no visible label ("Search pages", "Status").</li>
+    <li>Give a segmented filter a group name: <code>role="group"</code> and <code>aria-label</code>.</li>
+    <li>The bulk bar's count is plain text; <code>aria-live="polite"</code> on it announces selection changes.</li>
+    <li>Selection needs JavaScript: keep every bulk action available on each item too (its row menu).</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do hide a toolbar that only drives client-side filtering until <code>dnf.js</code> runs: <code>hidden data-js-only</code>.</li>
+    <li>Do keep search first, filters next, actions last after the spacer.</li>
+    <li>Don't repeat the screen's primary action in the toolbar when the page header already has it.</li>
+    <li>Don't put destructive bulk actions without a confirmation in the bulk bar.</li>
+</ul>

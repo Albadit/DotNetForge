@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using DotNetForge.Core.Extensions;
 using DotNetForge.Sdk;
-using DotNetForge.Shared.Manifests;
 
 namespace DotNetForge.Extensions;
 
@@ -16,8 +15,6 @@ public sealed class ActiveExtension
     }
 
     public DiscoveredExtension Discovered { get; }
-
-    public ExtensionManifest Manifest => Discovered.Manifest!;
 
     /// <summary>The folder holding the manifest.</summary>
     public string Folder => Path.GetDirectoryName(Discovered.Path)!;
@@ -57,8 +54,6 @@ public sealed class ExtensionCatalog
         _state = state;
         _environment = environment;
     }
-
-    public ExtensionRuntime Runtime => _runtime;
 
     /// <summary>The first valid manifest per id (the same rule everywhere), in discovery order.</summary>
     public IReadOnlyList<DiscoveredExtension> Installed() => FirstValidPerId(_loader.Discover());

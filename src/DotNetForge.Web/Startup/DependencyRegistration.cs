@@ -30,7 +30,7 @@ using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.FileProviders;
 
 namespace DotNetForge.Web.Startup;
@@ -45,14 +45,25 @@ public static class DependencyRegistration
 {
     public const string AdminAreaPolicy = AuthorizationPolicies.AdminArea;
 
-    /// <summary>How long a "this account is still enabled" check is remembered per user.</summary>
-    private static readonly TimeSpan SessionValidationCacheLifetime = TimeSpan.FromSeconds(30);
-
     public static IServiceCollection AddDotNetForge(
         this IServiceCollection services, AppEnvironment env, IWebHostEnvironment hostEnv)
     {
         services.AddSingleton(env);
         services.AddMemoryCache();
+
+        // Stylesheets, scripts, icons and JSON always; screens outside Development (dotnet watch injects its script
+        // into HTML, which it can't do once compressed). Over HTTPS too: the only secrets in those bodies are
+        // antiforgery tokens, new for every response, so a size-based attack (BREACH) has nothing stable to guess.
+        services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+            options.Providers.Add<BrotliCompressionProvider>();
+            options.Providers.Add<GzipCompressionProvider>();
+            options.MimeTypes = new[] { "text/css", "text/javascript", "application/javascript", "image/svg+xml", "application/json" }
+                .Concat(hostEnv.IsDevelopment() ? Array.Empty<string>() : new[] { "text/html" });
+        });
+        services.Configure<BrotliCompressionProviderOptions>(options => options.Level = System.IO.Compression.CompressionLevel.Fastest);
+        services.Configure<GzipCompressionProviderOptions>(options => options.Level = System.IO.Compression.CompressionLevel.Fastest);
 
         // Persistence (.docs/database/architecture.md). Providers are registered by name; the configured databases
         // are resolved against them, the main database's provider registers DotNetForgeDbContext, and
@@ -101,6 +112,7 @@ public static class DependencyRegistration
         services.AddSingleton<InstallationStatusCache>();
         services.AddHttpContextAccessor();
         services.AddScoped<AuthService>();
+        services.AddScoped<UserSessionService>();
         // Self-service accounts and the Advanced User Settings (.docs/features/authentication.md). Email over SMTP with
         // SMTP_* from .env (.docs/features/email.md); every send goes through LoggingEmailSender (the email log).
         services.AddScoped<EmailConfigurationService>();
@@ -186,6 +198,7 @@ public static class DependencyRegistration
                     ? CookieSecurePolicy.SameAsRequest
                     : CookieSecurePolicy.Always;
                 options.Cookie.Name = "dnf.auth";
+                options.Events.OnSigningIn = StartSessionAsync;
                 options.Events.OnValidatePrincipal = ValidateSessionAsync;
             })
             // Short-lived cookie that carries an authentication extension's result to ExternalLoginController.
@@ -328,26 +341,43 @@ public static class DependencyRegistration
     /// </summary>
     private static async Task ValidateSessionAsync(CookieValidatePrincipalContext context)
     {
-        if (!Guid.TryParse(context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
-        {
-            context.RejectPrincipal();
-            return;
-        }
-
-        var services = context.HttpContext.RequestServices;
-        var cache = services.GetRequiredService<IMemoryCache>();
-        var cacheKey = $"dnf:session:{userId}";
-        if (!cache.TryGetValue(cacheKey, out bool active))
-        {
-            active = await services.GetRequiredService<AuthService>().IsActiveAsync(userId, context.HttpContext.RequestAborted);
-            cache.Set(cacheKey, active, SessionValidationCacheLifetime);
-        }
-
-        if (!active)
+        var roles = UserSessionService.Identify(context.Principal) is var (userId, sessionId)
+            ? await context.HttpContext.RequestServices.GetRequiredService<UserSessionService>().RolesAsync(userId, sessionId, context.HttpContext.RequestAborted)
+            : null;
+        if (roles is null)
         {
             context.RejectPrincipal();
             await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return;
         }
+
+        // The database decides, not the cookie: a role change counts from the next request.
+        var inCookie = context.Principal!.FindAll(ClaimTypes.Role).Select(c => c.Value);
+        if (!inCookie.ToHashSet().SetEquals(roles))
+        {
+            var claims = context.Principal.Claims.Where(c => c.Type != ClaimTypes.Role).Concat(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+            context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
+            context.ShouldRenew = true;
+        }
+    }
+
+    /// <summary>
+    /// Every way in - password, second factor, provider, setup - ends in this one sign-in, so a session starts here.
+    /// Re-issuing the cookie of a signed-in user (their profile changed) keeps their session.
+    /// </summary>
+    private static async Task StartSessionAsync(CookieSigningInContext context)
+    {
+        if (context.Principal?.Identity is not ClaimsIdentity identity
+            || !Guid.TryParse(identity.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+        {
+            return;
+        }
+
+        var current = UserSessionService.Identify(context.HttpContext.User);
+        var sessionId = current?.UserId == userId
+            ? current.Value.SessionId
+            : await context.HttpContext.RequestServices.GetRequiredService<UserSessionService>().StartAsync(userId, context.HttpContext.RequestAborted);
+        identity.AddClaim(new Claim(UserSessionService.SessionIdClaim, sessionId.ToString()));
     }
 
     /// <summary>Per-IP fixed-window limits (.docs/features/security.md). Rejected requests get 429.</summary>

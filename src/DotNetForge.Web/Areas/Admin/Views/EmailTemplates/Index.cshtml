@@ -5,42 +5,42 @@
     ViewData["Description"] = "The emails the CMS sends. Change a subject or body; restore the default at any time.";
 }
 
-<section class="card" aria-labelledby="templates-title">
-    <div class="card-header">
-        <h2 class="card-title" id="templates-title">Templates</h2>
+<section class="dnf-card" aria-labelledby="templates-title">
+    <div class="dnf-card__header">
+        <h2 class="dnf-card__title" id="templates-title">Templates</h2>
     </div>
-    <div class="table-wrap">
-        <table class="table table-stack">
+    <div class="dnf-table dnf-table--stack">
+        <table class="dnf-table__table">
             <thead>
                 <tr>
                     <th scope="col">Template</th>
                     <th scope="col">Sent when</th>
                     <th scope="col">Status</th>
-                    <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var t in Model)
                 {
                     <tr>
-                        <td class="cell-lead">
-                            <a class="cell-primary" href="/admin/email/templates/@t.Definition.Key">@t.Definition.Name</a>
-                            <span class="cell-sub text-mono">@t.Definition.Key</span>
+                        <td class="dnf-table__cell--lead">
+                            <a class="dnf-table__primary" href="/admin/email/templates/@t.Definition.Key">@t.Definition.Name</a>
+                            <span class="dnf-table__secondary font-mono">@t.Definition.Key</span>
                         </td>
                         <td data-label="Sent when" class="text-muted">@t.Definition.Trigger</td>
                         <td data-label="Status">
                             @if (t.IsCustomized)
                             {
-                                <badge tone="Info" dot="true">Customized</badge>
-                                <span class="cell-sub"><timestamp value="@t.UpdatedDate" /></span>
+                                <dnf-badge tone="Info" dot="true">Customized</dnf-badge>
+                                <span class="dnf-table__secondary"><dnf-timestamp value="@t.UpdatedDate" /></span>
                             }
                             else
                             {
-                                <badge tone="Neutral" dot="true">Default</badge>
+                                <dnf-badge tone="Neutral" dot="true">Default</dnf-badge>
                             }
                         </td>
-                        <td class="col-actions">
-                            <a class="btn btn-ghost btn-sm" href="/admin/email/templates/@t.Definition.Key"><icon name="pencil" size="sm" /> Edit</a>
+                        <td class="dnf-table__cell--actions">
+                            <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/email/templates/@t.Definition.Key"><dnf-icon name="pencil" size="Sm" /> Edit</a>
                         </td>
                     </tr>
                 }

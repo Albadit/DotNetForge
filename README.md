@@ -131,10 +131,12 @@ See [.docs/architecture/overview.md](.docs/architecture/overview.md) for a one-p
 
 The admin UI and the first-run **setup wizard** are **server-rendered ASP.NET Core MVC** in the
 [`src/DotNetForge.Web/Areas/Admin/`](src/DotNetForge.Web/Areas/Admin/) area, served at **`/admin`** (and **`/setup`** for the wizard). No Node
-build step - it ships with the host. Every screen uses the dependency-free **Forge design system** (light and dark,
-role-aware sidebar, works on phones and without JavaScript): CSS in
-[`src/DotNetForge.Web/wwwroot/css/forge/`](src/DotNetForge.Web/wwwroot/css/forge/), Razor tag helpers in
-[`src/DotNetForge.Web/Ui/`](src/DotNetForge.Web/Ui/) - see [design-system.md](.docs/architecture/design-system.md).
+build step - it ships with the host. Every screen uses the dependency-free **DotNetForge UI** component library (light and dark,
+role-aware sidebar, works on phones and without JavaScript) in [`src/DotNetForge.UI/`](src/DotNetForge.UI/): components,
+tokens and Tailwind utilities compiled at build time into one `dnf.css` (Tailwind's standalone CLI), `<dnf-*>`
+Razor tag helpers, `dnf.js` behaviours and an icon sprite - see [.docs/ui/](.docs/ui/README.md). CMS screen CSS and
+scripts are in [`src/DotNetForge.Web/wwwroot/css/`](src/DotNetForge.Web/wwwroot/css/) and
+[`wwwroot/js/admin/`](src/DotNetForge.Web/wwwroot/js/admin/) - see [design-system.md](.docs/architecture/design-system.md).
 Forms post with antiforgery tokens; the few `fetch` calls (drag-and-drop reorder, the page builder, pickers) send the
 token in an `X-CSRF-TOKEN` header.
 

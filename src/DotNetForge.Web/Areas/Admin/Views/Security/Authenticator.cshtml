@@ -5,30 +5,30 @@
     ViewData["Description"] = "Scan the code with the app, then enter the 6-digit code it shows.";
 }
 
-<form method="post" action="/admin/profile/security/authenticator" class="stack-lg form-narrow">
+<form method="post" action="/admin/profile/security/authenticator" class="dnf-stack dnf-stack--lg max-w-(--dnf-form-max)">
     @Html.AntiForgeryToken()
     <input type="hidden" name="token" value="@Model.Token" />
-    <section class="card" aria-labelledby="scan-title">
-        <div class="card-header"><h2 class="card-title" id="scan-title">1. Scan this QR code</h2></div>
-        <div class="card-body stack">
-            <img class="mfa-qr" src="@Model.QrCodeDataUri" alt="QR code for your authenticator app" width="246" height="246" />
+    <section class="dnf-card" aria-labelledby="scan-title">
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="scan-title">1. Scan this QR code</h2></div>
+        <div class="dnf-card__body dnf-stack">
+            <img class="dnf-mfa__qr" src="@Model.QrCodeDataUri" alt="QR code for your authenticator app" width="246" height="246" />
             <p class="text-sm text-muted">Can't scan it? Enter this key in the app instead (time-based):</p>
-            <pre class="code-block">@Model.Secret<button type="button" class="btn btn-secondary btn-sm" data-copy-target="#totp-secret" data-js-only hidden><icon name="copy" size="sm" /> Copy</button></pre>
+            <pre class="dnf-code-block">@Model.Secret<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#totp-secret" data-js-only hidden><dnf-icon name="copy" size="Sm" /> Copy</button></pre>
             <span id="totp-secret" hidden>@Model.Secret</span>
         </div>
     </section>
-    <section class="card" aria-labelledby="verify-title">
-        <div class="card-header"><h2 class="card-title" id="verify-title">2. Enter the code from the app</h2></div>
-        <div class="card-body stack">
-            <form-errors />
-            <div class="field">
-                <label class="field-label" for="code">6-digit code</label>
-                <input id="code" name="code" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" class="input-code" />
+    <section class="dnf-card" aria-labelledby="verify-title">
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="verify-title">2. Enter the code from the app</h2></div>
+        <div class="dnf-card__body dnf-stack">
+            <dnf-validation-summary />
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="code">6-digit code</label>
+                <input id="code" name="code" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" class="dnf-input dnf-input--code" />
             </div>
         </div>
-        <div class="card-footer">
-            <a class="btn" href="/admin/profile/security">Cancel</a>
-            <button type="submit" class="btn btn-primary"><icon name="check" /> Turn on</button>
+        <div class="dnf-card__footer">
+            <a class="dnf-button dnf-button--secondary" href="/admin/profile/security">Cancel</a>
+            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Turn on</button>
         </div>
     </section>
 </form>

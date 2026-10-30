@@ -23,7 +23,7 @@ public sealed class ProviderInput
 }
 
 /// <summary>
-/// Reads and saves the built-in providers' settings for Users &amp; Permissions Plugin → Providers
+/// Reads and saves the built-in providers' settings for Authentication → Providers
 /// (.docs/pages/providers.md). Secrets are write-only: stored protected, never shown again, kept when the field is
 /// left empty. A save writes the <c>provider.updated</c> audit entry and refreshes the sign-in schemes at once.
 /// </summary>

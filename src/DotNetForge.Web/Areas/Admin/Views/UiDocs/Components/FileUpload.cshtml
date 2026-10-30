@@ -1,0 +1,140 @@
+@* File upload (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/choice.css</code></li>
+    <li>Behaviour <code>initFileUpload</code> in <code>src/DotNetForge.UI/wwwroot/dnf.js</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A drop area over a real <code>&lt;input type="file"&gt;</code>. The input is invisible and covers the whole area, so clicks
+    and dropped files land on it and the form posts them - without JavaScript too. <code>dnf.js</code> adds the drag state
+    and lists the chosen files in <code>[data-file-upload-files]</code>.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-file-upload">
+        <input type="file" class="dnf-file-upload__input" id="upload-files" name="files" multiple aria-describedby="upload-files-help" />
+        <dnf-icon name="upload" size="Lg" />
+        <label class="dnf-file-upload__title" for="upload-files">Drop files here or click to choose</label>
+        <p class="text-sm" id="upload-files-help">Images, video, PDF - up to 20 MB each.</p>
+        <div class="dnf-file-upload__files" data-file-upload-files></div>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="single" title="One file with a type filter" description="Without multiple, one file; accept limits what the file dialog offers." layout="block">
+    <div class="dnf-field max-w-lg">
+        <span class="dnf-field__label" id="upload-logo-label">Site logo</span>
+        <div class="dnf-file-upload">
+            <input type="file" class="dnf-file-upload__input" name="logo" accept="image/png,image/svg+xml" aria-labelledby="upload-logo-label" aria-describedby="upload-logo-help" />
+            <dnf-icon name="image" size="Lg" />
+            <p class="dnf-file-upload__title">Choose a logo</p>
+            <p class="text-sm" id="upload-logo-help">PNG or SVG, at least 256 pixels wide.</p>
+            <div class="dnf-file-upload__files" data-file-upload-files></div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="import" title="Compact" description="A smaller drop area for a form field, with fewer lines of text." layout="block">
+    <div class="dnf-file-upload py-4">
+        <input type="file" class="dnf-file-upload__input" name="import" accept=".json" aria-label="Import file" />
+        <p class="dnf-file-upload__title">Drop a .json export here</p>
+        <div class="dnf-file-upload__files" data-file-upload-files></div>
+    </div>
+</ui-doc-example>
+
+<h3 id="server-form">In a server form</h3>
+<p>The form needs <code>enctype="multipart/form-data"</code> to send the files; <code>data-pending-on-submit</code> shows the
+    upload is running.</p>
+
+<ui-doc-code id="post-form" lang="razor">
+<form method="post" enctype="multipart/form-data" class="dnf-form" data-pending-on-submit>
+    @@Html.AntiForgeryToken()
+    <div class="dnf-file-upload">
+        <input type="file" class="dnf-file-upload__input" id="files" name="files" multiple required aria-describedby="files-help" />
+        <dnf-icon name="upload" size="Lg" />
+        <label class="dnf-file-upload__title" for="files">Drop files here or click to choose</label>
+        <p class="text-sm" id="files-help">Images, video, PDF - up to 20 MB each.</p>
+        <div class="dnf-file-upload__files" data-file-upload-files></div>
+    </div>
+    <div class="dnf-form-actions">
+        <button type="submit" class="dnf-button dnf-button--primary">Upload</button>
+    </div>
+</form>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. The drop
+    area has no modifiers and no component tokens.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Less padding and left-aligned content." layout="block">
+    <div class="dnf-file-upload py-4 items-start text-start">
+        <input type="file" class="dnf-file-upload__input" name="attachments" multiple aria-label="Attachments" />
+        <p class="dnf-file-upload__title">Attachments</p>
+        <p class="text-sm">Drop files or click to add them.</p>
+        <div class="dnf-file-upload__files" data-file-upload-files></div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS in a scope beats the component style - a solid, rounder border." layout="block">
+    <div class="dnf-docs-demo-upload">
+        <div class="dnf-file-upload">
+            <input type="file" class="dnf-file-upload__input" name="avatar" accept="image/*" aria-label="Profile picture" />
+            <dnf-icon name="user" size="Lg" />
+            <p class="dnf-file-upload__title">Upload a profile picture</p>
+            <div class="dnf-file-upload__files" data-file-upload-files></div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-upload .dnf-file-upload { border-style: solid; border-radius: var(--dnf-radius-xl); }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-file-upload</code></td><td>block</td><td>a dashed, muted area with its content centred</td></tr>
+        <tr><td><code>dnf-file-upload__input</code></td><td>element</td><td>the file input, invisible and covering the whole area (clicks and drops land on it)</td></tr>
+        <tr><td><code>dnf-file-upload__title</code></td><td>element</td><td>foreground colour, semibold</td></tr>
+        <tr><td><code>dnf-file-upload__files</code></td><td>element</td><td>a wrapping, centred row for the chosen file names</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover / dragging</td><td><code>:hover</code>, <code>[data-dragging="true"]</code></td><td><code>--dnf-primary</code> border, <code>--dnf-primary-soft</code> background</td></tr>
+        <tr><td>keyboard focus</td><td><code>:has(input:focus-visible)</code></td><td>the focus ring around the area</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes above are the API. <code>dnf.js</code> wires every <code>.dnf-file-upload</code> on load
+    (and in markup passed to <code>dnfUI.init</code>):</p>
+<table>
+    <thead><tr><th>Hook</th><th>On</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-dragging="true"</code></td><td><code>.dnf-file-upload</code> (set by the script)</td><td>on dragenter and dragover; removed on dragleave and drop</td></tr>
+        <tr><td><code>data-file-upload-files</code></td><td>an element inside the area</td><td>after a choice, emptied and filled with each file's name as a <code>dnf-badge dnf-badge--primary</code></td></tr>
+    </tbody>
+</table>
+<p>The script reads the first <code>input[type=file]</code> inside the area; without one it does nothing.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The native input stays focusable and works from the keyboard: Tab to it, then Enter or Space opens the file dialog.</li>
+    <li>Name the input with a <code>&lt;label for&gt;</code>, <code>aria-labelledby</code> or <code>aria-label</code>, and link the help text with <code>aria-describedby</code>.</li>
+    <li>The icon is decorative.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do validate types and sizes on the server; <code>accept</code> and the description only inform.</li>
+    <li>Do say what can be uploaded, and how large, in the help text.</li>
+    <li>Don't hide the input with <code>display: none</code> - the area relies on it for clicks, drops and keyboard use.</li>
+</ul>

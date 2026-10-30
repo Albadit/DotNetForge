@@ -1,0 +1,149 @@
+@* Fieldset (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/form.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A <code>&lt;fieldset class="dnf-fieldset"&gt;</code> groups controls that answer one question under a
+    <code>&lt;legend class="dnf-fieldset__legend"&gt;</code>. The plain fieldset has no border, margin or padding; the framed
+    one draws a box with the legend on its edge.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <fieldset class="dnf-fieldset">
+        <legend class="dnf-fieldset__legend">Notify me about</legend>
+        <div class="dnf-stack dnf-stack--sm">
+            <label class="dnf-check">
+                <input type="checkbox" class="dnf-checkbox" checked />
+                <span class="dnf-check__text">Comments on my entries</span>
+            </label>
+            <label class="dnf-check">
+                <input type="checkbox" class="dnf-checkbox" />
+                <span class="dnf-check__text">Failed webhook deliveries</span>
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="framed" title="Framed" description="dnf-fieldset--framed draws a bordered box, puts the legend on the frame and stacks its children." layout="block">
+    <fieldset class="dnf-fieldset dnf-fieldset--framed max-w-lg">
+        <legend class="dnf-fieldset__legend">Publishing</legend>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="fieldset-publish">Publish on</label>
+            <input class="dnf-input" id="fieldset-publish" type="datetime-local" value="2026-01-15T09:30" />
+        </div>
+        <label class="dnf-switch-row">
+            <span class="dnf-check__text">
+                Show in the navigation
+                <span class="dnf-check__description">Adds the page to the main menu.</span>
+            </span>
+            <input type="checkbox" role="switch" class="dnf-switch" checked />
+        </label>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="radios" title="A radio group" description="The legend is the question the radios answer, read out with each option." layout="block">
+    <fieldset class="dnf-fieldset">
+        <legend class="dnf-fieldset__legend">When a page is deleted</legend>
+        <div class="dnf-stack dnf-stack--sm">
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="fieldset-delete" value="move" checked />
+                <span class="dnf-check__text">Move its child pages up one level</span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="fieldset-delete" value="delete" />
+                <span class="dnf-check__text">Delete its child pages too</span>
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="disabled" title="Disabled" description="The disabled attribute on the fieldset disables every control inside it; each shows its own disabled look." layout="block">
+    <fieldset class="dnf-fieldset dnf-fieldset--framed max-w-lg" disabled>
+        <legend class="dnf-fieldset__legend">SMTP</legend>
+        <div class="dnf-form-grid">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="fieldset-host">Host</label>
+                <input class="dnf-input" id="fieldset-host" value="smtp.example.com" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="fieldset-port">Port</label>
+                <input class="dnf-input" id="fieldset-port" type="number" value="587" />
+            </div>
+        </div>
+        <label class="dnf-check">
+            <input type="checkbox" class="dnf-checkbox" checked />
+            <span class="dnf-check__text">Use TLS</span>
+        </label>
+    </fieldset>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. Level 1
+    is the modifier <code>--framed</code>; there are no component tokens.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A muted background on a framed fieldset." layout="block">
+    <fieldset class="dnf-fieldset dnf-fieldset--framed bg-surface-muted max-w-lg">
+        <legend class="dnf-fieldset__legend">Danger zone</legend>
+        <label class="dnf-check">
+            <input type="checkbox" class="dnf-checkbox" />
+            <span class="dnf-check__text">Allow deleting content types that have entries</span>
+        </label>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS in a scope beats the component style - a dashed frame." layout="block">
+    <div class="dnf-docs-demo-fieldset max-w-lg">
+        <fieldset class="dnf-fieldset dnf-fieldset--framed">
+            <legend class="dnf-fieldset__legend">Optional details</legend>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="fieldset-notes">Internal notes</label>
+                <textarea class="dnf-textarea" id="fieldset-notes" rows="2"></textarea>
+            </div>
+        </fieldset>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-fieldset .dnf-fieldset--framed { border-style: dashed; }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-fieldset</code></td><td>block</td><td>no border, margin or padding; <code>min-width: 0</code></td></tr>
+        <tr><td><code>dnf-fieldset__legend</code></td><td>element</td><td><code>text-sm</code>, semibold, <code>--dnf-space-2</code> below</td></tr>
+        <tr><td><code>dnf-fieldset--framed</code></td><td>modifier</td><td>a bordered box (<code>--dnf-border</code>, <code>--dnf-radius-lg</code>, padding <code>--dnf-space-4</code>), children stacked with gap <code>--dnf-space-3</code>, the legend on the frame at base size</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>disabled</td><td><code>fieldset[disabled]</code></td><td>no look of its own; every control inside is disabled natively and shows its disabled look</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper and no behaviour: the classes above are the API, on a native <code>&lt;fieldset&gt;</code> and
+    <code>&lt;legend&gt;</code>.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>A fieldset with a legend names a group of radios or checkboxes for screen readers - use it whenever the options share a question.</li>
+    <li>Keep the legend short: screen readers may read it before every control in the group.</li>
+    <li>Use a native <code>&lt;fieldset&gt;</code> rather than <code>role="group"</code> on a <code>&lt;div&gt;</code>, so <code>disabled</code> works too.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use it for radio groups, check lists and related settings.</li>
+    <li>Do use the framed fieldset to set a group apart in a long form.</li>
+    <li>Don't nest framed fieldsets.</li>
+</ul>

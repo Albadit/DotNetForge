@@ -34,7 +34,7 @@ Screens: [Sign in](../pages/login.md), [Access denied](../pages/access-denied.md
 | `HttpOnly` | `true` |
 | `SameSite` | `Lax` |
 | `SecurePolicy` | `Always` outside Development; `SameAsRequest` in Development (Secure only over HTTPS) |
-| `Events.OnValidatePrincipal` | `ValidateSessionAsync` - see [Session re-validation](#session-re-validation) |
+| `Events.OnSigningIn`, `Events.OnValidatePrincipal` | `StartSessionAsync`, `ValidateSessionAsync` - see [Sessions](#sessions) |
 
 `Always` means the browser never sends the cookie over plain HTTP, so production must be served over HTTPS (directly
 or through a TLS-terminating proxy with forwarded headers - [deployment](../guides/deployment.md#behind-a-reverse-proxy)).
@@ -85,34 +85,41 @@ different message for each ([login screen](../pages/login.md#error-handling)).
 | `ClaimTypes.Email` | `User.Email` |
 | `ClaimTypes.Role` | one per assigned role name |
 
-Claims are fixed at sign-in. Role changes and a lockout do **not** affect an existing cookie until it expires or the
-user signs out; disabling or deleting the user does (next section).
+The roles in the cookie are not what counts: every request takes them from the [session](#sessions). Name and email are
+fixed at sign-in, until the user saves their [profile](../pages/profile.md).
 
-### Session re-validation
+### Sessions
 
-`DependencyRegistration.ValidateSessionAsync` runs as the cookie's `OnValidatePrincipal` on every request that
-carries a `dnf.auth` cookie:
+The cookie says who and which session (`dnf:sid`); the server decides the rest, so a changed role, an ended session or a
+disabled account counts whatever the cookie holds. Nothing the browser can edit takes part in a permission check: the
+cookie is encrypted and signed, and `localStorage` holds only display preferences.
 
-```mermaid
-flowchart TD
-    A(["request with dnf.auth"]) --> B{"NameIdentifier is a Guid?"}
-    B -- no --> X(["RejectPrincipal → anonymous"])
-    B -- yes --> C{"cached in IMemoryCache under dnf:session:userId?"}
-    C -- no --> D["AuthService.IsActiveAsync(userId): user exists and Status == Enabled"]
-    D --> E["cache result for 30 s"]
-    E --> F{"active?"}
-    C -- yes --> F
-    F -- yes --> OK(["principal accepted"])
-    F -- no --> Y(["RejectPrincipal + SignOutAsync → anonymous"])
-```
+| Part | What it does |
+| --- | --- |
+| `UserSessions` | one row per sign-in; a session counts only while its row exists and `ExpiresDate` (30 days after sign-in, `UserSessionService.MaxLifetime`) hasn't passed, however often the sliding cookie is renewed. Not exported by Data Management |
+| `OnSigningIn` | every way in (password, second factor, provider, setup) ends in the same cookie sign-in, so `StartSessionAsync` starts the session there and clears out expired rows. Re-issuing the cookie of a signed-in user, after they save their profile, keeps the session |
+| `OnValidatePrincipal` | `ValidateSessionAsync`, on every request with a `dnf.auth` cookie: asks `UserSessionService.RolesAsync`, rejects the cookie and signs out when the session no longer counts, otherwise puts the current roles on the principal |
+| `dnf:session:{userId}` | what `RolesAsync` caches for 30 s: the user's roles and their open sessions, from one query. A disabled or deleted user has neither |
+| `RoleGrantStore` | what each role may do, for all roles: two queries at most every 30 s for the whole site, not per user. So a screen and its sidebar make no permission query per link, or per request once these two are cached |
 
-- Cost: at most one indexed query per user every 30 s (`SessionValidationCacheLifetime`), per instance.
-- A disabled or deleted user loses access within 30 s; the next admin request redirects to the sign-in screen.
-- Only existence and `Status` are checked. Role claims are **not** refreshed - role changes apply at the next sign-in.
+| Change | Effect | How |
+| --- | --- | --- |
+| Roles of a user | next request | `UserManagementService` drops the cached entry |
+| What a role may do, its name | next request | `RoleManagementService` drops the grants, and on a rename the cached entries of the role's users |
+| Disable or delete a user | next request | all their sessions end |
+| An administrator sets a password, or a password reset | next request | all their sessions end |
+| The user changes their own password | next request | their other sessions end; this one stays |
+| Sign out | next request | this session ends, so a copy of the cookie is worth nothing; their other devices stay signed in |
+| Data Management import or restore | next request | caches cleared; `UserSessions` stays, so someone whose user id is in the import stays signed in, with the imported roles |
+
+With [several instances](../guides/deployment.md#scaling-to-several-instances) another instance's cached entry lasts up to
+30 s after a change. A lockout does not end an open session. API tokens are separate: they carry their own permissions
+([API token authentication](#api-token-authentication)).
 
 ### Sign-out
 
-`POST /account/logout` (antiforgery-protected) writes `user.logout`, signs out and redirects to `/login`.
+`POST /account/logout` (antiforgery-protected) writes `user.logout`, ends the [session](#sessions) on the server, clears
+the cookie and redirects to `/login`.
 Triggered by the **Sign out** button in `_AdminLayout`, the **Sign out** button (a POST form) on the denied screen and
 the public header's **Sign out** for a signed-in site-only account. The old sign-in address `GET /account/login`
 answers `301` to `/login` (query string kept).

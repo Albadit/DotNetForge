@@ -1,0 +1,173 @@
+@* Tabs (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/navigation.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (<code>[data-tabs]</code>)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>Tabs show the panels of one screen one at a time. Write a <code>[data-tabs]</code> root with a
+    <code>dnf-tabs</code> tab list and one <code>dnf-tab-panel</code> per tab; <code>dnf.js</code> does the rest. Without
+    JavaScript every panel shows, one below the other, each with its title - so the content stays readable.</p>
+
+<ui-doc-example id="tabs" layout="block">
+    <div data-tabs data-initial-tab="general">
+        <div class="dnf-tabs" role="tablist" aria-label="Page settings">
+            <button type="button" class="dnf-tabs__tab" role="tab" id="tabs-general-tab" aria-controls="tabs-general-panel" data-tab="general">General</button>
+            <button type="button" class="dnf-tabs__tab" role="tab" id="tabs-seo-tab" aria-controls="tabs-seo-panel" data-tab="seo">SEO</button>
+            <button type="button" class="dnf-tabs__tab" role="tab" id="tabs-access-tab" aria-controls="tabs-access-panel" data-tab="access">Access</button>
+        </div>
+        <div class="dnf-tab-panel pt-4" role="tabpanel" id="tabs-general-panel" aria-labelledby="tabs-general-tab" data-tab-panel="general">
+            <h3 class="dnf-tab-panel__title">General</h3>
+            <p>The page's title, slug and parent in the page tree.</p>
+        </div>
+        <div class="dnf-tab-panel pt-4" role="tabpanel" id="tabs-seo-panel" aria-labelledby="tabs-seo-tab" data-tab-panel="seo">
+            <h3 class="dnf-tab-panel__title">SEO</h3>
+            <p>The meta title and description search engines show, and whether the page is indexed.</p>
+        </div>
+        <div class="dnf-tab-panel pt-4" role="tabpanel" id="tabs-access-panel" aria-labelledby="tabs-access-tab" data-tab-panel="access">
+            <h3 class="dnf-tab-panel__title">Access</h3>
+            <p>Who can see the page: everyone, signed-in users, or some roles only.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="with-badges" title="With badges" description="A badge in a tab counts what is inside (problems, items). data-tab-hash false keeps this group out of the URL." layout="block">
+    <div data-tabs data-initial-tab="fields" data-tab-hash="false">
+        <div class="dnf-tabs" role="tablist" aria-label="Content type">
+            <button type="button" class="dnf-tabs__tab" role="tab" id="badges-fields-tab" aria-controls="badges-fields-panel" data-tab="fields">Fields <span class="dnf-badge">8</span></button>
+            <button type="button" class="dnf-tabs__tab" role="tab" id="badges-entries-tab" aria-controls="badges-entries-panel" data-tab="entries">Entries <span class="dnf-badge">124</span></button>
+            <button type="button" class="dnf-tabs__tab" role="tab" id="badges-problems-tab" aria-controls="badges-problems-panel" data-tab="problems">Problems <span class="dnf-badge dnf-badge--danger">2</span></button>
+        </div>
+        <div class="dnf-tab-panel pt-4" role="tabpanel" id="badges-fields-panel" aria-labelledby="badges-fields-tab" data-tab-panel="fields">
+            <h3 class="dnf-tab-panel__title">Fields</h3>
+            <p>Title, slug, summary, body, cover image, author, tags and publish date.</p>
+        </div>
+        <div class="dnf-tab-panel pt-4" role="tabpanel" id="badges-entries-panel" aria-labelledby="badges-entries-tab" data-tab-panel="entries">
+            <h3 class="dnf-tab-panel__title">Entries</h3>
+            <p>124 entries use this content type.</p>
+        </div>
+        <div class="dnf-tab-panel pt-4" role="tabpanel" id="badges-problems-panel" aria-labelledby="badges-problems-tab" data-tab-panel="problems">
+            <h3 class="dnf-tab-panel__title">Problems</h3>
+            <p>Two entries have no cover image although the field is required.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="links" title="Tabs between screens" description="Links in a nav.dnf-tabs switch between screens; the current one has aria-current page. No tab roles and no data-tabs - this is navigation." layout="block">
+    <nav class="dnf-tabs" aria-label="Email">
+        <a class="dnf-tabs__tab" href="/admin/email/configuration" aria-current="page">Configuration</a>
+        <a class="dnf-tabs__tab" href="/admin/email/templates">Templates</a>
+    </nav>
+</ui-doc-example>
+
+<ui-doc-example id="without-js" title="Without JavaScript" description="The same panels without a data-tabs root: all of them show, separated by a line, each with its visible title." layout="block">
+    <div>
+        <section class="dnf-tab-panel py-4" aria-labelledby="nojs-general-title">
+            <h3 class="dnf-tab-panel__title" id="nojs-general-title">General</h3>
+            <p>The page's title, slug and parent in the page tree.</p>
+        </section>
+        <section class="dnf-tab-panel py-4" aria-labelledby="nojs-seo-title">
+            <h3 class="dnf-tab-panel__title" id="nojs-seo-title">SEO</h3>
+            <p>The meta title and description search engines show.</p>
+        </section>
+    </div>
+</ui-doc-example>
+
+<h3 id="in-a-form">In a form</h3>
+<p>A field with <code>data-tab-field</code> receives the open tab's name, so the controller can redirect back to it
+    (<code>/admin/pages/7#seo</code>). A field that fails native validation on a hidden tab opens its tab.</p>
+<ui-doc-code id="in-a-form-code" lang="razor">
+<form method="post" class="dnf-form">
+    <input type="hidden" name="tab" data-tab-field />
+    <div data-tabs data-initial-tab="general">
+        <div class="dnf-tabs" role="tablist" aria-label="Page settings">…</div>
+        <section class="dnf-tab-panel" role="tabpanel" data-tab-panel="general">…</section>
+        <section class="dnf-tab-panel" role="tabpanel" data-tab-panel="seo">…</section>
+    </div>
+</form>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities on the bar or the tabs beat the component's styles - here a larger gap and bigger text." layout="block">
+    <nav class="dnf-tabs gap-4" aria-label="Media">
+        <a class="dnf-tabs__tab text-md" href="/admin/media" aria-current="page">Library</a>
+        <a class="dnf-tabs__tab text-md" href="/admin/media-settings">Settings</a>
+    </nav>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS restyles the tabs in a scope - here wider tabs with a thicker underline." layout="block">
+    <div class="dnf-docs-demo-tabs">
+        <nav class="dnf-tabs" aria-label="Users">
+            <a class="dnf-tabs__tab" href="/admin/users" aria-current="page">Users</a>
+            <a class="dnf-tabs__tab" href="/admin/roles">Roles</a>
+        </nav>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-tabs .dnf-tabs__tab {
+    padding-inline: var(--dnf-space-5);
+    border-bottom-width: 3px;
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-tabs</code></td><td>block</td><td>a horizontally scrolling row with a 1px line below (an inset shadow)</td></tr>
+        <tr><td><code>dnf-tabs__tab</code></td><td>element</td><td>muted semibold text with a 2px bottom border; a badge inside is 1.2rem high</td></tr>
+        <tr><td><code>dnf-tab-panel</code></td><td>block</td><td>a column, gap <code>--dnf-space-4</code>; consecutive panels separated by a line (without JS)</td></tr>
+        <tr><td><code>dnf-tab-panel__title</code></td><td>element</td><td><code>text-md</code> semibold - visible without JS, visually hidden (<code>sr-only</code>) once tabbed</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>selected / current</td><td><code>[aria-selected="true"]</code>, <code>[aria-current="page"]</code></td><td>foreground text, <code>--dnf-primary</code> underline</td></tr>
+        <tr><td>hover</td><td><code>:hover</code></td><td>foreground text</td></tr>
+        <tr><td>keyboard focus</td><td><code>:focus-visible</code></td><td>2px focus outline inside the tab</td></tr>
+        <tr><td>tabbed</td><td><code>[data-tabbed="true"]</code> on the root</td><td>one panel at a time, no separators, panel titles visually hidden</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes and these hooks are the API.</p>
+<table>
+    <thead><tr><th>Hook</th><th>Meaning</th></tr></thead>
+    <tbody>
+        <tr><td><code>[data-tabs]</code></td><td>the root; gets <code>data-tabbed="true"</code>. It manages only its own tabs and panels - a panel may hold another tab group</td></tr>
+        <tr><td><code>[data-tab="name"]</code></td><td>a tab; gets <code>aria-selected</code> and a roving <code>tabindex</code></td></tr>
+        <tr><td><code>[data-tab-panel="name"]</code></td><td>its panel; the others get <code>hidden</code></td></tr>
+        <tr><td><code>data-initial-tab="name"</code></td><td>the first tab when the URL hash names none (else the first tab)</td></tr>
+        <tr><td><code>data-tab-hash="false"</code></td><td>neither reads nor writes the URL hash (several small tab groups on one page)</td></tr>
+        <tr><td><code>[data-tab-field]</code></td><td>a form field that receives the open tab's name</td></tr>
+    </tbody>
+</table>
+<p>By default the open tab is written to the URL hash (<code>#seo</code>, with <code>history.replaceState</code>), so a reload or a
+    redirect to <code>…#seo</code> reopens it; a <code>hashchange</code> switches too.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>With JS: <code>role="tablist"</code> / <code>tab</code> / <code>tabpanel</code>, <code>aria-selected</code> and a roving
+        <code>tabindex</code>; ArrowLeft and ArrowRight (wrapping), Home and End move between tabs.</li>
+    <li>Tie tabs and panels together with <code>aria-controls</code> and <code>aria-labelledby</code> in the markup, and name the
+        tab list with <code>aria-label</code>.</li>
+    <li>Without JS every panel shows with its title as a heading; once tabbed the title stays for screen readers only.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use the URL hash (<code>/admin/pages/7#seo</code>) to redirect back to the tab a form was saved from.</li>
+    <li>Do keep tab names short - one or two words.</li>
+    <li>Don't put the tab roles on link tabs between screens - they are navigation (<code>aria-current="page"</code>).</li>
+    <li>Don't use tabs for a small exclusive choice like a filter - that is a <a href="@UiDocsCatalog.Root/components/segmented">segmented control</a>.</li>
+</ul>

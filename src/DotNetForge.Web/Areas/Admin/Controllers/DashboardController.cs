@@ -1,5 +1,4 @@
 using DotNetForge.Data;
-using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Enums;
 using DotNetForge.Web.Areas.Admin.Models;
@@ -16,12 +15,10 @@ public sealed class DashboardController : AdminControllerBase
     public const int RecentActivityCount = 8;
 
     private readonly DotNetForgeDbContext _db;
-    private readonly AppEnvironment _env;
 
-    public DashboardController(DotNetForgeDbContext db, AppEnvironment env)
+    public DashboardController(DotNetForgeDbContext db)
     {
         _db = db;
-        _env = env;
     }
 
     [HttpGet("")]
@@ -32,7 +29,6 @@ public sealed class DashboardController : AdminControllerBase
         var now = DateTime.UtcNow;
         var model = new DashboardViewModel
         {
-            AppName = _env.AppName,
             Users = await _db.Users.CountAsync(),
             Roles = await _db.Roles.CountAsync(),
             Pages = await _db.Pages.CountAsync(),

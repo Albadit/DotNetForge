@@ -22,7 +22,7 @@ as a JSON copy for your own use. File format, rules and what is not built (core 
 | --- | --- |
 | Routes | `GET /admin/data`; `POST /admin/data/export` (form field `database`), `/export-media`, `/export-all` (form field `database`), `/backups`, `/backups/schedule`, `/backups/{id}/download`, `/backups/{id}/delete`, `/backups/{id}/restore`, `/import` |
 | Title (h1, last breadcrumb) | "Data Management" (description "Export the CMS data and the media files, keep backups, and - in Development - import an export into this site.") |
-| Navigation entry | sidebar **Settings → Global Settings → Data Management** (icon `database`), after Plugins, the last link of the group; shown only to Super Admins |
+| Navigation entry | sidebar **Settings → Administration Panel → Data Management** (icon `database`), after Audit Logs, the last link of the group; shown only to Super Admins |
 | Children | none |
 
 ## Relevant source files
@@ -42,14 +42,14 @@ src/DotNetForge.Shared/Entities/TransferRecord.cs                    the result 
 
 ```text
 Data Management (description "Export the CMS data and the media files, keep backups, and - in Development - import …")
-├── <form-errors />
+├── <dnf-validation-summary />
 ├── card **Export** ("Download the database, the media files, or both as one .zip file - …") - one form
 │   ├── **Database** select (only with additional databases; for Database and Database and media): "CMS database
 │   │   (PostgreSQL)" (default), then "<name> (<provider>)" per additional database; hint: only CMS exports can be imported
 │   ├── dl: Database (provider, what it includes, not the uploaded files nor this site's encryption keys) ·
 │   │   Media ("N files (size) in their library folders …, plus media.json …; a download only") ·
 │   │   Database and media ("Both in one file: the database export unchanged at the top …, the files under media/.")
-│   ├── note (`.note`) "The database export contains password hashes and personal data … Media is streamed straight from the storage …"
+│   ├── note (`.dnf-note`) "The database export contains password hashes and personal data … Media is streamed straight from the storage …"
 │   └── card-footer: [**Media**] (formaction `/admin/data/export-media`; disabled while the library is empty)
 │       [**Database**] (the form's action `/admin/data/export`) [**Database and media**] (primary, formaction `/admin/data/export-all`)
 ├── card **Automatic backups** (badge On / Off) - form
@@ -57,7 +57,7 @@ Data Management (description "Export the CMS data and the media files, keep back
 │   └── card-footer: [**Save schedule**]
 ├── card **Backups** ("n stored"; header form [Back up now])
 │   └── table: Backup (time + file name) · Kind (Automatic / Manual / Safety copy + note) · Records · Size · ⋯ menu
-│       (Download · Restore (Development) · Delete)   - or <empty-state> "No backups yet"
+│       (Download · Restore (Development) · Delete)   - or <dnf-empty-state> "No backups yet"
 ├── card **Import** (badge "Development only")
 │   ├── Development: multipart form - **Export file** (.zip), checkbox "Replace all current data",
 │   │   card-footer [**Import and replace data**] (danger, data-confirm)
@@ -147,7 +147,7 @@ deleted when the download ends. Covered by
 2. The upload is copied to a temporary file; size and SHA-256 recorded.
 3. `TransferFile.ReadAsync` checks **everything before any change**: a .zip with `manifest.json`;
    `TransferRules.Check` (format, data version, tables, columns, types); every table's SHA-256 and row count; every
-   value; an enabled Super Admin in the file. Any problem → the errors (first five) in `<form-errors />`, a failed
+   value; an enabled Super Admin in the file. Any problem → the errors (first five) in `<dnf-validation-summary />`, a failed
    record, audit `transfer.imported` with `success = false`, **nothing changed, no backup made**.
 4. A **safety backup** of the current data ("Before import of <file>"); if it fails, nothing is imported.
 5. `TransferFile.ReplaceAsync`: in **one transaction**, every transferred table is emptied and refilled from the file
@@ -188,7 +188,7 @@ refuses as well). `PermissionAreas.Updates` stays unused ([authorization](../fea
 
 ## Error handling
 
-Validation and refused imports re-render the screen with `<form-errors />`; busy, failed exports/backups, unknown
+Validation and refused imports re-render the screen with `<dnf-validation-summary />`; busy, failed exports/backups, unknown
 export databases and missing backups are error toasts. Failures are logged with the exception; records and toasts
 carry only its type.
 
@@ -205,8 +205,8 @@ with an empty `media/`).
 
 ## User interactions
 
-Restore, delete and import ask for confirmation (`data-confirm` / `menu-post confirm`); the row menu is
-`<action-menu>`.
+Restore, delete and import ask for confirmation (`data-confirm` / `dnf-dropdown-post confirm`); the row menu is
+`<dnf-dropdown>`.
 
 ## Dependencies
 
@@ -226,7 +226,7 @@ flowchart LR
     T -- "Database and media" --> F[(.zip: export .zip + media/)]
     T -- Back up now / schedule --> B[(storage backups/)]
     T -- "Import / Restore (Development)" --> C{file checked?}
-    C -- no --> E[form-errors, nothing changed] --> T
+    C -- no --> E[validation summary, nothing changed] --> T
     C -- yes --> S[safety backup] --> R[replace all data in one transaction] --> L[signed out → /login]
 ```
 

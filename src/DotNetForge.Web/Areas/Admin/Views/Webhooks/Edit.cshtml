@@ -33,97 +33,97 @@
 @section Actions {
     @if (!creating)
     {
-        <a class="btn btn-secondary" href="/admin/webhooks/@Model.Id/deliveries"><icon name="list" /> Delivery log</a>
+        <a class="dnf-button dnf-button--secondary" href="/admin/webhooks/@Model.Id/deliveries"><dnf-icon name="list" /> Delivery log</a>
         @if (Model.CanSave)
         {
             <form method="post" action="/admin/webhooks/@Model.Id/test">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="returnTo" value="edit" />
-                <button type="submit" class="btn btn-secondary"><icon name="send" /> Send test delivery</button>
+                <button type="submit" class="dnf-button dnf-button--secondary"><dnf-icon name="send" /> Send test delivery</button>
             </form>
         }
     }
 }
 
-<div class="editor">
-    <div class="editor-main">
-        <form method="post" action="@action" class="stack-lg" data-webhook-form>
+<div class="dnf-split">
+    <div class="dnf-split__main">
+        <form method="post" action="@action" class="dnf-stack dnf-stack--lg">
             @Html.AntiForgeryToken()
-            <form-errors />
-            <fieldset class="fieldset stack-lg" disabled="@(Model.CanSave ? null : "disabled")">
+            <dnf-validation-summary />
+            <fieldset class="dnf-fieldset dnf-stack dnf-stack--lg" disabled="@(Model.CanSave ? null : "disabled")">
                 <legend class="sr-only">Webhook</legend>
-                <section class="card" aria-labelledby="target-title">
-                    <div class="card-header"><h2 class="card-title" id="target-title">Receiver</h2></div>
-                    <div class="card-body stack">
-                        <div class="field">
-                            <label class="field-label" for="Name">Name<span class="field-required" aria-hidden="true">*</span></label>
-                            <input id="Name" name="Name" value="@input.Name" required maxlength="@WebhookService.MaxNameLength" placeholder="Search index" />
+                <section class="dnf-card" aria-labelledby="target-title">
+                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="target-title">Receiver</h2></div>
+                    <div class="dnf-card__body dnf-stack">
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="Name">Name<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <input id="Name" class="dnf-input" name="Name" value="@input.Name" required maxlength="@WebhookService.MaxNameLength" placeholder="Search index" />
                         </div>
-                        <div class="field">
-                            <label class="field-label" for="Url">URL<span class="field-required" aria-hidden="true">*</span></label>
-                            <input id="Url" name="Url" type="url" value="@input.Url" required maxlength="@WebhookService.MaxUrlLength"
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="Url">URL<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <input id="Url" class="dnf-input" name="Url" type="url" value="@input.Url" required maxlength="@WebhookService.MaxUrlLength"
                                    placeholder="https://example.com/hooks/cms" aria-describedby="url-hint" />
-                            <span class="field-hint" id="url-hint">An https address. Each event is a POST with a JSON body, signed in the <code>@WebhookEvents.SignatureHeader</code> header.</span>
+                            <span class="dnf-field__description" id="url-hint">An https address. Each event is a POST with a JSON body, signed in the <code>@WebhookEvents.SignatureHeader</code> header.</span>
                         </div>
-                        <label class="switch-row">
-                            <span class="check-text">
+                        <label class="dnf-switch-row">
+                            <span class="dnf-check__text">
                                 <span>Enabled</span>
-                                <span class="check-hint">Off: it doesn't fire, and pending retries are cancelled. The settings are kept.</span>
+                                <span class="dnf-check__description">Off: it doesn't fire, and pending retries are cancelled. The settings are kept.</span>
                             </span>
                             @* The checkbox first: a bound bool takes the first posted value. *@
-                            <input type="checkbox" class="switch" role="switch" name="Enabled" value="true" checked="@(input.Enabled ? "checked" : null)" />
+                            <input type="checkbox" class="dnf-switch" role="switch" name="Enabled" value="true" checked="@(input.Enabled ? "checked" : null)" />
                             <input type="hidden" name="Enabled" value="false" />
                         </label>
                     </div>
                 </section>
 
-                <section class="card" aria-labelledby="events-title">
-                    <div class="card-header">
+                <section class="dnf-card" aria-labelledby="events-title">
+                    <div class="dnf-card__header">
                         <div>
-                            <h2 class="card-title" id="events-title">Events<span class="field-required" aria-hidden="true">*</span></h2>
-                            <p class="card-description">At least one. Each change sends one POST; a failed one is retried @(WebhookDispatcher.MaxAttempts - 1) times with growing pauses.</p>
+                            <h2 class="dnf-card__title" id="events-title">Events<span class="dnf-field__required" aria-hidden="true">*</span></h2>
+                            <p class="dnf-card__description">At least one. Each change sends one POST; a failed one is retried @(WebhookDispatcher.MaxAttempts - 1) times with growing pauses.</p>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div class="form-grid">
+                    <div class="dnf-card__body">
+                        <div class="dnf-form-grid">
                             @foreach (var (key, label, hint) in events)
                             {
-                                <label class="check">
-                                    <input type="checkbox" name="Events" value="@key" checked="@(input.Events.Contains(key) ? "checked" : null)" />
-                                    <span class="check-text"><span>@label <code class="text-xs">@key</code></span><span class="check-hint">@hint</span></span>
+                                <label class="dnf-check">
+                                    <input class="dnf-checkbox" type="checkbox" name="Events" value="@key" checked="@(input.Events.Contains(key) ? "checked" : null)" />
+                                    <span class="dnf-check__text"><span>@label <code class="text-xs">@key</code></span><span class="dnf-check__description">@hint</span></span>
                                 </label>
                             }
                         </div>
                     </div>
                 </section>
 
-                <section class="card" aria-labelledby="headers-title">
-                    <div class="card-header">
+                <section class="dnf-card" aria-labelledby="headers-title">
+                    <div class="dnf-card__header">
                         <div>
-                            <h2 class="card-title" id="headers-title">Headers</h2>
-                            <p class="card-description">Sent with every request, e.g. an <code>Authorization</code> token the receiver expects. The value may be empty.</p>
+                            <h2 class="dnf-card__title" id="headers-title">Headers</h2>
+                            <p class="dnf-card__description">Sent with every request, e.g. an <code>Authorization</code> token the receiver expects. The value may be empty.</p>
                         </div>
                     </div>
-                    <div class="card-body stack-sm">
-                        <div class="webhook-headers stack-sm" data-webhook-headers data-max="@WebhookService.MaxHeaders">
+                    <div class="dnf-card__body dnf-stack dnf-stack--sm">
+                        <div class="dnf-stack dnf-stack--sm" data-webhook-headers data-max="@WebhookService.MaxHeaders">
                             @for (var i = 0; i < headers.Count; i++)
                             {
-                                <div class="webhook-header-row" data-webhook-header>
+                                <div class="dnf-webhook-header-row" data-webhook-header>
                                     <label class="sr-only" for="Headers_@(i)__Key">Header name</label>
-                                    <input id="Headers_@(i)__Key" name="Headers[@i].Key" value="@headers[i].Key" placeholder="Name, e.g. Authorization" maxlength="100" spellcheck="false" />
+                                    <input id="Headers_@(i)__Key" class="dnf-input" name="Headers[@i].Key" value="@headers[i].Key" placeholder="Name, e.g. Authorization" maxlength="100" spellcheck="false" />
                                     <label class="sr-only" for="Headers_@(i)__Value">Header value</label>
-                                    <input id="Headers_@(i)__Value" name="Headers[@i].Value" value="@headers[i].Value" placeholder="Value" maxlength="1000" spellcheck="false" autocomplete="off" />
-                                    <button type="button" class="btn btn-ghost btn-icon btn-sm" data-webhook-header-remove aria-label="Remove header" data-js-only hidden><icon name="x" /></button>
+                                    <input id="Headers_@(i)__Value" class="dnf-input" name="Headers[@i].Value" value="@headers[i].Value" placeholder="Value" maxlength="1000" spellcheck="false" autocomplete="off" />
+                                    <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-webhook-header-remove aria-label="Remove header" data-js-only hidden><dnf-icon name="x" /></button>
                                 </div>
                             }
                         </div>
-                        <button type="button" class="btn btn-secondary btn-sm webhook-header-add" data-webhook-header-add data-js-only hidden><icon name="plus" size="sm" /> Add header</button>
+                        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm self-start" data-webhook-header-add data-js-only hidden><dnf-icon name="plus" size="Sm" /> Add header</button>
                     </div>
                     @if (Model.CanSave)
                     {
-                        <div class="card-footer">
-                            <a class="btn" href="/admin/webhooks">Cancel</a>
-                            <button type="submit" class="btn btn-primary"><icon name="check" /> @(creating ? "Create webhook" : "Save")</button>
+                        <div class="dnf-card__footer">
+                            <a class="dnf-button dnf-button--secondary" href="/admin/webhooks">Cancel</a>
+                            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> @(creating ? "Create webhook" : "Save")</button>
                         </div>
                     }
                 </section>
@@ -133,30 +133,30 @@
 
     @if (!creating)
     {
-        <aside class="editor-aside">
-            <section class="card" aria-labelledby="about-title">
-                <div class="card-header"><h2 class="card-title" id="about-title">Webhook</h2></div>
-                <div class="card-body">
-                    <dl class="dl dl-compact">
+        <aside class="dnf-split__aside">
+            <section class="dnf-card" aria-labelledby="about-title">
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="about-title">Webhook</h2></div>
+                <div class="dnf-card__body">
+                    <dl class="dnf-description-list dnf-description-list--compact">
                         <dt>Created</dt>
-                        <dd><timestamp value="@Model.Created" /></dd>
+                        <dd><dnf-timestamp value="@Model.Created" /></dd>
                         <dt>Last delivery</dt>
-                        <dd><timestamp value="@Model.LastDelivery" empty="Never" /></dd>
+                        <dd><dnf-timestamp value="@Model.LastDelivery" empty="Never" /></dd>
                     </dl>
                 </div>
             </section>
 
             @if (Model.CanSave)
             {
-                <section class="card" aria-labelledby="secret-title">
-                    <div class="card-header"><h2 class="card-title" id="secret-title">Signing secret</h2></div>
-                    <div class="card-body stack-sm">
+                <section class="dnf-card" aria-labelledby="secret-title">
+                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="secret-title">Signing secret</h2></div>
+                    <div class="dnf-card__body dnf-stack dnf-stack--sm">
                         <p class="text-sm text-muted">Shown once, after it was made. A new one replaces it at once: update the receiver too, or its signature checks fail.</p>
                         <form method="post" action="/admin/webhooks/@Model.Id/rotate"
                               data-confirm="Make a new secret? Deliveries are signed with it from now on; the receiver must use it to check them."
                               data-confirm-title="Rotate secret" data-confirm-action="Rotate secret">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-secondary btn-sm"><icon name="refresh-cw" /> Rotate secret</button>
+                            <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm"><dnf-icon name="refresh-cw" /> Rotate secret</button>
                         </form>
                     </div>
                 </section>
@@ -164,14 +164,14 @@
 
             @if (Model.CanDelete)
             {
-                <section class="card card-danger" aria-labelledby="delete-title">
-                    <div class="card-header"><h2 class="card-title" id="delete-title">Delete webhook</h2></div>
-                    <div class="card-body stack-sm">
+                <section class="dnf-card dnf-card--danger" aria-labelledby="delete-title">
+                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="delete-title">Delete webhook</h2></div>
+                    <div class="dnf-card__body dnf-stack dnf-stack--sm">
                         <p class="text-sm text-muted">Removes the webhook and its delivery log.</p>
                         <form method="post" action="/admin/webhooks/@Model.Id/delete"
                               data-confirm="Delete '@input.Name' and its delivery log?" data-confirm-title="Delete webhook" data-confirm-action="Delete">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-danger-soft btn-sm"><icon name="trash" /> Delete webhook</button>
+                            <button type="submit" class="dnf-button dnf-button--danger-soft dnf-button--sm"><dnf-icon name="trash" /> Delete webhook</button>
                         </form>
                     </div>
                 </section>
@@ -181,15 +181,15 @@
 </div>
 
 <template id="webhook-header-template">
-    <div class="webhook-header-row" data-webhook-header>
+    <div class="dnf-webhook-header-row" data-webhook-header>
         <label class="sr-only">Header name</label>
-        <input data-part="Key" placeholder="Name, e.g. Authorization" maxlength="100" spellcheck="false" />
+        <input class="dnf-input" placeholder="Name, e.g. Authorization" maxlength="100" spellcheck="false" />
         <label class="sr-only">Header value</label>
-        <input data-part="Value" placeholder="Value" maxlength="1000" spellcheck="false" autocomplete="off" />
-        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-webhook-header-remove aria-label="Remove header"><icon name="x" /></button>
+        <input class="dnf-input" placeholder="Value" maxlength="1000" spellcheck="false" autocomplete="off" />
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-webhook-header-remove aria-label="Remove header"><dnf-icon name="x" /></button>
     </div>
 </template>
 
 @section Scripts {
-    <script src="~/js/forge/webhooks.js" asp-append-version="true" defer></script>
+    <script src="~/js/admin/webhooks.js" asp-append-version="true" defer></script>
 }

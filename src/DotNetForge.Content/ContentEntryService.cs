@@ -3,7 +3,6 @@ using DotNetForge.Data;
 using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
-using DotNetForge.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -78,7 +77,7 @@ public sealed class ContentEntryService
         var created = entry is null;
         if (entry is null)
         {
-            // The last position (ordering, not Max: one query shape every provider translates).
+            // The last position.
             var last = await _db.ContentEntries.Where(e => e.ContentTypeId == type.Id)
                 .OrderByDescending(e => e.SortOrder).Select(e => new { e.SortOrder }).FirstOrDefaultAsync(ct);
             entry = NewEntry(type, fields, validation.Data, userId, (last?.SortOrder ?? -1) + 1);

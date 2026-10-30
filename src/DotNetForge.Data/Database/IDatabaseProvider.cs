@@ -1,6 +1,5 @@
 using DotNetForge.Abstractions.Database;
 using DotNetForge.Shared.Configuration;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

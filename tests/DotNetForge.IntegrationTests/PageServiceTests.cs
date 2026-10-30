@@ -40,6 +40,99 @@ public sealed class PageServiceTests : IAsyncLifetime
         return page;
     }
 
+    [Fact]
+    public async Task The_home_page_stays_the_root()
+    {
+        var home = new Page { Title = "Home", Slug = "/" };
+        _db.Pages.Add(home);
+        await _db.SaveChangesAsync();
+        var about = await AddAsync("about");
+        about.SortOrder = 1;
+        await _db.SaveChangesAsync();
+
+        // Its title and content change as any page's do; its place doesn't.
+        Assert.Null(await _service.ApplyAsync(home, new PageInput { Title = "Welcome", Slug = "/" }));
+        Assert.Equal("Welcome", home.Title);
+        Assert.Equal(PageService.HomeIsFixed, await _service.ApplyAsync(home, new PageInput { Title = "T", Slug = "start" }));
+        Assert.Equal(PageService.HomeIsFixed, await _service.ApplyAsync(home, new PageInput { Title = "T", Slug = "/", ParentPageId = about.Id }));
+        Assert.Equal(PageService.HomeIsFixed, await _service.ApplyAsync(home, new PageInput { Title = "T", Slug = "/", SortOrder = 3 }));
+        Assert.Equal(PageService.HomeIsFixed, await _service.MoveAsync(home.Id, about.Id));
+        Assert.Equal(PageService.HomeIsFixed, await _service.ReorderAsync(new[] { new PagePosition(home.Id, null, 2) }));
+
+        Assert.Equal(PageService.HomeCantBeDeleted, await _service.DeleteAsync(home));
+        Assert.True(await _db.Pages.AnyAsync(p => p.Id == home.Id));
+
+        // Nothing goes under it or before it, and the slug stays its own.
+        Assert.Equal(PageService.NothingUnderHome, await _service.MoveAsync(about.Id, home.Id));
+        Assert.Equal(PageService.NothingUnderHome, await ApplyAsync(about, "about", home.Id));
+        Assert.Equal(PageService.NothingBeforeHome, await _service.ReorderAsync(new[] { new PagePosition(about.Id, null, 0) }));
+        Assert.Equal(PageService.HomeIsFixed, await ApplyAsync(about, "/", about.Id));
+
+        // A root page asking for 0 comes right after it.
+        Assert.Null(await _service.ApplyAsync(about, new PageInput { Title = "About", Slug = "about", SortOrder = 0 }));
+        Assert.Equal(1, about.SortOrder);
+    }
+
+    [Fact]
+    public async Task No_page_goes_below_sort_order_0()
+    {
+        var parent = await AddAsync("parent");
+        var child = await AddAsync("child", parent.Id);
+
+        Assert.Equal(PageService.SortOrderTooLow, await _service.ApplyAsync(child, new PageInput { Title = "T", Slug = "child", ParentPageId = parent.Id, SortOrder = -1 }));
+        Assert.Equal(PageService.SortOrderTooLow, await _service.ReorderAsync(new[] { new PagePosition(child.Id, parent.Id, -1) }));
+        Assert.Null(await _service.ReorderAsync(new[] { new PagePosition(child.Id, parent.Id, 0) }));
+    }
+
+    [Fact]
+    public async Task A_page_takes_its_children_along()
+    {
+        var about = await AddAsync("about");
+        var team = await AddAsync("team", about.Id);
+        var news = await AddAsync("news");
+
+        Assert.Null(await _service.MoveAsync(about.Id, news.Id));
+        await _db.SaveChangesAsync();
+
+        Assert.Equal(news.Id, about.ParentPageId);
+        Assert.Equal(about.Id, team.ParentPageId);
+    }
+
+    [Fact]
+    public async Task Moving_puts_a_page_last_under_its_new_parent_or_at_the_root()
+    {
+        var blog = await AddAsync("blog");
+        var first = await AddAsync("first", blog.Id);
+        first.SortOrder = 4;
+        await _db.SaveChangesAsync();
+        var news = await AddAsync("news");
+
+        Assert.Null(await _service.MoveAsync(news.Id, blog.Id));
+        await _db.SaveChangesAsync();
+        Assert.Equal(blog.Id, news.ParentPageId);
+        Assert.Equal(5, news.SortOrder);
+
+        Assert.Null(await _service.MoveAsync(news.Id, null));
+        await _db.SaveChangesAsync();
+        Assert.Null(news.ParentPageId);
+        Assert.Equal(blog.SortOrder + 1, news.SortOrder);
+    }
+
+    [Fact]
+    public async Task Moving_keeps_the_rules_of_the_tree()
+    {
+        var a = await AddAsync("a");
+        var child = await AddAsync("child", a.Id);
+        var b = await AddAsync("b");
+        await AddAsync("team", a.Id);
+        var otherTeam = await AddAsync("team", b.Id);
+
+        Assert.Contains("cycle", await _service.MoveAsync(a.Id, child.Id));
+        Assert.Contains("cycle", await _service.MoveAsync(a.Id, a.Id));
+        Assert.Contains("share the slug 'team'", await _service.MoveAsync(otherTeam.Id, a.Id));
+        Assert.Contains("does not exist", await _service.MoveAsync(a.Id, Guid.NewGuid()));
+    }
+
     private Task<string?> ApplyAsync(Page page, string slug, Guid? parent = null) =>
         _service.ApplyAsync(page, new PageInput { Title = "T", Slug = slug, ParentPageId = parent });
 

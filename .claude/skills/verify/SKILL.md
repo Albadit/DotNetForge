@@ -40,6 +40,7 @@ DNF_TEST_S3_SERVICE_URL=http://localhost:8333 DNF_TEST_S3_BUCKET=dotnetforge DNF
 
 ```bash
 for p in src/*/*.csproj tests/*/*.csproj; do dotnet format "$p" --verify-no-changes --severity error; done
+npm ci && npm run lint   # JavaScript
 ```
 
 ## 3. Smoke test the running app (UI / routing / auth changes)

@@ -18,8 +18,8 @@ and **Restore default**. Mechanism and the template catalog: [email → template
 ```text
 src/DotNetForge.Core/Email/EmailTemplateCatalog.cs                     the five templates: key, name, trigger, variables, required, defaults, sample values
 src/DotNetForge.Core/Email/EmailTemplateRenderer.cs                    Validate, Variables, RenderSubject, RenderBody (pure, unit-tested)
-src/DotNetForge.Core/Email/EmailLayout.cs                              the frame around every email (Forge colours, inline styles) + default-body helpers
-src/DotNetForge.Web/wwwroot/js/forge/email-templates.js                the Monaco body editor (variable IntelliSense, hovers, validation, highlighting) + live preview
+src/DotNetForge.Core/Email/EmailLayout.cs                              the frame around every email (brand colours, inline styles) + default-body helpers
+src/DotNetForge.Web/wwwroot/js/admin/email-templates.js                the Monaco body editor (variable IntelliSense, hovers, validation, highlighting) + live preview
 src/DotNetForge.Web/wwwroot/lib/monaco/                                Monaco 0.52.2, self-hosted (MIT; HTML/CSS language services only)
 src/DotNetForge.Web/Services/EmailTemplateService.cs                   ListAsync, GetAsync, SaveAsync (concurrency, audit), RestoreAsync, RenderAsync
 src/DotNetForge.Web/Areas/Admin/Controllers/EmailTemplatesController.cs  Index, Edit, Save, Restore, Preview (GET saved / POST unsaved)
@@ -39,7 +39,7 @@ Email Templates (list)
 ├── editor-main
 │   ├── form (POST /admin/email/templates/{key}, antiforgery, hidden version)
 │   │   └── card **Message** - badge Default / Customized (saved …)
-│   │       ├── <form-errors />, **Subject** *, **Body (HTML)** * - a Monaco code editor with a status bar (the textarea without JavaScript)
+│   │       ├── <dnf-validation-summary />, **Subject** *, **Body (HTML)** * - a Monaco code editor with a status bar (the textarea without JavaScript)
 │   │       └── card-footer (Settings update only): [Restore default] (customized only, data-confirm) · [**Save template**]
 │   ├── hidden #previewForm (POST …/preview, target = the frame)
 │   └── card **Preview** - header action [Refresh] (JS only); iframe (sandbox): the email as sent (layout + body) with sample data, refreshed while you type
@@ -71,7 +71,7 @@ theme. The hidden textarea stays the form field (kept in sync), so saving and th
 
 | Feature | Behaviour |
 | --- | --- |
-| Colorization | HTML (with embedded CSS/JavaScript); valid `{{variables}}` highlighted in the accent colour (`.code-var`) |
+| Colorization | HTML (with embedded CSS/JavaScript); valid `{{variables}}` highlighted in the accent colour (`.dnf-code-editor__var`, `wwwroot/css/admin/tools.css`) |
 | IntelliSense | typing `{` suggests the template's variables (detail "Variable"/"Required variable", the sample value); it replaces what was typed and any auto-closed `}}`. Monaco's HTML tags and attributes (HTML worker) |
 | Hover | a `{{variable}}` shows whether it is required and its sample value; an unknown one says so |
 | Validation | markers for the server's rules, 250 ms after a change: unknown variable (error, lists the available ones), incomplete `{{`/`}}`, a missing required variable, an empty body; `<script>` gets a warning (email clients don't run scripts) |
@@ -108,7 +108,7 @@ Server side. The editor carries the row's `UpdatedDate` ticks (`version`, 0 = de
 
 ## Error handling
 
-Validation errors in `<form-errors />` with the posted text kept. Unknown key → 404.
+Validation errors in `<dnf-validation-summary />` with the posted text kept. Unknown key → 404.
 
 ## Loading behaviour
 
@@ -138,7 +138,7 @@ flowchart LR
     E -- Preview --> P["iframe: rendered sample or errors"]
     E -- Save --> V{valid and current version?}
     V -- yes --> S["EmailTemplates row + audit → toast"] --> E
-    V -- no --> F[form-errors] --> E
+    V -- no --> F[validation summary] --> E
     E -- "Restore default" --> R["row deleted + audit"] --> E
 ```
 

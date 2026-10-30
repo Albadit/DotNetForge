@@ -13,7 +13,7 @@ the visitor screens: [self-service account screens](account-self-service.md).
 | Item | Value |
 | --- | --- |
 | Route | `GET /admin/advanced-settings`, `POST /admin/advanced-settings` |
-| Navigation entry | sidebar **Settings → Users & Permissions Plugin → Advanced Settings** (icon `sliders`) |
+| Navigation entry | sidebar **Settings → Authentication → Advanced Settings** (icon `sliders`) |
 | Parent / children | none |
 
 ## Relevant source files
@@ -31,7 +31,7 @@ src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs               side
 ```text
 Advanced Settings (admin layout, medium width)
 └── form (POST /admin/advanced-settings, antiforgery) - fieldset disabled without Settings update
-    ├── <form-errors />
+    ├── <dnf-validation-summary />
     ├── card **Sign-ups**
     │   ├── switch **Enable sign-ups** (off by default) - "/register answers 404" when off
     │   ├── select **Default role for new accounts** (every role except Super Admin and Public; "(opens the admin)" marks admin-capable ones; Authenticated preselected)
@@ -41,7 +41,7 @@ Advanced Settings (admin layout, medium width)
     │   ├── switch **Enable email confirmation** (disabled without SMTP)
     │   ├── **Reset password page** (optional URL)
     │   ├── **Redirection after email confirmation** (optional URL)
-    │   └── card-footer: [**Save settings**] (only with Settings update; saves both cards - one form)
+    │   └── dnf-card__footer: [**Save settings**] (only with Settings update; saves both cards - one form)
 ```
 
 ## Functionality
@@ -81,7 +81,7 @@ rights than they have.
 
 ## Error handling
 
-Validation errors in `<form-errors />`; nothing is saved when there is one.
+Validation errors in `<dnf-validation-summary />`; nothing is saved when there is one.
 
 ## Loading behaviour
 
@@ -107,7 +107,7 @@ AdvancedSettingsController → UserAccountSettingsService (→ DotNetForgeDbCont
 flowchart LR
     A[Advanced Settings] -- Save --> B{SaveAsync valid?}
     B -- yes --> C["Settings rows + audit → toast + redirect"]
-    B -- no --> D[form-errors] --> A
+    B -- no --> D[dnf-validation-summary] --> A
 ```
 
 ## Related pages

@@ -5,174 +5,183 @@
         ?? Array.Empty<(Guid, string)>();
     var extras = ViewData["Extras"] as PageEditorExtras ?? new PageEditorExtras();
     var initialTab = ViewData["Tab"] as string ?? "page";
-    var (tone, status) = Model.Published ? (Tone.Success, "Published") : (Tone.Danger, "Disabled");
+    var (tone, status) = Model.Published ? (DnfTone.Success, "Published") : (DnfTone.Danger, "Disabled");
     var tabs = new[] { ("page", "Page settings", "settings"), ("seo", "SEO", "search"), ("theme", "Theme", "palette"), ("permissions", "Permissions", "shield"), ("layout", "Layout", "layers") };
     var builderUrl = $"/admin/pages/{selectedId}/builder";
+    // The home page is the site's root: PageService keeps its slug, parent and position.
+    var isHome = DotNetForge.Web.Services.PageService.IsHome(Model.Slug);
 }
 
 @*
     The page editor (.docs/pages/pages.md#page-editor): one form in tabs - Page settings, SEO, Theme,
     Permissions and Layout - with publishing (and the Save button) in a sticky side column. Without JavaScript every
-    tab's panel is shown one below the other; ui.js turns them into tabs (data-tabs) and remembers the tab in the URL.
+    tab's panel is shown one below the other; dnf.js turns them into tabs (data-tabs) and remembers the tab in the URL.
 *@
 <form method="post" asp-area="Admin" asp-controller="Pages" asp-action="Update" asp-route-id="@selectedId"
-      class="editor" id="pageForm" novalidate>
+      class="dnf-split" id="pageForm" novalidate>
     @Html.AntiForgeryToken()
     <input type="hidden" name="tab" value="@initialTab" data-tab-field />
-    <div class="editor-main">
-        <form-errors />
+    <div class="dnf-split__main">
+        <dnf-validation-summary />
 
-        <section class="card page-editor" aria-labelledby="general-title" data-tabs data-initial-tab="@initialTab">
-            <div class="card-header">
-                <div class="editor-title">
-                    <h2 class="card-title" id="general-title">@(string.IsNullOrWhiteSpace(Model.Title) ? "Untitled page" : Model.Title)</h2>
-                    <badge tone="@tone" dot="true">@status</badge>
+        <section class="dnf-card" aria-labelledby="general-title" data-tabs data-initial-tab="@initialTab">
+            <div class="dnf-card__header">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="dnf-card__title" id="general-title">@(string.IsNullOrWhiteSpace(Model.Title) ? "Untitled page" : Model.Title)</h2>
+                    <dnf-badge tone="@tone" dot="true">@status</dnf-badge>
                     @if (extras.HasLayout)
                     {
-                        <badge tone="Accent"><icon name="layers" size="sm" /> Layout</badge>
+                        <dnf-badge tone="Primary"><dnf-icon name="layers" size="Sm" /> Layout</dnf-badge>
                     }
                 </div>
             </div>
-            <div class="tabs page-editor-tabs" role="tablist" aria-label="Page sections" data-js-only hidden>
+            <div class="dnf-tabs px-5" role="tablist" aria-label="Page sections" data-js-only hidden>
                 @foreach (var (key, label, iconName) in tabs)
                 {
-                    <button type="button" class="tab" role="tab" id="tab-@key" aria-controls="panel-@key" data-tab="@key"
+                    <button type="button" class="dnf-tabs__tab" role="tab" id="tab-@key" aria-controls="panel-@key" data-tab="@key"
                             aria-selected="@(key == initialTab ? "true" : "false")">
-                        <icon name="@iconName" size="sm" /> @label
+                        <dnf-icon name="@iconName" size="Sm" /> @label
                     </button>
                 }
             </div>
 
             @* ---------------------------------------------------------------- Page settings *@
-            <div class="card-body tab-panel" role="tabpanel" id="panel-page" aria-labelledby="tab-page" data-tab-panel="page">
-                <h3 class="tab-panel-title">Page settings</h3>
-                <div class="form-grid">
-                    <div class="field span-2">
-                        <label class="field-label" asp-for="Title">Title<span class="field-required" aria-hidden="true">*</span></label>
-                        <input asp-for="Title" required maxlength="300" />
+            <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-page" aria-labelledby="tab-page" data-tab-panel="page">
+                <h3 class="dnf-tab-panel__title">Page settings</h3>
+                <div class="dnf-form-grid">
+                    <div class="dnf-field dnf-form-grid__full">
+                        <label class="dnf-field__label" asp-for="Title">Title<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                        <input asp-for="Title" class="dnf-input" required maxlength="300" />
                     </div>
-                    <div class="field span-2">
-                        <label class="field-label" asp-for="Slug">Slug<span class="field-required" aria-hidden="true">*</span></label>
-                        <input asp-for="Slug" aria-describedby="slug-hint" class="text-mono" />
-                        <span class="field-hint" id="slug-hint">The URL segment. Use <code>/</code> for the site root, or <code>[id]</code> for a dynamic segment.</span>
+                    <div class="dnf-field dnf-form-grid__full">
+                        <label class="dnf-field__label" asp-for="Slug">Slug<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                        <input asp-for="Slug" aria-describedby="slug-hint" class="dnf-input dnf-input--mono" readonly="@(isHome ? "readonly" : null)" />
+                        @if (isHome)
+                        {
+                            <span class="dnf-field__description" id="slug-hint">The home page is the site's root, so its slug, parent page and sort order stay as they are, and it can't be deleted.</span>
+                        }
+                        else
+                        {
+                            <span class="dnf-field__description" id="slug-hint">The URL segment. Use <code>[id]</code> for a dynamic segment.</span>
+                        }
                     </div>
-                    <div class="field">
-                        <label class="field-label" asp-for="PageType">Page type</label>
-                        <select asp-for="PageType" id="PageType">
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" asp-for="PageType">Page type</label>
+                        <select asp-for="PageType" id="PageType" class="dnf-select">
                             <option value="Standard">Standard</option>
                             <option value="ExistingPage">Existing page</option>
                             <option value="UrlRedirect">URL redirect</option>
                             <option value="File">File</option>
                         </select>
                     </div>
-                    <div class="field">
-                        <label class="field-label" asp-for="ParentPageId">Parent page</label>
-                        <select asp-for="ParentPageId">
-                            <option value="">None (top level)</option>
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" asp-for="ParentPageId">Parent page</label>
+                        <select asp-for="ParentPageId" class="dnf-select" disabled="@(isHome ? "disabled" : null)">
+                            <option value="">Root</option>
                             @foreach (var opt in parentOptions)
                             {
                                 <option value="@opt.Id">@opt.Label</option>
                             }
                         </select>
                     </div>
-                    <div class="field span-2" data-when-type="UrlRedirect">
-                        <label class="field-label" asp-for="TargetUrl">Target URL</label>
-                        <input asp-for="TargetUrl" type="url" placeholder="https://" />
+                    <div class="dnf-field dnf-form-grid__full" data-when-type="UrlRedirect">
+                        <label class="dnf-field__label" asp-for="TargetUrl">Target URL</label>
+                        <input asp-for="TargetUrl" class="dnf-input" type="url" placeholder="https://" />
                     </div>
-                    <div class="field span-2" data-when-type="File">
-                        <label class="field-label" asp-for="FileReference">File reference</label>
-                        <input asp-for="FileReference" />
+                    <div class="dnf-field dnf-form-grid__full" data-when-type="File">
+                        <label class="dnf-field__label" asp-for="FileReference">File reference</label>
+                        <input asp-for="FileReference" class="dnf-input" />
                     </div>
-                    <div class="field">
-                        <label class="field-label" asp-for="SortOrder">Sort order</label>
-                        <input asp-for="SortOrder" type="number" min="0" aria-describedby="sort-hint" />
-                        <span class="field-hint" id="sort-hint">Position among its siblings. Dragging in the tree sets it too.</span>
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" asp-for="SortOrder">Sort order</label>
+                        <input asp-for="SortOrder" class="dnf-input" type="number" min="0" aria-describedby="sort-hint" readonly="@(isHome ? "readonly" : null)" />
+                        <span class="dnf-field__description" id="sort-hint">Position among its siblings, from 0. At the root the home page stays first. Dragging in the tree sets it too.</span>
                     </div>
                 </div>
             </div>
 
             @* ---------------------------------------------------------------- SEO *@
-            <div class="card-body tab-panel" role="tabpanel" id="panel-seo" aria-labelledby="tab-seo" data-tab-panel="seo">
-                <h3 class="tab-panel-title">SEO</h3>
-                <p class="card-description">How the page appears in search results and when it is shared.</p>
-                <div class="search-preview" aria-hidden="true">
-                    <span class="search-preview-title">@(string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Title : Model.MetaTitle)</span>
-                    <span class="search-preview-url">@Context.Request.Host/@Model.Slug.TrimStart('/')</span>
-                    <span class="search-preview-text">@(string.IsNullOrWhiteSpace(Model.MetaDescription) ? "Add a meta description to control the text shown here." : Model.MetaDescription)</span>
+            <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-seo" aria-labelledby="tab-seo" data-tab-panel="seo">
+                <h3 class="dnf-tab-panel__title">SEO</h3>
+                <p class="dnf-card__description">How the page appears in search results and when it is shared.</p>
+                <div class="dnf-search-preview" aria-hidden="true">
+                    <span class="dnf-search-preview__title">@(string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Title : Model.MetaTitle)</span>
+                    <span class="dnf-search-preview__url">@Context.Request.Host/@Model.Slug.TrimStart('/')</span>
+                    <span class="dnf-search-preview__text">@(string.IsNullOrWhiteSpace(Model.MetaDescription) ? "Add a meta description to control the text shown here." : Model.MetaDescription)</span>
                 </div>
-                <div class="form-grid">
-                    <div class="field span-2">
-                        <label class="field-label" asp-for="MetaTitle">Meta title<span class="field-optional">optional</span></label>
-                        <input asp-for="MetaTitle" maxlength="300" aria-describedby="meta-title-hint" />
-                        <span class="field-hint" id="meta-title-hint">Defaults to the page title. Around 50-60 characters show in search results.</span>
+                <div class="dnf-form-grid">
+                    <div class="dnf-field dnf-form-grid__full">
+                        <label class="dnf-field__label" asp-for="MetaTitle">Meta title<span class="dnf-field__optional">optional</span></label>
+                        <input asp-for="MetaTitle" class="dnf-input" maxlength="300" aria-describedby="meta-title-hint" />
+                        <span class="dnf-field__description" id="meta-title-hint">Defaults to the page title. Around 50-60 characters show in search results.</span>
                     </div>
-                    <div class="field span-2">
-                        <label class="field-label" asp-for="MetaDescription">Meta description<span class="field-optional">optional</span></label>
-                        <textarea asp-for="MetaDescription" rows="3" maxlength="1000" aria-describedby="meta-desc-hint"></textarea>
-                        <span class="field-hint" id="meta-desc-hint">About 150-160 characters show in search results.</span>
+                    <div class="dnf-field dnf-form-grid__full">
+                        <label class="dnf-field__label" asp-for="MetaDescription">Meta description<span class="dnf-field__optional">optional</span></label>
+                        <textarea asp-for="MetaDescription" class="dnf-textarea" rows="3" maxlength="1000" aria-describedby="meta-desc-hint"></textarea>
+                        <span class="dnf-field__description" id="meta-desc-hint">About 150-160 characters show in search results.</span>
                     </div>
-                    <div class="field">
-                        <label class="field-label" asp-for="SeoKeywords">Keywords<span class="field-optional">optional</span></label>
-                        <input asp-for="SeoKeywords" maxlength="500" placeholder="cms, dotnet" />
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" asp-for="SeoKeywords">Keywords<span class="dnf-field__optional">optional</span></label>
+                        <input asp-for="SeoKeywords" class="dnf-input" maxlength="500" placeholder="cms, dotnet" />
                     </div>
-                    <div class="field">
-                        <label class="field-label" asp-for="CanonicalUrl">Canonical URL<span class="field-optional">optional</span></label>
-                        <input asp-for="CanonicalUrl" type="url" maxlength="2000" placeholder="https://" />
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" asp-for="CanonicalUrl">Canonical URL<span class="dnf-field__optional">optional</span></label>
+                        <input asp-for="CanonicalUrl" class="dnf-input" type="url" maxlength="2000" placeholder="https://" />
                     </div>
-                    <div class="field span-2">
-                        <label class="field-label" asp-for="SocialImageUrl">Social image<span class="field-optional">optional</span></label>
-                        <input asp-for="SocialImageUrl" maxlength="2000" placeholder="/media/… or https://…" aria-describedby="social-hint" />
-                        <span class="field-hint" id="social-hint">Shown when the page is shared (Open Graph). Copy a public image's link from the Media screen.</span>
+                    <div class="dnf-field dnf-form-grid__full">
+                        <label class="dnf-field__label" asp-for="SocialImageUrl">Social image<span class="dnf-field__optional">optional</span></label>
+                        <input asp-for="SocialImageUrl" class="dnf-input" maxlength="2000" placeholder="/media/… or https://…" aria-describedby="social-hint" />
+                        <span class="dnf-field__description" id="social-hint">Shown when the page is shared (Open Graph). Copy a public image's link from the Media screen.</span>
                     </div>
-                    <label class="switch-row span-2">
-                        <span class="check-text"><span class="weight-semibold">Hide from search engines</span><span class="check-hint">Adds <code>noindex</code> and leaves the page out of sitemaps.</span></span>
-                        <input asp-for="NoIndex" class="switch" role="switch" />
+                    <label class="dnf-switch-row dnf-form-grid__full">
+                        <span class="dnf-check__text"><span class="font-semibold">Hide from search engines</span><span class="dnf-check__description">Adds <code>noindex</code> and leaves the page out of sitemaps.</span></span>
+                        <input asp-for="NoIndex" class="dnf-switch" role="switch" />
                     </label>
                 </div>
             </div>
 
             @* ---------------------------------------------------------------- Theme *@
-            <div class="card-body tab-panel" role="tabpanel" id="panel-theme" aria-labelledby="tab-theme" data-tab-panel="theme">
-                <h3 class="tab-panel-title">Theme</h3>
-                <p class="card-description">The look of this page on the site. Themes are extensions; enable them on the Plugins screen.</p>
-                <fieldset class="choice-list" aria-label="Theme">
-                    <label class="check choice-row">
-                        <input type="radio" name="ThemeId" value="" checked="@(string.IsNullOrEmpty(Model.ThemeId) ? "checked" : null)" />
+            <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-theme" aria-labelledby="tab-theme" data-tab-panel="theme">
+                <h3 class="dnf-tab-panel__title">Theme</h3>
+                <p class="dnf-card__description">The look of this page on the site. Themes are extensions; enable them on the Plugins screen.</p>
+                <fieldset class="dnf-check-list" aria-label="Theme">
+                    <label class="dnf-check">
+                        <input type="radio" class="dnf-radio" name="ThemeId" value="" checked="@(string.IsNullOrEmpty(Model.ThemeId) ? "checked" : null)" />
                         @if (extras.InheritedTheme is { } inherited)
                         {
-                            <span class="check-text"><span class="weight-semibold">Parent's theme</span><span class="check-hint">Follows <strong>@inherited.Theme</strong>, which "@inherited.FromPage" hands down to its child pages.</span></span>
+                            <span class="dnf-check__text"><span class="font-semibold">Parent's theme</span><span class="dnf-check__description">Follows <strong>@inherited.Theme</strong>, which "@inherited.FromPage" hands down to its child pages.</span></span>
                         }
                         else
                         {
-                            <span class="check-text"><span class="weight-semibold">Site theme</span><span class="check-hint">Use whatever theme the site uses (recommended).</span></span>
+                            <span class="dnf-check__text"><span class="font-semibold">Site theme</span><span class="dnf-check__description">Use whatever theme the site uses (recommended).</span></span>
                         }
                     </label>
                     @foreach (var theme in extras.Themes)
                     {
-                        <label class="check choice-row">
-                            <input type="radio" name="ThemeId" value="@theme.Id" checked="@(theme.Id == Model.ThemeId ? "checked" : null)" />
-                            <span class="check-text">
-                                <span class="weight-semibold">
+                        <label class="dnf-check">
+                            <input type="radio" class="dnf-radio" name="ThemeId" value="@theme.Id" checked="@(theme.Id == Model.ThemeId ? "checked" : null)" />
+                            <span class="dnf-check__text">
+                                <span class="font-semibold">
                                     @theme.Name
                                     @if (!theme.Enabled)
                                     {
-                                        <badge tone="Warning">Not enabled</badge>
+                                        <dnf-badge tone="Warning">Not enabled</dnf-badge>
                                     }
                                 </span>
-                                <span class="check-hint">@(theme.Enabled ? theme.Description ?? theme.Id : "Enable it on the Plugins screen; until then the site theme is used.")</span>
+                                <span class="dnf-check__description">@(theme.Enabled ? theme.Description ?? theme.Id : "Enable it on the Plugins screen; until then the site theme is used.")</span>
                             </span>
                         </label>
                     }
                 </fieldset>
                 @if (extras.Themes.Count > 0)
                 {
-                    <label class="switch-row">
-                        <span class="check-text">
+                    <label class="dnf-switch-row">
+                        <span class="dnf-check__text">
                             <span>Use this theme for child pages too</span>
-                            <span class="check-hint">Child pages without a theme of their own follow this page's theme, down to the next page that picks its own.</span>
+                            <span class="dnf-check__description">Child pages without a theme of their own follow this page's theme, down to the next page that picks its own.</span>
                         </span>
                         @* The checkbox first: a bound bool takes the first posted value. *@
-                        <input type="checkbox" class="switch" role="switch" name="ThemeForChildren" value="true" checked="@(Model.ThemeForChildren ? "checked" : null)" />
+                        <input type="checkbox" class="dnf-switch" role="switch" name="ThemeForChildren" value="true" checked="@(Model.ThemeForChildren ? "checked" : null)" />
                         <input type="hidden" name="ThemeForChildren" value="false" />
                     </label>
                 }
@@ -183,9 +192,9 @@
             </div>
 
             @* ---------------------------------------------------------------- Permissions *@
-            <div class="card-body tab-panel" role="tabpanel" id="panel-permissions" aria-labelledby="tab-permissions" data-tab-panel="permissions">
-                <h3 class="tab-panel-title">Permissions</h3>
-                <p class="card-description">
+            <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-permissions" aria-labelledby="tab-permissions" data-tab-panel="permissions">
+                <h3 class="dnf-tab-panel__title">Permissions</h3>
+                <p class="dnf-card__description">
                     <strong>View</strong>: with no box ticked, everyone can see the page. Tick roles to show it only to them
                     (<em>Public</em> = everyone, <em>Authenticated</em> = any signed-in user); others are asked to sign in.
                     <strong>Edit</strong>: extra roles that may edit this page in the admin.
@@ -196,34 +205,34 @@
                 }
                 else
                 {
-                    <alert tone="Info" title="View only">Changing page permissions needs permission to update every page.</alert>
+                    <dnf-alert tone="Info" title="View only">Changing page permissions needs permission to update every page.</dnf-alert>
                 }
-                <div class="table-wrap">
-                    <table class="table permission-table">
+                <div class="dnf-table">
+                    <table class="dnf-table__table">
                         <thead>
                             <tr>
                                 <th scope="col">Role</th>
-                                <th scope="col" class="col-check-center">View</th>
-                                <th scope="col" class="col-check-center">Edit</th>
+                                <th scope="col" class="dnf-table__cell--center w-24">View</th>
+                                <th scope="col" class="dnf-table__cell--center w-24">Edit</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var role in extras.Roles)
                             {
                                 <tr>
-                                    <th scope="row" class="cell-primary">@role.Name</th>
-                                    <td class="col-check-center">
-                                        <input type="checkbox" name="viewRoles" value="@role.Id" aria-label="@role.Name can view"
+                                    <th scope="row" class="dnf-table__primary">@role.Name</th>
+                                    <td class="dnf-table__cell--center">
+                                        <input type="checkbox" class="dnf-checkbox" name="viewRoles" value="@role.Id" aria-label="@role.Name can view"
                                                checked="@(extras.ViewRoles.Contains(role.Id) ? "checked" : null)" disabled="@(extras.CanManagePermissions ? null : "disabled")" />
                                     </td>
-                                    <td class="col-check-center">
+                                    <td class="dnf-table__cell--center">
                                         @if (role.SiteOnly)
                                         {
                                             <span class="text-subtle text-xs" title="Site visitors can't edit pages">-</span>
                                         }
                                         else
                                         {
-                                            <input type="checkbox" name="editRoles" value="@role.Id" aria-label="@role.Name can edit"
+                                            <input type="checkbox" class="dnf-checkbox" name="editRoles" value="@role.Id" aria-label="@role.Name can edit"
                                                    checked="@(extras.EditRoles.Contains(role.Id) ? "checked" : null)" disabled="@(extras.CanManagePermissions ? null : "disabled")" />
                                         }
                                     </td>
@@ -232,11 +241,11 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="field-hint">Super Admins have full access to every page, so they aren't listed. Everyone allowed to edit pages also sees restricted pages. Restricted pages are left out of menus and sitemaps.</p>
+                <p class="dnf-field__description">Super Admins have full access to every page, so they aren't listed. Everyone allowed to edit pages also sees restricted pages. Restricted pages are left out of menus and sitemaps.</p>
 
                 @* Users: allow or block one person, whatever their roles say (.docs/features/content-pages-and-routing.md#page-permissions). *@
-                <h4 class="permission-subtitle">Users</h4>
-                <p class="card-description">
+                <h4 class="mt-2 text-base font-semibold">Users</h4>
+                <p class="dnf-card__description">
                     Allow or <strong>block</strong> single users. A block wins over everything their roles allow (including editing
                     every page); Super Admins can't be blocked and you can't block yourself. Set both to <em>Not set</em> to remove a user.
                 </p>
@@ -245,14 +254,14 @@
                     var canEdit = extras.CanManagePermissions;
                     string Label(PermissionUserOption u) => string.IsNullOrWhiteSpace(u.Name) ? u.Email : $"{u.Name} ({u.Email})";
                 }
-                <div class="table-wrap">
-                    <table class="table permission-table">
+                <div class="dnf-table">
+                    <table class="dnf-table__table">
                         <thead>
                             <tr>
                                 <th scope="col">User</th>
-                                <th scope="col" class="col-rule">View</th>
-                                <th scope="col" class="col-rule">Edit</th>
-                                <th scope="col" class="col-actions"><span class="sr-only">Remove</span></th>
+                                <th scope="col" class="w-32">View</th>
+                                <th scope="col" class="w-32">Edit</th>
+                                <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Remove</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -266,24 +275,24 @@
                                 }
 
                                 <tr data-user-row>
-                                    <th scope="row" class="cell-primary">
+                                    <th scope="row" class="dnf-table__primary">
                                         @Label(user)
                                         <input type="hidden" name="userPermissions[@i].UserId" value="@user.Id" />
                                     </th>
                                     @foreach (var (field, value) in new[] { ("View", grant.View), ("Edit", grant.Edit) })
                                     {
-                                        <td class="col-rule">
-                                            <select name="userPermissions[@i].@field" class="input-sm" aria-label="@field for @user.Email" disabled="@(canEdit ? null : "disabled")">
+                                        <td class="w-32">
+                                            <select name="userPermissions[@i].@field" class="dnf-select dnf-select--sm" aria-label="@field for @user.Email" disabled="@(canEdit ? null : "disabled")">
                                                 <option value="" selected="@(value is null ? "selected" : null)">Not set</option>
                                                 <option value="allow" selected="@(value == true ? "selected" : null)">Allow</option>
                                                 <option value="block" selected="@(value == false ? "selected" : null)">Block</option>
                                             </select>
                                         </td>
                                     }
-                                    <td class="col-actions">
+                                    <td class="dnf-table__cell--actions">
                                         @if (canEdit)
                                         {
-                                            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-remove-user-row data-js-only hidden aria-label="Remove @user.Email"><icon name="trash" size="sm" /></button>
+                                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-remove-user-row data-js-only hidden aria-label="Remove @user.Email"><dnf-icon name="trash" size="Sm" /></button>
                                         }
                                     </td>
                                 </tr>
@@ -291,10 +300,10 @@
                             @if (canEdit)
                             {
                                 var n = extras.UserGrants.Count;
-                                <tr class="permission-add-row">
+                                <tr class="dnf-permission-add-row">
                                     <td>
                                         <label class="sr-only" for="add-user">Add a user</label>
-                                        <select id="add-user" name="userPermissions[@n].UserId" class="input-sm">
+                                        <select id="add-user" name="userPermissions[@n].UserId" class="dnf-select dnf-select--sm">
                                             <option value="">Add a user…</option>
                                             @foreach (var user in extras.Users.Where(u => !listed.Contains(u.Id)))
                                             {
@@ -304,46 +313,46 @@
                                     </td>
                                     @foreach (var field in new[] { "View", "Edit" })
                                     {
-                                        <td class="col-rule">
-                                            <select name="userPermissions[@n].@field" class="input-sm" aria-label="@field for the added user">
+                                        <td class="w-32">
+                                            <select name="userPermissions[@n].@field" class="dnf-select dnf-select--sm" aria-label="@field for the added user">
                                                 <option value="">Not set</option>
                                                 <option value="allow">Allow</option>
                                                 <option value="block">Block</option>
                                             </select>
                                         </td>
                                     }
-                                    <td class="col-actions"></td>
+                                    <td class="dnf-table__cell--actions"></td>
                                 </tr>
                             }
                             @if (extras.UserGrants.Count == 0 && !canEdit)
                             {
-                                <tr class="table-empty"><td colspan="4">No user rules on this page.</td></tr>
+                                <tr class="dnf-table__empty"><td colspan="4">No user rules on this page.</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 @if (canEdit)
                 {
-                    <p class="field-hint">Choose a user in the last row, set View and/or Edit, then <strong>Save changes</strong>.</p>
+                    <p class="dnf-field__description">Choose a user in the last row, set View and/or Edit, then <strong>Save changes</strong>.</p>
                 }
             </div>
 
             @* ---------------------------------------------------------------- Layout *@
-            <div class="card-body tab-panel" role="tabpanel" id="panel-layout" aria-labelledby="tab-layout" data-tab-panel="layout">
-                <h3 class="tab-panel-title">Layout</h3>
-                <p class="card-description">Design how this page looks with the page builder: sections, grids, text, images, buttons and more.</p>
-                <div class="layout-status">
-                    <span class="stat-icon" aria-hidden="true"><icon name="layers" /></span>
-                    <div class="stack-sm">
+            <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-layout" aria-labelledby="tab-layout" data-tab-panel="layout">
+                <h3 class="dnf-tab-panel__title">Layout</h3>
+                <p class="dnf-card__description">Design how this page looks with the page builder: sections, grids, text, images, buttons and more.</p>
+                <div class="dnf-layout-status">
+                    <span class="dnf-layout-status__icon" aria-hidden="true"><dnf-icon name="layers" /></span>
+                    <div class="dnf-stack dnf-stack--sm">
                         @if (extras.HasLayout)
                         {
                             <strong>Visitors see the published layout</strong>
-                            <span class="text-sm text-muted">Published <timestamp value="@extras.LayoutPublishedDate" />@(extras.HasDraftChanges ? " · there are unpublished changes" : "")</span>
+                            <span class="text-sm text-muted">Published <dnf-timestamp value="@extras.LayoutPublishedDate" />@(extras.HasDraftChanges ? " · there are unpublished changes" : "")</span>
                         }
                         else if (extras.DraftUpdatedDate is not null)
                         {
                             <strong>A draft layout, not published yet</strong>
-                            <span class="text-sm text-muted">Saved <timestamp value="@extras.DraftUpdatedDate" />. Visitors see the page's default view until you publish.</span>
+                            <span class="text-sm text-muted">Saved <dnf-timestamp value="@extras.DraftUpdatedDate" />. Visitors see the page's default view until you publish.</span>
                         }
                         else
                         {
@@ -352,68 +361,74 @@
                         }
                     </div>
                 </div>
-                <div class="cluster">
+                <div class="dnf-cluster">
                     @if (extras.CanEditLayout)
                     {
-                        <a class="btn btn-primary" href="@builderUrl"><icon name="pencil" /> Open page builder</a>
+                        <a class="dnf-button dnf-button--primary" href="@builderUrl"><dnf-icon name="pencil" /> Open page builder</a>
                     }
                     @if (extras.HasLayout || extras.DraftUpdatedDate is not null)
                     {
-                        <a class="btn btn-secondary" href="@builderUrl/preview" target="_blank" rel="noopener"><icon name="eye" /> Preview draft</a>
+                        <a class="dnf-button dnf-button--secondary" href="@builderUrl/preview" target="_blank" rel="noopener"><dnf-icon name="eye" /> Preview draft</a>
                     }
                 </div>
-                <p class="field-hint">The builder saves a draft automatically; publish it from the builder's top bar. Unsaved settings on the other tabs are kept only when you press Save.</p>
+                <p class="dnf-field__description">The builder saves a draft automatically; publish it from the builder's top bar. Unsaved settings on the other tabs are kept only when you press Save.</p>
             </div>
         </section>
     </div>
 
-    <aside class="editor-aside" aria-label="Publishing">
-        <section class="card" aria-labelledby="publish-title">
-            <div class="card-header"><h2 class="card-title" id="publish-title">Publishing</h2></div>
-            <div class="card-body stack">
-                <label class="switch-row">
-                    <span class="check-text"><span class="weight-semibold">Published</span><span class="check-hint">On: visible on the site (within its schedule). Off: disabled, hidden everywhere.</span></span>
-                    <input asp-for="Published" id="Published" class="switch" role="switch" />
+    <aside class="dnf-split__aside" aria-label="Publishing">
+        <section class="dnf-card" aria-labelledby="publish-title">
+            <div class="dnf-card__header"><h2 class="dnf-card__title" id="publish-title">Publishing</h2></div>
+            <div class="dnf-card__body dnf-stack">
+                <label class="dnf-switch-row">
+                    <span class="dnf-check__text"><span class="font-semibold">Published</span><span class="dnf-check__description">On: visible on the site (within its schedule). Off: disabled, hidden everywhere.</span></span>
+                    <input asp-for="Published" id="Published" class="dnf-switch" role="switch" />
                 </label>
-                <div class="stack" id="publishOpts">
-                    <label class="switch-row">
-                        <span class="check-text"><span class="weight-semibold">Show in menu</span><span class="check-hint">Listed in the site navigation.</span></span>
-                        <input asp-for="DisplayInMenu" class="switch" role="switch" />
+                <div class="dnf-stack" id="publishOpts">
+                    <label class="dnf-switch-row">
+                        <span class="dnf-check__text"><span class="font-semibold">Show in menu</span><span class="dnf-check__description">Listed in the site navigation.</span></span>
+                        <input asp-for="DisplayInMenu" class="dnf-switch" role="switch" />
                     </label>
-                    <div class="field">
-                        <label class="field-label" asp-for="ScheduledPublishDate">Publish at (UTC)<span class="field-optional">optional</span></label>
-                        <input asp-for="ScheduledPublishDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" asp-for="ScheduledPublishDate">Publish at (UTC)<span class="dnf-field__optional">optional</span></label>
+                        <input asp-for="ScheduledPublishDate" class="dnf-input" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
                     </div>
-                    <div class="field">
-                        <label class="field-label" asp-for="ScheduledUnpublishDate">Unpublish at (UTC)<span class="field-optional">optional</span></label>
-                        <input asp-for="ScheduledUnpublishDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" asp-for="ScheduledUnpublishDate">Unpublish at (UTC)<span class="dnf-field__optional">optional</span></label>
+                        <input asp-for="ScheduledUnpublishDate" class="dnf-input" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
                     </div>
-                    <p class="field-hint">A future publish time keeps the page hidden until then; an unpublish time takes it offline.</p>
+                    <p class="dnf-field__description">A future publish time keeps the page hidden until then; an unpublish time takes it offline.</p>
                 </div>
             </div>
-            <div class="card-footer">
-                <button type="submit" class="btn btn-primary btn-block"><icon name="check" /> Save changes</button>
+            <div class="dnf-card__footer">
+                <button type="submit" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="check" /> Save changes</button>
             </div>
         </section>
 
-        <section class="card card-danger" aria-labelledby="danger-title">
-            <div class="card-header">
-                <div>
-                    <h2 class="card-title" id="danger-title">Delete page</h2>
-                    <p class="card-description">Its child pages move up a level; they are not deleted.</p>
+        @if (!isHome)
+        {
+            <section class="dnf-card dnf-card--danger" aria-labelledby="danger-title">
+                <div class="dnf-card__header">
+                    <div>
+                        <h2 class="dnf-card__title" id="danger-title">Delete page</h2>
+                        <p class="dnf-card__description">Its child pages move up a level; they are not deleted.</p>
+                    </div>
                 </div>
-            </div>
-            <div class="card-body">
-                <button type="submit" form="deletePageForm" class="btn btn-danger-soft btn-block"
-                        data-confirm="Delete this page? Its child pages move up a level." data-confirm-title="Delete page"
-                        data-confirm-action="Delete page">
-                    <icon name="trash" /> Delete page
-                </button>
-            </div>
-        </section>
+                <div class="dnf-card__body">
+                    <button type="submit" form="deletePageForm" class="dnf-button dnf-button--danger-soft dnf-button--full-width"
+                            data-confirm="Delete this page? Its child pages move up a level." data-confirm-title="Delete page"
+                            data-confirm-action="Delete page">
+                        <dnf-icon name="trash" /> Delete page
+                    </button>
+                </div>
+            </section>
+        }
     </aside>
 </form>
 
-<form method="post" asp-area="Admin" asp-controller="Pages" asp-action="Delete" asp-route-id="@selectedId" id="deletePageForm" hidden>
-    @Html.AntiForgeryToken()
-</form>
+@if (!isHome)
+{
+    <form method="post" asp-area="Admin" asp-controller="Pages" asp-action="Delete" asp-route-id="@selectedId" id="deletePageForm" hidden>
+        @Html.AntiForgeryToken()
+    </form>
+}

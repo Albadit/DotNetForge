@@ -16,8 +16,8 @@ sign-in](../features/authentication.md#external-sign-in).
 | --- | --- |
 | Routes | `GET /admin/providers` (list) · `GET /admin/providers/{key}` (edit) · `POST /admin/providers/{key}` (save); `{key}` is a catalog key (`google`, `microsoft`, `apple`, `facebook`, `github`, `linkedin`, `x`, `discord`, `gitlab`, `twitch`, case-insensitive), anything else → `404` |
 | Title (h1, last breadcrumb) | "Providers" (description "How people sign in: with their email and password, or with an account they already have elsewhere."); the edit screen: the provider's name |
-| Navigation entry | sidebar **Settings → Users & Permissions Plugin → Providers** (icon `lock`) |
-| Breadcrumbs | Settings › Users & Permissions Plugin › Providers (› *provider*) |
+| Navigation entry | sidebar **Settings → Authentication → Providers** (icon `lock`) |
+| Breadcrumbs | Settings › Authentication › Providers (› *provider*) |
 | Linked from | the sidebar; the Email row links to [Advanced Settings](advanced-settings.md), extension rows to [Plugins](plugins.md) |
 
 ## Relevant source files
@@ -46,7 +46,7 @@ Providers (admin layout)
     └── list: name · "Extension <id> · scheme <scheme>" · Enabled/Disabled · [Plugins] - or the empty state
 
 Edit - "<Provider>" (medium width), one form (POST /admin/providers/{key}, antiforgery, autocomplete off)
-├── <form-errors />
+├── <dnf-validation-summary />
 ├── alert (warning, only when a saved secret can't be decrypted) **The saved secret can't be read here**
 └── fieldset (disabled without Settings update)
     ├── card **1. Register this site at <Provider>** · help text · [Open] (the provider's console, new tab)
@@ -149,7 +149,7 @@ secret shows only when someone signs in ("…was cancelled or did not complete")
 
 | Failure | User sees | Recovery |
 | --- | --- | --- |
-| Invalid input | messages in `<form-errors />`, nothing saved | fix and save |
+| Invalid input | messages in `<dnf-validation-summary />`, nothing saved | fix and save |
 | Secret saved on another site (imported export) | **Secret unreadable** on the list, the warning alert on the edit screen; the provider has no button | enter the secret (and Apple key) again |
 | Wrong credentials or callback not registered at the provider | sign-in fails; the provider shows its own error, or the sign-in screen "Signing in with <Provider> was cancelled or did not complete." (warning in the application log) | check the credentials and the callback URL at the provider; open the site at `APP_URL` ([deployment](../guides/deployment.md#public-address-app_url)) |
 | Unknown `{key}` | `404` | - |

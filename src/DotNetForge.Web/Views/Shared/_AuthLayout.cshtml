@@ -10,47 +10,45 @@
     <meta name="color-scheme" content="light dark" />
     <title>@(title is null ? "" : title + " · ")@appName</title>
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
-    <script src="~/js/forge/theme.js" asp-append-version="true"></script>
-    <link rel="stylesheet" href="~/css/forge/tokens.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/forge/base.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/forge/components.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/forge/auth.css" asp-append-version="true" />
-    <script src="~/js/forge/ui.js" asp-append-version="true" defer></script>
+    <script src="~/_content/DotNetForge.UI/dnf-theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/_content/DotNetForge.UI/dnf.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <script src="~/_content/DotNetForge.UI/dnf.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Head", required: false)
 </head>
 @*
     Setup, sign-in and access denied (.docs/architecture/design-system.md#auth-layout). Built-in and isolated from
-    public themes (.docs/features/themes.md).
+    public themes (.docs/features/themes.md). Styles: the Dnf components (dnf.css) plus /css/auth.css.
 *@
-<body class="auth">
-    <a class="skip-link" href="#main">Skip to content</a>
-    <div class="auth-shell">
-        <aside class="auth-panel">
-            <img class="auth-panel-logo logo-on-light" src="~/img/logo.svg" alt="DotNetForge" width="196" height="48" />
-            <img class="auth-panel-logo logo-on-dark" src="~/img/logo-dark.svg" alt="DotNetForge" width="196" height="48" />
-            <div class="auth-pitch">
-                <p class="auth-pitch-title">Build, publish and extend - from one place.</p>
-                <ul class="auth-points">
-                    <li><icon name="pages" /> Pages, media and SEO in a clean editor</li>
-                    <li><icon name="puzzle" /> Extensions without touching the core</li>
-                    <li><icon name="shield" /> Roles, audit log and scoped API tokens</li>
+<body>
+    <a class="dnf-skip-link" href="#main">Skip to content</a>
+    <div class="dnf-auth">
+        <aside class="dnf-auth__panel">
+            <img class="dnf-auth__logo block dark:hidden" src="~/img/logo.svg" alt="DotNetForge" width="196" height="48" />
+            <img class="dnf-auth__logo hidden dark:block" src="~/img/logo-dark.svg" alt="DotNetForge" width="196" height="48" />
+            <div class="dnf-auth__pitch">
+                <p class="dnf-auth__pitch-title">Build, publish and extend - from one place.</p>
+                <ul class="dnf-auth__points">
+                    <li class="dnf-auth__point"><dnf-icon name="pages" /> Pages, media and SEO in a clean editor</li>
+                    <li class="dnf-auth__point"><dnf-icon name="puzzle" /> Extensions without touching the core</li>
+                    <li class="dnf-auth__point"><dnf-icon name="shield" /> Roles, audit log and scoped API tokens</li>
                 </ul>
             </div>
-            <span class="auth-forge" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span class="dnf-auth__forge" aria-hidden="true"><span></span><span></span><span></span></span>
         </aside>
 
-        <main class="auth-main" id="main" tabindex="-1">
-            <div class="auth-top">
-                <a class="auth-mobile-brand" href="/" aria-label="@appName home">
+        <main class="dnf-auth__main" id="main" tabindex="-1">
+            <div class="dnf-auth__top">
+                <a class="dnf-auth__mobile-brand" href="/" aria-label="@appName home">
                     <img src="~/img/logo-mark.svg" alt="" width="32" height="32" />
                     <span>@appName</span>
                 </a>
                 <partial name="_ThemeMenu" />
             </div>
-            <div class="auth-card">
+            <div class="dnf-auth__card">
                 @RenderBody()
             </div>
-            <p class="auth-foot">@appName · Powered by DotNetForge</p>
+            <p class="dnf-auth__foot">@appName · Powered by DotNetForge</p>
         </main>
     </div>
     <partial name="_Feedback" />

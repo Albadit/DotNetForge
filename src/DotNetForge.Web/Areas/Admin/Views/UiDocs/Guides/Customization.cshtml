@@ -1,0 +1,254 @@
+@* Customization (UI docs): the three levels, the cascade layers behind them, BEM naming, states and the Tailwind build. *@
+
+<p>Every component can be changed at three levels, from the smallest change to the largest: pick what the component
+    offers, add Tailwind utilities, or write your own CSS. Customize at the lowest level that does the job. None of them
+    needs <code>!important</code> - the stylesheet's <a href="#layers">cascade layers</a> make each level win over the one
+    below it.</p>
+
+<h2 id="overview">The three levels</h2>
+
+<ui-doc-example id="levels" title="One button, three levels" description="Level 1 picks a variant, size and icon; Level 2 adds Tailwind utilities in class; Level 3 restyles the button through its component tokens in an unlayered stylesheet.">
+    <div class="dnf-stack dnf-stack--sm items-center">
+        <span class="text-xs text-muted">Level 1 - properties</span>
+        <dnf-button variant="Primary" size="Lg" icon="star">variant + size</dnf-button>
+    </div>
+    <div class="dnf-stack dnf-stack--sm items-center">
+        <span class="text-xs text-muted">Level 2 - Tailwind utilities</span>
+        <dnf-button variant="Primary" class="rounded-full px-8 uppercase tracking-wide">class utilities</dnf-button>
+    </div>
+    <div class="dnf-stack dnf-stack--sm items-center">
+        <span class="text-xs text-muted">Level 3 - your CSS</span>
+        <div class="dnf-docs-demo-buttons">
+            <dnf-button variant="Primary">component tokens</dnf-button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<p>The Level 3 button is restyled by this rule in the docs' own stylesheet - written without a layer:</p>
+
+<ui-doc-code id="levels-css" lang="css">
+.dnf-docs-demo-buttons .dnf-button {
+    --dnf-button-radius: var(--dnf-radius-full);
+    --dnf-button-height: var(--dnf-control-lg);
+    --dnf-button-padding-x: var(--dnf-space-6);
+}
+</ui-doc-code>
+
+<table>
+    <thead><tr><th>Level</th><th>What you change</th><th>Where</th><th>Beats</th></tr></thead>
+    <tbody>
+        <tr><td>1 - properties</td><td>a tag helper property or a BEM modifier the component offers</td><td>the markup</td><td>-</td></tr>
+        <tr><td>2 - utilities</td><td>Tailwind utilities in <code>class</code></td><td>the markup</td><td>the component's own styles</td></tr>
+        <tr><td>3 - your CSS</td><td>component tokens, global tokens, rules for a component's elements</td><td>an unlayered stylesheet</td><td>components and utilities</td></tr>
+    </tbody>
+</table>
+
+<h2 id="level-1">Level 1: properties and modifiers</h2>
+<p>Pick what the component offers: a tag helper property, or the BEM modifier it renders. Each component page lists its
+    variants, sizes and modifiers.</p>
+
+<ui-doc-example id="level-1-examples" title="Properties and modifiers" description="A tag helper property and a modifier class are the same thing: the property renders the modifier.">
+    <dnf-button variant="Primary" size="Lg" icon="plus">New page</dnf-button>
+    <button type="button" class="dnf-button dnf-button--danger-soft dnf-button--sm">Delete</button>
+    <input class="dnf-input dnf-input--sm w-48" aria-label="Slug" value="about-us" />
+    <dnf-badge tone="Warning" outline="true">Draft</dnf-badge>
+</ui-doc-example>
+
+<p>How tag helper properties are written - the same for every <code>&lt;dnf-*&gt;</code> tag helper:</p>
+<ul>
+    <li><strong>Enums are member names:</strong> <code>variant="Primary"</code>, <code>size="Sm"</code>, <code>tone="Success"</code>.
+        They render as kebab-case modifiers (<code>DangerSoft</code> becomes <code>dnf-button--danger-soft</code>).</li>
+    <li><strong>Properties are kebab-case attributes;</strong> booleans take <code>"true"</code> or a Razor expression:
+        <code>icon-only="true"</code>, <code>pending="@@isSaving"</code>.</li>
+    <li><strong><code>class</code> is appended last</strong>, after the component's own classes - that is what makes
+        Level 2 work. Other attributes (<code>id</code>, <code>name</code>, <code>form</code>, <code>data-*</code>,
+        <code>aria-*</code>) pass through.</li>
+    <li><strong>Classes are equally valid.</strong> A modifier is always written with its block:
+        <code>class="dnf-button dnf-button--primary"</code>, never the modifier alone.</li>
+</ul>
+
+<table>
+    <thead><tr><th>Enum</th><th>Members (default first)</th></tr></thead>
+    <tbody>
+        <tr><td><code>DnfSize</code></td><td><code>Md</code>, <code>Sm</code>, <code>Lg</code>, <code>Xl</code> - a component with fewer sizes uses the nearest (<code>Xl</code> becomes <code>Lg</code>)</td></tr>
+        <tr><td><code>DnfTone</code></td><td><code>Neutral</code>, <code>Success</code>, <code>Warning</code>, <code>Danger</code>, <code>Info</code>, <code>Primary</code></td></tr>
+        <tr><td><code>DnfButtonVariant</code></td><td><code>Secondary</code>, <code>Primary</code>, <code>Tertiary</code>, <code>Outline</code>, <code>Ghost</code>, <code>Danger</code>, <code>DangerSoft</code></td></tr>
+    </tbody>
+</table>
+
+<h2 id="level-2">Level 2: Tailwind utilities</h2>
+<p>Add Tailwind utilities in <code>class</code>. A tag helper appends your classes after its own, and the
+    <code>utilities</code> layer beats the <code>components</code> layer, so a utility wins over the component's style
+    for the property it sets - whatever the selectors.</p>
+
+<ui-doc-example id="level-2-examples" title="Utilities on components" description="Full width on phones only, a card without its shadow, muted small text, and a component token set through an arbitrary property.">
+    <dnf-button variant="Primary" class="w-full sm:w-auto">Save</dnf-button>
+    <div class="dnf-card shadow-none">
+        <div class="dnf-card__body text-sm text-muted">A card without its shadow.</div>
+    </div>
+    <dnf-button class="[--dnf-button-radius:var(--dnf-radius-full)]">Rounded</dnf-button>
+</ui-doc-example>
+
+<p>The Tailwind scale points at the tokens (<code>Styles/theme.css</code>, a <code>@@theme inline</code> block), so
+    utilities follow the theme, light and dark, and any token you override:</p>
+<table>
+    <thead><tr><th>Tailwind</th><th>Token</th><th>Utilities</th></tr></thead>
+    <tbody>
+        <tr><td>fonts</td><td><code>--dnf-font-sans</code>, <code>--dnf-font-mono</code></td><td><code>font-sans</code>, <code>font-mono</code></td></tr>
+        <tr><td>text sizes</td><td><code>--dnf-text-xs</code> … <code>--dnf-text-4xl</code></td><td><code>text-xs</code> (12px), <code>text-sm</code> (13px), <code>text-base</code> (14px), <code>text-md</code> (15px), <code>text-lg</code> … <code>text-4xl</code></td></tr>
+        <tr><td>radius</td><td><code>--dnf-radius-sm</code> … <code>--dnf-radius-xl</code></td><td><code>rounded-sm</code>, <code>rounded-md</code>, <code>rounded-lg</code>, <code>rounded-xl</code></td></tr>
+        <tr><td>shadows</td><td><code>--dnf-shadow-xs</code> … <code>--dnf-shadow-lg</code></td><td><code>shadow-xs</code> … <code>shadow-lg</code></td></tr>
+        <tr><td>colours</td><td>the semantic <code>--dnf-*</code> colours</td><td><code>background</code>, <code>foreground</code>, <code>muted</code>, <code>subtle</code>, <code>surface</code>, <code>surface-raised</code>, <code>surface-muted</code>, <code>surface-hover</code>, <code>border</code>, <code>border-strong</code>, <code>primary</code>, <code>primary-foreground</code>, <code>primary-text</code>, <code>primary-soft</code>, <code>success</code>, <code>warning</code>, <code>danger</code>, <code>info</code> and their <code>-soft</code> shades - as <code>bg-surface</code>, <code>text-muted</code>, <code>text-danger</code>, <code>border-border</code>, <code>bg-primary-soft</code> …</td></tr>
+    </tbody>
+</table>
+<p>Spacing (<code>gap-2</code>, <code>p-4</code>), breakpoints and Tailwind's own palette are Tailwind's defaults. The
+    <code>dark:</code> variant agrees with the tokens: it applies under <code>data-theme="dark"</code> (on
+    <code>&lt;html&gt;</code> or any subtree) and, with a dark system preference, everywhere except under
+    <code>data-theme="light"</code> (<a href="@UiDocsCatalog.Root/theming">Theming</a>).</p>
+<p>A utility exists only if Tailwind saw it in a scanned file at build time (<a href="#build">the build</a>). Write class
+    names in full - a class put together at runtime (<code>"gap-" + n</code>) is never generated.</p>
+
+<h2 id="level-3">Level 3: your own CSS</h2>
+<p>Write a stylesheet <strong>without</strong> <code>@@layer</code> - an extension's <code>Views/Resources</code> CSS, or
+    the docs' demo rules. Unlayered CSS beats every layer of <code>dnf.css</code> with plain selectors. Three things you
+    can do there:</p>
+
+<ui-doc-code id="level-3-css" lang="css">
+/* a BEM element of one component, inside your own block */
+.audit-summary .dnf-card__title { font-size: var(--dnf-text-lg); }
+
+/* a component token: every modifier only sets tokens, so this re-sizes all variants */
+.toolbar-large .dnf-button { --dnf-button-height: var(--dnf-control-lg); }
+
+/* global tokens: re-theme everything inside an element */
+.my-extension { --dnf-primary: #2563eb; --dnf-radius-md: 2px; }
+</ui-doc-code>
+
+<ul>
+    <li><strong>Component tokens</strong> (<code>--dnf-button-height</code>, <code>--dnf-card-padding</code> …) are
+        declared on the component element itself, so set them on that element - with a selector that matches it, or a
+        Level 2 arbitrary property. Setting them on an ancestor has no effect.</li>
+    <li><strong>Global tokens</strong> (<code>--dnf-primary</code>, <code>--dnf-radius-md</code> …) inherit, so set them on
+        any ancestor. Mark that element <code>dnf-scope</code> when you change a colour: the hover and soft shades are
+        derived again there (<a href="@UiDocsCatalog.Root/theming#subtrees">re-theming a subtree</a>).</li>
+    <li>Use tokens (<code>var(--dnf-…)</code>) rather than literal values, so light and dark keep working.</li>
+    <li>An unlayered rule also beats the utilities written in the markup - don't style the same property in both.</li>
+</ul>
+
+<table>
+    <thead><tr><th>Component tokens</th><th>Component</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-button-height</code>, <code>-padding-x</code>, <code>-gap</code>, <code>-font-size</code>, <code>-radius</code>, <code>-background</code>, <code>-foreground</code>, <code>-border</code>, <code>-shadow</code>, <code>-hover-background</code>, <code>-hover-foreground</code>, <code>-hover-border</code></td><td><a href="@UiDocsCatalog.Root/components/button">Button</a></td></tr>
+        <tr><td><code>--dnf-icon-size</code></td><td><a href="@UiDocsCatalog.Root/components/icon">Icon</a></td></tr>
+        <tr><td><code>--dnf-spinner-size</code></td><td><a href="@UiDocsCatalog.Root/components/spinner">Spinner</a></td></tr>
+        <tr><td><code>--dnf-control-height</code>, <code>--dnf-control-padding-x</code>, <code>--dnf-control-font-size</code></td><td><a href="@UiDocsCatalog.Root/components/input">Input</a>, <a href="@UiDocsCatalog.Root/components/select">Select</a>, <a href="@UiDocsCatalog.Root/components/textarea">Textarea</a></td></tr>
+        <tr><td><code>--dnf-card-padding</code>, <code>-radius</code>, <code>-border</code></td><td><a href="@UiDocsCatalog.Root/components/card">Card</a></td></tr>
+        <tr><td><code>--dnf-badge-background</code>, <code>-foreground</code></td><td><a href="@UiDocsCatalog.Root/components/badge">Badge</a></td></tr>
+        <tr><td><code>--dnf-alert-background</code>, <code>-border</code>, <code>-icon</code></td><td><a href="@UiDocsCatalog.Root/components/alert">Alert</a></td></tr>
+        <tr><td><code>--dnf-toast-icon</code></td><td><a href="@UiDocsCatalog.Root/components/toast">Toast</a></td></tr>
+        <tr><td><code>--dnf-avatar-size</code></td><td><a href="@UiDocsCatalog.Root/components/avatar">Avatar</a></td></tr>
+        <tr><td><code>--dnf-progress-value</code></td><td><a href="@UiDocsCatalog.Root/components/progress">Progress</a></td></tr>
+        <tr><td><code>--dnf-table-cell-y</code>, <code>-x</code></td><td><a href="@UiDocsCatalog.Root/components/table">Table</a></td></tr>
+        <tr><td><code>--dnf-dialog-width</code></td><td><a href="@UiDocsCatalog.Root/components/dialog">Dialog</a></td></tr>
+    </tbody>
+</table>
+<p>Component markup and token names are the API; restyle a component's internals only as far as you need, since
+    anything else may change.</p>
+
+<h2 id="layers">Cascade layers</h2>
+<p><code>dnf.css</code> puts Tailwind and the library into four
+    <a href="https://developer.mozilla.org/docs/Web/CSS/@@layer">cascade layers</a>, declared lowest to highest. A later
+    layer wins over an earlier one whatever the selector specificity, and CSS outside any layer wins over all of them.</p>
+<table>
+    <thead><tr><th>Layer</th><th>Holds</th><th>Source</th></tr></thead>
+    <tbody>
+        <tr><td><code>theme</code></td><td>Tailwind's design scale as custom properties, pointing at the <code>--dnf-*</code> tokens</td><td>Tailwind, <code>Styles/theme.css</code></td></tr>
+        <tr><td><code>base</code></td><td>Tailwind's preflight reset, the <code>--dnf-*</code> tokens, element styles (body, headings, links, <code>code</code>, <code>kbd</code>, focus)</td><td>preflight, <code>Styles/tokens.css</code>, <code>Styles/base.css</code></td></tr>
+        <tr><td><code>components</code></td><td>every <code>.dnf-*</code> class</td><td><code>Styles/components/*.css</code></td></tr>
+        <tr><td><code>utilities</code></td><td>the Tailwind utilities used in the scanned markup</td><td>generated at build time</td></tr>
+        <tr><td><em>unlayered</em></td><td>your stylesheet (Level 3)</td><td>an extension's CSS, the docs' demo rules</td></tr>
+    </tbody>
+</table>
+<ul>
+    <li>A <strong>Tailwind utility</strong> on an element beats the component's own style (Level 2).</li>
+    <li>An <strong>unlayered stylesheet</strong> beats components and utilities with ordinary selectors (Level 3).</li>
+    <li>The CMS's own screen stylesheets (<code>src/DotNetForge.Web/wwwroot/css/</code>) put their rules in
+        <code>@@layer components</code>, after the library's, so utilities in the CMS's views still win over them.</li>
+    <li><strong>No <code>!important</code>.</strong> The library's CSS has none - a test keeps it that way. The only
+        <code>!important</code> in the compiled file is Tailwind preflight's <code>[hidden]</code> rule, which keeps
+        <code>hidden</code> working whatever <code>display</code> a component sets.</li>
+</ul>
+
+<h2 id="bem">BEM naming</h2>
+<table>
+    <thead><tr><th>Part</th><th>Pattern</th><th>Example</th></tr></thead>
+    <tbody>
+        <tr><td>Block</td><td><code>dnf-&lt;block&gt;</code></td><td><code>dnf-card</code>, <code>dnf-input-group</code></td></tr>
+        <tr><td>Element</td><td><code>dnf-&lt;block&gt;__&lt;element&gt;</code></td><td><code>dnf-card__title</code>, <code>dnf-input-group__icon</code></td></tr>
+        <tr><td>Modifier</td><td><code>dnf-&lt;block&gt;--&lt;modifier&gt;</code>, <code>dnf-&lt;block&gt;__&lt;element&gt;--&lt;modifier&gt;</code></td><td><code>dnf-card--danger</code>, <code>dnf-table__cell--actions</code></td></tr>
+    </tbody>
+</table>
+<ul>
+    <li>A modifier is always written with its block.</li>
+    <li>Plain layout and typography are Tailwind utilities, not new classes.</li>
+    <li>Your own classes use a prefix of your own (<code>reports-…</code>), never <code>dnf-</code>. The CMS's screen CSS
+        (<code>dnf-shell</code>, <code>dnf-sidebar</code>, <code>dnf-docs</code> …) is not part of the library.</li>
+</ul>
+
+<h2 id="states">States</h2>
+<p>State is an attribute, never a class, so the CSS, your markup and <code>dnf.js</code> share one vocabulary. Style a
+    state of your own markup with the same selectors.</p>
+<table>
+    <thead><tr><th>Attribute</th><th>Meaning</th><th>Styled on</th><th>Set by</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-hovered="true"</code></td><td>hovered (alongside <code>:hover</code>)</td><td>button, input, select, textarea</td><td>your code (tests, visual states)</td></tr>
+        <tr><td><code>data-pressed="true"</code></td><td>pressed (alongside <code>:active</code>)</td><td>button</td><td>your code</td></tr>
+        <tr><td><code>data-focus-visible="true"</code></td><td>keyboard focus (alongside <code>:focus-visible</code>)</td><td>button</td><td>your code</td></tr>
+        <tr><td><code>data-pending</code></td><td>busy: spinner shown, clicks ignored</td><td>button</td><td><code>pending="true"</code>, <code>data-pending-on-submit</code></td></tr>
+        <tr><td><code>data-selected="true"</code></td><td>selected item</td><td>table rows</td><td>collection selection</td></tr>
+        <tr><td><code>data-dragging="true"</code></td><td>dragged row, or files over the drop area</td><td>table rows, file upload</td><td>file upload; rows: your script</td></tr>
+        <tr><td><code>data-invalid="true"</code></td><td>invalid value</td><td>input, select, textarea, field, code block</td><td>your markup</td></tr>
+        <tr><td><code>data-open</code></td><td>open dropdown or popover panel</td><td>- (a hook)</td><td><code>dnf.js</code></td></tr>
+        <tr><td><code>data-tabbed="true"</code></td><td>tabs show one panel at a time</td><td>tab panel</td><td><code>dnf.js</code></td></tr>
+        <tr><td><code>data-leaving="true"</code></td><td>toast fading out</td><td>toast</td><td><code>dnf.js</code></td></tr>
+        <tr><td><code>aria-pressed="true"</code></td><td>toggled on</td><td>button, segmented item</td><td>your markup; <code>dnf.js</code> toggles</td></tr>
+        <tr><td><code>aria-current="page"</code></td><td>the current page or item</td><td>button, tab, segmented item, breadcrumbs</td><td>your markup; pager buttons</td></tr>
+        <tr><td><code>aria-checked="true"</code></td><td>checked option</td><td>segmented item, dropdown item</td><td>your markup; theme switch</td></tr>
+        <tr><td><code>aria-invalid="true"</code></td><td>invalid value</td><td>input, select, textarea, checkbox, radio</td><td>your markup</td></tr>
+        <tr><td><code>aria-disabled="true"</code></td><td>disabled link or custom control</td><td>button, input, select, textarea, dropdown item</td><td><code>&lt;dnf-button href disabled&gt;</code></td></tr>
+    </tbody>
+</table>
+<p>Native states - <code>:disabled</code>, <code>:checked</code>, <code>:indeterminate</code>, <code>:read-only</code>,
+    <code>[open]</code> - are used wherever an element has them, and ASP.NET's <code>input-validation-error</code> class
+    counts as invalid.</p>
+
+<h2 id="build">How the stylesheet is built</h2>
+<p>Tailwind CSS v4 runs at <strong>build time only</strong>: the browser gets one static <code>dnf.css</code>, and there is
+    no Node.js and no <code>package.json</code>. <code>src/DotNetForge.UI/build/Tailwind.targets</code> runs Tailwind's
+    standalone CLI on <code>Styles/dnf.css</code> and writes <code>wwwroot/dnf.css</code> (git-ignored) whenever an input
+    changed - so <code>dotnet build</code> of the solution, the web host or any project that references the library keeps
+    it current.</p>
+<table>
+    <thead><tr><th>Item</th><th>Value</th></tr></thead>
+    <tbody>
+        <tr><td>Tailwind version</td><td><code>4.3.3</code>, downloaded once into <code>tools/tailwind/4.3.3/</code> at the repository root and checked against a pinned SHA-256</td></tr>
+        <tr><td>Command</td><td><code>tailwindcss --input Styles/dnf.css --output wwwroot/dnf.css</code>, plus <code>--minify</code> in Release</td></tr>
+        <tr><td>Rebuilt when</td><td>a stylesheet, the library's C# or scripts, a view, C# or script of the web host, or an extension's view, C# or script changed</td></tr>
+        <tr><td><code>DNF_TAILWIND_PATH</code></td><td>use this <code>tailwindcss</code> binary (same version) instead of downloading - offline or locked-down machines</td></tr>
+        <tr><td><code>-p:DnfSkipTailwind=true</code></td><td>compile without regenerating <code>dnf.css</code> (parallel builds of one checkout); a missing file is still generated</td></tr>
+    </tbody>
+</table>
+<p>Tailwind generates only the utilities it finds in the scanned files. <code>Styles/dnf.css</code> registers them:</p>
+
+<ui-doc-code id="sources" lang="css">
+@@source "../";                                  /* src/DotNetForge.UI: tag helpers, dnf.js */
+@@source "../../DotNetForge.Web";                 /* views, C# that renders markup, screen scripts */
+@@source "../../../extensions";                   /* the bundled extensions */
+@@source not "../../DotNetForge.Web/wwwroot/lib";
+@@source not "../../DotNetForge.Web/wwwroot/builder";
+@@source not "../../DotNetForge.Web/wwwroot/js/builder";
+</ui-doc-code>
+
+<p>Git-ignored folders (<code>bin/</code>, <code>obj/</code>) are skipped. An extension built outside this repository is
+    not scanned: it sticks to component classes and tokens, or compiles its own utilities
+    (<a href="@UiDocsCatalog.Root/extensions#tailwind">Tailwind in an extension</a>).</p>

@@ -1,0 +1,55 @@
+@model MoveDialogModel
+@{
+    const int SearchFrom = 8;
+    var titleId = $"{Model.Id}-title";
+}
+@*
+    Choosing where something moves (move-dialog.js opens it; .docs/pages/media.md#move-dialog). Its radios and button
+    belong to the screen's form, so the choice posts with that form. Without JavaScript nothing opens it: the bulk bar and
+    the row menus that do are JavaScript-only too.
+*@
+<dialog class="dnf-dialog dnf-dialog--md" id="@Model.Id" aria-labelledby="@titleId" tabindex="-1" data-dialog-light-dismiss>
+    <div class="dnf-dialog__header">
+        <div>
+            <h2 class="dnf-dialog__title" id="@titleId">@Model.Title</h2>
+            <p class="dnf-dialog__description" data-move-subject></p>
+        </div>
+    </div>
+    <div class="dnf-dialog__body">
+        @if (Model.Targets.Count >= SearchFrom)
+        {
+            <div class="dnf-input-group">
+                <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                <label class="sr-only" for="@Model.Id-search">Search</label>
+                <input id="@Model.Id-search" type="search" class="dnf-input dnf-input--sm" placeholder="Search" autocomplete="off" data-move-search />
+            </div>
+        }
+        <div class="dnf-move-list" role="radiogroup" aria-labelledby="@titleId">
+            <label class="dnf-move-option" data-move-option="" data-search="root">
+                <input type="radio" class="dnf-radio" name="@Model.Field" value="" form="@Model.Form" />
+                <dnf-icon name="home" size="Sm" />
+                <span class="dnf-move-option__label">Root</span>
+                <span class="dnf-move-option__note" data-move-note></span>
+            </label>
+            @foreach (var target in Model.Targets)
+            {
+                <label class="dnf-move-option" data-move-option="@target.Id" data-depth="@(target.Depth + 1)"
+                       data-ancestors="@string.Join(' ', target.Ancestors)" data-search="@target.Label @target.Hint">
+                    <input type="radio" class="dnf-radio" name="@Model.Field" value="@target.Id" form="@Model.Form" />
+                    <dnf-icon name="@Model.Icon" size="Sm" />
+                    <span class="dnf-move-option__label">@target.Label</span>
+                    @if (target.Hint is not null)
+                    {
+                        <span class="dnf-move-option__hint">@target.Hint</span>
+                    }
+                    <span class="dnf-move-option__note" data-move-note></span>
+                </label>
+            }
+        </div>
+        <p class="text-sm text-muted" data-move-empty hidden>Nothing matches the search.</p>
+    </div>
+    <div class="dnf-dialog__footer">
+        <button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Cancel</button>
+        <button type="submit" class="dnf-button dnf-button--primary" form="@Model.Form" formaction="@Model.Action" data-move-submit disabled><dnf-icon name="arrow-right" /> Move here</button>
+    </div>
+</dialog>

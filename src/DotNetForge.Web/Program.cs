@@ -43,8 +43,19 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseResponseCompression();
 app.UseMiddleware<SecurityHeadersMiddleware>();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // asp-append-version: ?v= is a hash of the file, so that URL's content never changes and needs no checking again.
+    OnPrepareResponse = file =>
+    {
+        if (file.Context.Request.Query.ContainsKey("v"))
+        {
+            file.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        }
+    },
+});
 app.UseRouting();
 
 // Install detection gates everything except the setup wizard until setup completes.

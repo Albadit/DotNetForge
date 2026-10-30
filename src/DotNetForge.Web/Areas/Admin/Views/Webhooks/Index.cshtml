@@ -8,32 +8,32 @@
 @section Actions {
     @if (Model.CanCreate)
     {
-        <a class="btn btn-primary" href="/admin/webhooks/create"><icon name="plus" /> Create webhook</a>
+        <a class="dnf-button dnf-button--primary" href="/admin/webhooks/create"><dnf-icon name="plus" /> Create webhook</a>
     }
 }
 
-<section class="card" aria-labelledby="webhooks-title">
-    <div class="card-header">
+<section class="dnf-card" aria-labelledby="webhooks-title">
+    <div class="dnf-card__header">
         <div>
-            <h2 class="card-title" id="webhooks-title">Webhooks</h2>
-            <p class="card-description">@Model.Rows.Count total · @Model.Rows.Count(r => r.Webhook.Enabled) enabled</p>
+            <h2 class="dnf-card__title" id="webhooks-title">Webhooks</h2>
+            <p class="dnf-card__description">@Model.Rows.Count total · @Model.Rows.Count(r => r.Webhook.Enabled) enabled</p>
         </div>
     </div>
     @if (Model.Rows.Count == 0)
     {
-        <empty-state icon="webhook" title="No webhooks yet" text="Create one to send entry and media changes to another system as they happen." />
+        <dnf-empty-state icon="webhook" title="No webhooks yet" description="Create one to send entry and media changes to another system as they happen." />
     }
     else
     {
-        <div class="table-wrap">
-            <table class="table table-stack">
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
                 <thead>
                     <tr>
                         <th scope="col">Name</th>
                         <th scope="col">Events</th>
                         <th scope="col">Status</th>
                         <th scope="col">Last delivery</th>
-                        <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -41,29 +41,29 @@
                     {
                         var w = row.Webhook;
                         <tr>
-                            <td class="cell-lead">
-                                <a class="cell-primary" href="/admin/webhooks/@w.Id">@w.Name</a>
-                                <span class="cell-sub text-truncate webhook-url" title="@w.Url">@w.Url</span>
+                            <td class="dnf-table__cell--lead">
+                                <a class="dnf-table__primary" href="/admin/webhooks/@w.Id">@w.Name</a>
+                                <span class="dnf-table__secondary truncate max-w-[28rem]" title="@w.Url">@w.Url</span>
                             </td>
                             <td data-label="Events">
-                                <span class="cluster">
+                                <span class="dnf-cluster">
                                     @foreach (var e in w.Events)
                                     {
-                                        <badge><code>@e</code></badge>
+                                        <dnf-badge><code>@e</code></dnf-badge>
                                     }
                                 </span>
                             </td>
-                            <td data-label="Status"><badge tone="@(w.Enabled ? Tone.Success : Tone.Neutral)" dot="true">@(w.Enabled ? "Enabled" : "Disabled")</badge></td>
+                            <td data-label="Status"><dnf-badge tone="@(w.Enabled ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(w.Enabled ? "Enabled" : "Disabled")</dnf-badge></td>
                             <td data-label="Last delivery">
                                 @if (row.Last is { } last)
                                 {
-                                    <span class="cluster">
-                                        <badge tone="@(last.Outcome == WebhookOutcome.Success ? Tone.Success : Tone.Danger)">@(last.ResponseStatusCode?.ToString() ?? "failed")</badge>
-                                        <timestamp value="@last.RequestTimestamp" />
+                                    <span class="dnf-cluster">
+                                        <dnf-badge tone="@(last.Outcome == WebhookOutcome.Success ? DnfTone.Success : DnfTone.Danger)">@(last.ResponseStatusCode?.ToString() ?? "failed")</dnf-badge>
+                                        <dnf-timestamp value="@last.RequestTimestamp" />
                                     </span>
                                     @if (row.Failures24h > 0)
                                     {
-                                        <span class="cell-sub">@row.Failures24h failed attempt@(row.Failures24h == 1 ? "" : "s") in 24 h</span>
+                                        <span class="dnf-table__secondary">@row.Failures24h failed attempt@(row.Failures24h == 1 ? "" : "s") in 24 h</span>
                                     }
                                 }
                                 else
@@ -71,23 +71,23 @@
                                     <span class="text-subtle">Never</span>
                                 }
                             </td>
-                            <td class="col-actions">
-                                <action-menu label="Actions for @w.Name">
-                                    <menu-link href="/admin/webhooks/@w.Id" icon="pencil">@(Model.CanUpdate ? "Edit" : "View")</menu-link>
-                                    <menu-link href="/admin/webhooks/@w.Id/deliveries" icon="list">Delivery log</menu-link>
+                            <td class="dnf-table__cell--actions">
+                                <dnf-dropdown label="Actions for @w.Name">
+                                    <dnf-dropdown-link href="/admin/webhooks/@w.Id" icon="pencil">@(Model.CanUpdate ? "Edit" : "View")</dnf-dropdown-link>
+                                    <dnf-dropdown-link href="/admin/webhooks/@w.Id/deliveries" icon="list">Delivery log</dnf-dropdown-link>
                                     @if (Model.CanUpdate)
                                     {
-                                        <menu-post action="/admin/webhooks/@w.Id/test" icon="send">Send test delivery</menu-post>
-                                        <menu-post action="/admin/webhooks/@w.Id/@(w.Enabled ? "disable" : "enable")" icon="power">@(w.Enabled ? "Disable" : "Enable")</menu-post>
+                                        <dnf-dropdown-post action="/admin/webhooks/@w.Id/test" icon="send">Send test delivery</dnf-dropdown-post>
+                                        <dnf-dropdown-post action="/admin/webhooks/@w.Id/@(w.Enabled ? "disable" : "enable")" icon="power">@(w.Enabled ? "Disable" : "Enable")</dnf-dropdown-post>
                                     }
                                     @if (Model.CanDelete)
                                     {
-                                        <menu-separator />
-                                        <menu-post action="/admin/webhooks/@w.Id/delete" icon="trash" danger="true"
+                                        <dnf-dropdown-separator />
+                                        <dnf-dropdown-post action="/admin/webhooks/@w.Id/delete" icon="trash" danger="true"
                                                    confirm="Delete '@w.Name' and its delivery log? Its receiver gets nothing more."
-                                                   confirm-title="Delete webhook" confirm-action="Delete">Delete</menu-post>
+                                                   confirm-title="Delete webhook" confirm-action="Delete">Delete</dnf-dropdown-post>
                                     }
-                                </action-menu>
+                                </dnf-dropdown>
                             </td>
                         </tr>
                     }

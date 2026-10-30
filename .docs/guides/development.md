@@ -7,7 +7,9 @@ Set up, run, debug and change DotNetForge CMS locally. Architecture: [codebase.m
 - .NET SDK 10.0 - `global.json` pins `10.0.100` with `rollForward: latestFeature` (any 10.0.1xx+ feature band works).
 - PostgreSQL - the CMS database. Easiest: Docker (`docker/databases/postgres.yml`), or any local PostgreSQL server.
   The integration tests need it too ([testing](testing.md#databases)).
-- No Node.js: the frontend is plain CSS/JS in `src/DotNetForge.Web/wwwroot/` ([design system](../architecture/design-system.md)).
+- Node.js is optional, for the [JavaScript lint](testing.md#javascript) and the page builder fixtures: the frontend is
+  server-rendered Razor, CSS and plain JS, and the app ships nothing from npm. The UI stylesheet is compiled by the Tailwind
+  CSS standalone CLI, which the first build downloads (about 112 MB on Windows, [Tailwind on the first build](#tailwind-css-on-the-first-build)).
 
 ## First run
 
@@ -176,22 +178,56 @@ extension documents ([configuration → extension settings](../features/configur
 
 ## Working on the UI
 
-Every built-in screen is built from the Forge design system - read
-[design-system.md](../architecture/design-system.md) first (components, tag helpers, behaviours, accessibility).
+Every built-in screen is built from the DotNetForge UI library - read [`.docs/ui/`](../ui/README.md) (components,
+tokens, utilities, behaviours) and [design-system.md](../architecture/design-system.md) (how the CMS uses it: layouts,
+feedback, building a screen) first.
 
 | Change | Where | Picked up |
 | --- | --- | --- |
-| Styles (tokens, components, screen layout) | `src/DotNetForge.Web/wwwroot/css/forge/` (`tokens.css`, `components.css`, `admin.css`, ...) | on reload (files are served from `wwwroot`, links carry `asp-append-version`) |
-| Behaviour | `wwwroot/js/forge/ui.js` (data attributes), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types), a new page script via `@section Scripts` | on reload |
-| Icons | `wwwroot/img/icons.svg` (`<symbol id="…">`, Lucide paths) | on reload |
-| Views, layouts, partials | `Areas/Admin/Views/`, `Views/` | on the next request (Razor runtime compilation is on) |
-| Tag helpers, navigation tree | `src/DotNetForge.Web/Ui/UiTagHelpers.cs`, `Areas/Admin/Navigation/AdminNavigation.cs` | rebuild and restart |
+| Components, tokens, base styles | `src/DotNetForge.UI/Styles/` (`tokens.css`, `components/*.css`) | `dotnet build` (regenerates `wwwroot/dnf.css`), then reload |
+| Tailwind utilities in a view or script | just write them (`class="flex gap-2 text-muted"`) | `dotnet build` - Tailwind adds only the utilities it finds in the scanned files ([styling](../ui/styling.md#what-is-scanned)) |
+| Screen-specific CSS | `src/DotNetForge.Web/wwwroot/css/` (`admin/*.css`, `auth.css`, `site.css`) | on reload (links carry `asp-append-version`) |
+| Behaviours | `src/DotNetForge.UI/wwwroot/dnf.js` (`data-*` hooks); a page script in `src/DotNetForge.Web/wwwroot/js/admin/` via `@section Scripts` | on reload |
+| Icons | `src/DotNetForge.UI/wwwroot/icons.svg` (`<symbol id="…">`, Lucide paths) | on reload |
+| Views, layouts, partials | `Areas/Admin/Views/`, `Views/` | on the next request (Razor runtime compilation is on); a new utility class needs a build |
+| Tag helpers, navigation tree | `src/DotNetForge.UI/Components/`, `Areas/Admin/Navigation/AdminNavigation.cs` | rebuild and restart |
 
-- Check both themes (theme menu in the top bar) and a phone width (below 64rem the sidebar is a drawer).
+- Check both themes (theme menu in the top bar) and a phone width (below 64rem the sidebar is a drawer); the
+  **UI docs** (`/admin/docs/ui`, account menu) document every component with live examples.
 - In Development the CSP is report-only: watch the browser console for violations, then run
   `dotnet test tests/DotNetForge.IntegrationTests --filter AdminUiTests` (inline style/script, one `<h1>`, icons
   present in the sprite).
-- No CSS/JS libraries, web fonts or CDNs; no build step.
+- No CSS/JS libraries, web fonts or CDNs. The build steps are Tailwind, run by MSBuild (below), and a minifier at publish time (below).
+
+### Development and production builds
+
+| | Development (`dotnet build`, Debug) | Production (`dotnet publish -c Release`) |
+| --- | --- | --- |
+| `dnf.css` | readable, with an inline source map | minified, no source map |
+| Screen CSS (`wwwroot/css`) | the source as it is | minified by the Tailwind binary |
+| Scripts (`wwwroot/js/admin`, `dnf.js`, `dnf-theme.js`) | the source as it is, so no source map is needed | minified by `build/DotNetForge.Minify` (NUglify, at publish time only; it is not part of the running app) |
+| Page builder (`wwwroot/js/builder`) and Monaco | as they are | as they are: the builder's source is what the C# renderer must match |
+| Compression | stylesheets, scripts, icons, JSON | the same, plus screens |
+| Native libraries | every platform | every platform without their debug symbols, or one platform with `-r` / `--use-current-runtime` (the [Docker image](deployment.md#docker)); English resources only |
+
+`dnf.css` is built again when the configuration changes, so a Release build after a Debug one can't ship the readable
+file. Every asset URL carries `?v=` (a hash of the file, `asp-append-version`) and such a URL is cached for a year; change
+the file and the URL changes. Screens and API answers are not cached that way.
+
+### Tailwind CSS on the first build
+
+`src/DotNetForge.UI/build/Tailwind.targets` compiles `Styles/dnf.css` into `wwwroot/dnf.css` (git-ignored) on every
+build whose inputs changed. The first build on a machine **downloads** the Tailwind CSS 4.3.3 standalone CLI for the
+platform from GitHub into `tools/tailwind/4.3.3/` at the repository root (git-ignored; the Windows binary is about
+112 MB) and checks its SHA-256 - later builds reuse it. Details: [styling → build](../ui/styling.md#build).
+
+| Situation | What to do |
+| --- | --- |
+| No internet / a proxy blocks GitHub | put a `tailwindcss` 4.3.3 binary somewhere and set `DNF_TAILWIND_PATH` to it (environment variable or `-p:DNF_TAILWIND_PATH=...`) |
+| "does not match its SHA-256" | the download was corrupted or replaced; it was deleted - build again, or use `DNF_TAILWIND_PATH` |
+| "No Tailwind CSS 4.3.3 binary is known for '…'" | an unsupported platform: use `DNF_TAILWIND_PATH` |
+| Several builds of one checkout in parallel | pass `-p:DnfSkipTailwind=true` to all but one: they compile without rewriting `wwwroot/dnf.css` (it is still generated when it does not exist) |
+| A utility class has no effect | it was not in a scanned file at the last build: rebuild; build class names in full, never from string pieces |
 
 ## Database and migrations
 
@@ -247,8 +283,9 @@ Step-by-step checklist: [database-change skill](../../.claude/skills/database-ch
 - Never write runtime files under the content root; use `IFileStorage` (or the OS temp directory for transient
   work). `ReadOnlyDeploymentTests` enforces this.
 - No inline `<script>`, event-handler attributes, `style=` or `<style>` in views (the Content-Security-Policy blocks
-  them in production); put behaviour in `src/DotNetForge.Web/wwwroot/js/forge/` (e.g. `data-confirm` handled by
-  `ui.js`), styles in `src/DotNetForge.Web/wwwroot/css/forge/`, and render validation errors with `<form-errors />`
+  them in production); put behaviour in a `dnf.js` hook (e.g. `data-confirm`) or a page script in
+  `src/DotNetForge.Web/wwwroot/js/admin/`, styles in Dnf components, Tailwind utilities or
+  `src/DotNetForge.Web/wwwroot/css/`, and render validation errors with `<dnf-validation-summary />`
   ([design system](../architecture/design-system.md)).
 - Follow the [architectural rules](../architecture/codebase.md#architectural-rules-for-changes).
 
@@ -322,7 +359,7 @@ testing and linting targets in [testing → Planned](testing.md#planned-not-impl
 
 | Item | Target | Today |
 | --- | --- | --- |
-| Node.js + npm (optional) | `npm install`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | no `package.json`, no ESLint |
+| Node.js + npm (optional) | `npm ci`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | ✔ [JavaScript lint](testing.md#javascript) |
 | Run URL | the app is reached at `APP_URL` | Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS`; see [configuration → Planned](../features/configuration.md#planned-not-implemented) |
 | PostgreSQL end to end | create the database and a user; set the `Host=…` connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `docker/databases/postgres.yml` |
 | Switching provider | only a `.env` change plus migrations | ✘ by design: the CMS database is PostgreSQL only; other databases are additional databases ([database configuration](../database/configuration.md)) |

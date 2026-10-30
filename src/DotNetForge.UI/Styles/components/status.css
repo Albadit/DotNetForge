@@ -1,0 +1,155 @@
+/*
+  Status components (.docs/ui/components/badge.md, chip.md, alert.md, toast.md, avatar.md, progress.md):
+  DnfBadge, DnfStatusDot, DnfChip, DnfAlert, DnfValidationSummary, DnfToast, DnfAvatar, DnfProgress.
+  Tones: --success --warning --danger --info --primary (neutral is the default).
+*/
+
+@layer components {
+    /* ---- Badge ------------------------------------------------------------------------------------------------- */
+    .dnf-badge {
+        --dnf-badge-background: var(--dnf-surface-muted);
+        --dnf-badge-foreground: var(--dnf-muted-foreground);
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        height: 1.375rem;
+        padding: 0 0.5rem;
+        border-radius: var(--dnf-radius-full);
+        background: var(--dnf-badge-background);
+        color: var(--dnf-badge-foreground);
+        font-size: var(--dnf-text-xs);
+        font-weight: var(--dnf-weight-semibold);
+        line-height: 1;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .dnf-badge--success { --dnf-badge-background: var(--dnf-success-soft); --dnf-badge-foreground: var(--dnf-success); }
+    .dnf-badge--warning { --dnf-badge-background: var(--dnf-warning-soft); --dnf-badge-foreground: var(--dnf-warning); }
+    .dnf-badge--danger { --dnf-badge-background: var(--dnf-danger-soft); --dnf-badge-foreground: var(--dnf-danger); }
+    .dnf-badge--info { --dnf-badge-background: var(--dnf-info-soft); --dnf-badge-foreground: var(--dnf-info); }
+    .dnf-badge--primary { --dnf-badge-background: var(--dnf-primary-soft); --dnf-badge-foreground: var(--dnf-primary-text); }
+    .dnf-badge--outline { background: transparent; box-shadow: inset 0 0 0 1px var(--dnf-border-strong); }
+    .dnf-badge--mono { font-family: var(--dnf-font-mono); letter-spacing: 0.02em; }
+    .dnf-badge--dot::before { content: ""; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; }
+
+    /* A status dot without text; always paired with an accessible label. */
+    .dnf-status-dot { display: inline-block; flex: 0 0 auto; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--dnf-subtle-foreground); }
+    .dnf-status-dot--success { background: var(--dnf-success); }
+    .dnf-status-dot--warning { background: var(--dnf-warning); }
+    .dnf-status-dot--danger { background: var(--dnf-danger); }
+    .dnf-status-dot--info { background: var(--dnf-info); }
+    .dnf-status-dot--primary { background: var(--dnf-primary); }
+
+    /* ---- Chip: a removable value (selected relations, tags) ----------------------------------------------------- */
+    .dnf-chip {
+        display: inline-flex; align-items: center; gap: var(--dnf-space-1);
+        min-height: 1.75rem;
+        padding: 0.1rem 0.1rem 0.1rem var(--dnf-space-3);
+        border: 1px solid var(--dnf-border-strong);
+        border-radius: var(--dnf-radius-full);
+        background: var(--dnf-surface-muted);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-chip:not(:has(> .dnf-chip__remove)) { padding-inline-end: var(--dnf-space-3); }
+    .dnf-chip__remove {
+        display: grid; place-items: center;
+        width: 1.5rem; height: 1.5rem;
+        padding: 0; border: 0; border-radius: 50%;
+        background: none; color: var(--dnf-muted-foreground);
+    }
+    .dnf-chip__remove:hover { background: var(--dnf-surface-hover); color: var(--dnf-foreground); }
+    .dnf-chip-list { display: flex; flex-wrap: wrap; gap: var(--dnf-space-2); }
+
+    /* ---- Alert ------------------------------------------------------------------------------------------------- */
+    .dnf-alert {
+        --dnf-alert-background: var(--dnf-surface-muted);
+        --dnf-alert-border: var(--dnf-border);
+        --dnf-alert-icon: var(--dnf-muted-foreground);
+        display: flex; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-3) var(--dnf-space-4);
+        border: 1px solid var(--dnf-alert-border);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-alert-background);
+        color: var(--dnf-foreground);
+        font-size: var(--dnf-text-base);
+    }
+    .dnf-alert__icon { margin-top: 0.1rem; color: var(--dnf-alert-icon); }
+    .dnf-alert__body { display: flex; flex-direction: column; gap: var(--dnf-space-1); min-width: 0; }
+    .dnf-alert__title { font-weight: var(--dnf-weight-semibold); }
+    .dnf-alert__body ul { margin: 0; padding-inline-start: 1.1rem; list-style: disc; }
+    .dnf-alert--success { --dnf-alert-background: var(--dnf-success-soft); --dnf-alert-border: transparent; --dnf-alert-icon: var(--dnf-success); }
+    .dnf-alert--warning { --dnf-alert-background: var(--dnf-warning-soft); --dnf-alert-border: transparent; --dnf-alert-icon: var(--dnf-warning); }
+    .dnf-alert--danger { --dnf-alert-background: var(--dnf-danger-soft); --dnf-alert-border: transparent; --dnf-alert-icon: var(--dnf-danger); }
+    .dnf-alert--info { --dnf-alert-background: var(--dnf-info-soft); --dnf-alert-border: transparent; --dnf-alert-icon: var(--dnf-info); }
+
+    /* Every model-state error of a request (<dnf-validation-summary />). */
+    .dnf-validation-summary {
+        padding: var(--dnf-space-3) var(--dnf-space-4);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-danger-soft);
+        color: var(--dnf-danger);
+        font-weight: var(--dnf-weight-medium);
+    }
+    .dnf-validation-summary ul { margin: 0; padding-inline-start: 1.1rem; list-style: disc; }
+
+    /* ---- Toast ------------------------------------------------------------------------------------------------- */
+    .dnf-toast-region {
+        position: fixed; right: var(--dnf-space-4); bottom: var(--dnf-space-4); z-index: var(--dnf-z-toast);
+        display: flex; flex-direction: column; gap: var(--dnf-space-2);
+        width: min(24rem, calc(100vw - 2rem));
+        pointer-events: none;
+    }
+    .dnf-toast {
+        --dnf-toast-icon: var(--dnf-info);
+        display: flex; align-items: center; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-3) var(--dnf-space-3) var(--dnf-space-3) var(--dnf-space-4);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface-raised);
+        box-shadow: var(--dnf-shadow-lg);
+        pointer-events: auto;
+        animation: dnf-toast-in var(--dnf-duration) var(--dnf-ease);
+    }
+    .dnf-toast__icon { flex: 0 0 auto; color: var(--dnf-toast-icon); }
+    .dnf-toast__message { flex: 1; margin: 0; font-weight: var(--dnf-weight-medium); }
+    .dnf-toast--success { --dnf-toast-icon: var(--dnf-success); }
+    .dnf-toast--warning { --dnf-toast-icon: var(--dnf-warning); }
+    .dnf-toast--danger { --dnf-toast-icon: var(--dnf-danger); }
+    .dnf-toast--info { --dnf-toast-icon: var(--dnf-info); }
+    .dnf-toast[data-leaving="true"] { opacity: 0; transition: opacity var(--dnf-duration) var(--dnf-ease); }
+    @keyframes dnf-toast-in { from { opacity: 0; transform: translateY(0.5rem); } }
+
+    /* ---- Avatar ------------------------------------------------------------------------------------------------ */
+    .dnf-avatar {
+        --dnf-avatar-size: 2rem;
+        display: inline-grid; place-items: center; flex: 0 0 auto;
+        width: var(--dnf-avatar-size); height: var(--dnf-avatar-size);
+        overflow: hidden;
+        border-radius: 50%;
+        background: var(--dnf-primary-soft);
+        color: var(--dnf-primary-text);
+        font-size: var(--dnf-text-xs);
+        font-weight: var(--dnf-weight-bold);
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+    .dnf-avatar > img { width: 100%; height: 100%; object-fit: cover; }
+    .dnf-avatar--sm { --dnf-avatar-size: 1.625rem; font-size: 0.6875rem; }
+    .dnf-avatar--lg { --dnf-avatar-size: 3rem; font-size: var(--dnf-text-md); }
+
+    /* ---- Progress: <progress class="dnf-progress" value max> or a div with __bar ------------------------------- */
+    .dnf-progress {
+        display: block;
+        width: 100%; height: 0.5rem;
+        overflow: hidden;
+        border: 0;
+        border-radius: var(--dnf-radius-full);
+        background: var(--dnf-surface-muted);
+        appearance: none;
+    }
+    .dnf-progress::-webkit-progress-bar { background: var(--dnf-surface-muted); }
+    .dnf-progress::-webkit-progress-value { background: var(--dnf-primary); border-radius: var(--dnf-radius-full); }
+    .dnf-progress::-moz-progress-bar { background: var(--dnf-primary); border-radius: var(--dnf-radius-full); }
+    .dnf-progress__bar { height: 100%; width: var(--dnf-progress-value, 0%); border-radius: inherit; background: var(--dnf-primary);
+        transition: width var(--dnf-duration) var(--dnf-ease); }
+    .dnf-progress--danger::-webkit-progress-value, .dnf-progress--danger .dnf-progress__bar { background: var(--dnf-danger); }
+    .dnf-progress--danger::-moz-progress-bar { background: var(--dnf-danger); }
+}

@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using DotNetForge.Abstractions.Authorization;
-using DotNetForge.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 

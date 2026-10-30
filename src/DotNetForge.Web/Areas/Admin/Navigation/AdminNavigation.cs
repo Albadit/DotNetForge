@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Reflection;
 using DotNetForge.Extensions;
 using DotNetForge.Web.Areas.Admin.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -60,7 +59,6 @@ public static class AdminNavigation
                 new NavLink("Internationalization", "/admin/internationalization", "globe", typeof(ModulesController), Planned: true),
                 new NavLink("Media Library", "/admin/media-settings", "image", typeof(MediaSettingsController)),
                 new NavLink("Plugins", "/admin/plugins", "puzzle", typeof(PluginsController)),
-                new NavLink("Data Management", "/admin/data", "database", typeof(DataManagementController)),
             }),
             // Everything for developers and integrations, apart from the site's own settings.
             new NavGroup("API & Webhooks", new[]
@@ -75,15 +73,16 @@ public static class AdminNavigation
                 new NavLink("Roles", "/admin/roles", "shield", typeof(RolesController)),
                 new NavLink("Users", "/admin/users", "users", typeof(UsersController)),
                 new NavLink("Audit Logs", "/admin/audit-logs", "activity", typeof(AuditLogsController)),
+                new NavLink("Data Management", "/admin/data", "database", typeof(DataManagementController)),
             }),
             new NavGroup("Email", new[]
             {
                 new NavLink("Configuration", "/admin/email/configuration", "mail", typeof(EmailConfigurationController)),
                 new NavLink("Templates", "/admin/email/templates", "file-code", typeof(EmailTemplatesController)),
             }),
-            // The spec tree lists Roles here too; it is shown once, under Administration Panel
-            // (.docs/architecture/pages.md#canonical-sidebar-tree-vs-the-sidebar).
-            new NavGroup("Users & Permissions Plugin", new[]
+            // The spec tree calls this group Users & Permissions Plugin and lists Roles here too; Roles is shown once,
+            // under Administration Panel (.docs/architecture/pages.md#canonical-sidebar-tree-vs-the-sidebar).
+            new NavGroup("Authentication", new[]
             {
                 new NavLink("Providers", "/admin/providers", "lock", typeof(AuthProvidersController)),
                 new NavLink("Two-factor (MFA)", "/admin/mfa", "shield", typeof(MfaSettingsController)),

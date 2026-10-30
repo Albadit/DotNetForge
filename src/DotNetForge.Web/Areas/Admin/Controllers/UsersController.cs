@@ -34,7 +34,7 @@ public sealed class UsersController : AdminControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        // Single-table queries combined in memory, so the list works on every provider (including MongoDB).
+        // Single-table queries combined in memory.
         var users = await _db.Users
             .AsNoTracking()
             .OrderBy(u => u.Email)
@@ -143,7 +143,7 @@ public sealed class UsersController : AdminControllerBase
 
         if (id == CurrentUserId)
         {
-            TempData["Error"] = "Change your own methods on Profile → Sign-in security.";
+            TempData["Error"] = "Change your own methods on Profile › Sign-in security.";
             return RedirectToAction(nameof(Edit), new { id });
         }
 

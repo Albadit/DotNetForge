@@ -17,15 +17,15 @@
 @section Actions {
     @if (!single)
     {
-        <a class="btn btn-secondary" href="/admin/content/@type.Slug"><icon name="arrow-left" /> All @type.Name.ToLowerInvariant()</a>
+        <a class="dnf-button dnf-button--secondary" href="/admin/content/@type.Slug"><dnf-icon name="chevron-left" /> All @type.Name.ToLowerInvariant()</a>
     }
     @if (Model.CanCreate && entry is not null)
     {
-        <a class="btn btn-secondary" href="/admin/content/@type.Slug/new"><icon name="plus" /> New entry</a>
+        <a class="dnf-button dnf-button--secondary" href="/admin/content/@type.Slug/new"><dnf-icon name="plus" /> New entry</a>
     }
 }
 
-<form id="entryForm" method="post" action="@action" class="editor" novalidate data-entry-form>
+<form id="entryForm" method="post" action="@action" class="dnf-split" novalidate data-entry-form>
     @Html.AntiForgeryToken()
     @if (Model.BaseVersion is { } version)
     {
@@ -36,60 +36,60 @@
         <input type="hidden" name="force" value="true" />
     }
 
-    <div class="editor-main">
-        <form-errors />
+    <div class="dnf-split__main">
+        <dnf-validation-summary />
         @if (readOnly)
         {
-            <alert tone="Info" title="View only">You can see this entry but not change it.</alert>
+            <dnf-alert tone="Info" title="View only">You can see this entry but not change it.</dnf-alert>
         }
-        <section class="card" aria-label="Fields">
-            <div class="card-body form-grid entry-fields">
+        <section class="dnf-card" aria-label="Fields">
+            <div class="dnf-card__body dnf-form-grid">
                 @foreach (var field in Model.Fields)
                 {
                     <partial name="_Field" model="new EntryFieldView(field, Model.Values[field.Key], field.Key, Model)" />
                 }
                 @if (Model.Fields.Count == 0)
                 {
-                    <p class="span-2 text-muted">This content type has no fields yet. <a href="/admin/content-types/@type.Id">Add fields</a> first.</p>
+                    <p class="dnf-form-grid__full text-muted">This content type has no fields yet. <a href="/admin/content-types/@type.Id">Add fields</a> first.</p>
                 }
             </div>
         </section>
     </div>
 
-    <aside class="editor-aside">
-        <section class="card" aria-labelledby="status-title">
-            <div class="card-header">
-                <h2 class="card-title" id="status-title">Status</h2>
+    <aside class="dnf-split__aside">
+        <section class="dnf-card" aria-labelledby="status-title">
+            <div class="dnf-card__header">
+                <h2 class="dnf-card__title" id="status-title">Status</h2>
                 @if (entry is null || !entry.Published)
                 {
-                    <badge tone="Neutral" dot="true">Draft</badge>
+                    <dnf-badge tone="Neutral" dot="true">Draft</dnf-badge>
                 }
                 else if (entry.HasDraft)
                 {
-                    <badge tone="Warning" dot="true">Changes not published</badge>
+                    <dnf-badge tone="Warning" dot="true">Changes not published</dnf-badge>
                 }
                 else
                 {
-                    <badge tone="Success" dot="true">Published</badge>
+                    <dnf-badge tone="Success" dot="true">Published</dnf-badge>
                 }
             </div>
-            <div class="card-body stack-sm text-sm">
+            <div class="dnf-card__body dnf-stack dnf-stack--sm text-sm">
                 @if (entry is null)
                 {
                     <p class="text-muted">@(type.Drafts ? "Save a draft to keep working on it, or publish to show it on the site." : "Saving publishes it at once.")</p>
                 }
                 else
                 {
-                    <dl class="dl dl-compact">
+                    <dl class="dnf-description-list dnf-description-list--compact">
                         @if (entry.PublishedDate is { } published)
                         {
                             <dt>Published</dt>
-                            <dd><timestamp value="@published" /></dd>
+                            <dd><dnf-timestamp value="@published" /></dd>
                         }
                         <dt>Updated</dt>
-                        <dd><timestamp value="@entry.UpdatedDate" />@(Model.UpdatedBy is null ? "" : " by " + Model.UpdatedBy)</dd>
+                        <dd><dnf-timestamp value="@entry.UpdatedDate" />@(Model.UpdatedBy is null ? "" : " by " + Model.UpdatedBy)</dd>
                         <dt>Created</dt>
-                        <dd><timestamp value="@entry.CreatedDate" /></dd>
+                        <dd><dnf-timestamp value="@entry.CreatedDate" /></dd>
                     </dl>
                     @if (entry.Published && entry.HasDraft)
                     {
@@ -99,18 +99,18 @@
             </div>
             @if (!readOnly)
             {
-                <div class="card-footer stack-sm">
+                <div class="dnf-card__footer flex-col items-stretch">
                     @if (type.Drafts)
                     {
                         @if (Model.CanPublish)
                         {
-                            <button type="submit" name="intent" value="publish" class="btn btn-primary btn-block"><icon name="send" /> @(entry is { Published: true, HasDraft: true } ? "Publish changes" : "Publish")</button>
+                            <button type="submit" name="intent" value="publish" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="send" /> @(entry is { Published: true, HasDraft: true } ? "Publish changes" : "Publish")</button>
                         }
-                        <button type="submit" name="intent" value="save" class="btn btn-secondary btn-block"><icon name="save" /> Save draft</button>
+                        <button type="submit" name="intent" value="save" class="dnf-button dnf-button--secondary dnf-button--full-width"><dnf-icon name="save" /> Save draft</button>
                     }
                     else if (Model.CanPublish)
                     {
-                        <button type="submit" name="intent" value="publish" class="btn btn-primary btn-block"><icon name="save" /> Save</button>
+                        <button type="submit" name="intent" value="publish" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="save" /> Save</button>
                     }
                     else
                     {
@@ -122,25 +122,25 @@
 
         @if (entry is not null && (Model.CanPublish && entry.Published || Model.CanCreate || Model.CanDelete))
         {
-            <section class="card" aria-labelledby="more-title">
-                <div class="card-header"><h2 class="card-title" id="more-title">More</h2></div>
-                <div class="card-body stack-sm">
+            <section class="dnf-card" aria-labelledby="more-title">
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="more-title">More</h2></div>
+                <div class="dnf-card__body dnf-stack dnf-stack--sm">
                     @if (Model.CanPublish && entry.Published)
                     {
-                        <button type="submit" form="unpublishForm" class="btn btn-secondary btn-block"
-                                data-confirm="Take '@title' off the site and out of the API? Its values are kept." data-confirm-title="Unpublish" data-confirm-action="Unpublish" data-confirm-tone="accent">
-                            <icon name="eye-off" /> Unpublish
+                        <button type="submit" form="unpublishForm" class="dnf-button dnf-button--secondary dnf-button--full-width"
+                                data-confirm="Take '@title' off the site and out of the API? Its values are kept." data-confirm-title="Unpublish" data-confirm-action="Unpublish" data-confirm-tone="primary">
+                            <dnf-icon name="eye-off" /> Unpublish
                         </button>
                     }
                     @if (Model.CanCreate)
                     {
-                        <button type="submit" form="duplicateForm" class="btn btn-secondary btn-block"><icon name="copy" /> Duplicate</button>
+                        <button type="submit" form="duplicateForm" class="dnf-button dnf-button--secondary dnf-button--full-width"><dnf-icon name="copy" /> Duplicate</button>
                     }
                     @if (Model.CanDelete)
                     {
-                        <button type="submit" form="deleteForm" class="btn btn-danger-soft btn-block"
+                        <button type="submit" form="deleteForm" class="dnf-button dnf-button--danger-soft dnf-button--full-width"
                                 data-confirm="Delete '@title'? Pages that show it stop showing it. This can't be undone." data-confirm-title="Delete entry" data-confirm-action="Delete">
-                            <icon name="trash" /> Delete
+                            <dnf-icon name="trash" /> Delete
                         </button>
                     }
                 </div>
@@ -149,11 +149,11 @@
 
         @if (entry is not null)
         {
-            <section class="card" aria-labelledby="api-title">
-                <div class="card-header"><h2 class="card-title" id="api-title">Use it</h2></div>
-                <div class="card-body stack-sm text-sm">
+            <section class="dnf-card" aria-labelledby="api-title">
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="api-title">Use it</h2></div>
+                <div class="dnf-card__body dnf-stack dnf-stack--sm text-sm">
                     <p class="text-muted">Show it on a page with a <strong>content list</strong> in the page builder, or read it from the API:</p>
-                    <code class="text-mono text-xs entry-api">GET /api/entries/@type.Slug/@entry.Id</code>
+                    <code class="dnf-code-block dnf-code-block--inline text-xs">GET /api/entries/@type.Slug/@entry.Id</code>
                 </div>
             </section>
         }
@@ -168,5 +168,5 @@
 }
 
 @section Scripts {
-    <script src="~/js/forge/entries.js" asp-append-version="true" defer></script>
+    <script src="~/js/admin/entries.js" asp-append-version="true" defer></script>
 }

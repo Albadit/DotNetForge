@@ -8,6 +8,7 @@ using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Shared.Enums;
+using DotNetForge.Shared.Stores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -39,11 +40,12 @@ public sealed class DatabaseTransferService
     private readonly IFileStorage _storage;
     private readonly IAuditService _audit;
     private readonly IMemoryCache _cache;
+    private readonly IRoleGrantStore _grants;
     private readonly IHostEnvironment _env;
     private readonly ILogger<DatabaseTransferService> _logger;
 
     public DatabaseTransferService(DotNetForgeDbContext db, DatabaseCatalog catalog, IDatabaseService databases, IFileStorage storage,
-        IAuditService audit, IMemoryCache cache, IHostEnvironment env, ILogger<DatabaseTransferService> logger)
+        IAuditService audit, IMemoryCache cache, IHostEnvironment env, ILogger<DatabaseTransferService> logger, IRoleGrantStore grants)
     {
         _db = db;
         _catalog = catalog;
@@ -51,6 +53,7 @@ public sealed class DatabaseTransferService
         _storage = storage;
         _audit = audit;
         _cache = cache;
+        _grants = grants;
         _env = env;
         _logger = logger;
     }
@@ -313,7 +316,7 @@ public sealed class DatabaseTransferService
             record.SourceProvider = Truncate(content.Manifest?.Provider, 50);
             if (content.Errors.Count > 0)
             {
-                return await RefuseAsync(record, action, string.Join(" ", content.Errors.Take(5)), ct);
+                return await RefuseAsync(record, action, string.Join(" ", content.Errors.Take(5)));
             }
 
             // No backup, no import: the current data is kept in the storage first.
@@ -321,20 +324,20 @@ public sealed class DatabaseTransferService
                 note: Truncate($"Before {(operation == TransferOperation.Import ? "import" : "restore")} of {record.FileName}", 200), ct);
             if (!safety.Succeeded)
             {
-                return await RefuseAsync(record, action, "The backup of the current data failed, so nothing was imported: " + safety.Error, ct);
+                return await RefuseAsync(record, action, "The backup of the current data failed, so nothing was imported: " + safety.Error);
             }
 
             await TransferFile.ReplaceAsync(_db, content, ct);
             record.RecordCount = content.Manifest!.RecordCount;
             ClearCaches();
-            await FinishAsync(record, action, content.Manifest.Provider + " → " + Provider, ct);
+            await FinishAsync(record, action, content.Manifest.Provider + " › " + Provider, ct);
             return new TransferOutcome(true, null, record);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "{Operation} of {FileName} failed; the data is unchanged.", operation, record.FileName);
             _db.ChangeTracker.Clear();
-            return await RefuseAsync(record, action, $"The import failed and was rolled back - the data is unchanged ({ex.GetType().Name}).", ct);
+            return await RefuseAsync(record, action, $"The import failed and was rolled back - the data is unchanged ({ex.GetType().Name}).");
         }
         finally
         {
@@ -447,10 +450,10 @@ public sealed class DatabaseTransferService
     {
         _logger.LogError(ex, "{Operation} failed.", record.Operation);
         _db.ChangeTracker.Clear();
-        await RefuseAsync(record, action, $"Failed ({ex.GetType().Name}); see the log.", ct);
+        await RefuseAsync(record, action, $"Failed ({ex.GetType().Name}); see the log.");
     }
 
-    private async Task<TransferOutcome> RefuseAsync(TransferRecord record, string action, string error, CancellationToken ct)
+    private async Task<TransferOutcome> RefuseAsync(TransferRecord record, string action, string error)
     {
         record.Status = TransferStatus.Failed;
         record.CompletedAt = DateTime.UtcNow;
@@ -477,6 +480,8 @@ public sealed class DatabaseTransferService
         {
             memory.Clear();
         }
+
+        _grants.Invalidate();
     }
 
     /// <summary>A temporary file for an export (outside the read-only deployment directory; deleted when closed).</summary>

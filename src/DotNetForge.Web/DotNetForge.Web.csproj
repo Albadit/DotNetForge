@@ -9,6 +9,8 @@
     <UserSecretsId>dotnetforge-cms</UserSecretsId>
     <RootNamespace>DotNetForge.Web</RootNamespace>
     <AssemblyName>DotNetForge.Web</AssemblyName>
+    <!-- English only: the framework's translated error messages add megabytes and nothing here shows them. -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,6 +31,14 @@
     into the publish output as extensions/ - None items, so the Razor SDK does not precompile extension views as
     part of the host. In development the app reads them from the repository root (see AppPaths).
   -->
+  <!--
+    The UI docs views' own source, read at runtime for the examples' code tabs (Areas/Admin/UiDocs/UiDocsSource.cs):
+    a published app has no .cshtml files.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Areas/Admin/Views/UiDocs/**/*.cshtml" LogicalName="UiDocs/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="../../extensions/**" Exclude="../../extensions/**/obj/**" LinkBase="extensions" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
@@ -41,9 +51,22 @@
     <ProjectReference Include="../DotNetForge.Infrastructure/DotNetForge.Infrastructure.csproj" />
     <ProjectReference Include="../DotNetForge.Extensions/DotNetForge.Extensions.csproj" />
     <ProjectReference Include="../DotNetForge.Sdk/DotNetForge.Sdk.csproj" />
+    <ProjectReference Include="../DotNetForge.UI/DotNetForge.UI.csproj" />
     <ProjectReference Include="../DotNetForge.Api/DotNetForge.Api.csproj" />
     <ProjectReference Include="../DotNetForge.Content/DotNetForge.Content.csproj" />
     <ProjectReference Include="../DotNetForge.PageBuilder/DotNetForge.PageBuilder.csproj" />
   </ItemGroup>
+
+  <!-- Debug symbols of native libraries help nobody on a server, and SkiaSharp's alone are 270 MB. -->
+  <Target Name="DnfDropNativeSymbols" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish->WithMetadataValue('Extension', '.pdb')->WithMetadataValue('AssetType', 'native'))" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Development serves the sources as they are; a Release publish minifies its own copy of them. -->
+  <Target Name="DnfMinifyPublishedAssets" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)../../build/DotNetForge.Minify/DotNetForge.Minify.csproj&quot; --configuration Release -- &quot;$(PublishDir)wwwroot&quot;" />
+  </Target>
 
 </Project>

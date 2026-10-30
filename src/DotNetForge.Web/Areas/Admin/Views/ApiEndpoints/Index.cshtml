@@ -7,24 +7,24 @@
 }
 
 @section Actions {
-    <a class="btn btn-primary" href="/admin/api-endpoints/new"><icon name="plus" /> New endpoint</a>
+    <a class="dnf-button dnf-button--primary" href="/admin/api-endpoints/new"><dnf-icon name="plus" /> New endpoint</a>
 }
 
-<section class="card" aria-labelledby="endpoints-title" data-collection data-page-size="25">
-    <div class="card-header">
+<section class="dnf-card" aria-labelledby="endpoints-title" data-collection data-page-size="25">
+    <div class="dnf-card__header">
         <div>
-            <h2 class="card-title" id="endpoints-title">Endpoints</h2>
-            <p class="card-description" data-collection-count>@Model.Endpoints.Count total</p>
+            <h2 class="dnf-card__title" id="endpoints-title">Endpoints</h2>
+            <p class="dnf-card__description" data-collection-count>@Model.Endpoints.Count total</p>
         </div>
     </div>
     @if (Model.Endpoints.Count == 0)
     {
-        <empty-state icon="code" title="No API endpoints yet" text="Give it a path, add its operations - each a method with its own SQL - and call it at /api/custom/your-path." />
+        <dnf-empty-state icon="code" title="No API endpoints yet" description="Give it a path, add its operations - each a method with its own SQL - and call it at /api/custom/your-path." />
     }
     else
     {
-        <div class="table-wrap">
-            <table class="table table-stack">
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
                 <thead>
                     <tr>
                         <th scope="col" data-sort="text">Name</th>
@@ -39,64 +39,64 @@
                     @foreach (var e in Model.Endpoints)
                     {
                         <tr data-item>
-                            <td class="cell-lead">
-                                <a class="cell-primary" href="/admin/api-endpoints/@e.Id">@e.Name</a>
+                            <td class="dnf-table__cell--lead">
+                                <a class="dnf-table__primary" href="/admin/api-endpoints/@e.Id">@e.Name</a>
                                 @if (!string.IsNullOrEmpty(e.Description))
                                 {
-                                    <span class="cell-sub">@e.Description</span>
+                                    <span class="dnf-table__secondary">@e.Description</span>
                                 }
                             </td>
                             <td data-label="Path" data-sort-value="@e.Path">
                                 <code>/api/custom/@e.Path</code>
                                 @if (e.Database is not null)
                                 {
-                                    <span class="cell-sub">on database <code>@e.Database</code></span>
+                                    <span class="dnf-table__secondary">on database <code>@e.Database</code></span>
                                 }
                             </td>
                             <td data-label="Operations">
-                                <span class="cluster">
+                                <span class="dnf-cluster">
                                     @foreach (var operation in Model.Operations[e.Id])
                                     {
-                                        <badge tone="@MethodTone(operation.Method)" class="method-badge" title="@operation.Method /api/custom/@CustomEndpointService.Template(e, operation)">@operation.Method@(operation.Path.Length > 0 ? " /" + operation.Path : "")</badge>
+                                        <dnf-badge tone="@MethodTone(operation.Method)" class="dnf-badge--mono" title="@operation.Method /api/custom/@CustomEndpointService.Template(e, operation)">@operation.Method@(operation.Path.Length > 0 ? " /" + operation.Path : "")</dnf-badge>
                                     }
                                 </span>
                             </td>
                             <td data-label="Access">
                                 @if (e.Access == EndpointAccess.Public)
                                 {
-                                    <badge tone="Warning">Public</badge>
+                                    <dnf-badge tone="Warning">Public</dnf-badge>
                                 }
                                 else
                                 {
-                                    <badge>Token</badge>
+                                    <dnf-badge>Token</dnf-badge>
                                 }
                             </td>
                             <td data-label="Status">
                                 @if (e.Enabled)
                                 {
-                                    <badge tone="Success" dot="true">Enabled</badge>
+                                    <dnf-badge tone="Success" dot="true">Enabled</dnf-badge>
                                 }
                                 else
                                 {
-                                    <badge dot="true">Disabled</badge>
+                                    <dnf-badge dot="true">Disabled</dnf-badge>
                                 }
                             </td>
-                            <td data-label="Updated" data-sort-value="@e.UpdatedDate.ToString("O")"><timestamp value="@e.UpdatedDate" /></td>
+                            <td data-label="Updated" data-sort-value="@e.UpdatedDate.ToString("O")"><dnf-timestamp value="@e.UpdatedDate" /></td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-        <div class="pagination" data-collection-pagination hidden></div>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
     }
 </section>
 
 @functions {
-    private static Tone MethodTone(string method) => method switch
+    private static DnfTone MethodTone(string method) => method switch
     {
-        "GET" => Tone.Info,
-        "POST" => Tone.Success,
-        "DELETE" => Tone.Danger,
-        _ => Tone.Warning,
+        "GET" => DnfTone.Info,
+        "POST" => DnfTone.Success,
+        "DELETE" => DnfTone.Danger,
+        _ => DnfTone.Warning,
     };
 }

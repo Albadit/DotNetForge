@@ -7,7 +7,7 @@ screen - built) and safe **core updates** with rollback (not built).
 
 | Piece | Location | Status |
 | --- | --- | --- |
-| Data Management screen | `GET /admin/data` → `DataManagementController`, sidebar **Settings → Global Settings** | ✔ Super Admin only ([Data Management](../pages/data-management.md)) |
+| Data Management screen | `GET /admin/data` → `DataManagementController`, sidebar **Settings → Administration Panel** | ✔ Super Admin only ([Data Management](../pages/data-management.md)) |
 | Export (download) | `DatabaseTransferService.ExportAsync(userId, database, ct)`, format `TransferFile` | ✔ every environment: the CMS database (importable) or an [additional database](#export-of-an-additional-database) (JSON copy, not importable) |
 | Backups (manual, scheduled, pruned) | `DatabaseTransferService`, `AutomaticBackupService`; files in `IFileStorage` under `backups/` | ✔ every environment, CMS database only; schedule off by default |
 | Import / restore a backup | `DatabaseTransferService.ImportAsync` / `RestoreAsync` | ✔ **Development only**; replaces all data in one transaction after a safety backup |

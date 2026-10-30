@@ -25,7 +25,7 @@ public static partial class TransferFile
 {
     private const int BatchSize = 500;
 
-    private static readonly HashSet<Type> NotTransferred = [typeof(DataProtectionKey), typeof(SystemState), typeof(TransferRecord)];
+    private static readonly HashSet<Type> NotTransferred = [typeof(DataProtectionKey), typeof(UserSession), typeof(SystemState), typeof(TransferRecord)];
 
     private static readonly JsonSerializerOptions ManifestJson = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 

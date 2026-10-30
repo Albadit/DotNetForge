@@ -4,13 +4,13 @@ namespace DotNetForge.Core.Email;
 
 /// <summary>
 /// The frame around every email body (.docs/features/email.md#templates): the site name on top, the body in a white
-/// card with the forge-orange accent bar of the Forge design system, and a footer naming the site. Built from tables
+/// card with the forge-orange accent bar of the DotNetForge brand, and a footer naming the site. Built from tables
 /// with inline styles - what email clients render reliably (no stylesheets, no SVG logo). Not editable on
 /// Email → Templates; the templates are its content.
 /// </summary>
 public static class EmailLayout
 {
-    // Forge design tokens (wwwroot/css/forge/tokens.css), inlined because email clients ignore stylesheets.
+    // The DotNetForge UI design tokens (src/DotNetForge.UI/Styles/tokens.css), inlined because email clients ignore stylesheets.
     public const string Charcoal = "#14171c";
     public const string Orange = "#f76707";
     public const string Text = "#16191e";
@@ -51,7 +51,7 @@ public static class EmailLayout
     }
 
     /// <summary>
-    /// A call-to-action link styled as the Forge primary button (orange fill, charcoal text) - for the default bodies.
+    /// A call-to-action link styled as the DotNetForge UI primary button (orange fill, charcoal text) - for the default bodies.
     /// </summary>
     public static string Button(string hrefPlaceholder, string label) =>
         $"<p style=\"margin:24px 0;\"><a href=\"{hrefPlaceholder}\" style=\"display:inline-block;padding:12px 22px;" +

@@ -1,0 +1,120 @@
+/*
+  Navigation (.docs/ui/components/page-header.md, breadcrumbs.md, tabs.md, segmented.md, accordion.md):
+  DnfPageHeader, DnfBreadcrumbs, DnfTabs + DnfTabPanel, DnfSegmented, DnfAccordion.
+*/
+
+@layer components {
+    /* ---- Page header ----------------------------------------------------------------------------------------- */
+    .dnf-page-header { display: flex; flex-direction: column; gap: var(--dnf-space-2); margin-bottom: var(--dnf-space-6); }
+    .dnf-page-header__row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--dnf-space-4); }
+    .dnf-page-header__title { display: flex; align-items: center; gap: var(--dnf-space-3); }
+    .dnf-page-header__description { max-width: 48rem; color: var(--dnf-muted-foreground); }
+    .dnf-page-header__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-2); }
+
+    /* ---- Breadcrumbs: nav.dnf-breadcrumbs > ol.dnf-breadcrumbs__list > li.dnf-breadcrumbs__item > a | [aria-current] */
+    .dnf-breadcrumbs { min-width: 0; }
+    .dnf-breadcrumbs__list {
+        display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-1);
+        margin: 0; padding: 0; list-style: none;
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-breadcrumbs__item { display: inline-flex; align-items: center; gap: var(--dnf-space-1); }
+    .dnf-breadcrumbs__item + .dnf-breadcrumbs__item::before { content: "/"; padding-inline-end: var(--dnf-space-1); color: var(--dnf-subtle-foreground); }
+    .dnf-breadcrumbs__item > a { color: var(--dnf-muted-foreground); }
+    .dnf-breadcrumbs__item > a:hover { color: var(--dnf-foreground); }
+    .dnf-breadcrumbs__item > [aria-current="page"] { color: var(--dnf-foreground); font-weight: var(--dnf-weight-medium); }
+    /* --collapse: on phones only the current page shows (top bars). */
+    @media (max-width: 40rem) {
+        .dnf-breadcrumbs--collapse .dnf-breadcrumbs__item:not(:last-child) { display: none; }
+        .dnf-breadcrumbs--collapse .dnf-breadcrumbs__item:last-child::before { content: none; }
+    }
+
+    /* ---- Tabs: [data-tabs] root > .dnf-tabs (role=tablist) > .dnf-tabs__tab (role=tab, data-tab) + .dnf-tab-panel
+       (data-tab-panel). Links with aria-current="page" work as tabs between screens. Without JS every panel shows.
+       The bar's line is an inset shadow, so the active tab's underline covers it without overhanging the bar. */
+    .dnf-tabs {
+        display: flex; gap: var(--dnf-space-1);
+        overflow-x: auto; overflow-y: hidden;
+        box-shadow: inset 0 -1px 0 var(--dnf-border);
+        scrollbar-width: thin;
+    }
+    .dnf-tabs__tab {
+        display: inline-flex; align-items: center; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-2) var(--dnf-space-3);
+        border: 0; border-bottom: 2px solid transparent;
+        background: none;
+        color: var(--dnf-muted-foreground);
+        font-weight: var(--dnf-weight-semibold);
+        white-space: nowrap;
+    }
+    .dnf-tabs__tab:hover { color: var(--dnf-foreground); text-decoration: none; }
+    .dnf-tabs__tab:focus-visible { outline: 2px solid var(--dnf-focus); outline-offset: -2px; }
+    .dnf-tabs__tab:is([aria-selected="true"], [aria-current="page"]) { color: var(--dnf-foreground); border-bottom-color: var(--dnf-primary); }
+    .dnf-tabs__tab > .dnf-badge { height: 1.2rem; }
+
+    .dnf-tab-panel { display: flex; flex-direction: column; gap: var(--dnf-space-4); }
+    .dnf-tab-panel + .dnf-tab-panel { border-top: 1px solid var(--dnf-border); }
+    .dnf-tab-panel__title { font-size: var(--dnf-text-md); font-weight: var(--dnf-weight-semibold); }
+    /* dnf-theme.js picks the open panel before the first paint. A tab group added later shows only its first panel
+       until dnf.js has wired it - no flash of every panel. The rule needs html.dnf-js (set by dnf-theme.js), so without
+       JavaScript every panel shows. */
+    html.dnf-js [data-tabs]:not([data-tabbed="true"]) [data-tab-panel] ~ [data-tab-panel] { display: none; }
+    /* With one panel at a time, the tab names the panel. */
+    [data-tabbed="true"] .dnf-tab-panel + .dnf-tab-panel { border-top: 0; }
+    [data-tabbed="true"] .dnf-tab-panel__title { @apply sr-only; }
+
+    /* ---- Segmented control: a small group of exclusive options (filters, view switch) ------------------------ */
+    .dnf-segmented {
+        display: inline-flex; gap: 0.15rem;
+        max-width: 100%;
+        padding: 0.15rem;
+        overflow-x: auto;
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-muted);
+        scrollbar-width: none;
+    }
+    .dnf-segmented__item {
+        display: inline-flex; align-items: center; justify-content: center; gap: var(--dnf-space-1); flex: 0 0 auto;
+        height: calc(var(--dnf-control-sm) - 0.1rem);
+        padding: 0 var(--dnf-space-3);
+        border: 0;
+        border-radius: var(--dnf-radius-sm);
+        background: none;
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+        font-weight: var(--dnf-weight-semibold);
+        white-space: nowrap;
+    }
+    .dnf-segmented__item:hover { color: var(--dnf-foreground); text-decoration: none; }
+    .dnf-segmented__item:is([aria-pressed="true"], [aria-current="true"], [aria-current="page"], [aria-checked="true"]) {
+        background: var(--dnf-surface);
+        color: var(--dnf-foreground);
+        box-shadow: var(--dnf-shadow-xs);
+    }
+    .dnf-segmented__item.dnf-segmented__item--icon { width: calc(var(--dnf-control-sm) - 0.1rem); padding: 0; }
+
+    /* ---- Accordion: <details class="dnf-accordion"> > summary.dnf-accordion__trigger + .dnf-accordion__panel -- */
+    .dnf-accordion { min-width: 0; }
+    .dnf-accordion + .dnf-accordion { border-top: 1px solid var(--dnf-border); }
+    .dnf-accordion__trigger {
+        display: flex; align-items: center; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-2) 0;
+        list-style: none;
+        cursor: pointer;
+        font-size: var(--dnf-text-sm);
+        font-weight: var(--dnf-weight-semibold);
+        color: var(--dnf-muted-foreground);
+    }
+    .dnf-accordion__trigger::-webkit-details-marker { display: none; }
+    .dnf-accordion__trigger:hover { color: var(--dnf-foreground); }
+    .dnf-accordion__trigger::before {
+        content: "";
+        width: 0.4rem; height: 0.4rem; flex: 0 0 auto;
+        border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+        transform: rotate(-45deg);
+        transition: transform var(--dnf-duration-fast) var(--dnf-ease);
+    }
+    .dnf-accordion[open] > .dnf-accordion__trigger::before { transform: rotate(45deg); }
+    .dnf-accordion__panel { padding-bottom: var(--dnf-space-3); }
+}

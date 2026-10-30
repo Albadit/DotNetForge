@@ -1,5 +1,8 @@
 using System.IO.Compression;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using DotNetForge.Abstractions.Storage;
+using DotNetForge.Core.Media;
 using DotNetForge.Data;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Web.Areas.Admin.Models;
@@ -37,6 +40,14 @@ public sealed class MediaController : AdminControllerBase
 
     /// <summary>Largest .zip whose contents the preview lists (it is read into memory: storage streams can't seek).</summary>
     public const long MaxZipListBytes = 64L * 1024 * 1024;
+
+    /// <summary>Largest document the preview reads (into memory, like a .zip).</summary>
+    public const long MaxDocumentPreviewBytes = 64L * 1024 * 1024;
+
+    private static readonly JsonSerializerOptions PreviewJson = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
 
     /// <summary>
     /// The file from this site's own origin, for the preview dialog (.docs/pages/media.md#preview): PDFs and text
@@ -100,6 +111,44 @@ public sealed class MediaController : AdminControllerBase
         catch (InvalidDataException)
         {
             return Json(new { error = "This .zip file is damaged or not a .zip file." });
+        }
+    }
+
+    /// <summary>
+    /// A Word, Excel, PowerPoint or CSV file as data for the preview dialog (.docs/pages/media.md#preview), read here so
+    /// a private file never goes to an outside viewer. Answers <c>{ error }</c> when it can't be read.
+    /// </summary>
+    [HttpGet("{id:guid}/document")]
+    public async Task<IActionResult> Document(Guid id)
+    {
+        var file = await _db.MediaFiles.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
+        if (file is null || !DocumentPreviewReader.CanRead(file.ContentType))
+        {
+            return NotFound();
+        }
+
+        if (file.SizeBytes > MaxDocumentPreviewBytes)
+        {
+            return Json(new { error = $"Too large to preview here (over {MaxDocumentPreviewBytes / 1024 / 1024} MB). Download it instead." });
+        }
+
+        await using var stored = await _storage.OpenReadAsync(file.RelativePath, HttpContext.RequestAborted);
+        if (stored is null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.CacheControl = "private, no-store";
+        try
+        {
+            using var buffer = new MemoryStream();
+            await stored.Content.CopyToAsync(buffer, HttpContext.RequestAborted);
+            buffer.Position = 0;
+            return Json(DocumentPreviewReader.Read(buffer, file.ContentType), PreviewJson);
+        }
+        catch (InvalidDataException)
+        {
+            return Json(new { error = "This file couldn't be read: it may be damaged or protected with a password. Download it instead." });
         }
     }
 
@@ -189,7 +238,7 @@ public sealed class MediaController : AdminControllerBase
     }
 
     /// <summary>
-    /// Moves the selected files and folders into <paramref name="folderId"/> (empty = top level): files with the same
+    /// Moves the selected files and folders into <paramref name="folderId"/> (empty = Root): files with the same
     /// checks as visibility, folders with Media update and the folder rules (not into themselves or their subfolders).
     /// </summary>
     [HttpPost("move-selected")]
@@ -256,7 +305,7 @@ public sealed class MediaController : AdminControllerBase
 
         if (moved > 0)
         {
-            TempData["Success"] = $"Moved {Items(moved)} to {targetPath ?? "the top level"}.";
+            TempData["Success"] = $"Moved {Items(moved)} to {targetPath ?? "Root"}.";
         }
 
         if (refused > 0 || problems.Count > 0)

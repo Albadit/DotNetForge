@@ -1,0 +1,84 @@
+/*
+  Layout primitives (.docs/ui/components/layout.md): DnfStack, DnfCluster, DnfSpread, DnfGrid, DnfSplit,
+  DnfContainer, DnfDivider, DnfNote, DnfSkipLink. Everything else about placement is Tailwind utilities in the
+  markup (flex, gap-*, grid-cols-*, ...).
+*/
+
+@layer components {
+    /* Vertical rhythm: children stacked with one gap. */
+    .dnf-stack { display: flex; flex-direction: column; gap: var(--dnf-space-4); min-width: 0; }
+    .dnf-stack--sm { gap: var(--dnf-space-2); }
+    .dnf-stack--lg { gap: var(--dnf-space-6); }
+
+    /* A wrapping row of inline things (buttons, badges). */
+    .dnf-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-2); }
+    .dnf-cluster--lg { gap: var(--dnf-space-4); }
+
+    /* Two ends of a row: the first child left, the last right. */
+    .dnf-spread { display: flex; align-items: center; justify-content: space-between; gap: var(--dnf-space-4); }
+
+    /* Responsive card grids: 2/3/4 columns that step down on tablets and phones; --auto fills 16rem tracks. */
+    .dnf-grid { display: grid; gap: var(--dnf-space-5); }
+    .dnf-grid--cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dnf-grid--cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dnf-grid--cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dnf-grid--auto { grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); }
+    @media (max-width: 64rem) {
+        .dnf-grid--cols-3, .dnf-grid--cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 40rem) {
+        .dnf-grid--cols-2, .dnf-grid--cols-3 { grid-template-columns: minmax(0, 1fr); }
+        .dnf-grid--cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--dnf-space-3); }
+    }
+
+    /* A main column and a side column (an editor with its settings beside it). The side column follows the scroll;
+       both stack below 80rem. --wide-aside: a wider side column that stays in place and stacks below 64rem. */
+    .dnf-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 19rem); gap: var(--dnf-space-5); align-items: start; }
+    .dnf-split:not(:has(> .dnf-split__aside)) { grid-template-columns: minmax(0, 1fr); }
+    .dnf-split__main, .dnf-split__aside { display: flex; flex-direction: column; gap: var(--dnf-space-5); min-width: 0; }
+    .dnf-split__aside { position: sticky; top: calc(var(--dnf-topbar-height) + var(--dnf-space-4)); }
+    .dnf-split--wide-aside { grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem); }
+    .dnf-split--wide-aside > .dnf-split__aside { position: static; }
+    @media (max-width: 80rem) {
+        .dnf-split:not(.dnf-split--wide-aside) { grid-template-columns: minmax(0, 1fr); }
+        .dnf-split__aside { position: static; }
+    }
+    @media (max-width: 64rem) {
+        .dnf-split--wide-aside { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    /* A centred column of readable width. */
+    .dnf-container { width: 100%; max-width: var(--dnf-content-max); margin-inline: auto; }
+    .dnf-container--narrow { max-width: 56rem; }
+    .dnf-container--medium { max-width: 80rem; }
+
+    /* A rule between sections; --label puts text in the middle ("or"). */
+    .dnf-divider { height: 1px; margin: 0; border: 0; background: var(--dnf-border); }
+    .dnf-divider--vertical { width: 1px; height: auto; align-self: stretch; }
+    .dnf-divider--label {
+        display: flex; align-items: center; gap: var(--dnf-space-3);
+        height: auto; background: none;
+        color: var(--dnf-subtle-foreground);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-divider--label::before, .dnf-divider--label::after { content: ""; flex: 1; height: 1px; background: var(--dnf-border); }
+
+    /* A short note led by an icon: the icon sits on the first line, wrapped lines align with the text. */
+    .dnf-note { display: flex; align-items: flex-start; gap: var(--dnf-space-2); }
+    .dnf-note > .dnf-icon { height: 1lh; }
+
+    /* Skip link: the first focusable element of every layout. */
+    .dnf-skip-link {
+        position: absolute; top: var(--dnf-space-2); left: var(--dnf-space-2); z-index: var(--dnf-z-toast);
+        padding: var(--dnf-space-2) var(--dnf-space-4);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-primary);
+        color: var(--dnf-primary-foreground);
+        font-weight: var(--dnf-weight-semibold);
+        transform: translateY(-200%);
+    }
+    .dnf-skip-link:focus { transform: none; text-decoration: none; }
+
+    /* Shown only once dnf-theme.js has run (it marks <html class="dnf-js"> before the first paint). */
+    html:not(.dnf-js) .dnf-js-only { display: none; }
+}

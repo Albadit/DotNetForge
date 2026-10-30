@@ -1,0 +1,146 @@
+/*
+  Choice controls (.docs/ui/components/checkbox.md, radio.md, switch.md, choice-card.md):
+  .dnf-checkbox / .dnf-radio      - on the native <input type="checkbox|radio">
+  .dnf-check                      - a <label> around one of them: > input + .dnf-check__text > (label text + .dnf-check__description)
+  .dnf-switch                     - on <input type="checkbox" role="switch">
+  .dnf-switch-row                 - a <label> row: text on the left, the switch on the right; rows stack with a line
+  .dnf-choice-cards / -card       - radio or checkbox options drawn as selectable cards
+  States come from the native input (:checked, :indeterminate, :disabled, :focus-visible, aria-invalid).
+*/
+
+@layer components {
+    .dnf-checkbox, .dnf-radio {
+        --dnf-check-color: var(--dnf-primary);
+        --dnf-check-size: 1rem;
+        appearance: none;
+        position: relative;
+        flex: 0 0 auto;
+        width: var(--dnf-check-size); height: var(--dnf-check-size);
+        margin: 0;
+        border: 1px solid var(--dnf-border-strong);
+        background-color: var(--dnf-surface);
+        box-shadow: var(--dnf-shadow-xs);
+        cursor: pointer;
+        transition: border-color var(--dnf-duration) var(--dnf-ease), background-color var(--dnf-duration) var(--dnf-ease), box-shadow var(--dnf-duration) var(--dnf-ease);
+    }
+    .dnf-checkbox {
+        --dnf-check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+        border-radius: var(--dnf-radius-sm);
+    }
+    .dnf-checkbox:indeterminate {
+        --dnf-check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
+    }
+    .dnf-radio { border-radius: var(--dnf-radius-full); }
+    :is(.dnf-checkbox, .dnf-radio):where(:hover:not(:disabled)) { border-color: var(--dnf-subtle-foreground); }
+    /* :indeterminate only on the checkbox: a radio also matches it while its group has nothing chosen. */
+    .dnf-checkbox:is(:checked, :indeterminate), .dnf-radio:checked { border-color: var(--dnf-check-color); background-color: var(--dnf-check-color); }
+    .dnf-checkbox:is(:checked, :indeterminate)::after, .dnf-radio:checked::after {
+        content: "";
+        position: absolute; inset: 0;
+        margin: auto;
+        background: var(--dnf-primary-foreground);
+    }
+    .dnf-checkbox:is(:checked, :indeterminate)::after {
+        width: calc(var(--dnf-check-size) * 0.75); height: calc(var(--dnf-check-size) * 0.75);
+        mask: var(--dnf-check-mark) center / contain no-repeat;
+    }
+    .dnf-radio:checked::after { width: calc(var(--dnf-check-size) * 0.375); height: calc(var(--dnf-check-size) * 0.375); border-radius: var(--dnf-radius-full); }
+    /* A finger needs a bigger target than a mouse. */
+    @media (pointer: coarse) {
+        .dnf-checkbox, .dnf-radio { --dnf-check-size: 1.5rem; }
+        .dnf-check, .dnf-switch-row { min-height: 1.5rem; }
+    }
+    :is(.dnf-checkbox, .dnf-radio):focus-visible { outline: none; box-shadow: var(--dnf-focus-ring); }
+    :is(.dnf-checkbox, .dnf-radio)[aria-invalid="true"] { border-color: var(--dnf-danger); }
+    :is(.dnf-checkbox, .dnf-radio):disabled { box-shadow: none; opacity: 0.55; cursor: not-allowed; }
+    /* Forced colours would blank the fill and the mark, which the native control never lost. */
+    @media (forced-colors: active) {
+        .dnf-checkbox, .dnf-radio { forced-color-adjust: none; border-color: CanvasText; background-color: Canvas; }
+        .dnf-checkbox:is(:checked, :indeterminate), .dnf-radio:checked { border-color: Highlight; background-color: Highlight; }
+        .dnf-checkbox:is(:checked, :indeterminate)::after, .dnf-radio:checked::after { background: HighlightText; }
+    }
+
+    .dnf-check { display: inline-flex; align-items: flex-start; gap: var(--dnf-space-2); font-size: var(--dnf-text-base); cursor: pointer; }
+    .dnf-check > :is(.dnf-checkbox, .dnf-radio) { margin-top: 0.15rem; }
+    .dnf-check__text { display: flex; flex-direction: column; min-width: 0; }
+    .dnf-check__description { font-size: var(--dnf-text-xs); color: var(--dnf-muted-foreground); }
+    .dnf-check:has(> :disabled) { cursor: default; }
+    /* A vertical list of checks, separated by lines (roles, permissions). */
+    .dnf-check-list { display: flex; flex-direction: column; }
+    .dnf-check-list > .dnf-check { display: flex; padding: var(--dnf-space-3) 0; border-bottom: 1px solid var(--dnf-border); }
+    .dnf-check-list > .dnf-check:first-child { padding-top: 0; }
+    .dnf-check-list > .dnf-check:last-child { padding-bottom: 0; border-bottom: 0; }
+    .dnf-check-list > .dnf-check:has(> :disabled) { opacity: 0.75; }
+
+    /* ---- Switch ------------------------------------------------------------------------------------------------- */
+    .dnf-switch {
+        appearance: none;
+        position: relative;
+        flex: 0 0 auto;
+        width: 2.25rem; height: 1.25rem;
+        margin: 0;
+        border-radius: var(--dnf-radius-full);
+        background: var(--dnf-border-strong);
+        cursor: pointer;
+        transition: background-color var(--dnf-duration) var(--dnf-ease);
+    }
+    .dnf-switch::after {
+        content: "";
+        position: absolute; top: 0.125rem; left: 0.125rem;
+        width: 1rem; height: 1rem;
+        border-radius: 50%;
+        background: var(--dnf-gray-0);
+        box-shadow: var(--dnf-shadow-sm);
+        transition: transform var(--dnf-duration) var(--dnf-ease);
+    }
+    .dnf-switch:checked { background: var(--dnf-primary); }
+    .dnf-switch:checked::after { transform: translateX(1rem); }
+    .dnf-switch:focus-visible { outline: none; box-shadow: var(--dnf-focus-ring); }
+    .dnf-switch:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .dnf-switch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--dnf-space-4); cursor: pointer; }
+    .dnf-switch-row + .dnf-switch-row { padding-top: var(--dnf-space-3); border-top: 1px solid var(--dnf-border); }
+    .dnf-switch-row:has(> .dnf-switch:disabled) { cursor: default; }
+
+    /* ---- Choice cards ------------------------------------------------------------------------------------------- */
+    .dnf-choice-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: var(--dnf-space-2); }
+    .dnf-choice-cards--wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: var(--dnf-space-3); }
+    .dnf-choice-card {
+        position: relative;
+        display: flex; align-items: center; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-3);
+        border: 1px solid var(--dnf-border-strong);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface);
+        font-weight: var(--dnf-weight-medium);
+        cursor: pointer;
+    }
+    .dnf-choice-card:hover { border-color: var(--dnf-subtle-foreground); }
+    .dnf-choice-card:has(input:checked) { border-color: var(--dnf-primary); background: var(--dnf-primary-soft); }
+    .dnf-choice-card:has(input:focus-visible) { box-shadow: var(--dnf-focus-ring); }
+    .dnf-choice-card:has(input:disabled) { cursor: default; opacity: 0.7; }
+    /* A larger card with a title and a description; the input is visually hidden (the card is the control). */
+    .dnf-choice-card--detailed { align-items: flex-start; gap: var(--dnf-space-3); padding: var(--dnf-space-4); border-radius: var(--dnf-radius-lg); font-weight: var(--dnf-weight-regular); }
+    .dnf-choice-card--detailed > input { position: absolute; opacity: 0; pointer-events: none; }
+    .dnf-choice-card__text { display: flex; flex-direction: column; gap: var(--dnf-space-1); min-width: 0; }
+    .dnf-choice-card__title { display: inline-flex; align-items: center; gap: var(--dnf-space-2); font-weight: var(--dnf-weight-semibold); }
+    .dnf-choice-card__description { font-size: var(--dnf-text-sm); color: var(--dnf-muted-foreground); }
+
+    /* ---- File upload: a real <input type="file"> under a drop area (works without JS) --------------------------- */
+    .dnf-file-upload {
+        position: relative;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-8) var(--dnf-space-4);
+        border: 2px dashed var(--dnf-border-strong);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+        text-align: center;
+        transition: border-color var(--dnf-duration) var(--dnf-ease), background-color var(--dnf-duration) var(--dnf-ease);
+    }
+    .dnf-file-upload:is(:hover, [data-dragging="true"]) { border-color: var(--dnf-primary); background: var(--dnf-primary-soft); }
+    .dnf-file-upload:has(input:focus-visible) { box-shadow: var(--dnf-focus-ring); }
+    .dnf-file-upload__input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .dnf-file-upload__title { color: var(--dnf-foreground); font-weight: var(--dnf-weight-semibold); }
+    .dnf-file-upload__files { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--dnf-space-1); }
+}

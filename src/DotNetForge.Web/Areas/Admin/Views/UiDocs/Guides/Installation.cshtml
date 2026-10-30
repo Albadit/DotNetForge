@@ -1,0 +1,217 @@
+@* Using the library (UI docs): the view imports, the three assets in order, the icon sprite and a first screen. *@
+
+<p>DotNetForge UI is a Razor class library (<code>src/DotNetForge.UI</code>). Using it takes three things: the tag
+    helpers registered in your views, three static files loaded by your layout, and the icon sprite, which the library
+    finds by itself. An admin screen already has all three - the admin layout and the admin view imports provide them.
+    A layout of your own (or an <a href="@UiDocsCatalog.Root/extensions">extension's</a>) adds them as shown below.</p>
+
+<h2 id="admin-screens">In an admin screen</h2>
+<p>Nothing to set up. <code>Areas/Admin/Views/_ViewImports.cshtml</code> registers the tag helpers, and the admin layout
+    (<code>_AdminLayout.cshtml</code>) loads the theme script, the stylesheet and <code>dnf.js</code>, renders the toast
+    region and the confirmation dialog, and draws the screen's title. A screen sets <code>ViewData["Title"]</code>
+    (the page's only <code>h1</code>), optionally <code>ViewData["Description"]</code>, puts its header buttons in
+    <code>@@section Actions</code> and writes its content with the components - see <a href="#first-screen">a complete
+    screen</a>.</p>
+
+<h2 id="view-imports">View imports</h2>
+<p>Add these lines to the <code>_ViewImports.cshtml</code> of the view folder (both <code>_ViewImports.cshtml</code>
+    files of the web host have them):</p>
+
+<ui-doc-code id="imports" lang="razor">
+@@addTagHelper *, DotNetForge.UI
+@@using DotNetForge.UI
+@@using DotNetForge.UI.Components
+</ui-doc-code>
+
+<table>
+    <thead><tr><th>Line</th><th>Gives you</th></tr></thead>
+    <tbody>
+        <tr><td><code>@@addTagHelper *, DotNetForge.UI</code></td><td>the <code>&lt;dnf-*&gt;</code> tag helpers: <code>&lt;dnf-button&gt;</code>, <code>&lt;dnf-icon&gt;</code>, <code>&lt;dnf-badge&gt;</code>, <code>&lt;dnf-dropdown&gt;</code> …</td></tr>
+        <tr><td><code>@@using DotNetForge.UI</code></td><td>the enums <code>DnfSize</code>, <code>DnfTone</code>, <code>DnfButtonVariant</code> and <code>DnfAssets</code> (the asset paths)</td></tr>
+        <tr><td><code>@@using DotNetForge.UI.Components</code></td><td>the tag helper classes, for their constants (e.g. <code>DnfTimestampTagHelper.Relative</code>)</td></tr>
+    </tbody>
+</table>
+<p>Every component also works without a tag helper: the classes are the API, so a view without these lines can still
+    write <code>&lt;button class="dnf-button dnf-button--primary"&gt;</code>.</p>
+
+<h2 id="assets">Assets</h2>
+<p>The library ships three files, served as static web assets under <code>/_content/DotNetForge.UI/</code>. A layout of
+    your own loads them in this order:</p>
+
+<ui-doc-code id="assets-head" lang="razor">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    @* 1. synchronously, before the stylesheet: the saved theme applies before the first paint *@
+    <script src="~/_content/DotNetForge.UI/dnf-theme.js" asp-append-version="true"></script>
+    @* 2. tokens, base styles, components and utilities in one file *@
+    <link rel="stylesheet" href="~/_content/DotNetForge.UI/dnf.css" asp-append-version="true" />
+    @* your own stylesheets after it *@
+    @* 3. behaviours, deferred *@
+    <script src="~/_content/DotNetForge.UI/dnf.js" asp-append-version="true" defer></script>
+</head>
+</ui-doc-code>
+
+<ol>
+    <li><strong><code>dnf-theme.js</code></strong> - in <code>&lt;head&gt;</code>, without <code>defer</code>. It sets
+        <code>&lt;html data-theme&gt;</code> from the user's saved choice before anything is drawn (no flash of the wrong
+        theme) and marks <code>&lt;html class="dnf-js"&gt;</code>, so <code>dnf-js-only</code> controls show from the first
+        paint (<a href="@UiDocsCatalog.Root/theming#switching">Theming</a>).</li>
+    <li><strong><code>dnf.css</code></strong> - the tokens, the base styles, every component and the Tailwind utilities,
+        compiled at build time into one file. Link your own stylesheets after it.</li>
+    <li><strong><code>dnf.js</code></strong> - with <code>defer</code>. The <code>data-*</code> hooks and
+        <code>window.dnfUI</code> (<a href="@UiDocsCatalog.Root/behaviours">Behaviours</a>). Optional: a page that uses no
+        hook can leave it out.</li>
+</ol>
+
+<table>
+    <thead><tr><th><code>DnfAssets</code> constant</th><th>Path</th></tr></thead>
+    <tbody>
+        <tr><td><code>DnfAssets.ThemeScript</code></td><td><code>/_content/DotNetForge.UI/dnf-theme.js</code></td></tr>
+        <tr><td><code>DnfAssets.Stylesheet</code></td><td><code>/_content/DotNetForge.UI/dnf.css</code></td></tr>
+        <tr><td><code>DnfAssets.Script</code></td><td><code>/_content/DotNetForge.UI/dnf.js</code></td></tr>
+        <tr><td><code>DnfAssets.Sprite</code></td><td><code>/_content/DotNetForge.UI/icons.svg</code></td></tr>
+    </tbody>
+</table>
+<p><code>asp-append-version</code> (a cache-busting <code>?v=</code>) needs <code>@@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers</code>;
+    without it, write the plain paths. The constants hold the same paths and include no app path base.</p>
+<p>Every view and script is Content-Security-Policy safe: no inline <code>&lt;script&gt;</code>, no <code>&lt;style&gt;</code>
+    block, no <code>style</code> or <code>on…</code> attribute. Keep your own markup that way - behaviour goes into
+    <code>data-*</code> hooks and script files, looks into stylesheets.</p>
+
+<h2 id="sprite">The icon sprite</h2>
+<p>Icons are one SVG sprite, <code>icons.svg</code>, with a <code>&lt;symbol id&gt;</code> per icon. Nothing is inlined into
+    the page: <code>&lt;dnf-icon&gt;</code> writes an <code>&lt;svg&gt;</code> that references the symbol by the
+    cache-busted sprite URL, and <code>dnf.js</code> reuses the first sprite URL it finds on the page for the icons it
+    creates (<code>dnfUI.icon</code>). Icons are drawn with strokes in the current text colour. Every icon id:
+    <a href="@UiDocsCatalog.Root/components/icon">Icon</a>.</p>
+
+<ui-doc-example id="sprite-icons" title="Icons from the sprite" description="The tag helper and the plain markup it renders. Decorative icons are hidden from screen readers; give one a label only when it is the only thing that names something.">
+    <dnf-icon name="pages" />
+    <dnf-icon name="image" size="Lg" />
+    <dnf-icon name="trash" label="Deleted" class="text-danger" />
+    <svg class="dnf-icon" aria-hidden="true" focusable="false"><use href="/_content/DotNetForge.UI/icons.svg#webhook"></use></svg>
+</ui-doc-example>
+
+<h2 id="feedback">Toasts and the confirmation dialog</h2>
+<p><code>dnfUI.toast</code> and <code>data-confirm</code> need markup in the layout: a toast region with its template, and
+    the confirmation dialog. CMS layouts render <code>&lt;partial name="_Feedback" /&gt;</code>
+    (<code>Views/Shared/_Feedback.cshtml</code>), which also turns <code>TempData["Success"]</code>,
+    <code>["Error"]</code> and <code>["Info"]</code> into toasts. Elsewhere, copy the markup from
+    <a href="@UiDocsCatalog.Root/behaviours#toasts">Behaviours</a>; without the dialog, <code>data-confirm</code> falls
+    back to the browser's <code>confirm()</code>.</p>
+
+<h2 id="custom-layout">A layout of your own</h2>
+<p>A complete document that uses the library - the shape of the sign-in layout and of an extension's admin tab:</p>
+
+<ui-doc-code id="layout" lang="razor">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>@@ViewData["Title"]</title>
+    <script src="~/_content/DotNetForge.UI/dnf-theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/_content/DotNetForge.UI/dnf.css" asp-append-version="true" />
+    <script src="~/_content/DotNetForge.UI/dnf.js" asp-append-version="true" defer></script>
+</head>
+<body>
+    <a class="dnf-skip-link" href="#main">Skip to content</a>
+    <main id="main" class="dnf-container" tabindex="-1">
+        @@RenderBody()
+    </main>
+    <partial name="_Feedback" />
+</body>
+</html>
+</ui-doc-code>
+
+<h2 id="first-screen">A complete screen</h2>
+<p>An admin screen is a view in <code>Areas/Admin/Views/</code> rendered in the admin layout: two lines of
+    <code>ViewData</code>, the header actions, and the content as components.</p>
+
+<ui-doc-code id="screen-view" lang="razor">
+@@{
+    ViewData["Title"] = "Newsletters";
+    ViewData["Description"] = "Emails sent to everyone who subscribed on the site.";
+}
+
+@@section Actions {
+    <dnf-button variant="Primary" icon="plus" href="/admin/newsletters/new">New newsletter</dnf-button>
+}
+
+<section class="dnf-card" aria-labelledby="newsletters-title">
+    <div class="dnf-card__header">
+        <h2 class="dnf-card__title" id="newsletters-title">Newsletters</h2>
+        <dnf-badge>3</dnf-badge>
+    </div>
+    <div class="dnf-table dnf-table--stack">
+        <table class="dnf-table__table">…</table>
+    </div>
+</section>
+</ui-doc-code>
+
+<p>The content, live:</p>
+
+<ui-doc-example id="screen-preview" title="The screen's content" description="A card with a table that stacks on phones, status badges and row actions." layout="block">
+    <section class="dnf-card" aria-labelledby="screen-newsletters-title">
+        <div class="dnf-card__header">
+            <h2 class="dnf-card__title" id="screen-newsletters-title">Newsletters</h2>
+            <dnf-badge>3</dnf-badge>
+        </div>
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">Newsletter</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="dnf-table__cell--lead">
+                            <span class="dnf-table__primary">Spring release notes</span>
+                            <span class="dnf-table__secondary">Sent 3 Mar 2026 to 1,204 subscribers</span>
+                        </td>
+                        <td data-label="Status"><dnf-badge tone="Success" dot="true">Sent</dnf-badge></td>
+                        <td class="dnf-table__cell--actions"><dnf-button variant="Ghost" size="Sm" icon="pencil" icon-only="true" label="Edit Spring release notes" /></td>
+                    </tr>
+                    <tr>
+                        <td class="dnf-table__cell--lead">
+                            <span class="dnf-table__primary">This week at DotNetForge</span>
+                            <span class="dnf-table__secondary">Scheduled for Monday 9:00</span>
+                        </td>
+                        <td data-label="Status"><dnf-badge tone="Info" dot="true">Scheduled</dnf-badge></td>
+                        <td class="dnf-table__cell--actions"><dnf-button variant="Ghost" size="Sm" icon="pencil" icon-only="true" label="Edit This week at DotNetForge" /></td>
+                    </tr>
+                    <tr>
+                        <td class="dnf-table__cell--lead">
+                            <span class="dnf-table__primary">Webhooks deep dive</span>
+                            <span class="dnf-table__secondary">Not sent yet</span>
+                        </td>
+                        <td data-label="Status"><dnf-badge dot="true">Draft</dnf-badge></td>
+                        <td class="dnf-table__cell--actions"><dnf-button variant="Ghost" size="Sm" icon="pencil" icon-only="true" label="Edit Webhooks deep dive" /></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</ui-doc-example>
+
+<h2 id="next">Next steps</h2>
+<div class="dnf-docs-cards">
+    <a class="dnf-card dnf-card--interactive dnf-docs-cards__card" href="@UiDocsCatalog.Root/customization">
+        <span class="dnf-docs-cards__title">Customization</span>
+        <span class="dnf-docs-cards__description">Properties, Tailwind utilities and your own CSS - no !important.</span>
+    </a>
+    <a class="dnf-card dnf-card--interactive dnf-docs-cards__card" href="@UiDocsCatalog.Root/behaviours">
+        <span class="dnf-docs-cards__title">Behaviours</span>
+        <span class="dnf-docs-cards__description">The data-* hooks of dnf.js and the dnfUI API.</span>
+    </a>
+    <a class="dnf-card dnf-card--interactive dnf-docs-cards__card" href="@UiDocsCatalog.Root/extensions">
+        <span class="dnf-docs-cards__title">Extensions</span>
+        <span class="dnf-docs-cards__description">An extension's screens on the same library.</span>
+    </a>
+</div>

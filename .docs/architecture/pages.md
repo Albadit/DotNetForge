@@ -59,6 +59,7 @@ and `Public` (the built-in `Super Admin`, `Admin`, `Developer`, `Editor`, `Autho
 | API Tokens | `GET /admin/api-tokens`, `GET/POST /admin/api-tokens/create`, `POST /admin/api-tokens/revoke/{id}` | `ApiTokensController` | `src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/{Index,Create,Created}.cshtml` | AdminArea + perm (`API`: `read`; create needs `create`, revoke `delete`) | [api-tokens](../pages/api-tokens.md) |
 | API Endpoints | `GET /admin/api-endpoints`, `GET/POST /admin/api-endpoints/new`, `GET/POST /admin/api-endpoints/{id}`, `POST /admin/api-endpoints/{id}/token`, `POST /admin/api-endpoints/{id}/delete`, `POST /admin/api-endpoints/test` | `ApiEndpointsController` | `src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/{Index,Edit}.cshtml` | AdminArea + SA/Dev (`[Authorize(Roles = "Super Admin,Developer")]`) | [api-endpoints](../pages/api-endpoints.md) |
 | API Docs | `GET /admin/api-docs` | `ApiDocsController.Index` | `src/DotNetForge.Web/Areas/Admin/Views/ApiDocs/Index.cshtml` (frames the reference below) | AdminArea + SA/Dev (`ApiDocs` policy) | [api-docs](../pages/api-docs.md) |
+| UI docs | `GET /admin/docs/ui`, `GET /admin/docs/ui/{slug}`, `GET /admin/docs/ui/components`, `GET /admin/docs/ui/components/{slug}` | `UiDocsController` (`.Index`, `.Guide`, `.Components`, `.Component`) | `src/DotNetForge.Web/Areas/Admin/Views/UiDocs/{Guides,Components}/*.cshtml` in their own `_UiDocsLayout` (no admin shell); linked from the account menu | AdminArea + SA/Dev (`ApiDocs` policy) | [ui-docs](../pages/ui-docs.md) |
 | API reference (Scalar) | `GET /admin/api-docs/reference/` (+ its scripts under that prefix), `GET /admin/api-docs/openapi/v1.json` | `MapApiDocs` (`src/DotNetForge.Web/ApiDocs/ApiDocsEndpoints.cs`): `MapScalarApiReference`, `MapOpenApi` | none - Scalar's own HTML page (no admin shell) and the OpenAPI JSON | SA/Dev (`ApiDocs` policy; anonymous → sign-in, other roles → denied) | [API docs](../features/api-docs.md) |
 | Webhooks | `GET /admin/webhooks`, `GET/POST /admin/webhooks/create`, `GET/POST /admin/webhooks/{id}`, `POST /admin/webhooks/{id}/{enable,disable,delete,rotate,test}` (enable/disable/test take `returnTo` = `edit` / `deliveries`), `GET /admin/webhooks/{id}/secret` (once, after create/rotate), `GET /admin/webhooks/{id}/deliveries?page=` | `WebhooksController` | `src/DotNetForge.Web/Areas/Admin/Views/Webhooks/{Index,Edit,Secret,Deliveries}.cshtml` | AdminArea + `[RequirePermission(Webhooks, read)]` + perm (`Webhooks`: create `create`; save, enable/disable, rotate, test `update`; delete `delete`) | [webhooks](../pages/webhooks.md) |
 | Roles | `GET /admin/roles`, `GET/POST /admin/roles/create`, `GET/POST /admin/roles/{id}`, `POST /admin/roles/{id}/duplicate`, `POST /admin/roles/{id}/delete` | `RolesController` | `src/DotNetForge.Web/Areas/Admin/Views/Roles/{Index,Edit}.cshtml` | AdminArea + perm (`Roles`: `read`; create/duplicate `create`, save `update`, delete `delete`) | [roles](../pages/roles.md) |
@@ -102,17 +103,17 @@ Look, components and behaviours of the built-in layouts: [design system](design-
 
 | Layout | Set by | Used by | What it renders |
 | --- | --- | --- | --- |
-| `src/DotNetForge.Web/Areas/Admin/Views/Shared/_AdminLayout.cshtml` | `src/DotNetForge.Web/Areas/Admin/Views/_ViewStart.cshtml` | every admin screen | `<title>{Title} · DotNetForge Admin</title>`; `theme.js` (in `<head>`), `forge/{tokens,base,components,admin}.css`, `ui.js` (`defer`), `nav-state.js` (synchronous, after the sidebar); sidebar (logo, the `_Sidebar` partial built by `AdminNavigationService`, account menu with **View site** and **Sign out**); top bar (breadcrumbs except on the dashboard, **View site**, theme menu); page header (`ViewData["Title"]` as the only `<h1>`, optional `ViewData["Description"]`, `@section Actions`); `_Feedback`; `@section Scripts` |
-| `src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml` | `Layout = "_AuthLayout"` in the view | setup, login, denied | `theme.js`, `forge/{tokens,base,components,auth}.css`, `ui.js`; brand panel (follows the theme) + form column with theme menu; `_Feedback` |
-| `src/DotNetForge.Web/Views/Shared/_Layout.cshtml` | `src/DotNetForge.Web/Views/_ViewStart.cshtml` | public home (list or root page), public content pages and the error screen while no theme is enabled | `theme.js`, `forge/{tokens,base,components,public}.css` (no `ui.js`, no `_Feedback`, no theme menu); `<title>`, `meta description` and `canonical` from `ViewData["Title"]`/`["MetaDescription"]`/`["CanonicalUrl"]`; header with app name, the page menu (`ViewData["Menu"]`, `nav.site-nav`) and an **Admin** link for users who may enter the admin (`Roles.CanEnterAdmin`), `<main>`, footer |
-| extension's own `Views/Shared/_Layout.cshtml` | the extension's `_ViewStart.cshtml` | admin extension `raw` documents; theme views (public home and content pages while a theme is active) | whatever the extension ships (same CSP applies; it may link the host's `/css/forge/*.css` and `<script src="/js/forge/theme.js">` to look like the admin - [design system](design-system.md#tag-helpers)) |
+| `src/DotNetForge.Web/Areas/Admin/Views/Shared/_AdminLayout.cshtml` | `src/DotNetForge.Web/Areas/Admin/Views/_ViewStart.cshtml` | every admin screen | `<title>{Title} · DotNetForge Admin</title>`; `dnf-theme.js` (in `<head>`), `dnf.css`, `css/admin/{shell,content,media,tools,people}.css`, `dnf.js` (`defer`), `js/admin/nav-state.js` (synchronous, after the sidebar); sidebar (logo, the `_Sidebar` partial built by `AdminNavigationService`, account menu with **View site** and **Sign out**); top bar (breadcrumbs except on the dashboard, **View site**, theme menu); page header (`ViewData["Title"]` as the only `<h1>`, optional `ViewData["Description"]`, `@section Actions`); `_Feedback`; `@section Scripts` |
+| `src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml` | `Layout = "_AuthLayout"` in the view | setup, login, denied | `dnf-theme.js`, `dnf.css`, `css/auth.css`, `dnf.js` (`defer`); brand panel (follows the theme) + form column with theme menu; `_Feedback` |
+| `src/DotNetForge.Web/Views/Shared/_Layout.cshtml` | `src/DotNetForge.Web/Views/_ViewStart.cshtml` | public home (list or root page), public content pages and the error screen while no theme is enabled | `dnf-theme.js`, `dnf.css`, `css/site.css` (no `dnf.js`, no `_Feedback`, no theme menu); `<title>`, `meta description` and `canonical` from `ViewData["Title"]`/`["MetaDescription"]`/`["CanonicalUrl"]`; header with app name, the page menu (`ViewData["Menu"]`, `nav.dnf-site__nav`) and an **Admin** link for users who may enter the admin (`Roles.CanEnterAdmin`), `<main>`, footer |
+| extension's own `Views/Shared/_Layout.cshtml` | the extension's `_ViewStart.cshtml` | admin extension `raw` documents; theme views (public home and content pages while a theme is active) | whatever the extension ships (same CSP applies; it may load the library's `/_content/DotNetForge.UI/dnf-theme.js`, `dnf.css` and `dnf.js` to look like the admin - [UI in extensions](../ui/extensions.md#admin-tab-type-admin)) |
 
 Layouts read `ViewData["Title"]`; the public and auth layouts also read `ViewData["AppName"]` (falling back to
 `"DotNetForge CMS"`). Admin views set `ViewData["Title"]` (and optionally `ViewData["Description"]`) at the top of the
 view; the admin layout does not use `AppName`.
 
 **Rule:** the admin and auth layouts must never be affected by a public theme. Only `HomeController.ThemedViewAsync`
-renders theme views ([themes](../features/themes.md)); admin styling lives in `wwwroot/css/forge/` and is never
+renders theme views ([themes](../features/themes.md)); admin styling (the library's `dnf.css` and `wwwroot/css/admin/`) is never
 replaced by a theme.
 
 ## Content Security Policy and screens
@@ -122,12 +123,13 @@ replaced by a theme.
 on every response. For screens this means:
 
 - **No inline script or style**: no `<script>` blocks, `<style>` blocks, `style="..."` attributes or `on*="..."`
-  handlers. Scripts go in `src/DotNetForge.Web/wwwroot/js/forge/` and are referenced with
-  `<script src="~/js/forge/..." defer>` (page scripts via `@section Scripts`); styles go in
-  `src/DotNetForge.Web/wwwroot/css/forge/`. This applies to admin extension documents too.
-- Tag helpers that emit inline styles are not used: validation errors render with `<form-errors />`, never
+  handlers. Page scripts go in `src/DotNetForge.Web/wwwroot/js/admin/` and are referenced with
+  `<script src="~/js/admin/..." defer>` (via `@section Scripts`); screen styles go in
+  `src/DotNetForge.Web/wwwroot/css/admin/` (`css/auth.css`, `css/site.css` for the other layouts). This applies to
+  admin extension documents too.
+- Tag helpers that emit inline styles are not used: validation errors render with `<dnf-validation-summary />`, never
   `asp-validation-summary` (its empty state is `<li style="display:none">`).
-- Behaviour hooks are data attributes handled by `ui.js` (`data-confirm`, `data-collection`, `data-copy-target`, ...;
+- Behaviour hooks are data attributes handled by `dnf.js` (`data-confirm`, `data-collection`, `data-copy-target`, ...;
   list: [design system → behaviours](design-system.md#behaviours)).
 - `AdminUiTests.Every_screen_renders_without_inline_script_or_style` renders every admin screen, sign-in, `/` and a
   content page and fails on any inline style, `<style>`, inline `<script>` or `on…=` handler.
@@ -161,16 +163,16 @@ flowchart TB
     Model --> Crumbs["Top-bar breadcrumbs"]
     Model --> Screens["Screens: actions shown only when reachable<br/>(dashboard quick actions)"]
     Sidebar --> Main["Main: Dashboard, Pages, Content Manager, Content types, Media, Marketplace"]
-    Sidebar --> Settings["Settings (five collapsible groups):<br/>Global Settings · API & Webhooks · Administration Panel · Email · Users & Permissions Plugin"]
+    Sidebar --> Settings["Settings (five collapsible groups):<br/>Global Settings · API & Webhooks · Administration Panel · Email · Authentication"]
     Sidebar --> Ext["Extensions: one link per enabled admin extension"]
 ```
 
 | Behaviour | How |
 | --- | --- |
-| Role-aware | A link is shown only when the user passes its controller's `[Authorize]` data - `AdminArea`, `[RequirePermission]`, role lists and named policies (collected from the class and its base classes, combined with `AuthorizationPolicy.CombineAsync`, evaluated with `IAuthorizationService`), so custom roles see what their grants open. With the default grants an Editor or Author sees Dashboard, Pages, Content Manager, Media and Marketplace in Main (not Content types) but in Settings only the placeholder links (`ModulesController` is AdminArea): no Settings, Media Library, API Tokens, API Endpoints, API Docs, Webhooks, Plugins, Data Management, Roles, Users, Audit Logs, Providers, Two-factor (MFA) or Advanced Settings, and no API & Webhooks, Administration Panel or Users & Permissions Plugin group. A `Developer` sees Dashboard and Marketplace in Main, API Tokens, API Endpoints and API Docs in API & Webhooks (not Webhooks: no `Webhooks` grant by default), and the placeholders in Global Settings - no Pages, Content Manager, Content types, Media, Settings, Media Library, Plugins or Data Management. Empty groups and sections are dropped. Hiding is never the gate - the controller still refuses a direct URL. |
+| Role-aware | A link is shown only when the user passes its controller's `[Authorize]` data - `AdminArea`, `[RequirePermission]`, role lists and named policies (collected from the class and its base classes, combined with `AuthorizationPolicy.CombineAsync`, evaluated with `IAuthorizationService`), so custom roles see what their grants open. With the default grants an Editor or Author sees Dashboard, Pages, Content Manager, Media and Marketplace in Main (not Content types) but in Settings only the placeholder links (`ModulesController` is AdminArea): no Settings, Media Library, API Tokens, API Endpoints, API Docs, Webhooks, Plugins, Data Management, Roles, Users, Audit Logs, Providers, Two-factor (MFA) or Advanced Settings, and no API & Webhooks, Administration Panel or Authentication group. A `Developer` sees Dashboard and Marketplace in Main, API Tokens, API Endpoints and API Docs in API & Webhooks (not Webhooks: no `Webhooks` grant by default), and the placeholders in Global Settings - no Pages, Content Manager, Content types, Media, Settings, Media Library, Plugins or Data Management. Empty groups and sections are dropped. Hiding is never the gate - the controller still refuses a direct URL. |
 | Active link | The longest href that equals the request path or is a parent of it (`/admin` only matches itself), so `/admin/api-tokens/create` marks **API Tokens**; it gets `aria-current="page"`. If a link were listed twice, only its first occurrence would be marked. |
 | Groups | Settings sub-groups are `<details data-nav-group>`; the group holding the active link renders open, the others closed; `nav-state.js` remembers what the user opened or closed (`localStorage` `dnf-nav`) and counts the active group as opened, so a group stays open across screens (also after leaving it) until the user closes it. |
-| Stable between screens | Every screen is a full page load. `nav-state.js` loads synchronously right after `</aside>` (not deferred), so the remembered groups and the sidebar's scroll position (`sessionStorage` `dnf-nav-scroll`, per tab; otherwise the active link is scrolled into view) are in place before the first paint - no groups opening or closing and no jump after load. `admin.css` opts into cross-document view transitions (`@view-transition`): browsers that support them keep the old screen up until the new one can paint and swap the sidebar and the top bar without a fade (`view-transition-name: sidebar` / `topbar`), so only the content changes; no animation with `prefers-reduced-motion`. The top bar's theme menu is in the markup from the first paint (shown once `theme.js` has set `<html class="js">`), not revealed later by `ui.js`. |
+| Stable between screens | Every screen is a full page load. `nav-state.js` loads synchronously right after `</aside>` (not deferred), so the remembered groups and the sidebar's scroll position (`sessionStorage` `dnf-nav-scroll`, per tab; otherwise the active link is scrolled into view) are in place before the first paint - no groups opening or closing and no jump after load. `css/admin/shell.css` opts into cross-document view transitions (`@view-transition`): browsers that support them keep the old screen up until the new one can paint, then swap everything at once. There is deliberately no fade: during one both screens show through each other, a flicker on every click. The top bar's theme menu is in the markup from the first paint (`dnf-js-only`, shown once `dnf-theme.js` has set `<html class="dnf-js">`), not revealed later by `dnf.js`. |
 | Planned modules | `Planned: true` links (the [module placeholders](../pages/module-placeholders.md)) show a **Soon** badge. |
 | Breadcrumbs | Section → group → link label (the link is clickable), then the screen's `ViewData["Title"]` when it differs (e.g. **Create API token**). Not shown on the dashboard or when the trail has one entry. |
 | `Allows(href)` | `AdminNavModel.Allows("/admin/users")` is true when the user's sidebar contains that href; the dashboard uses it to show quick actions and cards only for reachable screens. |
@@ -200,7 +202,7 @@ tab on the next request. See [extension host](../pages/extension-host.md).
   failed sign-ins - documented per screen.
 - Lists are unpaged on the server except Audit Logs (`Take(100)`) and the dashboard's activity
   (`DashboardController.RecentActivityCount` = 8). Search, filters, sorting and pagination of a list are client-side
-  enhancements over the rendered rows (`data-collection` in `ui.js`); without JavaScript the whole list shows.
+  enhancements over the rendered rows (`data-collection` in `dnf.js`); without JavaScript the whole list shows.
 - A screen that also handles validation errors builds its model in a private helper (`ContentController.BuildIndexAsync`,
   `MediaController.BuildIndexAsync`, `SettingsController.BuildAsync`) so GET and the failed POST render the same
   model.
@@ -217,7 +219,7 @@ sequenceDiagram
     participant Svc as Service (optional)
     participant DB as DotNetForgeDbContext
     participant Aud as IAuditService
-    User->>Form: submit (ui.js asks data-confirm first)
+    User->>Form: submit (dnf.js asks data-confirm first)
     Form->>Ctl: POST + __RequestVerificationToken
     Ctl->>Ctl: Can / CanModify (content, media) else Forbid()
     Ctl->>Svc: validate/apply (e.g. IPageService.ApplyAsync, MediaService.UploadAsync)
@@ -242,7 +244,7 @@ Conventions every mutating screen follows:
   shown as a toast by the layout (`Views/Shared/_Feedback.cshtml`); screens never render their own flash markup
   ([design system → feedback](design-system.md#feedback)).
 - Failure → `ModelState.AddModelError(string.Empty, message)` and re-render with the posted values; views show the
-  errors with `<form-errors />` at the top of the form. Input lengths are checked before saving.
+  errors with `<dnf-validation-summary />` at the top of the form. Input lengths are checked before saving.
 - Permission denied → `Forbid()` → `/account/denied` (status 403).
 - Exceptions (e.g. a unique-index violation) are not caught and surface through the global error handling.
 - Successful writes are audited via `IAuditService` (Content create/update/delete/reorder, Media upload/delete,
@@ -258,8 +260,8 @@ Conventions every mutating screen follows:
 | Flash message | `TempData["Success"]` / `["Error"]` / `["Info"]` (cookie TempData provider, Data Protection) | until read on the next request; the toast auto-hides after 6 s (Success only) | "Saved 'About'." |
 | Form input after a failed POST | the bound model is passed back to the view | one request | `PageInput` keeps unsaved edits |
 | Signed-in user | auth cookie `dnf.auth` (keys in `DataProtectionKeys`) | 8 h sliding; account re-checked every request (30 s cache) | name in the sidebar account menu |
-| Client UI state | DOM (`ui.js`, `pages.js`, `entries.js`, `content-types.js`) | until reload | list search/filter/page, selection, conditional fields, drag state |
-| UI preferences | browser `localStorage` (`ui.js`, `theme.js`, `nav-state.js`) | until cleared | `dnf-theme` (light/dark/system), `dnf-nav` (open sidebar groups), `dnf-view:<screen>` (grid/list); `sessionStorage` `dnf-nav-scroll` (sidebar scroll position, per tab) and `dnf-scroll` (page scroll across a POST back to the same screen, read once) |
+| Client UI state | DOM (`dnf.js`, `pages.js`, `entries.js`, `content-types.js`) | until reload | list search/filter/page, selection, conditional fields, drag state |
+| UI preferences | browser `localStorage` (`dnf.js`, `dnf-theme.js`, `nav-state.js`) | until cleared | `dnf-theme` (light/dark/system), `dnf-nav` (open sidebar groups), `dnf-view:<screen>` (grid/list); `sessionStorage` `dnf-nav-scroll` (sidebar scroll position, per tab) and `dnf-scroll` (page scroll across a POST back to the same screen, read once) |
 | Persistent | database (+ `IFileStorage` for media bytes) | permanent | everything else |
 
 `localStorage` holds only display preferences (every access is wrapped in `try`; blocked storage falls back to the
@@ -268,12 +270,12 @@ defaults); there is no client-side data cache and no global client state.
 ## Loading states
 
 Screens are server-rendered in one response; the browser's own page-load indicator is the main feedback. The
-extension host and the API Docs screen show a skeleton until their `<iframe>` loads (`iframe[data-frame]` in `ui.js`). The one asynchronous action (tree reorder) gives no
+extension host and the API Docs screen show a skeleton until their `<iframe>` loads (`iframe[data-frame]` in `dnf.js`). The one asynchronous action (tree reorder) gives no
 in-progress indicator and reloads the page when it finishes (after a toast on failure).
 
 ## Error handling on screens
 
-- Validation and business-rule errors: `<form-errors />` on the same screen, or a `TempData["Error"]` toast after a
+- Validation and business-rule errors: `<dnf-validation-summary />` on the same screen, or a `TempData["Error"]` toast after a
   redirect (see above).
 - Not found: `NotFound()` produces an empty 404 (no custom 404 page, no status-code pages middleware).
 - Authorization: redirects to login or the denied screen (role checks and `Forbid()` alike).
@@ -310,8 +312,8 @@ user can open them, every action on them is available.
 
 ## Dialogs and modals
 
-One shared modal: the confirmation `<dialog id="confirm-dialog">` in `Views/Shared/_Feedback.cshtml`, opened by
-`ui.js` for any form (or submit button) with `data-confirm="<question>"` (optional `data-confirm-title`,
+One shared modal: the confirmation `<dialog id="dnf-confirm-dialog">` in `Views/Shared/_Feedback.cshtml`, opened by
+`dnf.js` for any form (or submit button) with `data-confirm="<question>"` (optional `data-confirm-title`,
 `data-confirm-action`, `data-confirm-tone`). Without the dialog API it falls back to `window.confirm`; without
 JavaScript the form submits directly. Mechanics: [design system → feedback](design-system.md#feedback).
 
@@ -325,7 +327,7 @@ JavaScript the form submits directly. Mechanics: [design system → feedback](de
 | API Endpoints | **Delete endpoint**, **Regenerate token** / **Generate token** |
 | Plugins | **Disable** (enable needs no confirmation) |
 
-A failed reorder shows a danger toast (`window.Forge.toast`) with the server's `{ error }` or "Could not save the new
+A failed reorder shows a danger toast (`dnfUI.toast`) with the server's `{ error }` or "Could not save the new
 order." and reloads. There are no inline `onsubmit`/`onclick` handlers (the CSP blocks them). The denied screen's
 **Sign out** is a plain POST button.
 
@@ -338,14 +340,14 @@ order." and reloads. There are no inline `onsubmit`/`onclick` handlers (the CSP 
 | Screen partials | next to the screen that owns them, prefixed `_` | `Pages/_TreeNodes.cshtml` (recursive), `Pages/_PageForm.cshtml` |
 | Navigation | `src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs` | `AdminNavigation.Tree`, `AdminNavigationService` |
 | View components | admin: class in `src/DotNetForge.Web/Areas/Admin/Components/`, view in `src/DotNetForge.Web/Areas/Admin/Views/Shared/Components/<Name>/Default.cshtml`; public: `src/DotNetForge.Web/Components/` | `ExtensionWidgetsViewComponent` (dashboard widgets), `ExtensionModulesViewComponent` (page modules, returns HTML directly) |
-| Tag helpers | ASP.NET Core's (`@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers`) and the UI ones in `src/DotNetForge.Web/Ui/UiTagHelpers.cs` (`@addTagHelper *, DotNetForge.Web`), both in each `_ViewImports` | `asp-for`, `asp-action`; `<icon>`, `<badge>`, `<alert>`, `<empty-state>`, `<stat-card>`, `<timestamp>`, `<form-errors />` |
+| Tag helpers | ASP.NET Core's (`@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers`) and the library's in `src/DotNetForge.UI/Components/` (`@addTagHelper *, DotNetForge.UI`), both in each `_ViewImports` | `asp-for`, `asp-action`; `<dnf-icon>`, `<dnf-badge>`, `<dnf-alert>`, `<dnf-empty-state>`, `<dnf-stat-card>`, `<dnf-timestamp>`, `<dnf-validation-summary />`, `<dnf-dropdown>` |
 | Presentation helpers | `src/DotNetForge.Web/Ui/` | `AuditPresentation` (action labels/icons), `MediaPresentation` (file kind, size) |
-| Styles | `src/DotNetForge.Web/wwwroot/css/forge/` | `tokens.css`, `base.css`, `components.css`, `admin.css`, `auth.css`, `public.css` |
-| Scripts | `src/DotNetForge.Web/wwwroot/js/forge/` | `theme.js` (every layout, in `<head>`), `ui.js` (admin and auth layouts), `nav-state.js` (admin layout, right after the sidebar), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types builder) |
-| Icons | `src/DotNetForge.Web/wwwroot/img/icons.svg` | sprite used by `<icon name="…">` |
+| Styles | library: `src/DotNetForge.UI/Styles/` (compiled to `/_content/DotNetForge.UI/dnf.css`); CMS screens: `src/DotNetForge.Web/wwwroot/css/` | `dnf.css`; `admin/{shell,content,media,tools,people,showcase}.css`, `auth.css`, `site.css` |
+| Scripts | library: `src/DotNetForge.UI/wwwroot/`; CMS screens: `src/DotNetForge.Web/wwwroot/js/admin/` | `dnf-theme.js` (every layout, in `<head>`), `dnf.js` (admin and auth layouts); `nav-state.js` (admin layout, right after the sidebar), `pages.js` (Pages), `entries.js` (Content Manager), `content-types.js` (Content types builder), `media.js`, `email-templates.js`, `endpoints.js`, `webhooks.js`, `passkeys.js`, `showcase.js` |
+| Icons | `src/DotNetForge.UI/wwwroot/icons.svg` (`/_content/DotNetForge.UI/icons.svg`) | sprite used by `<dnf-icon name="…">` |
 
-Reusable UI is the **Forge design system** - class-based components, tag helpers, partials and data-attribute
-behaviours. Build every screen from it: [design system → building a screen](design-system.md#building-a-screen) and
+Reusable UI is **DotNetForge UI** ([ui/README.md](../ui/README.md)) - class-based components, tag helpers and data-attribute
+behaviours - plus the CMS partials. Build every screen from it: [design system → building a screen](design-system.md#building-a-screen) and
 the [component table](design-system.md#components).
 
 ## Planned (not implemented)
@@ -374,13 +376,14 @@ added, removed or reordered without a spec change. `AdminNavigation.Tree` follow
 | Main → **File Manager** | labelled **Media** (`/admin/media`) |
 | Main → **Content Manager** (the page tree) | three links: **Pages** (`/admin/pages`, the page tree), **Content Manager** (`/admin/content`, structured content) and **Content types** (`/admin/content-types`) - content, pages and content models are separate screens ([structured content](../features/structured-content.md)) |
 | Global Settings → **Overview** | labelled **Settings** (`/admin/settings`, the key/value editor); the Overview screen is [planned](../pages/settings.md#planned-not-implemented) |
-| Global Settings → **Transfer** | labelled **Data Management** (`/admin/data`, icon `database`): export, backups and import ([Data Management](../pages/data-management.md)) |
+| Global Settings → **Transfer** | labelled **Data Management** (`/admin/data`, icon `database`) and moved to **Administration Panel**, after Audit Logs: export, backups and import ([Data Management](../pages/data-management.md)) |
 | Global Settings → **File Manager** (between Internationalization and Plugins) | labelled **Media Library** (`/admin/media-settings`, icon `image`): upload limits, image optimization and video compression ([Media Library settings](../pages/media-settings.md)) |
 | one Settings group with four collapsible sub-groups | one **Settings** section with **five** collapsible `<details>` sub-groups: **API & Webhooks** (after Global Settings) is an addition - see the next row |
 | Global Settings → API Tokens, Webhooks | moved into their own group **API & Webhooks** (after Global Settings) with **API Tokens**, **API Endpoints**, **API Docs** and **Webhooks** - the developer and integration screens apart from the site's own settings |
+| **Users & Permissions Plugin** group | labelled **Authentication**: it holds sign-in providers, two-factor and sign-up rules, while users and roles are under Administration Panel, and nothing in it is a plugin |
 | Users & Permissions Plugin → **Roles** | not repeated: **Roles** is listed once, under Administration Panel - two links to the same screen confused users |
 | Users & Permissions Plugin: Providers, then Advanced Settings | **Two-factor (MFA)** (`/admin/mfa`, icon `shield`) added between them - the [Two-factor authentication](../pages/mfa.md) settings, an addition the spec tree does not list; **Providers** (`/admin/providers`, icon `lock`) is the built [Providers](../pages/providers.md) screen |
-| no API Endpoints, API Docs | **API Endpoints** (`/admin/api-endpoints`, icon `code`) and **API Docs** (`/admin/api-docs`, icon `book`), both for Super Admins and Developers, in API & Webhooks after API Tokens - [custom API endpoints](../features/custom-endpoints.md) and the [API docs](../features/api-docs.md), additions the spec tree does not list |
+| no API Endpoints, API Docs | **API Endpoints** (`/admin/api-endpoints`, icon `code`) and **API Docs** (`/admin/api-docs`, icon `book`), both for Super Admins and Developers, in API & Webhooks after API Tokens - [custom API endpoints](../features/custom-endpoints.md) and the [API docs](../features/api-docs.md), additions the spec tree does not list. The [UI docs](../pages/ui-docs.md) are not in the sidebar: **UI docs** in the account menu (Super Admins and Developers) |
 | no Extensions group | `AdminNavigationService` appends an **Extensions** section (admin extension tabs) when at least one admin extension is enabled - an addition the spec tree does not list |
 
 All other entries and their order already match.
@@ -392,10 +395,10 @@ Default visibility; actual visibility follows the role's granted permissions ([a
 | Role | Enters admin area | Sidebar shows |
 | --- | --- | --- |
 | `Super Admin` | yes | full tree |
-| `Admin` | yes | full tree except Plugins and Data Management (Super Admin only), API Endpoints and API Docs (Super Admin and Developer only) |
-| `Developer` | yes | ✔ Dashboard, API Tokens, API Endpoints, API Docs (+ the placeholder links); no Webhooks, content, media, settings or administration screens |
+| `Admin` | yes | full tree except Plugins and Data Management (Super Admin only), API Endpoints, API Docs and the UI docs (Super Admin and Developer only) |
+| `Developer` | yes | ✔ Dashboard, API Tokens, API Endpoints, API Docs (+ the placeholder links; the UI docs from the account menu); no Webhooks, content, media, settings or administration screens |
 | `Editor` | yes | items permitted by role (typically Content Manager, File Manager, Content History); Settings sub-groups hidden unless granted |
-| `Author` | yes | limited (typically Content Manager and File Manager, own content); no Administration Panel, Email or Users & Permissions Plugin unless granted |
+| `Author` | yes | limited (typically Content Manager and File Manager, own content); no Administration Panel, Email or Authentication unless granted |
 | `Authenticated` | no | none |
 | `Public` | no | none |
 
@@ -431,7 +434,7 @@ Default visibility; actual visibility follows the role's granted permissions ([a
 
 | Case | Target behaviour |
 | --- | --- |
-| Role or permissions change mid-session | Re-evaluated on the next request; hidden items stay unreachable by URL. Today roles are cookie claims fixed at sign-in (8 h sliding), so a change takes effect only after signing in again; a disabled or deleted account is signed out within 30 s ✔ (`ValidateSessionAsync`). |
+| Role or permissions change mid-session | Re-evaluated on the next request; hidden items stay unreachable by URL. Roles come from the [session](../features/authentication.md#sessions), not the cookie, so a change counts from the next request; a disabled or deleted account is signed out within 30 s ✔ (`ValidateSessionAsync`). |
 | Authenticated/Public user hits an admin route | 403, no sidebar ✔ (denied screen uses `_AuthLayout`). |
 | Public theme tries to style the admin | No effect on admin, setup or sign-in (unless login theming is configured). |
 | Module disabled for the role | Item hidden, not shown as a broken link. |
@@ -473,9 +476,9 @@ Use the [admin-page skill](../../.claude/skills/admin-page/SKILL.md). In short:
    lengths before saving.
 5. Per-action permissions: check `Can(area, action)` / `CanModify(area, any, own, createdById)` and return
    `Forbid()`; expose the result on the view model (`CanX`) and hide what the user cannot do.
-6. Build the view from the [design system](design-system.md#building-a-screen): cards, `.field`s,
-   `<form-errors />`, `TempData` toasts, `data-confirm` for destructive forms, `table.table.table-stack`,
-   `<empty-state>`. No inline script or style; page scripts go in `src/DotNetForge.Web/wwwroot/js/forge/` via
+6. Build the view from the [design system](design-system.md#building-a-screen): cards, `.dnf-field`s,
+   `<dnf-validation-summary />`, `TempData` toasts, `data-confirm` for destructive forms, `div.dnf-table.dnf-table--stack`,
+   `<dnf-empty-state>`. No inline script or style; page scripts go in `src/DotNetForge.Web/wwwroot/js/admin/` via
    `@section Scripts`.
 7. Add the link to `AdminNavigation.Tree` with the screen's controller type (replace the matching placeholder link
    and `ModulesController` action if one exists) - visibility, active state and breadcrumbs follow.

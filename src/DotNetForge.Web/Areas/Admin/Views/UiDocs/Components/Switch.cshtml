@@ -1,0 +1,141 @@
+@* Switch (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+@* The MVC tag helpers are off on this page: the asp-for snippet is shown as text, not compiled against the docs
+   page's own model. *@
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/choice.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A switch is a native checkbox with <code>role="switch"</code> and <code>dnf-switch</code>, drawn as a track with a thumb.
+    Put it in a <code>&lt;label&gt;</code> with its text - usually a <code>dnf-switch-row</code>, the settings row with the text
+    on the left and the switch on the right.</p>
+
+<ui-doc-example id="basic">
+    <label class="dnf-check items-center">
+        <input type="checkbox" role="switch" class="dnf-switch" checked />
+        <span class="dnf-check__text">Maintenance mode</span>
+    </label>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="row" title="Settings row" description="dnf-switch-row puts the text first and the switch at the end; the whole row is the label." layout="block">
+    <label class="dnf-switch-row max-w-lg">
+        <span class="dnf-check__text">
+            Enable sign-ups
+            <span class="dnf-check__description">New visitors can create an account.</span>
+        </span>
+        <input type="checkbox" role="switch" class="dnf-switch" />
+    </label>
+</ui-doc-example>
+
+<ui-doc-example id="rows" title="A list of settings" description="Consecutive rows are separated by a line." layout="block">
+    <div class="max-w-lg">
+        <label class="dnf-switch-row">
+            <span class="dnf-check__text">
+                Email confirmation
+                <span class="dnf-check__description">New accounts confirm their address before they can sign in.</span>
+            </span>
+            <input type="checkbox" role="switch" class="dnf-switch" checked />
+        </label>
+        <label class="dnf-switch-row">
+            <span class="dnf-check__text">
+                Two-step sign-in
+                <span class="dnf-check__description">Every user sets up an authenticator app.</span>
+            </span>
+            <input type="checkbox" role="switch" class="dnf-switch" />
+        </label>
+        <label class="dnf-switch-row">
+            <span class="dnf-check__text">
+                Forgot password
+                <span class="dnf-check__description">Needs SMTP; configure it in the environment first.</span>
+            </span>
+            <input type="checkbox" role="switch" class="dnf-switch" disabled />
+        </label>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="switch-states" title="States" description="Off, on, and disabled in both positions." layout="row">
+    <input type="checkbox" role="switch" class="dnf-switch" aria-label="Off" />
+    <input type="checkbox" role="switch" class="dnf-switch" checked aria-label="On" />
+    <input type="checkbox" role="switch" class="dnf-switch" disabled aria-label="Disabled off" />
+    <input type="checkbox" role="switch" class="dnf-switch" checked disabled aria-label="Disabled on" />
+</ui-doc-example>
+
+<h3 id="asp-for">With asp-for</h3>
+<p>A switch posts like a checkbox: bind a <code>bool</code> with <code>asp-for</code> and keep <code>role="switch"</code>.</p>
+
+<ui-doc-code id="asp-for-code" lang="razor">
+<label class="dnf-switch-row">
+    <span class="dnf-check__text">
+        Enable sign-ups
+        <span class="dnf-check__description">New visitors can create an account.</span>
+    </span>
+    <input type="checkbox" role="switch" class="dnf-switch" asp-for="SignUpsEnabled" />
+</label>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. A switch
+    has no modifiers and no component tokens.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="items-center centres the switch on a one-line row instead of aligning it to the top." layout="block">
+    <label class="dnf-switch-row items-center max-w-lg">
+        <span class="dnf-check__text">Show the cookie banner</span>
+        <input type="checkbox" role="switch" class="dnf-switch" checked />
+    </label>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS in a scope beats the component style - a success-coloured track when on." layout="block">
+    <label class="dnf-docs-demo-switch dnf-switch-row max-w-lg">
+        <span class="dnf-check__text">Webhook active</span>
+        <input type="checkbox" role="switch" class="dnf-switch" checked />
+    </label>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-switch .dnf-switch:checked { background: var(--dnf-success); }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-switch</code></td><td>block</td><td>an <code>appearance: none</code> checkbox drawn as a 2.25 by 1.25rem track with a white thumb (<code>::after</code>)</td></tr>
+        <tr><td><code>dnf-switch-row</code></td><td>block</td><td>a <code>&lt;label&gt;</code> row: text at the start, switch at the end; consecutive rows are separated by a line</td></tr>
+    </tbody>
+</table>
+<p>The text inside a row uses <code>dnf-check__text</code> and <code>dnf-check__description</code> from the
+    <a href="@UiDocsCatalog.Root/components/checkbox#classes">checkbox</a>.</p>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>on</td><td><code>:checked</code></td><td><code>--dnf-primary</code> track, the thumb moved to the end</td></tr>
+        <tr><td>keyboard focus</td><td><code>:focus-visible</code></td><td>the focus ring</td></tr>
+        <tr><td>disabled</td><td><code>:disabled</code>; <code>.dnf-switch-row:has(&gt; .dnf-switch:disabled)</code></td><td>55% opacity and a not-allowed cursor; the row gets the default cursor</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper and no behaviour: the classes above are the API, on a native
+    <code>&lt;input type="checkbox" role="switch"&gt;</code>.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li><code>role="switch"</code> on the input, so it is announced as on or off rather than checked.</li>
+    <li>The surrounding label names it; a switch alone needs <code>aria-label</code>.</li>
+    <li>Space toggles it, as for any checkbox.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use a switch for a setting that reads as on or off.</li>
+    <li>Do name the setting, not the action: "Maintenance mode", not "Turn on maintenance mode".</li>
+    <li>Don't use a switch for an agreement or a choice in a form - a <a href="@UiDocsCatalog.Root/components/checkbox">checkbox</a> reads better there.</li>
+</ul>

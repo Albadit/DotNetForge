@@ -1140,6 +1140,30 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.ToTable("UserRoles");
                 });
 
+            modelBuilder.Entity("DotNetForge.Shared.Entities.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresDate");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserSessions");
+                });
+
             modelBuilder.Entity("DotNetForge.Shared.Entities.Webhook", b =>
                 {
                     b.Property<Guid>("Id")

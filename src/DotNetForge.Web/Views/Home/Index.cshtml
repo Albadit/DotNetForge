@@ -5,29 +5,29 @@
     var publishedCount = (int)(ViewData["PublishedCount"] ?? 0);
 }
 
-<section class="site-hero">
-    <h1>@appName</h1>
-    <p class="site-lead">A modular, secure, hybrid CMS built on ASP.NET Core MVC.</p>
+<section class="dnf-site__hero">
+    <h1 class="dnf-site__title">@appName</h1>
+    <p class="dnf-site__lead">A modular, secure, hybrid CMS built on ASP.NET Core MVC.</p>
     <p class="text-muted">The CMS is installed and running. This is the built-in public site - enable a theme on the
         <a href="/admin/plugins">Plugins</a> screen to give it your own look.</p>
 </section>
 
-<section class="stack" aria-labelledby="pages-title">
+<section class="dnf-stack" aria-labelledby="pages-title">
     <h2 id="pages-title">Published pages</h2>
     @if (publishedCount == 0)
     {
-        <div class="card">
-            <empty-state icon="pages" title="Nothing published yet" text="Create and publish a page in Pages.">
-                <a class="btn btn-primary" href="/admin/pages">Open Pages</a>
-            </empty-state>
+        <div class="dnf-card">
+            <dnf-empty-state icon="pages" title="Nothing published yet" description="Create and publish a page in Pages.">
+                <a class="dnf-button dnf-button--primary" href="/admin/pages">Open Pages</a>
+            </dnf-empty-state>
         </div>
     }
     else
     {
-        <ul class="card site-page-list">
+        <ul class="dnf-card dnf-site__page-list">
             @foreach (var item in Model)
             {
-                <li><a href="/@item.Slug">@item.Title <icon name="arrow-right" size="sm" /></a> <span class="text-subtle text-sm">/@item.Slug</span></li>
+                <li><a href="/@item.Slug">@item.Title <dnf-icon name="chevron-right" size="Sm" /></a> <span class="text-subtle text-sm">/@item.Slug</span></li>
             }
         </ul>
     }

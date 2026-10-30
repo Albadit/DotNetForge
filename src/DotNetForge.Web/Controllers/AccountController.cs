@@ -28,9 +28,10 @@ public sealed class AccountController : Controller
     private readonly IAuditService _audit;
     private readonly AppEnvironment _env;
     private readonly LoginProviders _loginProviders;
+    private readonly UserSessionService _sessions;
 
     public AccountController(AuthService authService, AccountService accounts, UserAccountSettingsService settings,
-        IAuditService audit, AppEnvironment env, LoginProviders loginProviders)
+        IAuditService audit, AppEnvironment env, LoginProviders loginProviders, UserSessionService sessions)
     {
         _authService = authService;
         _accounts = accounts;
@@ -38,6 +39,7 @@ public sealed class AccountController : Controller
         _audit = audit;
         _env = env;
         _loginProviders = loginProviders;
+        _sessions = sessions;
     }
 
     /// <summary>The sign-in page's old address, kept for bookmarks and links.</summary>
@@ -107,6 +109,7 @@ public sealed class AccountController : Controller
     public async Task<IActionResult> Logout()
     {
         await _audit.LogAsync(AuditActions.UserLogout);
+        await _sessions.EndAsync(User, HttpContext.RequestAborted);
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Redirect("/login");
     }

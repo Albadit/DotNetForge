@@ -73,7 +73,7 @@ public sealed class RolesApiController : ApiControllerBase
     [RequireApiPermission(PermissionKeys.RolesRead)]
     public async Task<IActionResult> Get()
     {
-        // Two single-table queries (works on every provider, including MongoDB).
+        // Two single-table queries, combined in memory.
         var roles = await _db.Roles
             .AsNoTracking()
             .Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn })

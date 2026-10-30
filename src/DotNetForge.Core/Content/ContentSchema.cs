@@ -517,26 +517,6 @@ public static partial class ContentSchema
         return candidates.FirstOrDefault(f => f.Key == configured)?.Key ?? candidates.FirstOrDefault()?.Key;
     }
 
-    /// <summary>Finds a field by a dotted path through groups (<c>specs.width</c>).</summary>
-    public static FieldDefinition? Find(IReadOnlyList<FieldDefinition> fields, string path)
-    {
-        var parts = path.Split('.');
-        FieldDefinition? current = null;
-        var level = fields;
-        foreach (var part in parts)
-        {
-            current = level.FirstOrDefault(f => f.Key == part);
-            if (current is null)
-            {
-                return null;
-            }
-
-            level = current.Fields;
-        }
-
-        return current;
-    }
-
     /// <summary>"featuredImage" → "Featured image".</summary>
     public static string Humanize(string key)
     {

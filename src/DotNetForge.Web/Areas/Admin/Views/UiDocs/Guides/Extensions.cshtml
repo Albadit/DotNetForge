@@ -1,0 +1,223 @@
+@* Extensions (UI docs): building an extension's screens with the library - imports, assets, isolation, Level 3 CSS,
+   overlays, dnfUI.init and an extension's own Tailwind build. *@
+
+<p>Extensions use the same library as the CMS, so an admin tab or a dashboard widget looks like the admin around it, in
+    light and dark. This page covers the library side; the manifest, slots, views and resources of an extension are in
+    <code>.docs/guides/extension-development.md</code>. The sample <code>extensions/admin/audit-dashboard</code> follows
+    everything below.</p>
+
+<h2 id="assembly">The assembly</h2>
+<ul>
+    <li><code>DotNetForge.Sdk</code> references <code>DotNetForge.UI</code>, so an extension project that compiles against
+        the SDK can use the Dnf types (<code>DnfSize</code>, <code>DnfTone</code>, <code>DnfAssets</code>,
+        <code>DnfTimestampTagHelper.Relative</code> …).</li>
+    <li>The web host ships <code>DotNetForge.UI.dll</code>, and the extension loader resolves every assembly the host
+        ships from the host - there is one copy of the tag helper types at runtime.</li>
+    <li>Extension views are compiled at runtime against the host's references, so they can register the tag helpers -
+        a views-only extension needs no project at all.</li>
+</ul>
+
+<h2 id="admin-tab">An admin tab</h2>
+<p>An admin tab (<code>type: admin</code>) is a complete HTML document in an iframe. It inherits nothing from the admin,
+    so it loads the library itself. Register the tag helpers in <code>Views/_ViewImports.cshtml</code>:</p>
+
+<ui-doc-code id="ext-imports" lang="razor">
+@@using DotNetForge.UI
+@@using DotNetForge.UI.Components
+@@addTagHelper *, DotNetForge.UI
+</ui-doc-code>
+
+<p>and load the assets in <code>Views/Shared/_Layout.cshtml</code> (set by <code>Views/_ViewStart.cshtml</code>):</p>
+
+<ui-doc-code id="ext-layout" lang="razor">
+@@{ var resourceBase = ViewData["ResourceBase"] as string ?? string.Empty; }<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>@@ViewData["Title"]</title>
+    <script src="/_content/DotNetForge.UI/dnf-theme.js"></script>          @* first: theme before the first paint *@
+    <link rel="stylesheet" href="/_content/DotNetForge.UI/dnf.css" />
+    <link rel="stylesheet" href="@@resourceBase/css/index.css" />           @* yours, after dnf.css *@
+    <script src="/_content/DotNetForge.UI/dnf.js" defer></script>           @* only if you use its hooks *@
+</head>
+<body class="dnf-scope" data-dnf-extension="yourcompany.admin.reports">
+    @@RenderBody()
+    <script src="@@resourceBase/js/index.js"></script>
+</body>
+</html>
+</ui-doc-code>
+
+<ul>
+    <li><code>dnf-theme.js</code> reads the same <code>localStorage</code> key (<code>dnf-theme</code>) as the admin, so the
+        tab follows the user's light or dark choice (<a href="@UiDocsCatalog.Root/theming#switching">Theming</a>).</li>
+    <li><code>dnf.js</code> is optional: load it when your views use <code>data-*</code> hooks - tooltips, dropdowns, tabs,
+        collections, confirm (<a href="@UiDocsCatalog.Root/behaviours">Behaviours</a>). Toasts and the confirmation
+        dialog also need their markup in your layout (<a href="@UiDocsCatalog.Root/behaviours#toasts">toasts</a>,
+        <a href="@UiDocsCatalog.Root/behaviours#confirm">confirmation dialog</a>); without the dialog,
+        <code>data-confirm</code> falls back to the browser's <code>confirm()</code>. The audit dashboard needs neither and
+        leaves <code>dnf.js</code> out.</li>
+    <li>The paths are the <code>DnfAssets</code> constants (<code>@@DnfAssets.Stylesheet</code> …) if you prefer them; they
+        include no app path base.</li>
+    <li>No inline <code>&lt;script&gt;</code> or <code>style</code>: the admin's Content Security Policy applies to the tab
+        too. Scripts and stylesheets live in <code>Views/Resources</code>.</li>
+</ul>
+
+<h2 id="widget">A dashboard widget</h2>
+<p>A widget (<code>Views/Widget.cshtml</code>) is a partial rendered inside a card on the admin dashboard, which already
+    loads the library: use the classes and utilities directly, and add the <code>DotNetForge.UI</code> lines to its
+    <code>_ViewImports.cshtml</code> only when it uses tag helpers. The sample <code>extensions/widgets/weather-widget</code>
+    uses Tailwind utilities and no stylesheet. Page modules and themes render on the public site, which has its own
+    styles.</p>
+
+<h2 id="isolation">Isolation</h2>
+<p>Mark the extension's root element - the <code>&lt;body&gt;</code> of an admin tab - with two attributes:</p>
+<ul>
+    <li><strong><code>class="dnf-scope"</code></strong> derives the hover and soft shades again on that element, so
+        overriding a leaf token there re-themes everything inside, shades included
+        (<a href="@UiDocsCatalog.Root/theming#derived">derived tokens</a>).</li>
+    <li><strong><code>data-dnf-extension="&lt;id&gt;"</code></strong> names the extension - its manifest <code>id</code>.
+        The library attaches no behaviour to it: it is the hook for your own selectors, and it makes your markup easy to
+        find in the DOM.</li>
+    <li>Prefix your own classes with something of your own (<code>reports-…</code>), never <code>dnf-</code>.</li>
+</ul>
+
+<ui-doc-code id="ext-scope-css" lang="css">
+/* Views/Resources/css/index.css - unlayered */
+[data-dnf-extension="yourcompany.admin.reports"] {
+    --dnf-primary: #2563eb;
+    --dnf-primary-foreground: #ffffff;
+    --dnf-primary-text: light-dark(#1d4ed8, #93c5fd);
+}
+</ui-doc-code>
+
+<ui-doc-example id="isolation-demo" title="An extension root" description="The same markup twice: as the admin draws it, and inside an extension root whose stylesheet overrides the primary colour. Buttons, badges, soft tints and links follow." layout="block">
+    <div class="dnf-grid dnf-grid--cols-2">
+        <div class="rounded-lg border border-border bg-surface p-5">
+            <div class="dnf-stack">
+                <div class="dnf-spread">
+                    <p class="font-semibold">The admin</p>
+                    <dnf-badge tone="Primary">Beta</dnf-badge>
+                </div>
+                <p class="rounded-md bg-primary-soft p-3 text-sm">Monthly reports are ready.</p>
+                <div class="dnf-cluster">
+                    <dnf-button variant="Primary" icon="download">Export</dnf-button>
+                    <dnf-button>Schedule</dnf-button>
+                </div>
+                <a class="text-sm" href="#isolation">How reports are built</a>
+            </div>
+        </div>
+        <div class="dnf-scope rounded-lg border border-border bg-surface p-5" data-dnf-extension="yourcompany.admin.reports">
+            <div class="dnf-stack">
+                <div class="dnf-spread">
+                    <p class="font-semibold">An extension</p>
+                    <dnf-badge tone="Primary">Beta</dnf-badge>
+                </div>
+                <p class="rounded-md bg-primary-soft p-3 text-sm">Monthly reports are ready.</p>
+                <div class="dnf-cluster">
+                    <dnf-button variant="Primary" icon="download">Export</dnf-button>
+                    <dnf-button>Schedule</dnf-button>
+                </div>
+                <a class="text-sm" href="#isolation">How reports are built</a>
+            </div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="overriding">Overriding components</h2>
+<p>Write your stylesheet <strong>without</strong> <code>@@layer</code>. Unlayered CSS beats every layer of
+    <code>dnf.css</code> - <code>theme</code>, <code>base</code>, <code>components</code>, <code>utilities</code> - with
+    ordinary selectors and no <code>!important</code> (<a href="@UiDocsCatalog.Root/customization#level-3">Level 3</a>):</p>
+
+<ui-doc-code id="ext-override-css" lang="css">
+/* Views/Resources/css/index.css - unlayered */
+.reports-summary .dnf-card__body { padding: var(--dnf-space-4); }
+.reports-toolbar .dnf-button { --dnf-button-height: var(--dnf-control-sm); }
+</ui-doc-code>
+
+<p>Use tokens (<code>var(--dnf-…)</code>) rather than literal values, so light and dark keep working. Don't restyle a
+    component's internals beyond what you need: its markup and token names are the API; anything else may change.</p>
+
+<h2 id="overlays">Overlays</h2>
+<p>Dropdown menus, popovers, dialogs and the tooltip open in the browser's <strong>top layer</strong> (the Popover API and
+    <code>&lt;dialog&gt;.showModal()</code>). They are drawn above everything regardless of <code>z-index</code>,
+    <code>overflow: hidden</code> or stacking contexts, so an extension never needs a <code>z-index</code> to show them.
+    Everything in an admin tab stays inside its iframe.</p>
+
+<ui-doc-example id="overlay-demo" title="A menu inside a clipping box" description="The box hides its overflow; the menu opens in the top layer and shows in full.">
+    <div class="h-24 w-80 overflow-hidden rounded-lg border border-border bg-surface p-3 text-sm">
+        <div class="dnf-spread">
+            <span class="font-semibold">report.pdf</span>
+            <dnf-dropdown label="Actions for report.pdf">
+                <dnf-dropdown-button icon="pencil" data-docs-toast="Rename - a demo, nothing changed.">Rename</dnf-dropdown-button>
+                <dnf-dropdown-button icon="download" data-docs-toast="Download - a demo, nothing was downloaded.">Download</dnf-dropdown-button>
+                <dnf-dropdown-separator />
+                <dnf-dropdown-button icon="trash" danger="true" data-docs-confirm="report.pdf is removed from the media library." data-docs-confirm-title="Delete file" data-docs-confirm-action="Delete">Delete</dnf-dropdown-button>
+            </dnf-dropdown>
+        </div>
+        <p class="text-muted">Uploaded 3 Oct 2026 - 482 KB</p>
+    </div>
+</ui-doc-example>
+
+<h2 id="added-later">Markup added later</h2>
+<p><code>dnf.js</code> wires its per-element behaviours (tabs, collections, view switches, file uploads, frames,
+    <code>data-js-only</code>, check groups) once, at load. After inserting markup - a fetched fragment, a cloned template
+    - call <code>init</code> on the container. The delegated behaviours (dropdowns, tooltips, dialogs, confirm, copy …)
+    need no call.</p>
+
+<ui-doc-code id="ext-init-js" lang="js">
+const response = await fetch(url);
+panel.innerHTML = await response.text();
+window.dnfUI.init(panel);
+</ui-doc-code>
+
+<h2 id="tailwind">Tailwind in an extension</h2>
+<p>The host's <code>dnf.css</code> contains <strong>only the utilities used by the CMS and the extensions in this
+    repository</strong>: Tailwind generated them from the files it scanned at build time
+    (<a href="@UiDocsCatalog.Root/customization#build">the build</a>). A bundled extension, under <code>extensions/</code>,
+    gets its utilities into <code>dnf.css</code> on the next build. An extension built elsewhere may use a utility the
+    host never compiled - and then it has no effect. Such an extension either sticks to the component classes, the
+    tokens and its own CSS, or compiles its own utilities with the Tailwind v4 CLI.</p>
+<p>Its own build imports Tailwind's <strong>theme and utilities only</strong> - not preflight, which the host's
+    <code>dnf.css</code> already applies - plus the DotNetForge theme mapping, so <code>text-muted</code>,
+    <code>bg-surface</code>, <code>text-sm</code> and <code>dark:</code> mean the same as in the host. For example a
+    <code>reports.css</code> in the extension's <code>Styles</code> folder:</p>
+
+<ui-doc-code id="ext-tailwind-css" lang="css">
+@@layer theme, base, components, utilities;
+@@import "tailwindcss/theme.css" layer(theme);
+@@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@@import "../../../../src/DotNetForge.UI/Styles/theme.css";   /* or a copy of it */
+@@source "../Views";
+</ui-doc-code>
+
+<ui-doc-code id="ext-tailwind-command" lang="text">
+tailwindcss --input Styles/reports.css --output Views/Resources/css/reports.css --minify
+</ui-doc-code>
+
+<ul>
+    <li><code>source(none)</code> turns off automatic detection; <code>@@source</code> names the folders to scan, relative
+        to the stylesheet.</li>
+    <li>Link the output <strong>after</strong> <code>dnf.css</code>. Its rules are in the same named layers as the host's,
+        so they merge into them: your utilities sit in <code>utilities</code>, above the components, like the host's.</li>
+    <li>Use the host's Tailwind version, <code>4.3.3</code>; in a checkout the binary is already in
+        <code>tools/tailwind/4.3.3/</code>.</li>
+    <li>The host's build does not run this step: run it yourself (or in your CI) and ship the generated file in
+        <code>Views/Resources/</code>, which is read at request time and must not be written at runtime.</li>
+    <li><code>Styles/theme.css</code> only maps names to <code>--dnf-*</code> tokens; the values come from the host's
+        <code>dnf.css</code> at runtime.</li>
+</ul>
+<p>No extension in this repository does this today: the bundled ones are scanned by the host's build.</p>
+
+<h2 id="checklist">Checklist</h2>
+<ul>
+    <li><code>_ViewImports.cshtml</code> has the three <code>DotNetForge.UI</code> lines.</li>
+    <li>Admin tab: <code>dnf-theme.js</code> in <code>&lt;head&gt;</code>, then <code>dnf.css</code>, then your CSS;
+        <code>dnf.js</code> if you use hooks.</li>
+    <li>The root element has <code>class="dnf-scope" data-dnf-extension="&lt;id&gt;"</code>.</li>
+    <li>Your CSS is unlayered, uses tokens and has no <code>!important</code>; no inline <code>style</code> or
+        <code>&lt;script&gt;</code>.</li>
+    <li><code>dnfUI.init(root)</code> after inserting markup that needs per-element behaviours.</li>
+    <li>Every utility you use is in the host's <code>dnf.css</code> or in your own compiled CSS.</li>
+</ul>

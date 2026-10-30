@@ -1,0 +1,140 @@
+@* Popover (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/overlay.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (placement)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A non-modal panel next to its button: an explanation, details, a small tool. It is a native popover - a button with
+    <code>popovertarget</code> and a <code>dnf-popover</code> panel with <code>popover</code> - so it opens in the top layer and the
+    browser closes it on Escape and on a click outside; <code>dnf.js</code> places it next to the button like a dropdown menu.</p>
+
+<ui-doc-example id="basic">
+    <button type="button" class="dnf-button dnf-button--outline dnf-button--sm" popovertarget="popover-why" aria-expanded="false">Why?</button>
+    <div class="dnf-popover" id="popover-why" popover data-placement="bottom-start">
+        <p>The extension's assembly was not found. Build it and restart the app.</p>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="placement" title="Placement" description="data-placement: bottom-end (the default), bottom-start, top-end or top-start; flipped above or below when there is no room.">
+    <button type="button" class="dnf-button dnf-button--secondary" popovertarget="popover-top-start" aria-expanded="false">Top start</button>
+    <div class="dnf-popover" id="popover-top-start" popover data-placement="top-start">
+        <p>Opens above the button, aligned to its start.</p>
+    </div>
+    <button type="button" class="dnf-button dnf-button--secondary" popovertarget="popover-bottom-end" aria-expanded="false">Bottom end</button>
+    <div class="dnf-popover" id="popover-bottom-end" popover>
+        <p>Opens below the button, aligned to its end.</p>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="details" title="Details" description="Structured content: a title and a description list - here the last delivery of a webhook.">
+    <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" popovertarget="popover-delivery" aria-expanded="false"><dnf-status-dot tone="Danger" label="Failed" /> Last delivery</button>
+    <div class="dnf-popover" id="popover-delivery" popover data-placement="bottom-start">
+        <div class="dnf-stack dnf-stack--sm">
+            <p class="font-semibold">Delivery #4821</p>
+            <dl class="dnf-description-list dnf-description-list--compact text-sm">
+                <dt>Event</dt><dd>entry.published</dd>
+                <dt>Status</dt><dd>500 Internal Server Error</dd>
+                <dt>Duration</dt><dd>1.2 s</dd>
+            </dl>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="with-controls" title="With controls" description="A small tool next to its button. Focus does not move in by itself, so the controls follow the button in reading order.">
+    <button type="button" class="dnf-button dnf-button--secondary" popovertarget="popover-share" aria-expanded="false"><dnf-icon name="link" size="Sm" /> Share</button>
+    <div class="dnf-popover" id="popover-share" popover data-placement="bottom-start">
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="popover-share-url">Preview link</label>
+            <div class="dnf-input-group">
+                <input class="dnf-input" id="popover-share-url" value="https://example.com/preview/7f3a" readonly />
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-input-group__action"
+                        data-copy-target="#popover-share-url" aria-label="Copy link" data-tooltip="Copy link"><dnf-icon name="copy" size="Sm" /></button>
+            </div>
+            <p class="dnf-field__description">Valid for 24 hours.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="bare" title="Bare" description="dnf-popover--bare drops the padding, border and background for content with its own frame, such as an alert.">
+    <button type="button" class="dnf-button dnf-button--outline dnf-button--sm" popovertarget="popover-problem" aria-expanded="false">Show problem</button>
+    <div class="dnf-popover dnf-popover--bare" id="popover-problem" popover data-placement="bottom-start">
+        <dnf-alert tone="Danger" title="Manifest is invalid">The field "entry" is missing from dotnetforge.extension.json.</dnf-alert>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A width utility beats the component's 24rem.">
+    <button type="button" class="dnf-button dnf-button--secondary" popovertarget="popover-narrow" aria-expanded="false">Narrow popover</button>
+    <div class="dnf-popover w-56" id="popover-narrow" popover data-placement="bottom-start">
+        <p class="text-sm">14rem wide - for a one-line explanation.</p>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS restyles the popovers in a scope - here tighter padding and a primary border.">
+    <div class="dnf-docs-demo-popover">
+        <button type="button" class="dnf-button dnf-button--secondary" popovertarget="popover-scoped" aria-expanded="false">Restyled popover</button>
+        <div class="dnf-popover" id="popover-scoped" popover data-placement="bottom-start">
+            <p class="text-sm">Restyled by the scope's own CSS.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-popover .dnf-popover {
+    padding: var(--dnf-space-3);
+    border-color: var(--dnf-primary);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-popover</code></td><td>block</td><td>fixed, up to 24rem wide, padding <code>--dnf-space-4</code>, raised surface, border, <code>--dnf-radius-lg</code>, medium shadow</td></tr>
+        <tr><td><code>dnf-popover--bare</code></td><td>modifier</td><td>no padding, border or background; children have no margin</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>open</td><td><code>:popover-open</code>; <code>dnf.js</code> sets <code>data-open</code> on the panel and <code>aria-expanded</code> on the button</td><td>fades and scales in, fades out on close; instant without browser support or with reduced motion</td></tr>
+        <tr><td>placement</td><td><code>[data-placement]</code></td><td>which corner of the button it opens from; flipped when there is no room</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes and these attributes are the API.</p>
+<table>
+    <thead><tr><th>Attribute</th><th>On</th><th>Meaning</th></tr></thead>
+    <tbody>
+        <tr><td><code>popovertarget="id"</code></td><td>the button</td><td>native: toggles the panel with that id</td></tr>
+        <tr><td><code>aria-expanded="false"</code></td><td>the button</td><td>kept in sync by <code>dnf.js</code></td></tr>
+        <tr><td><code>popover</code></td><td>the panel</td><td>native: a light-dismiss popover in the top layer (one open at a time)</td></tr>
+        <tr><td><code>data-placement</code></td><td>the panel</td><td><code>bottom-end</code> (default), <code>bottom-start</code>, <code>top-end</code>, <code>top-start</code>; kept 8px inside the window and re-placed on scroll and resize</td></tr>
+    </tbody>
+</table>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The browser closes it on Escape and on a click outside.</li>
+    <li>Unlike a menu, focus does not move in by itself: if the popover holds controls, put it right after its button in the
+        markup (so Tab reaches them next) or move focus from your script.</li>
+    <li>The button's text says what opens; add <code>aria-expanded="false"</code> so the state is announced.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use a popover for supplementary content; a <a href="@UiDocsCatalog.Root/components/dialog">dialog</a> when the user
+        must act.</li>
+    <li>Don't use it for a list of actions - that is a <a href="@UiDocsCatalog.Root/components/dropdown">dropdown</a>.</li>
+    <li>Don't use it for a one-word hint on hover - that is a <a href="@UiDocsCatalog.Root/components/tooltip">tooltip</a>.</li>
+</ul>

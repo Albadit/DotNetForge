@@ -27,63 +27,63 @@
 }
 
 @section Actions {
-    <a class="btn btn-secondary" href="/admin/webhooks/@w.Id"><icon name="pencil" /> Edit webhook</a>
+    <a class="dnf-button dnf-button--secondary" href="/admin/webhooks/@w.Id"><dnf-icon name="pencil" /> Edit webhook</a>
     @if (Model.CanUpdate)
     {
         <form method="post" action="/admin/webhooks/@w.Id/test">
             @Html.AntiForgeryToken()
             <input type="hidden" name="returnTo" value="deliveries" />
-            <button type="submit" class="btn btn-primary"><icon name="send" /> Send test delivery</button>
+            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="send" /> Send test delivery</button>
         </form>
     }
 }
 
-<section class="card" aria-labelledby="log-title">
-    <div class="card-header">
+<section class="dnf-card" aria-labelledby="log-title">
+    <div class="dnf-card__header">
         <div>
-            <h2 class="card-title" id="log-title">Attempts</h2>
-            <p class="card-description">@Model.Total total · to <code>@w.Url</code></p>
+            <h2 class="dnf-card__title" id="log-title">Attempts</h2>
+            <p class="dnf-card__description">@Model.Total total · to <code>@w.Url</code></p>
         </div>
-        <badge tone="@(w.Enabled ? Tone.Success : Tone.Neutral)" dot="true">@(w.Enabled ? "Enabled" : "Disabled")</badge>
+        <dnf-badge tone="@(w.Enabled ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(w.Enabled ? "Enabled" : "Disabled")</dnf-badge>
     </div>
     @if (Model.Deliveries.Count == 0)
     {
-        <empty-state icon="send" title="Nothing sent yet" text="Attempts appear here when a subscribed event happens, or after a test delivery." />
+        <dnf-empty-state icon="send" title="Nothing sent yet" description="Attempts appear here when a subscribed event happens, or after a test delivery." />
     }
     else
     {
-        <ul class="list delivery-list">
+        <ul class="dnf-list">
             @foreach (var d in Model.Deliveries)
             {
-                var tone = d.Outcome switch { WebhookOutcome.Success => Tone.Success, WebhookOutcome.Failure => Tone.Danger, _ => Tone.Neutral };
+                var tone = d.Outcome switch { WebhookOutcome.Success => DnfTone.Success, WebhookOutcome.Failure => DnfTone.Danger, _ => DnfTone.Neutral };
                 var label = d.Outcome switch { WebhookOutcome.Success => d.ResponseStatusCode?.ToString() ?? "OK", WebhookOutcome.Failure => d.ResponseStatusCode?.ToString() ?? "Failed", _ => "Waiting" };
-                <li>
-                    <details class="delivery">
-                        <summary class="delivery-summary">
-                            <badge tone="@tone" dot="true">@label</badge>
+                <li class="dnf-list__item block p-0">
+                    <details class="dnf-delivery">
+                        <summary class="dnf-delivery__summary">
+                            <dnf-badge tone="@tone" dot="true">@label</dnf-badge>
                             <code class="text-sm">@d.Event</code>
                             <span class="text-sm text-muted">attempt @d.AttemptNumber</span>
-                            <span class="grow"></span>
+                            <span class="grow min-w-0"></span>
                             <span class="text-sm text-muted">@(d.ResponseTimeMs is { } ms ? $"{ms} ms" : "")</span>
-                            <timestamp value="@d.RequestTimestamp" absolute="true" />
+                            <dnf-timestamp value="@d.RequestTimestamp" absolute="true" />
                         </summary>
-                        <div class="delivery-body stack-sm">
+                        <div class="dnf-delivery__body dnf-stack dnf-stack--sm">
                             @if (d.Detail is not null)
                             {
                                 <p class="text-sm @(d.Outcome == WebhookOutcome.Failure ? "text-danger" : "text-muted")">@d.Detail</p>
                             }
-                            <dl class="dl dl-compact">
+                            <dl class="dnf-description-list dnf-description-list--compact">
                                 <dt>Event id</dt>
                                 <dd><code>@d.EventId</code></dd>
                                 <dt>Target</dt>
                                 <dd><code>@d.TargetUrl</code></dd>
                             </dl>
-                            <span class="field-label">Request body</span>
-                            <pre class="code-block delivery-code">@Pretty(d.RequestBody)</pre>
+                            <span class="dnf-field__label">Request body</span>
+                            <pre class="dnf-code-block dnf-code-block--scroll">@Pretty(d.RequestBody)</pre>
                             @if (d.ResponseBody is not null)
                             {
-                                <span class="field-label">Response (start)</span>
-                                <pre class="code-block delivery-code">@Pretty(d.ResponseBody)</pre>
+                                <span class="dnf-field__label">Response (start)</span>
+                                <pre class="dnf-code-block dnf-code-block--scroll">@Pretty(d.ResponseBody)</pre>
                             }
                         </div>
                     </details>
@@ -92,15 +92,15 @@
         </ul>
         @if (pages > 1)
         {
-            <div class="card-footer">
+            <div class="dnf-card__footer">
                 <span class="text-sm text-muted">Page @current of @pages</span>
                 @if (current > 1)
                 {
-                    <a class="btn btn-secondary btn-sm" href="?page=@(current - 1)"><icon name="chevron-left" size="sm" /> Newer</a>
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="?page=@(current - 1)"><dnf-icon name="chevron-left" size="Sm" /> Newer</a>
                 }
                 @if (current < pages)
                 {
-                    <a class="btn btn-secondary btn-sm" href="?page=@(current + 1)">Older <icon name="chevron-right" size="sm" /></a>
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="?page=@(current + 1)">Older <dnf-icon name="chevron-right" size="Sm" /></a>
                 }
             </div>
         }

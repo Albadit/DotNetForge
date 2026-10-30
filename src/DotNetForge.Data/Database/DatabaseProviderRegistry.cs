@@ -20,13 +20,8 @@ public sealed class DatabaseProviderRegistry
         }
     }
 
-    /// <summary>Registered names, including aliases.</summary>
-    public IReadOnlyCollection<string> Names => _byName.Keys;
-
     /// <summary>The provider of the CMS (main) database: whatever is registered under this name (or an alias of it).</summary>
     public const string CmsProvider = "postgresql";
-
-    public bool TryGet(string name, out IDatabaseProvider provider) => _byName.TryGetValue(name, out provider!);
 
     /// <summary>
     /// Binds settings to a provider: the configured provider name, otherwise the single provider that recognizes the

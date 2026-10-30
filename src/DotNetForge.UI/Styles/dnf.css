@@ -1,0 +1,38 @@
+/*
+  dnf.css - the DotNetForge UI stylesheet (.docs/ui/styling.md), compiled by the Tailwind CSS CLI
+  (build/Tailwind.targets) into wwwroot/dnf.css and served at /_content/DotNetForge.UI/dnf.css.
+
+  Cascade layers, lowest to highest: theme (Tailwind's design scale) → base (preflight, tokens, element styles) →
+  components (every .dnf-* class) → utilities (Tailwind utilities). So:
+    Level 1 - component properties render BEM modifiers (components layer);
+    Level 2 - a Tailwind utility in an element's class beats the component's own style (utilities layer);
+    Level 3 - an extension's stylesheet, written without a layer, beats all of them - and token overrides
+              (--dnf-*) re-theme everything inside the element that sets them.
+  No !important anywhere.
+*/
+
+@import "tailwindcss";
+@import "./theme.css";
+@import "./tokens.css";
+@import "./base.css";
+@import "./components/icon.css";
+@import "./components/layout.css";
+@import "./components/button.css";
+@import "./components/form.css";
+@import "./components/choice.css";
+@import "./components/card.css";
+@import "./components/status.css";
+@import "./components/table.css";
+@import "./components/navigation.css";
+@import "./components/overlay.css";
+@import "./components/content.css";
+
+/* Utilities Tailwind generates: the ones used by this library's tag helpers, by the CMS (views, scripts, C# that
+   renders markup) and by the bundled extensions. Third-party extensions compile their own utilities
+   (.docs/ui/extensions.md#tailwind-in-an-extension). Git-ignored files (bin, obj) are skipped. */
+@source "../";
+@source "../../DotNetForge.Web";
+@source "../../../extensions";
+@source not "../../DotNetForge.Web/wwwroot/lib";
+@source not "../../DotNetForge.Web/wwwroot/builder";
+@source not "../../DotNetForge.Web/wwwroot/js/builder";

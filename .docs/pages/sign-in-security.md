@@ -26,8 +26,8 @@ src/DotNetForge.Web/Areas/Admin/Views/Security/Sms.cshtml           phone number
 src/DotNetForge.Web/Areas/Admin/Views/Security/Code.cshtml          enter the emailed / texted setup code
 src/DotNetForge.Web/Areas/Admin/Views/Security/RecoveryCodes.cshtml the ten codes, once
 src/DotNetForge.Web/Services/Mfa/MfaService.cs                      setup, check, remove, recovery codes, audit
-src/DotNetForge.Web/wwwroot/js/forge/passkeys.js                    "Add passkey" (navigator.credentials.create)
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                     .list-icon, .mfa-* (QR code, codes list, passkey row)
+src/DotNetForge.Web/wwwroot/js/admin/passkeys.js                    "Add passkey" (navigator.credentials.create)
+src/DotNetForge.Web/wwwroot/css/admin/people.css                    .dnf-mfa__qr, .dnf-mfa__codes, .dnf-mfa__passkey-add; rows: .dnf-list + .dnf-list__icon
 ```
 
 ## Page layout
@@ -134,7 +134,7 @@ after removing spaces. Phone: international format, 7-15 digits. Passkey name: m
 
 | Failure | Detection | User sees | Recovery |
 | --- | --- | --- | --- |
-| Wrong or expired code | `MfaService` | `<form-errors />` on the same step | enter the current code / send a new one |
+| Wrong or expired code | `MfaService` | `<dnf-validation-summary />` on the same step | enter the current code / send a new one |
 | Email/SMS send failed | `SendSetupCodeAsync` false | toast (email) or form error (SMS); details in the log | try again; check SMTP/Twilio |
 | Passkey not verifiable (wrong address, forged response) | Fido2 exception | the message under the passkey row; warning in the log | open the site at `APP_URL` over https |
 | Browser without WebAuthn | `passkeys.js` | "This browser can't use passkeys. Use another browser or another way." | another browser or method |

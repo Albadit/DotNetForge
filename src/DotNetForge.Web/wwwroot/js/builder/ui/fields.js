@@ -135,7 +135,7 @@ export function PopoverButton({ icon, title, children, wide }) {
                 jsx(IconButton, { icon: "close", title: "Close", onClick: () => setOpen(false) })),
             jsx("div", { class: "pe-pop-body" }, children)))));
 }
-export function OverrideDot({ onReset }) {
+function OverrideDot({ onReset }) {
     return (jsx("button", { type: "button", class: "pe-override", title: "Set for this breakpoint. Click to use the larger breakpoint's value again.", onClick: onReset, "aria-label": "Reset to inherited value" }));
 }
 export function NumberField({ label, icon, title, value, placeholder, unit, min = -100000, max = 100000, step = 1, decimals = 2, disabled, text, menu, words, suffix, onChange }) {
@@ -230,7 +230,7 @@ export function NumberField({ label, icon, title, value, placeholder, unit, min 
         menuOpen && menu && jsx(DropMenu, { items: menu, onClose: () => setMenuOpen(false) })));
 }
 /** Evaluates + - * / and parentheses (a tiny recursive-descent parser; no eval). NaN when invalid. */
-export function safeEval(expr) {
+function safeEval(expr) {
     const s = expr.replace(/\s+/g, '');
     let i = 0;
     const num = () => {
@@ -388,7 +388,7 @@ export function ColorField({ value, placeholder, onChange, disabled }) {
         open && jsx(ColorPicker, { value: shown, anchor: root.current, onChange: onChange, onClose: () => setOpen(false) })));
 }
 /** A page icon as the visitor sees it (same markup as the renderers). */
-export function PageIcon({ name, size = 20 }) {
+function PageIcon({ name, size = 20 }) {
     const body = Object.prototype.hasOwnProperty.call(V.PAGE_ICONS, name) ? V.PAGE_ICONS[name] : '';
     return (jsx("svg", { class: "pe-icon", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", dangerouslySetInnerHTML: { __html: body } }));
 }
@@ -425,28 +425,6 @@ export function IconField({ value, onChange, disabled, allowNone = true }) {
             jsx("div", { class: "pe-iconfield-grid" }, names.map(n => (jsx("button", { key: n, type: "button", title: n.replace(/-/g, ' '), "aria-label": n.replace(/-/g, ' '), class: cls('pe-iconfield-cell', n === value && 'is-on'), onClick: () => pick(n) },
                 jsx(PageIcon, { name: n, size: 22 }))))),
             allowNone && jsx("button", { type: "button", class: "pe-btn-text", onClick: () => pick('') }, "No icon")))));
-}
-/** Four numbers (top, right, bottom, left) with a link toggle for "all sides equal". */
-export function BoxField({ value, placeholder, onChange, min = 0, max = 400, labels = ['T', 'R', 'B', 'L'], disabled }) {
-    const shown = value ?? placeholder ?? [0, 0, 0, 0];
-    const uniform = shown.every(v => v === shown[0]);
-    const [linked, setLinked] = useState(uniform);
-    const set = (i, n, merge) => {
-        if (n === undefined) {
-            onChange(undefined);
-            return;
-        }
-        const next = [...shown];
-        if (linked)
-            next.fill(n);
-        else
-            next[i] = n;
-        onChange(next, merge);
-    };
-    return (jsx("div", { class: "pe-box" },
-        linked ? (jsx(NumberField, { icon: "padding", value: value ? value[0] : undefined, placeholder: placeholder ? placeholder[0] : 0, min: min, max: max, disabled: disabled, onChange: (n, m) => set(0, n, m) })) : (jsx("div", { class: "pe-box-4" }, [0, 1, 2, 3].map(i => (jsx(NumberField, { key: i, label: labels[i], value: value ? value[i] : undefined, placeholder: placeholder ? placeholder[i] : 0, min: min, max: max, disabled: disabled, onChange: (n, m) => set(i, n, m) }))))),
-        jsx("button", { type: "button", class: cls('pe-icon-btn', !linked && 'is-on'), title: linked ? 'Set each side' : 'Same on all sides', onClick: () => setLinked(!linked), disabled: disabled },
-            jsx(Icon, { name: "border", size: 16 }))));
 }
 /** An image address with a Browse button that opens the site's files. */
 export function ImageInput({ value, onChange, disabled, placeholder, preview }) {

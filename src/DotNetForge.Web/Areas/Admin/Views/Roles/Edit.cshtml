@@ -17,59 +17,59 @@
     {
         <form method="post" action="/admin/roles/@Model.Id/duplicate">
             @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-secondary"><icon name="copy" /> Duplicate</button>
+            <button type="submit" class="dnf-button dnf-button--secondary"><dnf-icon name="copy" /> Duplicate</button>
         </form>
     }
 }
 
-<div class="editor">
-    <form method="post" action="@(creating ? "/admin/roles/create" : $"/admin/roles/{Model.Id}")" class="editor-main" novalidate>
+<div class="dnf-split">
+    <form method="post" action="@(creating ? "/admin/roles/create" : $"/admin/roles/{Model.Id}")" class="dnf-split__main" novalidate>
         @Html.AntiForgeryToken()
-        <form-errors />
+        <dnf-validation-summary />
 
-        <fieldset class="stack-lg" disabled="@(Model.CanSave ? null : "disabled")">
-            <section class="card" aria-labelledby="details-title">
-                <div class="card-header">
-                    <div class="editor-title">
-                        <h2 class="card-title" id="details-title">Details</h2>
+        <fieldset class="dnf-stack dnf-stack--lg" disabled="@(Model.CanSave ? null : "disabled")">
+            <section class="dnf-card" aria-labelledby="details-title">
+                <div class="dnf-card__header">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h2 class="dnf-card__title" id="details-title">Details</h2>
                         @if (Model.IsBuiltIn)
                         {
-                            <badge tone="Accent"><icon name="lock" size="sm" /> Built-in</badge>
+                            <dnf-badge tone="Primary"><dnf-icon name="lock" size="Sm" /> Built-in</dnf-badge>
                         }
                     </div>
                 </div>
-                <div class="card-body form">
-                    <div class="field">
-                        <label class="field-label" for="Name">Name<span class="field-required" aria-hidden="true">*</span></label>
+                <div class="dnf-card__body dnf-form">
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" for="Name">Name<span class="dnf-field__required" aria-hidden="true">*</span></label>
                         @if (Model.NameEditable || creating)
                         {
-                            <input id="Name" name="Name" value="@input.Name" required maxlength="@RoleManagementService.MaxNameLength"
+                            <input id="Name" class="dnf-input" name="Name" value="@input.Name" required maxlength="@RoleManagementService.MaxNameLength"
                                    placeholder="Content reviewer" autocomplete="off" />
                         }
                         else
                         {
-                            <input id="Name" value="@input.Name" readonly aria-describedby="name-hint" />
-                            <span class="field-hint" id="name-hint">Built-in role names are fixed.</span>
+                            <input id="Name" class="dnf-input" value="@input.Name" readonly aria-describedby="name-hint" />
+                            <span class="dnf-field__description" id="name-hint">Built-in role names are fixed.</span>
                         }
                     </div>
-                    <div class="field">
-                        <label class="field-label" for="Description">Description<span class="field-optional">optional</span></label>
-                        <textarea id="Description" name="Description" rows="2" maxlength="@RoleManagementService.MaxDescriptionLength"
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" for="Description">Description<span class="dnf-field__optional">optional</span></label>
+                        <textarea id="Description" class="dnf-textarea" name="Description" rows="2" maxlength="@RoleManagementService.MaxDescriptionLength"
                                   placeholder="Who gets this role and why?">@input.Description</textarea>
                     </div>
                 </div>
             </section>
 
-            <section class="card" aria-labelledby="permissions-title">
-                <div class="card-header">
+            <section class="dnf-card" aria-labelledby="permissions-title">
+                <div class="dnf-card__header">
                     <div>
-                        <h2 class="card-title" id="permissions-title">Permissions</h2>
-                        <p class="card-description">
+                        <h2 class="dnf-card__title" id="permissions-title">Permissions</h2>
+                        <p class="dnf-card__description">
                             @(Model.GrantsReadOnlyReason ?? "Users with this role may do what is ticked here. \"Own\" actions apply to records the user created. Changes apply immediately.")
                         </p>
                     </div>
                 </div>
-                <div class="card-body">
+                <div class="dnf-card__body">
                     @if (grantsLocked && Model.CanSave)
                     {
                         @* Disabled checkboxes aren't posted: send the current grants so saving the details leaves them unchanged. *@
@@ -78,24 +78,24 @@
                             <input type="hidden" name="Grants" value="@key" />
                         }
                     }
-                    <div class="permission-groups">
+                    <div class="dnf-permission-groups">
                         @foreach (var area in PermissionCatalog.Areas)
                         {
                             var group = "role-" + area.Area.Replace(' ', '-').ToLowerInvariant();
-                            <fieldset class="fieldset permission-group" disabled="@(grantsLocked ? "disabled" : null)">
-                                <legend class="permission-group-head"><span>@area.Label</span></legend>
-                                <p class="permission-group-desc">@area.Description</p>
+                            <fieldset class="dnf-fieldset dnf-permission-group" disabled="@(grantsLocked ? "disabled" : null)">
+                                <legend class="dnf-fieldset__legend dnf-permission-group__head"><span>@area.Label</span></legend>
+                                <p class="dnf-permission-group__description">@area.Description</p>
                                 @if (!grantsLocked)
                                 {
-                                    <label class="check text-sm text-muted" data-js-only hidden>
-                                        <input type="checkbox" data-check-group="@group" /> All
+                                    <label class="dnf-check text-sm text-muted" data-js-only hidden>
+                                        <input class="dnf-checkbox" type="checkbox" data-check-group="@group" /> All
                                     </label>
                                 }
                                 @foreach (var action in area.Actions)
                                 {
                                     var key = PermissionCatalog.Key(area.Area, action);
-                                    <label class="check">
-                                        <input type="checkbox" name="Grants" value="@key" data-check-member="@group"
+                                    <label class="dnf-check">
+                                        <input class="dnf-checkbox" type="checkbox" name="Grants" value="@key" data-check-member="@group"
                                                checked="@(Model.Grants.Contains(key) ? "checked" : null)" />
                                         @PermissionCatalog.ActionLabel(action)
                                     </label>
@@ -106,9 +106,9 @@
                 </div>
                 @if (Model.CanSave)
                 {
-                    <div class="card-footer">
-                        <a class="btn btn-ghost" href="/admin/roles">Cancel</a>
-                        <button type="submit" class="btn btn-primary"><icon name="@(creating ? "plus" : "check")" /> @(creating ? "Create role" : "Save changes")</button>
+                    <div class="dnf-card__footer">
+                        <a class="dnf-button dnf-button--ghost" href="/admin/roles">Cancel</a>
+                        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="@(creating ? "plus" : "check")" /> @(creating ? "Create role" : "Save changes")</button>
                     </div>
                 }
             </section>
@@ -117,29 +117,29 @@
 
     @if (!creating)
     {
-        <aside class="editor-aside">
-            <section class="card" aria-labelledby="members-title">
-                <div class="card-header">
+        <aside class="dnf-split__aside">
+            <section class="dnf-card" aria-labelledby="members-title">
+                <div class="dnf-card__header">
                     <div>
-                        <h2 class="card-title" id="members-title">Users with this role</h2>
-                        <p class="card-description">@Model.Members.Count @(Model.Members.Count == 1 ? "user" : "users")</p>
+                        <h2 class="dnf-card__title" id="members-title">Users with this role</h2>
+                        <p class="dnf-card__description">@Model.Members.Count @(Model.Members.Count == 1 ? "user" : "users")</p>
                     </div>
                 </div>
-                <div class="card-body">
+                <div class="dnf-card__body">
                     @if (Model.Members.Count == 0)
                     {
                         <p class="text-sm text-muted">Nobody has this role yet. Assign it when you create or edit a user.</p>
                     }
                     else
                     {
-                        <ul class="member-list">
+                        <ul class="dnf-list dnf-list--plain dnf-list--compact">
                             @foreach (var member in Model.Members)
                             {
-                                <li>
+                                <li class="dnf-list__item block">
                                     <a href="/admin/users/@member.Id">@(string.IsNullOrWhiteSpace(member.Name) ? member.Email : member.Name)</a>
                                     @if (!string.IsNullOrWhiteSpace(member.Name))
                                     {
-                                        <span class="cell-sub">@member.Email</span>
+                                        <span class="block text-xs text-muted">@member.Email</span>
                                     }
                                 </li>
                             }
@@ -150,9 +150,9 @@
 
             @if (Model.CanDelete)
             {
-                <section class="card card-danger" aria-labelledby="danger-title">
-                    <div class="card-header"><h2 class="card-title" id="danger-title">Delete role</h2></div>
-                    <div class="card-body stack-sm">
+                <section class="dnf-card dnf-card--danger" aria-labelledby="danger-title">
+                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="danger-title">Delete role</h2></div>
+                    <div class="dnf-card__body dnf-stack dnf-stack--sm">
                         @if (Model.Members.Count > 0)
                         {
                             <p class="text-sm text-muted">Give the users above another role first; a role in use can't be deleted.</p>
@@ -164,7 +164,7 @@
                                   data-confirm="Delete the role '@input.Name'? This can't be undone."
                                   data-confirm-title="Delete role" data-confirm-action="Delete role">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-danger-soft btn-sm"><icon name="trash" /> Delete role</button>
+                                <button type="submit" class="dnf-button dnf-button--danger-soft dnf-button--sm"><dnf-icon name="trash" /> Delete role</button>
                             </form>
                         }
                     </div>

@@ -1,7 +1,8 @@
 @{
-    // Shared layout for the extension's views. It reuses the host's Forge design system (.docs/architecture/design-system.md):
-    // the same tokens, light/dark theme and components as the admin around the iframe. The host passes the base URL of
-    // this extension's own files (Views/Resources) in ViewData["ResourceBase"].
+    // Shared layout for the extension's views. It uses the DotNetForge UI library (.docs/ui/README.md): the same
+    // tokens, light/dark theme and components as the admin around the iframe. The body is a .dnf-scope, so token
+    // overrides in this extension's CSS re-derive the hover and soft shades. The host passes the base URL of this
+    // extension's own files (Views/Resources) in ViewData["ResourceBase"].
     var resourceBase = ViewData["ResourceBase"] as string ?? string.Empty;
 }<!doctype html>
 <html lang="en">
@@ -10,13 +11,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>@ViewData["Title"]</title>
-    <script src="/js/forge/theme.js"></script>
-    <link rel="stylesheet" href="/css/forge/tokens.css" />
-    <link rel="stylesheet" href="/css/forge/base.css" />
-    <link rel="stylesheet" href="/css/forge/components.css" />
+    <script src="/_content/DotNetForge.UI/dnf-theme.js"></script>
+    <link rel="stylesheet" href="/_content/DotNetForge.UI/dnf.css" />
     <link rel="stylesheet" href="@resourceBase/css/index.css" />
 </head>
-<body>
+<body class="dnf-scope" data-dnf-extension="dotnetforge.admin.audit-dashboard">
     @RenderBody()
     <script src="@resourceBase/js/index.js"></script>
 </body>

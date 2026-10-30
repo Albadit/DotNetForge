@@ -31,12 +31,16 @@ does, security model). Reference implementation: `extensions/admin/audit-dashboa
    `Views/_ViewImports.cshtml` for `@using`/`@inject`. Read settings from `ViewData["Settings"]`
    (`IDictionary<string, object?>`; booleans arrive as `bool`, numbers as `long`/`double`) or the typed getters of
    `ViewData["Extension"]` (`DotNetForge.Sdk.ExtensionContext`).
-   To look like the admin (recommended), reuse the host's design system
-   ([design-system.md](../../../.docs/architecture/design-system.md)): in `_Layout.cshtml` load `<script src="/js/forge/theme.js">`
-   in `<head>` and link the host's `/css/forge/` files `tokens.css`, `base.css`, `components.css` before your own CSS; in
-   `_ViewImports.cshtml` add `@using DotNetForge.Web.Ui` + `@addTagHelper *, DotNetForge.Web` for `<icon>`,
-   `<badge>`, `<stat-card>`, `<timestamp>`, `<empty-state>`, `<alert>`. Use the component classes (`.card`,
-   `table.table`, `.btn`, ...) instead of restyling them. Model: `extensions/admin/audit-dashboard`.
+   To look like the admin (recommended), use the DotNetForge UI library
+   ([ui/extensions.md](../../../.docs/ui/extensions.md)): in `_Layout.cshtml` load
+   `<script src="/_content/DotNetForge.UI/dnf-theme.js">` in `<head>`, then link `/_content/DotNetForge.UI/dnf.css`
+   before your own CSS (and `dnf.js` with `defer` if you use its `data-*` hooks); mark the root
+   `class="dnf-scope" data-dnf-extension="<id>"`; in `_ViewImports.cshtml` add `@using DotNetForge.UI`,
+   `@using DotNetForge.UI.Components` and `@addTagHelper *, DotNetForge.UI` for `<dnf-icon>`, `<dnf-badge>`,
+   `<dnf-stat-card>`, `<dnf-timestamp>`, `<dnf-empty-state>`, `<dnf-alert>`, `<dnf-dropdown>`, ... Use the component
+   classes (`dnf-card`, `dnf-table`, `dnf-button`, ...) instead of restyling them; your own CSS stays unlayered and
+   uses `--dnf-*` tokens (no `!important`). A Tailwind utility works only if the host's `dnf.css` has it (or you
+   compile your own, `.docs/ui/extensions.md#tailwind-in-an-extension`). Model: `extensions/admin/audit-dashboard`.
 5. **Assets** - only under `Views/Resources/`; supported types css, js, json, svg, png, jpg/jpeg, gif, webp, ico,
    woff2 (others are served as `application/octet-stream`). No inline script or style (CSP).
 6. **Data access** - `@inject` gives full host access; read-only unless the task explicitly needs writes. Never

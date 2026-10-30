@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Unit tests: manifest validation, permissions, password hashing, tokens, webhook signing, page builder. -->
+  <!-- Unit tests: manifest validation, permissions, password hashing, tokens, webhook signing, page builder, the UI library. -->
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -21,7 +21,7 @@
     <ProjectReference Include="..\..\src\DotNetForge.Infrastructure\DotNetForge.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\DotNetForge.Extensions\DotNetForge.Extensions.csproj" />
     <ProjectReference Include="..\..\src\DotNetForge.PageBuilder\DotNetForge.PageBuilder.csproj" />
-    <ProjectReference Include="..\..\src\DotNetForge.Content\DotNetForge.Content.csproj" />
+    <ProjectReference Include="..\..\src\DotNetForge.UI\DotNetForge.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

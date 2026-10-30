@@ -3,7 +3,7 @@
   <!--
     The extension SDK: the one assembly an extension compiles against (.docs/guides/extension-development.md).
     Entry-point contract, extension context, contribution helpers and the host contracts extensions may use
-    (via Abstractions and Shared). The host always shares these assemblies with extensions, so types match.
+    (via Abstractions and Shared) and the DotNetForge UI component library. The host always shares these assemblies with extensions, so types match.
   -->
 
   <ItemGroup>
@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
     <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
+    <ProjectReference Include="..\DotNetForge.UI\DotNetForge.UI.csproj" />
   </ItemGroup>
 
 </Project>

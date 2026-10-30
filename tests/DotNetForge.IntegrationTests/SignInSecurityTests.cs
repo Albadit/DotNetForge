@@ -134,7 +134,7 @@ public sealed partial class SignInSecurityTests
         var visitor = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("https://localhost") });
         Assert.Contains("Sign in with Google", await visitor.GetStringAsync("/login"));
         google.Email = DotNetForgeWebFactory.AdminEmail.ToUpperInvariant(); // providers don't keep the case typed here
-        var done = await GoogleRoundTripAsync(visitor, google);
+        var done = await GoogleRoundTripAsync(visitor);
         Assert.Equal("/admin", done.Headers.Location?.OriginalString);
         Assert.Contains("code_verifier=", google.TokenRequest); // PKCE
         Assert.Contains("client_secret=very-secret", google.TokenRequest);
@@ -143,7 +143,7 @@ public sealed partial class SignInSecurityTests
         // A new email with sign-ups off: refused, nothing created.
         var stranger = NewVisitor(factory);
         google.Email = "new.person@example.com";
-        var off = await GoogleRoundTripAsync(stranger, google);
+        var off = await GoogleRoundTripAsync(stranger);
         Assert.Equal("/login", off.Headers.Location?.OriginalString);
         Assert.Contains("new accounts can", WebUtility.HtmlDecode(await stranger.GetStringAsync("/login")));
 
@@ -153,7 +153,7 @@ public sealed partial class SignInSecurityTests
             db.Settings.Add(new Setting { Key = "users.signUps", Value = "true" });
             await db.SaveChangesAsync();
         });
-        var signedUp = await GoogleRoundTripAsync(stranger, google);
+        var signedUp = await GoogleRoundTripAsync(stranger);
         Assert.Equal("/", signedUp.Headers.Location?.OriginalString); // Authenticated opens the site, not the admin
         await baseFactory.WithDbAsync(async db =>
         {
@@ -168,7 +168,7 @@ public sealed partial class SignInSecurityTests
         var unverified = NewVisitor(factory);
         google.Email = "someone.else@example.com";
         google.Verified = false;
-        var noEmail = await GoogleRoundTripAsync(unverified, google);
+        var noEmail = await GoogleRoundTripAsync(unverified);
         Assert.Equal("/login", noEmail.Headers.Location?.OriginalString);
         Assert.Contains("no verified email", WebUtility.HtmlDecode(await unverified.GetStringAsync("/login")));
         await baseFactory.WithDbAsync(async db => Assert.False(await db.Users.AnyAsync(u => u.Email == "someone.else@example.com")));
@@ -473,7 +473,7 @@ public sealed partial class SignInSecurityTests
         DotNetForgeWebFactory.PostFormAsync(client, "/login", "/login", new Dictionary<string, string> { ["email"] = email, ["password"] = password });
 
     /// <summary>"Sign in with Google" → the continue page → the provider (skipped: its answer is the callback) → the host's callback.</summary>
-    private static async Task<HttpResponseMessage> GoogleRoundTripAsync(HttpClient client, FakeGoogle google)
+    private static async Task<HttpResponseMessage> GoogleRoundTripAsync(HttpClient client)
     {
         var challenge = await DotNetForgeWebFactory.PostFormAsync(client, "/login", "/account/external/oauth-google", new Dictionary<string, string>());
         Assert.Equal(HttpStatusCode.OK, challenge.StatusCode);
@@ -567,8 +567,6 @@ public sealed partial class SignInSecurityTests
     private sealed class RecordingSms : ISmsSender
     {
         public List<(string To, string Text)> Sent { get; } = new();
-
-        public bool IsConfigured => true;
 
         public Task SendAsync(string phoneNumber, string text, CancellationToken ct = default)
         {

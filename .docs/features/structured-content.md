@@ -31,7 +31,7 @@ flowchart LR
 | Pure rules (no database): field definitions, entry validation, value index, item data, templates | `src/DotNetForge.Core/Content/` - `ContentSchema.cs`, `EntryData.cs`, `ItemData.cs`, `ContentTypeTemplates.cs` |
 | Rules over the database, shared by the admin and the API | `src/DotNetForge.Content/` - `ContentTypeService`, `ContentEntryService`, `ContentQueryService`, `ContentApiService` |
 | Rendering content lists on pages | `src/DotNetForge.Web/Services/ContentRenderService.cs`, `Components/PageLayoutViewComponent.cs`, `Controllers/HomeController.cs` |
-| Admin screens | `Areas/Admin/Controllers/ContentController.cs` (+ `Services/EntryForm.cs`), `ContentTypesController.cs`, views `Areas/Admin/Views/Content/`, `Views/ContentTypes/`, scripts `wwwroot/js/forge/entries.js`, `content-types.js` |
+| Admin screens | `Areas/Admin/Controllers/ContentController.cs` (+ `Services/EntryForm.cs`), `ContentTypesController.cs`, views `Areas/Admin/Views/Content/`, `Views/ContentTypes/`, scripts `wwwroot/js/admin/entries.js`, `content-types.js`, styles `wwwroot/css/admin/content.css` |
 | Content list component (both renderers) | `src/DotNetForge.PageBuilder/Rendering/Binding.cs`, `Collections.cs`; `wwwroot/js/builder/renderer/binding.js`, `collection.js` |
 | Editor: data panel, preview data, presets | `wwwroot/js/builder/ui/data-panel.js`, `editor/content.js`, `editor/presets.js` (`CONTENT_PRESETS`) |
 | Headless API | `src/DotNetForge.Api/Controllers/EntriesApiController.cs` ([headless API](headless-api.md#structured-content)) |
@@ -313,7 +313,7 @@ Defaults and the grant back-fill for existing databases: [authorization](authori
 | Filtering, sorting, paging | `ContentQueryService` |
 | What a content list receives | `ContentRenderService` + `ItemData` |
 | How a content list renders | `Collections.cs` **and** `renderer/collection.js`, then `node tests/js/content-list-fixtures.mjs` and both fixture runs |
-| The entry form | `Areas/Admin/Views/Content/_Field.cshtml` + `Services/EntryForm.cs` + `wwwroot/js/forge/entries.js` |
+| The entry form | `Areas/Admin/Views/Content/_Field.cshtml` + `Services/EntryForm.cs` + `wwwroot/js/admin/entries.js` |
 
 ## Extension points
 
@@ -325,7 +325,7 @@ Defaults and the grant back-fill for existing databases: [authorization](authori
    records).
 3. `ItemData.Cell` and `ItemData.Kind` (how layouts see it), `ContentApiService.Expand` (how the API shows it).
 4. The form: `_Field.cshtml` (+ `EntryForm.Read` if it posts several values), behaviour in `entries.js`.
-5. The builder palette and settings: `TYPES` and `settings()` in `wwwroot/js/forge/content-types.js`.
+5. The builder palette and settings: `TYPES` and `settings()` in `wwwroot/js/admin/content-types.js`.
 6. Tests in `tests/DotNetForge.Tests/Content/ContentSchemaTests.cs`, this document's field table.
 
 **A new content list view** (e.g. a map): a `view` option in `components.json`, the markup in `Collections.Inner` and

@@ -21,8 +21,8 @@ There is no install, configure, update or remove. Extension mechanics (catalog, 
 src/DotNetForge.Web/Areas/Admin/Controllers/PluginsController.cs   list + Enable/Disable actions (result in TempData Success / Error)
 src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs           PluginRowViewModel (+ IsEnabled)
 src/DotNetForge.Web/Areas/Admin/Views/Plugins/Index.cshtml          status tabs, search, type filter, extension cards, Enable/Disable forms
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                          data-collection (tabs, search, type filter), confirm dialog
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                     .extension-list / .extension-card
+src/DotNetForge.UI/wwwroot/dnf.js                                   data-collection (tabs, search, type filter), confirm dialog
+src/DotNetForge.Web/wwwroot/css/admin/people.css                    .dnf-extension-list / .dnf-extension-card
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                   result toasts + confirm dialog (rendered by _AdminLayout)
 src/DotNetForge.Web/Services/ExtensionLifecycleService.cs           enable/disable rules, InstalledExtensions row, audit
 src/DotNetForge.Extensions/ExtensionCatalog.cs                      Installed() (first valid manifest per id), Problem()
@@ -39,7 +39,7 @@ Plugins (_AdminLayout; header "Plugins" + description "Extensions found in the e
     ├── toolbar (JS only)
     │   ├── status tabs: All N · Enabled N · Disabled N · Needs attention N (only when a problem exists)
     │   └── search "Search extensions" · "All types" ▾ (the types found)
-    ├── .extension-list: one article.extension-card per manifest (.is-enabled when enabled)
+    ├── .dnf-extension-list: one article.dnf-extension-card per manifest (data-enabled="true" when enabled)
     │   ├── type icon · **name** v<version> [problem icon] · id below (tooltip: id · extensions/<folder>) · badge Enabled / Disabled
     │   ├── description
     │   ├── badges: <type> · Code (manifest names an assembly) · one per dependency (tooltip "Needs <id>")
@@ -67,7 +67,7 @@ by type, then name. Component mechanics: [design system](../architecture/design-
 | Card part | Rule |
 | --- | --- |
 | Type icon | `theme` palette, `authentication` log-in, `connector` plug, `library` package, `admin` panel, `widget` gauge, `provider` bell, `module` box, other puzzle |
-| Problem | only an icon button right after the name and version when `Problem` is set - triangle-alert (warning, **Not running**) or circle-x (danger, **Invalid manifest**), tooltip with that title; clicking it opens a popover (`.menu-list[popover]`, placed by `ui.js` below the icon, left-aligned (`bottom-start`), closes on Escape / outside click) with the alert and the problem text |
+| Problem | only an icon button right after the name and version when `Problem` is set - triangle-alert (warning, **Not running**) or circle-x (danger, **Invalid manifest**), tooltip with that title; clicking it opens a popover (`.dnf-popover.dnf-popover--bare[popover]`, placed by `dnf.js` below the icon, left-aligned (`bottom-start`), closes on Escape / outside click) with the alert and the problem text |
 | Action | **Disable** when `CanToggle` and enabled (even with a problem); **Enable** when `CanToggle`, disabled and no problem; nothing otherwise |
 | Filters | items carry `data-state` (`enabled` / `disabled`, plus `problem`) for the status tabs and `data-type` for the type filter |
 
@@ -111,7 +111,7 @@ manifest file changes. Code state comes from `ExtensionRuntime` (loaded once at 
 | --- | --- | --- |
 | Enabled state | `InstalledExtensions` | Enable / Disable |
 | Result message | `TempData["Success"]` / `["Error"]` → toast | after each POST (PRG) |
-| Tab, search, type filter | DOM only (`ui.js`) | lost on reload |
+| Tab, search, type filter | DOM only (`dnf.js`) | lost on reload |
 
 ## Permissions
 
@@ -191,7 +191,7 @@ count), [Sign in](login.md) (external providers), [Public page](public-page.md) 
 - The tab counts are computed on the server; **Needs attention** counts every card with a problem, enabled or not.
 - An enabled admin extension appears in the sidebar's **Extensions** section on the next request (built by
   `AdminNavigationService` from `ExtensionCatalog`).
-- `ExtensionTests` asserts on the `extension-card is-enabled` class to tell enabled cards apart - keep it when
+- `ExtensionTests` tells enabled cards apart by `dnf-extension-card` with `data-enabled="true"` - keep it when
   restyling.
 
 ## Known limitations
@@ -253,5 +253,5 @@ Per-extension actions (each a POST with antiforgery, Super Admin/Admin only, aud
 
 - New lifecycle action: add the rule to `ExtensionLifecycleService` (it owns the rules and the audit entry) and a
   POST action + form here; never decide "is it active" outside `ExtensionCatalog`.
-- Show the installed date: render `PluginRowViewModel.InstalledDate` in `Index.cshtml` (e.g. a `<timestamp>` in the
+- Show the installed date: render `PluginRowViewModel.InstalledDate` in `Index.cshtml` (e.g. a `<dnf-timestamp>` in the
   card footer).

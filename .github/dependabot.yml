@@ -12,6 +12,13 @@ updates:
           - "Microsoft.*"
           - "Npgsql.*"
 
+  # Keep the development tooling (ESLint) up to date.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
   # Keep GitHub Actions versions up to date.
   - package-ecosystem: github-actions
     directory: "/"

@@ -1,0 +1,168 @@
+@* Toast (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/status.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (<code>dnfUI.toast</code>)</li>
+    <li>Region and template <code>src/DotNetForge.Web/Views/Shared/_Feedback.cshtml</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A toast is a short notice in the bottom-right corner after an action: "Saved.", "Copied to clipboard.". There is no tag
+    helper - every built-in layout renders the toast region and its template once, and a toast comes either from the
+    server (<code>TempData</code> after a redirect) or from a script (<code>dnfUI.toast</code>). Try the four tones:</p>
+
+<ui-doc-example id="basic">
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="Saved." data-docs-toast-tone="success">Success</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="A new version is available." data-docs-toast-tone="info">Info</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="Saved, but 2 images are missing alt text." data-docs-toast-tone="warning">Warning</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="The page could not be saved." data-docs-toast-tone="danger">Danger</button>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="tones" title="Tones" description="The tone only colours the icon. Static markup for the look; a live toast also carries data-toast, and its close button data-toast-close." layout="stack">
+    <div class="dnf-toast dnf-toast--success" role="status">
+        <dnf-icon name="circle-check" class="dnf-toast__icon" />
+        <p class="dnf-toast__message">Page saved.</p>
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" aria-label="Dismiss"><dnf-icon name="x" size="Sm" /></button>
+    </div>
+    <div class="dnf-toast dnf-toast--info" role="status">
+        <dnf-icon name="info" class="dnf-toast__icon" />
+        <p class="dnf-toast__message">The cache is being rebuilt.</p>
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" aria-label="Dismiss"><dnf-icon name="x" size="Sm" /></button>
+    </div>
+    <div class="dnf-toast dnf-toast--warning" role="status">
+        <dnf-icon name="triangle-alert" class="dnf-toast__icon" />
+        <p class="dnf-toast__message">Saved, but 2 images are missing alt text.</p>
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" aria-label="Dismiss"><dnf-icon name="x" size="Sm" /></button>
+    </div>
+    <div class="dnf-toast dnf-toast--danger" role="alert">
+        <dnf-icon name="circle-x" class="dnf-toast__icon" />
+        <p class="dnf-toast__message">The webhook could not be deleted.</p>
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" aria-label="Dismiss"><dnf-icon name="x" size="Sm" /></button>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="long-message" title="Long message" description="The message grows and wraps; the region is at most 24rem wide (less on phones)." layout="stack">
+    <div class="dnf-toast dnf-toast--success max-w-sm" role="status">
+        <dnf-icon name="circle-check" class="dnf-toast__icon" />
+        <p class="dnf-toast__message">The content type was saved and 14 entries were updated to the new field order.</p>
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" aria-label="Dismiss"><dnf-icon name="x" size="Sm" /></button>
+    </div>
+</ui-doc-example>
+
+<h3 id="from-a-script">From a script</h3>
+<p><code>dnfUI.toast(message, tone)</code> clones the template, sets the tone, icon, role and message, and appends it to the
+    region. Tones: <code>success</code>, <code>info</code> (also for anything unknown), <code>warning</code>, <code>danger</code>.</p>
+<ui-doc-code id="toast-js" lang="js">
+window.dnfUI.toast("Saved.", "success");
+window.dnfUI.toast("The page could not be saved.", "danger"); // stays until dismissed
+</ui-doc-code>
+
+<h3 id="from-the-server">From the server</h3>
+<p>A screen sets <code>TempData["Success"]</code>, <code>TempData["Error"]</code> or <code>TempData["Info"]</code> and redirects;
+    the layout's <code>_Feedback</code> partial renders the toast into the region (success auto-hides, the others stay). The
+    region and the template, once per layout:</p>
+<ui-doc-code id="toast-region" lang="razor">
+<div class="dnf-toast-region" data-toasts aria-live="polite">
+    <!-- toasts rendered by the server: data-toast, data-autohide="true" to hide after 6 s -->
+    <div class="dnf-toast dnf-toast--success" role="status" data-toast data-autohide="true">
+        <dnf-icon name="circle-check" class="dnf-toast__icon" />
+        <p class="dnf-toast__message">Page saved.</p>
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-toast-close aria-label="Dismiss">
+            <dnf-icon name="x" size="Sm" />
+        </button>
+    </div>
+</div>
+
+<template id="dnf-toast-template">
+    <div class="dnf-toast" role="status" data-toast>
+        <dnf-icon name="info" class="dnf-toast__icon" />
+        <p class="dnf-toast__message"></p>
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-toast-close aria-label="Dismiss">
+            <dnf-icon name="x" size="Sm" />
+        </button>
+    </div>
+</template>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities on a toast beat its component styles - here a stronger shadow and a larger radius." layout="stack">
+    <div class="dnf-toast dnf-toast--info rounded-xl shadow-md" role="status">
+        <dnf-icon name="info" class="dnf-toast__icon" />
+        <p class="dnf-toast__message">Rounder, softer shadow.</p>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="The tones only set --dnf-toast-icon; set it in your own (unlayered) CSS to recolour the icon in a scope." layout="stack">
+    <div class="dnf-docs-demo-toasts">
+        <div class="dnf-toast dnf-toast--success" role="status">
+            <dnf-icon name="circle-check" class="dnf-toast__icon" />
+            <p class="dnf-toast__message">The icon follows the scope's token.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-toasts .dnf-toast {
+    --dnf-toast-icon: var(--dnf-primary-text);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-toast-region</code></td><td>block</td><td>fixed bottom-right (<code>--dnf-space-4</code>), <code>--dnf-z-toast</code>, a column up to 24rem wide; lets clicks through except on toasts</td></tr>
+        <tr><td><code>dnf-toast</code></td><td>block</td><td>raised surface, border, large shadow; slides in</td></tr>
+        <tr><td><code>dnf-toast__icon</code></td><td>element</td><td>the icon in <code>--dnf-toast-icon</code> (info by default)</td></tr>
+        <tr><td><code>dnf-toast__message</code></td><td>element</td><td>medium weight, grows</td></tr>
+        <tr><td><code>dnf-toast--success</code> / <code>--warning</code> / <code>--danger</code> / <code>--info</code></td><td>tone</td><td>the icon colour</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>entering</td><td><code>.dnf-toast</code></td><td>fades in and moves up 0.5rem</td></tr>
+        <tr><td>leaving</td><td><code>[data-leaving="true"]</code></td><td>fades out; <code>dnf.js</code> removes the node after 200 ms</td></tr>
+        <tr><td>auto-hide</td><td><code>[data-autohide="true"]</code></td><td>removed after 6 s unless hovered or focused</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-toast-icon</code>.</p>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes and these hooks are the API.</p>
+<table>
+    <thead><tr><th>Hook</th><th>Meaning</th></tr></thead>
+    <tbody>
+        <tr><td><code>[data-toasts]</code></td><td>the region new toasts are appended to</td></tr>
+        <tr><td><code>#dnf-toast-template</code></td><td>a <code>&lt;template&gt;</code> whose first element <code>dnfUI.toast</code> clones</td></tr>
+        <tr><td><code>[data-toast]</code></td><td>a toast; server-rendered ones in the region are re-inserted on load (so they are announced) and armed</td></tr>
+        <tr><td><code>[data-autohide="true"]</code></td><td>hides the toast after 6 s, paused while hovered or focused</td></tr>
+        <tr><td><code>[data-toast-close]</code></td><td>dismisses its toast</td></tr>
+        <tr><td><code>dnfUI.toast(message, tone)</code></td><td>shows a toast; <code>danger</code> gets <code>role="alert"</code> and stays, the others auto-hide (<code>role="status"</code>)</td></tr>
+    </tbody>
+</table>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The region is <code>aria-live="polite"</code>; each toast is <code>role="status"</code>, or <code>role="alert"</code> for danger.</li>
+    <li>Auto-hide pauses on hover and focus, and a danger toast never hides by itself.</li>
+    <li>The dismiss button is icon-only and named "Dismiss".</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do confirm completed actions with a toast after the redirect (the CMS sets <code>TempData["Success"]</code>).</li>
+    <li>Do keep the message to one short sentence.</li>
+    <li>Don't put the only copy of important information in a toast - it goes away. Use an
+        <a href="@UiDocsCatalog.Root/components/alert">alert</a> in the page.</li>
+    <li>Don't render your own toast region - there is one per layout.</li>
+</ul>

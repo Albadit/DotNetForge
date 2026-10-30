@@ -3,16 +3,16 @@
 @*
     Admin sidebar (.docs/architecture/pages.md#navigation), built by AdminNavigationService from AdminNavigation.Tree:
     only links the user may open, the active one marked with aria-current. Settings sub-groups are <details>: the one
-    holding the active screen is open; ui.js remembers what the user opened or closed.
+    holding the active screen is open; nav-state.js remembers what the user opened or closed.
 *@
-<nav class="nav" aria-label="Main navigation">
+<nav class="dnf-nav" aria-label="Main navigation">
     @foreach (var navSection in Model.Sections)
     {
-        <div class="nav-section">
-            <p class="nav-section-title">@navSection.Label</p>
+        <div class="dnf-nav__section">
+            <p class="dnf-nav__section-title">@navSection.Label</p>
             @if (navSection.Links.Count > 0)
             {
-                <ul class="nav-list">
+                <ul class="dnf-nav__list">
                     @foreach (var link in navSection.Links)
                     {
                         <li><partial name="_NavLink" model="link" /></li>
@@ -21,13 +21,13 @@
             }
             @foreach (var group in navSection.Groups)
             {
-                <details class="nav-group" data-nav-group="@group.Label" open="@(group.ContainsActive ? "open" : null)"
+                <details class="dnf-nav__group" data-nav-group="@group.Label" open="@(group.ContainsActive ? "open" : null)"
                          data-nav-active="@(group.ContainsActive ? "true" : "false")">
-                    <summary class="nav-group-title">
+                    <summary class="dnf-nav__group-title">
                         <span>@group.Label</span>
-                        <icon name="chevron-right" size="sm" class="nav-group-chevron" />
+                        <dnf-icon name="chevron-right" size="Sm" class="dnf-nav__group-chevron" />
                     </summary>
-                    <ul class="nav-list">
+                    <ul class="dnf-nav__list">
                         @foreach (var link in group.Links)
                         {
                             <li><partial name="_NavLink" model="link" /></li>

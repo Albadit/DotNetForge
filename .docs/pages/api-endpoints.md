@@ -34,9 +34,9 @@ src/DotNetForge.Web/Areas/Admin/Controllers/ApiEndpointsController.cs   list, ne
 src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/Index.cshtml         list card: name, path (+ database), operation badges, access, status, updated
 src/DotNetForge.Web/Areas/Admin/Views/ApiEndpoints/Edit.cshtml          Path card, Operations (cards + "Operations as JSON") + Settings (+ Database), Call it, Delete
 src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs               ApiEndpointsIndexViewModel (+ Operations), ApiEndpointEditViewModel (+ Databases, Calls, Token)
-src/DotNetForge.Web/wwwroot/js/forge/endpoints.js                       operation cards ⇄ OperationsJson: SQL hints, parameter table, result settings, test run each
+src/DotNetForge.Web/wwwroot/js/admin/endpoints.js                       operation cards ⇄ OperationsJson: SQL hints, parameter table, result settings, test run each
 src/DotNetForge.Shared/Entities/CustomEndpoint.cs                       CustomEndpoint (+ TokenProtected), CustomEndpointOperation
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                         "API Endpoints editor" section
+src/DotNetForge.Web/wwwroot/css/admin/tools.css                         "API Endpoints editor" section (.dnf-endpoint-op)
 src/DotNetForge.Content/Endpoints/CustomEndpointService.cs              rules (shared with the API), endpoint tokens (TokenOf, VerifyToken, RegenerateTokenAsync)
 src/DotNetForge.Content/Endpoints/SqlEndpointRunner.cs                  the database choices (Databases, Problem) and the test run's SQL
 ```
@@ -48,7 +48,7 @@ src/DotNetForge.Content/Endpoints/SqlEndpointRunner.cs                  the data
   success, PUT/PATCH warning, DELETE danger), access (`Token` / `Public`), status, updated; sortable, paged by 25 by default (**Rows per page**,
   [collection pagination](../architecture/design-system.md#collection-pagination)). The empty state has no button:
   **New endpoint** is in the header.
-- **Editor** (`.editor` two columns; a new endpoint starts with one GET operation on its own path):
+- **Editor** (`.dnf-split` two columns; a new endpoint starts with one GET operation on its own path):
   - **Path** - the base path with a fixed `/api/custom/` prefix.
   - **Operations** - "What the API answers: one per method and sub-path, each with its own SQL, parameters and test
     run." One card per operation built by `endpoints.js` (method, sub-path, SQL with hints, parameter table, result
@@ -106,7 +106,7 @@ Call it - no description                                                 (Token)
   will reject the statement.") and a parameter the SQL doesn't use.
 - **Save** validates on the server ([rules](../features/custom-endpoints.md#an-endpoint), including the database);
   errors appear in
-  `<form-errors />` with the form as typed. Success redirects to the editor with a toast ("Created '…'." /
+  `<dnf-validation-summary />` with the form as typed. Success redirects to the editor with a toast ("Created '…'." /
   "Saved '…'."). The first save gives the endpoint its token (`CustomEndpointService.SaveAsync`:
   `TokenProtected ??= …`), whatever its access, so switching it to **Token** later never leaves it open.
 - **Endpoint token** - `dnfe_` + 32 random bytes (Base64Url), stored encrypted with Data Protection (protector

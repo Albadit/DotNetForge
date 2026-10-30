@@ -1,0 +1,188 @@
+@* Field (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+@* The MVC tag helpers are off on this page: the asp-for snippets are shown as text, not compiled against the docs
+   page's own model. *@
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/form.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A field is one labelled control with its help text and its error: a <code>dnf-field</code> column holding a
+    <code>dnf-field__label</code>, the control (<a href="@UiDocsCatalog.Root/components/input">input</a>,
+    <a href="@UiDocsCatalog.Root/components/select">select</a>, <a href="@UiDocsCatalog.Root/components/textarea">textarea</a> or
+    <a href="@UiDocsCatalog.Root/components/input-group">input group</a>), a <code>dnf-field__description</code> and a
+    <code>dnf-field__error</code>.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="field-title">Title</label>
+        <input class="dnf-input" id="field-title" value="Spring sale" aria-describedby="field-title-help" />
+        <span class="dnf-field__description" id="field-title-help">Shown in the browser tab and search results.</span>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="required" title="Required" description="A red asterisk after the label text, hidden from screen readers; the required attribute on the control is what counts." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="field-name">Name<span class="dnf-field__required" aria-hidden="true">*</span></label>
+        <input class="dnf-input" id="field-name" required />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="optional" title="Optional" description="In a form of mostly required fields, mark the few optional ones instead." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="field-redirect">Redirect after sign-up<span class="dnf-field__optional">optional</span></label>
+        <input class="dnf-input" id="field-redirect" type="url" placeholder="https://example.com/welcome" aria-describedby="field-redirect-help" />
+        <span class="dnf-field__description" id="field-redirect-help">Leave empty to show the account page.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="invalid" title="Invalid" description="aria-invalid on the control draws the danger border; the error text sits in dnf-field__error, linked with aria-describedby." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="field-slug">Slug<span class="dnf-field__required" aria-hidden="true">*</span></label>
+        <input class="dnf-input" id="field-slug" value="about us" required aria-invalid="true" aria-describedby="field-slug-error" />
+        <span class="dnf-field__error" id="field-slug-error">Use lower-case letters, digits and hyphens only.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="invalid-field" title="Invalid field" description="data-invalid on the field draws the danger border on its input, select or textarea; keep aria-invalid on the control for screen readers." layout="block">
+    <div class="dnf-field max-w-md" data-invalid="true">
+        <label class="dnf-field__label" for="field-type">Content type</label>
+        <select class="dnf-select" id="field-type" aria-invalid="true" aria-describedby="field-type-error">
+            <option value="">Choose a type</option>
+            <option>Article</option>
+            <option>Event</option>
+        </select>
+        <span class="dnf-field__error" id="field-type-error">Choose a content type.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="disabled-readonly" title="Disabled and read-only" description="The control's own state; the field adds nothing. A read-only value can still be selected and copied." layout="block">
+    <div class="dnf-form-grid">
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="field-id">Page ID</label>
+            <input class="dnf-input" id="field-id" value="7f3c9a12" readonly />
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="field-owner">Owner</label>
+            <input class="dnf-input" id="field-owner" value="ada@@example.com" disabled />
+        </div>
+    </div>
+</ui-doc-example>
+
+<h3 id="asp-for">With asp-for</h3>
+<p>In a real form the MVC tag helpers fill the field in: <code>asp-for</code> on the label writes <code>for</code> and the
+    display name, on the control the <code>id</code>, <code>name</code>, value and validation attributes, and
+    <code>asp-validation-for</code> on the error span the model error. Keep the library's classes on each element.</p>
+
+<ui-doc-code id="asp-for-razor" lang="razor">
+<div class="dnf-field">
+    <label class="dnf-field__label" asp-for="Title">Title<span class="dnf-field__required" aria-hidden="true">*</span></label>
+    <input class="dnf-input" asp-for="Title" aria-describedby="title-help" />
+    <span class="dnf-field__description" id="title-help">Shown in the browser tab and search results.</span>
+    <span class="dnf-field__error" asp-validation-for="Title"></span>
+</div>
+</ui-doc-code>
+
+<p>With a model error, <code>asp-for</code> adds ASP.NET's <code>input-validation-error</code> class to the control - the
+    library draws it like <code>aria-invalid="true"</code> - and the error span gets the message. Without an error the span
+    stays empty and <code>dnf-field__error:empty</code> hides it.</p>
+
+<ui-doc-code id="asp-for-html" lang="html">
+<input class="dnf-input input-validation-error" type="text" id="Title" name="Title" value="" data-val="true" data-val-required="The Title field is required." aria-describedby="title-help" />
+<span class="dnf-field__description" id="title-help">Shown in the browser tab and search results.</span>
+<span class="dnf-field__error field-validation-error" data-valmsg-for="Title" data-valmsg-replace="true">The Title field is required.</span>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. A field
+    has no modifiers and no component tokens.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Span two columns of a grid from the sm breakpoint; italic help text." layout="block">
+    <div class="dnf-form-grid dnf-form-grid--3">
+        <div class="dnf-field sm:col-span-2">
+            <label class="dnf-field__label" for="tw-alt">Alt text</label>
+            <input class="dnf-input" id="tw-alt" value="The team at the spring meetup" aria-describedby="tw-alt-help" />
+            <span class="dnf-field__description italic" id="tw-alt-help">Describes the image for screen readers.</span>
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="tw-credit">Credit</label>
+            <input class="dnf-input" id="tw-credit" value="Studio North" />
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS in a scope beats the component style - small uppercase labels." layout="block">
+    <div class="dnf-docs-demo-field dnf-form-grid">
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="css-event">Event</label>
+            <input class="dnf-input" id="css-event" value="entry.published" />
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="css-status">Last delivery</label>
+            <input class="dnf-input" id="css-status" value="200 OK" readonly />
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-field .dnf-field__label {
+    font-size: var(--dnf-text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-field</code></td><td>block</td><td>a flex column, gap <code>--dnf-space-1</code>, <code>min-width: 0</code></td></tr>
+        <tr><td><code>dnf-field__label</code></td><td>element</td><td><code>text-sm</code>, semibold, foreground colour</td></tr>
+        <tr><td><code>dnf-field__required</code></td><td>element</td><td>a marker after the label text in <code>--dnf-danger</code></td></tr>
+        <tr><td><code>dnf-field__optional</code></td><td>element</td><td>muted (<code>--dnf-subtle-foreground</code>), regular weight</td></tr>
+        <tr><td><code>dnf-field__description</code></td><td>element</td><td><code>text-xs</code>, muted - help below the control</td></tr>
+        <tr><td><code>dnf-field__error</code></td><td>element</td><td><code>text-xs</code>, medium weight, <code>--dnf-danger</code>; hidden while empty</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>invalid control</td><td><code>[aria-invalid="true"]</code>, <code>[data-invalid="true"]</code>, <code>.input-validation-error</code> on the input, select or textarea</td><td><code>--dnf-danger</code> border</td></tr>
+        <tr><td>invalid field</td><td><code>.dnf-field[data-invalid="true"]</code></td><td>the same border on every <code>.dnf-input</code>, <code>.dnf-select</code> and <code>.dnf-textarea</code> inside</td></tr>
+        <tr><td>error text</td><td><code>.dnf-field__error</code> with text</td><td>shown; <code>:empty</code> hides it</td></tr>
+        <tr><td>disabled / read-only</td><td>the control's <code>:disabled</code> / <code>:read-only</code></td><td>see <a href="@UiDocsCatalog.Root/components/input#states">input states</a></td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes above are the API, together with these attributes.</p>
+<table>
+    <thead><tr><th>Attribute</th><th>On</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-invalid="true"</code></td><td><code>.dnf-field</code> or the control</td><td>danger border on the control</td></tr>
+        <tr><td><code>aria-invalid="true"</code></td><td>the control</td><td>danger border, and announces the control as invalid</td></tr>
+        <tr><td><code>aria-describedby</code></td><td>the control</td><td>links the description and a static error to the control</td></tr>
+        <tr><td><code>asp-for</code>, <code>asp-validation-for</code></td><td>label, control, error span</td><td>ASP.NET Core's own tag helpers; a model error adds <code>input-validation-error</code> to the control</td></tr>
+    </tbody>
+</table>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The label is a real <code>&lt;label for&gt;</code> - <code>asp-for</code> sets it.</li>
+    <li>Link the description (and a static error) with <code>aria-describedby</code>; mark an invalid control <code>aria-invalid="true"</code>.</li>
+    <li>The required marker is decorative (<code>aria-hidden="true"</code>); put <code>required</code> on the control.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do write descriptions that say what the value is used for.</li>
+    <li>Do write errors that say how to fix the value, not only that it is wrong.</li>
+    <li>Don't use placeholder text in place of a label.</li>
+</ul>

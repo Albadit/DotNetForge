@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.AspNetCore.Routing;
 
 namespace DotNetForge.Web.Services;
 
@@ -73,7 +72,7 @@ public sealed class ExtensionViewRenderer
             // Extension views are foreign code: log the cause for the operator, show a neutral notice to the visitor.
             _logger.LogError(ex, "Extension {ExtensionId} failed to render {View}.", extension.Id, viewPath);
             return new HtmlString(
-                $"<div class=\"ext-error\">{HtmlEncoder.Default.Encode(extension.Context.Name)} could not be displayed.</div>");
+                $"<div class=\"dnf-ext-error\">{HtmlEncoder.Default.Encode(extension.Context.Name)} could not be displayed.</div>");
         }
     }
 }

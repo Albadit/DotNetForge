@@ -1,0 +1,257 @@
+@* Dialog (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/overlay.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (<code>data-dialog-*</code>, <code>data-confirm</code>)</li>
+    <li>Confirmation dialog <code>src/DotNetForge.Web/Views/Shared/_Feedback.cshtml</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A modal on the native <code>&lt;dialog&gt;</code> element: the browser traps focus, closes it on Escape and shows it in the
+    top layer above everything. A button with <code>data-dialog-open="#id"</code> opens it; any button with
+    <code>data-dialog-close</code> inside closes it. There is no tag helper.</p>
+
+<ui-doc-example id="basic">
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-rename">Rename file</button>
+    <dialog class="dnf-dialog dnf-dialog--md" id="dialog-rename" aria-labelledby="dialog-rename-title" aria-describedby="dialog-rename-text">
+        <div class="dnf-dialog__header">
+            <span class="dnf-dialog__icon"><dnf-icon name="pencil" /></span>
+            <div>
+                <h2 class="dnf-dialog__title" id="dialog-rename-title">Rename file</h2>
+                <p class="dnf-dialog__description" id="dialog-rename-text">The file's URL stays the same.</p>
+            </div>
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only dnf-dialog__close" aria-label="Close" data-dialog-close><dnf-icon name="x" size="Sm" /></button>
+        </div>
+        <div class="dnf-dialog__body">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="dialog-rename-name">File name</label>
+                <input class="dnf-input" id="dialog-rename-name" value="hero-spring.jpg" />
+            </div>
+        </div>
+        <div class="dnf-dialog__footer">
+            <button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Cancel</button>
+            <button type="button" class="dnf-button dnf-button--primary" data-dialog-close>Rename</button>
+        </div>
+    </dialog>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="confirm" title="Confirmation" description="The shared confirmation dialog asks before a form posts. These demo buttons open it through dnfUI.confirm; nothing is sent. The tone primary is for a question that destroys nothing.">
+    <button type="button" class="dnf-button dnf-button--danger-soft" data-docs-confirm="Delete this example? Nothing is deleted." data-docs-confirm-title="Delete example" data-docs-confirm-action="Delete">Delete example</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-confirm="Publish the page now? Nothing is published." data-docs-confirm-title="Publish page" data-docs-confirm-action="Publish" data-docs-confirm-tone="primary">Publish page</button>
+</ui-doc-example>
+
+<p>In a real screen the attributes go on the form (or on its submit button); on submit <code>dnf.js</code> cancels the post,
+    asks, and re-submits with the same button when the answer is yes. Without JavaScript the form posts directly.</p>
+<ui-doc-code id="confirm-form" lang="razor">
+<form method="post" action="/admin/pages/7/delete" data-confirm="Delete the page and its children?"
+      data-confirm-title="Delete page" data-confirm-action="Delete">
+    <button type="submit" class="dnf-button dnf-button--danger-soft">Delete page</button>
+</form>
+</ui-doc-code>
+<ui-doc-code id="confirm-js" lang="js">
+window.dnfUI.confirm({ title: "Publish page", text: "Publish the page now?", action: "Publish", tone: "primary" })
+    .then(function (confirmed) { if (confirmed) { /* … */ } });
+</ui-doc-code>
+
+<ui-doc-example id="sizes" title="Sizes" description="dnf-dialog--sm, --md, --lg and --xl: 24, 32, 46 and 64rem wide (28rem without a size), never wider than the window minus 2rem.">
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-small">Small</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-large">Large</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-extra-large">Extra large</button>
+    <dialog class="dnf-dialog dnf-dialog--sm" id="dialog-small" aria-labelledby="dialog-small-title">
+        <div class="dnf-dialog__header"><h2 class="dnf-dialog__title" id="dialog-small-title">Small dialog</h2></div>
+        <div class="dnf-dialog__body"><p>24rem - a short question or a single field.</p></div>
+        <div class="dnf-dialog__footer"><button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Close</button></div>
+    </dialog>
+    <dialog class="dnf-dialog dnf-dialog--lg" id="dialog-large" aria-labelledby="dialog-large-title">
+        <div class="dnf-dialog__header"><h2 class="dnf-dialog__title" id="dialog-large-title">Large dialog</h2></div>
+        <div class="dnf-dialog__body"><p>46rem - a form with two columns or a media preview.</p></div>
+        <div class="dnf-dialog__footer"><button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Close</button></div>
+    </dialog>
+    <dialog class="dnf-dialog dnf-dialog--xl" id="dialog-extra-large" aria-labelledby="dialog-extra-large-title">
+        <div class="dnf-dialog__header"><h2 class="dnf-dialog__title" id="dialog-extra-large-title">Extra large dialog</h2></div>
+        <div class="dnf-dialog__body"><p>64rem - a picker with a grid of items.</p></div>
+        <div class="dnf-dialog__footer"><button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Close</button></div>
+    </dialog>
+</ui-doc-example>
+
+<ui-doc-example id="danger" title="Danger" description="dnf-dialog__icon--danger draws the icon tile in the danger colours; the confirming button is Danger.">
+    <button type="button" class="dnf-button dnf-button--danger-soft" data-dialog-open="#dialog-revoke">Revoke token</button>
+    <dialog class="dnf-dialog" id="dialog-revoke" aria-labelledby="dialog-revoke-title" aria-describedby="dialog-revoke-text">
+        <div class="dnf-dialog__header">
+            <span class="dnf-dialog__icon dnf-dialog__icon--danger"><dnf-icon name="triangle-alert" /></span>
+            <div>
+                <h2 class="dnf-dialog__title" id="dialog-revoke-title">Revoke the token?</h2>
+                <p class="dnf-dialog__description" id="dialog-revoke-text">Apps that use it can no longer call the API.</p>
+            </div>
+        </div>
+        <div class="dnf-dialog__footer">
+            <button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Cancel</button>
+            <button type="button" class="dnf-button dnf-button--danger" data-dialog-close>Revoke</button>
+        </div>
+    </dialog>
+</ui-doc-example>
+
+<ui-doc-example id="drawer" title="Drawer" description="dnf-dialog--drawer is a full-height 30rem panel at the end edge that slides in. data-dialog-light-dismiss closes it on a click on the backdrop.">
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-filters"><dnf-icon name="filter" size="Sm" /> Filters</button>
+    <dialog class="dnf-dialog dnf-dialog--drawer" id="dialog-filters" aria-labelledby="dialog-filters-title" data-dialog-light-dismiss>
+        <div class="dnf-dialog__header">
+            <div><h2 class="dnf-dialog__title" id="dialog-filters-title">Filter entries</h2></div>
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only dnf-dialog__close" aria-label="Close" data-dialog-close><dnf-icon name="x" size="Sm" /></button>
+        </div>
+        <div class="dnf-dialog__body">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="dialog-filters-type">Content type</label>
+                <select class="dnf-select" id="dialog-filters-type">
+                    <option>All types</option>
+                    <option>Article</option>
+                    <option>Event</option>
+                </select>
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="dialog-filters-author">Author</label>
+                <input class="dnf-input" id="dialog-filters-author" placeholder="Any author" />
+            </div>
+        </div>
+        <div class="dnf-dialog__footer">
+            <button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Reset</button>
+            <button type="button" class="dnf-button dnf-button--primary" data-dialog-close>Apply</button>
+        </div>
+    </dialog>
+</ui-doc-example>
+
+<ui-doc-example id="form-method" title="Closing without script" description="Inside a form with method dialog, a submit button closes the dialog and sets its returnValue - the browser does it, no script needed.">
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-leave">Leave the editor</button>
+    <dialog class="dnf-dialog dnf-dialog--sm" id="dialog-leave" aria-labelledby="dialog-leave-title" aria-describedby="dialog-leave-text">
+        <form method="dialog">
+            <div class="dnf-dialog__header">
+                <div>
+                    <h2 class="dnf-dialog__title" id="dialog-leave-title">Unsaved changes</h2>
+                    <p class="dnf-dialog__description" id="dialog-leave-text">Leave without saving the page?</p>
+                </div>
+            </div>
+            <div class="dnf-dialog__footer">
+                <button type="submit" value="stay" class="dnf-button dnf-button--secondary">Stay</button>
+                <button type="submit" value="leave" class="dnf-button dnf-button--primary">Leave</button>
+            </div>
+        </form>
+    </dialog>
+</ui-doc-example>
+
+<ui-doc-example id="bare" title="Card in a dialog" description="dnf-dialog--bare drops the frame; the card inside draws it, with its header, body and footer.">
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-card">Show details</button>
+    <dialog class="dnf-dialog dnf-dialog--bare dnf-dialog--md" id="dialog-card" aria-labelledby="dialog-card-title">
+        <div class="dnf-card">
+            <div class="dnf-card__header">
+                <div>
+                    <h2 class="dnf-card__title" id="dialog-card-title">Delivery #4821</h2>
+                    <p class="dnf-card__description">Webhook "Order created" at 09:14 UTC.</p>
+                </div>
+            </div>
+            <div class="dnf-card__body">
+                <p>The endpoint answered 500 Internal Server Error after 1.2 s.</p>
+            </div>
+            <div class="dnf-card__footer">
+                <button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Close</button>
+            </div>
+        </div>
+    </dialog>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="An arbitrary property sets the width token for one dialog.">
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-wide">Open a 40rem dialog</button>
+    <dialog class="dnf-dialog [--dnf-dialog-width:40rem]" id="dialog-wide" aria-labelledby="dialog-wide-title">
+        <div class="dnf-dialog__header"><h2 class="dnf-dialog__title" id="dialog-wide-title">40rem wide</h2></div>
+        <div class="dnf-dialog__body"><p>The width comes from a utility in the class.</p></div>
+        <div class="dnf-dialog__footer"><button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Close</button></div>
+    </dialog>
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="Set --dnf-dialog-width (and restyle the parts) in your own (unlayered) CSS for every dialog in a scope.">
+    <div class="dnf-docs-demo-dialog">
+        <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#dialog-scoped">Open a restyled dialog</button>
+        <dialog class="dnf-dialog dnf-dialog--sm" id="dialog-scoped" aria-labelledby="dialog-scoped-title">
+            <div class="dnf-dialog__header"><h2 class="dnf-dialog__title" id="dialog-scoped-title">Restyled dialog</h2></div>
+            <div class="dnf-dialog__body"><p>40rem wide despite --sm, with the footer's buttons at both ends.</p></div>
+            <div class="dnf-dialog__footer">
+                <button type="button" class="dnf-button dnf-button--ghost" data-dialog-close>Back</button>
+                <button type="button" class="dnf-button dnf-button--primary" data-dialog-close>Done</button>
+            </div>
+        </dialog>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-dialog .dnf-dialog { --dnf-dialog-width: 40rem; }
+.dnf-docs-demo-dialog .dnf-dialog__footer { justify-content: space-between; }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-dialog</code></td><td>block</td><td><code>--dnf-dialog-width</code> (28rem) up to the window minus 2rem, centred, raised surface, <code>--dnf-radius-xl</code>, large shadow; the backdrop in <code>--dnf-backdrop</code></td></tr>
+        <tr><td><code>dnf-dialog--sm</code> / <code>--md</code> / <code>--lg</code> / <code>--xl</code></td><td>size</td><td>24 / 32 / 46 / 64rem</td></tr>
+        <tr><td><code>dnf-dialog--drawer</code></td><td>modifier</td><td>a full-height 30rem panel at the end edge, sliding in</td></tr>
+        <tr><td><code>dnf-dialog--bare</code></td><td>modifier</td><td>no frame: the <code>&gt; .dnf-card</code> inside draws it</td></tr>
+        <tr><td><code>dnf-dialog__header</code></td><td>element</td><td>icon, title block and close button in a row</td></tr>
+        <tr><td><code>dnf-dialog__icon</code></td><td>element</td><td>a 2.5rem round primary-soft tile</td></tr>
+        <tr><td><code>dnf-dialog__icon--danger</code></td><td>modifier</td><td>danger-soft tile, danger icon</td></tr>
+        <tr><td><code>dnf-dialog__title</code></td><td>element</td><td><code>text-lg</code></td></tr>
+        <tr><td><code>dnf-dialog__description</code></td><td>element</td><td>muted</td></tr>
+        <tr><td><code>dnf-dialog__close</code></td><td>element</td><td>the close button, pulled into the corner</td></tr>
+        <tr><td><code>dnf-dialog__body</code></td><td>element</td><td>a column of content, gap <code>--dnf-space-4</code></td></tr>
+        <tr><td><code>dnf-dialog__footer</code></td><td>element</td><td>wrapping buttons at the end</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>open</td><td><code>[open]</code></td><td>visible; fades and moves in on <code>showModal()</code> and out on <code>close()</code>, the backdrop too</td></tr>
+        <tr><td>reduced motion / old browsers</td><td>-</td><td>shows and hides at once (without <code>@@starting-style</code> and <code>allow-discrete</code> support, or with reduced motion)</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-dialog-width</code>.</p>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes and these hooks are the API.</p>
+<table>
+    <thead><tr><th>Hook</th><th>Meaning</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-dialog-open="selector"</code></td><td>on a button: opens that <code>&lt;dialog&gt;</code> with <code>showModal()</code></td></tr>
+        <tr><td><code>data-dialog-close</code></td><td>on a button inside a dialog: closes it</td></tr>
+        <tr><td><code>data-dialog-light-dismiss</code></td><td>on the dialog: a click on the backdrop closes it</td></tr>
+        <tr><td><code>&lt;form method="dialog"&gt;</code></td><td>native: its submit buttons close the dialog and set <code>returnValue</code></td></tr>
+        <tr><td><code>data-confirm</code>, <code>data-confirm-title</code>, <code>data-confirm-action</code>, <code>data-confirm-tone</code></td><td>on a form or its submit button: ask in <code>#dnf-confirm-dialog</code> before posting</td></tr>
+        <tr><td><code>dnfUI.confirm({ title, text, action, tone })</code></td><td>opens the confirmation dialog, returns <code>Promise&lt;boolean&gt;</code>; falls back to <code>window.confirm</code></td></tr>
+    </tbody>
+</table>
+<p>The confirmation dialog's markup is rendered once per layout (<code>_Feedback.cshtml</code>); see
+    <a href="@UiDocsCatalog.Root/behaviours">behaviours</a>. <code>dnf.js</code> replaces its OK button's and icon's classes per
+    call, so don't add classes to them.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li><code>showModal()</code> makes the rest of the page inert, traps focus and closes on Escape; focus returns to the
+        opener on close.</li>
+    <li>Name the dialog with <code>aria-labelledby</code> (its title) and describe it with <code>aria-describedby</code>.</li>
+    <li>The close button is icon-only: give it <code>aria-label="Close"</code>.</li>
+    <li>Use real headings for the title; the dialog's first focusable element gets focus when it opens.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use <code>data-dialog-close</code> or <code>&lt;form method="dialog"&gt;</code> for Cancel and Close - no script of
+        your own.</li>
+    <li>Do confirm destructive actions with <code>data-confirm</code> rather than a hand-made dialog.</li>
+    <li>Don't stack dialogs, and don't use a dialog for content a page could show.</li>
+</ul>

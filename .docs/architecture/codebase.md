@@ -48,7 +48,7 @@ behaviour under **Planned (not implemented)**; the gap is tracked in
 | API docs | `Microsoft.AspNetCore.OpenApi` builds the OpenAPI document of `/api/*` and the custom endpoints; `Scalar.AspNetCore` renders it at `/admin/api-docs/reference/` ([API docs](../features/api-docs.md)) | `src/DotNetForge.Web/ApiDocs/`, `DependencyRegistration` (`AddOpenApi`) |
 | Crypto | BCL only: PBKDF2-SHA256 (`Rfc2898DeriveBytes.Pbkdf2`), HMAC-SHA256, SHA-256, `RandomNumberGenerator` | `src/DotNetForge.Infrastructure/Security`, `ApiTokenAuthenticationHandler` |
 | Configuration | In-house `.env` parser + environment variables, typed as `AppEnvironment` | `src/DotNetForge.Infrastructure/Configuration` |
-| Frontend | The Forge design system ([design-system.md](design-system.md)): hand-written CSS (`wwwroot/css/forge/`), Razor tag helpers (`src/DotNetForge.Web/Ui/`), an SVG icon sprite and vanilla JS files (`wwwroot/js/forge/theme.js`, `ui.js`, `nav-state.js`, and one script per screen that needs one: `pages.js`, `entries.js`, `content-types.js`). Light and dark themes. No inline script or style. No bundler, no Node build, no front-end packages. | `src/DotNetForge.Web/wwwroot/`, `src/DotNetForge.Web/Ui/` |
+| Frontend | The DotNetForge UI library ([.docs/ui](../ui/README.md)): BEM `dnf-*` components and `--dnf-*` tokens compiled with Tailwind CSS v4 (standalone CLI at build time, no Node) into one `dnf.css`, `<dnf-*>` Razor tag helpers, `dnf.js` behaviours, an SVG icon sprite; the CMS adds screen CSS and page scripts ([design-system.md](design-system.md)). Light and dark themes. No inline script or style. No bundler, no front-end packages. | `src/DotNetForge.UI/`, `src/DotNetForge.Web/wwwroot/` |
 | Page builder | Layout documents, validation and HTML/CSS rendering in `DotNetForge.PageBuilder`; the editor as plain ES modules (`wwwroot/js/builder/`) with its own styles (`wwwroot/builder/`). Ported from the Dnn.Libraries.PageEditor project ([page builder](../features/page-builder.md)). | `src/DotNetForge.PageBuilder`, `src/DotNetForge.Web/wwwroot/{js/,}builder` |
 | Container | `docker/Dockerfile` (`sdk:10.0` build → `aspnet:10.0`, non-root `$APP_UID`, port 8080); `docker/compose.dev.yml` (PostgreSQL + RustFS + Mailpit), `docker/compose.app.yml` (the app built and run in Docker), one compose file per service in `docker/databases/`, `docker/s3/`, `docker/mail/` | `docker/` |
 | Tests | xUnit 2.9, `Microsoft.AspNetCore.Mvc.Testing` (`WebApplicationFactory<Program>`) | `tests/` |
@@ -77,17 +77,17 @@ flowchart TB
     Data["DotNetForge.Data"]
     Shared["DotNetForge.Shared"]
     Abs["DotNetForge.Abstractions"]
+    UI["DotNetForge.UI"]
 
-    Host --> Api & Ext & Sdk & Infra & Core & Data & Shared & Abs & PB & Cnt
+    Host --> Api & Ext & Sdk & Infra & Core & Data & Shared & Abs & PB & Cnt & UI
     Api --> Cnt & Core & Data & Shared & Abs
     Cnt --> Core & Data & Shared & Abs
     Ext --> Sdk & Core & Shared & Abs
-    Sdk --> Shared & Abs
+    Sdk --> Shared & Abs & UI
     ExtCode -. compiles against .-> Sdk
-    Infra --> Core & Shared & Abs
+    Infra --> Shared & Abs
     Core --> Shared & Abs & PB
     Data --> Shared & Abs
-    Shared --> Abs
 ```
 
 Arrows are `ProjectReference`s. `Core` and `Data` are deliberate siblings: neither references the other. When domain
@@ -97,9 +97,11 @@ When the API needs a web-host service, the contract also goes in `Shared` and th
 documented shortcut: API controllers query `DotNetForgeDbContext` directly. Structured content needs the same database
 rules in the admin and the API, more than a contract would carry, so they are a library of their own:
 `DotNetForge.Content` (above `Core` and `Data`, referenced by the host and `Api`). `Core` references `PageBuilder`
-because entries store rich text in the page builder's format. Extension projects reference only
-`Sdk`, `Shared` and `Abstractions` (without copying them, `extensions/Directory.Build.props`) and are loaded by the
-host at runtime; the host shares its own copies of those assemblies with them.
+because entries store rich text in the page builder's format. `DotNetForge.UI` (the component library) references
+no solution project - only the ASP.NET Core shared framework - so the CMS and extensions can share it. Extension
+projects reference only `Sdk`, `Shared`, `Abstractions` and `UI` (without copying them,
+`extensions/Directory.Build.props`) and are loaded by the host at runtime; the host shares its own copies of those
+assemblies with them.
 
 ## Application entry points
 
@@ -138,7 +140,7 @@ DotNetForge/                         repository root
 │   │   ├── Authentication/          the built-in OAuth providers: catalog, handler, runtime scheme registry, settings service
 │   │   ├── Controllers/             non-area controllers: public site, media files, account, external sign-in, two-factor step, setup, extension views/resources
 │   │   ├── Components/              public view components (ExtensionModules)
-│   │   ├── Ui/                      UI tag helpers (UiTagHelpers.cs) + presentation helpers (AuditPresentation, MediaPresentation)
+│   │   ├── Ui/                      presentation helpers (AuditPresentation, MediaPresentation)
 │   │   ├── Areas/Admin/
 │   │   │   ├── Controllers/         one controller per admin screen (+ AdminControllerBase)
 │   │   │   ├── Components/          view components (dashboard widgets)
@@ -146,7 +148,7 @@ DotNetForge/                         repository root
 │   │   │   ├── Navigation/          AdminNavigation.cs: the sidebar tree + AdminNavigationService
 │   │   │   └── Views/               admin Razor views, _AdminLayout, _Sidebar, _NavLink
 │   │   ├── Views/                   public, auth and setup Razor views + _Layout/_AuthLayout, _Feedback, _ThemeMenu
-│   │   ├── wwwroot/                 static files served by UseStaticFiles: css/forge/, js/forge/, img/ (logos, icons.svg)
+│   │   ├── wwwroot/                 static files served by UseStaticFiles: css/ (admin/, auth.css, site.css), js/admin/, js/builder/, builder/, lib/monaco/, img/ (logos, favicon)
 │   │   ├── Properties/launchSettings.json  http / https profiles
 │   │   └── appsettings*.json        logging levels and AllowedHosts
 │   ├── DotNetForge.Abstractions/    contracts only (no implementation, no dependencies)
@@ -158,10 +160,12 @@ DotNetForge/                         repository root
 │   ├── DotNetForge.PageBuilder/     page builder documents: schema, validator, HTML/CSS renderer (no other references)
 │   ├── DotNetForge.Extensions/      manifest validation, cached on-disk discovery, code loading (load contexts), ExtensionCatalog
 │   ├── DotNetForge.Sdk/             the extension SDK: IExtension, ExtensionContext, slot helpers, host contracts
+│   ├── DotNetForge.UI/              the DotNetForge UI component library (Razor class library): Styles/ (Tailwind + BEM sources), Components/ (tag helpers), wwwroot/ (dnf.css output, dnf.js, dnf-theme.js, icons.svg), build/Tailwind.targets
 │   └── DotNetForge.Api/             headless API controllers, token auth handler, permission filter
 ├── tests/
 │   ├── DotNetForge.Tests/           unit tests (no host, no real DB; live S3 tests opt-in)
 │   ├── DotNetForge.IntegrationTests/ real host over a fresh PostgreSQL database per factory (DNF_TEST_POSTGRES)
+│   ├── DotNetForge.UiTests/         browser tests of the UI library (Playwright + Chromium, screenshots, axe-core)
 │   ├── fixtures/extensions/         fixture extensions the integration tests load
 │   ├── fixtures/page-builder/       golden page builder fixtures (input, normalized document, HTML, CSS)
 │   └── js/                          page-builder-fixtures.mjs: the fixtures through the browser modules (Node)
@@ -233,7 +237,7 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 
 | Class | Registered as | Lifetime | Responsibility | Used by |
 | --- | --- | --- | --- | --- |
-| `AuthService` | self | scoped | Email/password validation with lockout; matching a provider's verified email (`ValidateExternalAsync`); the hand-over to and from the second step (`SecondFactorRequired`, `CompleteSecondFactorAsync`, `RecordFailedSecondFactorAsync`); builds the cookie `ClaimsPrincipal` (user id, name, email, roles); `IsActiveAsync` (user exists and is `Enabled`). Defines `SignInStatus`, `SignInResult`. | `AccountController`, `ExternalLoginController`, `MfaLoginController`, `SetupController`, `ProfileController`, `DependencyRegistration.ValidateSessionAsync` |
+| `AuthService` | self | scoped | Email/password validation with lockout; matching a provider's verified email (`ValidateExternalAsync`); the hand-over to and from the second step (`SecondFactorRequired`, `CompleteSecondFactorAsync`, `RecordFailedSecondFactorAsync`); builds the cookie `ClaimsPrincipal` (user id, name, email, roles). Defines `SignInStatus`, `SignInResult`. | `AccountController`, `ExternalLoginController`, `MfaLoginController`, `SetupController`, `ProfileController`, `DependencyRegistration.ValidateSessionAsync` |
 | `AccountService` | self | scoped | Self-service accounts: registration (also `RegisterExternalAsync`, sign-up through a provider), reset and confirmation links, the template emails (incl. the two-factor **Sign-in code**). | `AccountController`, `AuthService`, `ExternalLoginController`, `MfaService` |
 | `LoginProviders` | self | singleton | The "Sign in with ..." buttons: enabled built-in OAuth providers, then those of active `authentication` extensions (`LoginOption`). | `AccountController`, `ExternalLoginController`, `AuthProvidersController` |
 | `Mfa/MfaService`, `Mfa/MfaSettingsService` (+ `MfaSettings`, `Totp`, `PendingSignIn`, `ISmsSender`/`TwilioSmsSender`) | self / self / `ISmsSender` | scoped (SMS: typed `HttpClient`) | Two-factor authentication: methods (authenticator app, passkeys, email and SMS codes), recovery codes, reset, the `mfa.*` settings and the requirement, the `dnf.mfa` pending sign-in ([MFA](../features/mfa.md)). | `AuthService`, `MfaLoginController`, `SecurityController`, `MfaSettingsController`, `ProfileController`, `UsersController`, `AdminControllerBase` |
@@ -292,22 +296,24 @@ except `RoleListItem` and `UserListItem`, which are nested records inside their 
 
 `Views/` holds the public site, setup, login and denied screens with two layouts: `_Layout` (public fallback: home,
 content pages, error) and `_AuthLayout` (setup/login/denied), plus the shared partials `_Feedback` (toasts + confirm
-dialog, rendered by `_AdminLayout` and `_AuthLayout`) and `_ThemeMenu`. `Ui/` holds the UI tag helpers and
-presentation helpers. How these fit together, and how to add a component, token or icon:
+dialog, rendered by `_AdminLayout` and `_AuthLayout`) and `_ThemeMenu`. `Ui/` holds the presentation helpers
+(`AuditPresentation`, `MediaPresentation`); the tag helpers, components and behaviours are the
+[DotNetForge UI library](../ui/README.md) (`src/DotNetForge.UI`). How the CMS uses it:
 [design-system.md](design-system.md).
 
 | File | Loaded by |
 | --- | --- |
-| `wwwroot/css/forge/tokens.css`, `base.css`, `components.css` | every built-in layout |
-| `wwwroot/css/forge/admin.css` / `auth.css` / `public.css` | `_AdminLayout` / `_AuthLayout` / `_Layout` |
-| `wwwroot/js/forge/theme.js` | every built-in layout, synchronously in `<head>` (applies the saved light/dark choice) |
-| `wwwroot/js/forge/nav-state.js` | `_AdminLayout`, synchronously right after the sidebar (restores open sidebar groups and scroll position before the first paint) |
-| `wwwroot/js/forge/ui.js` | `_AdminLayout`, `_AuthLayout` (`defer`) - `data-confirm`, toasts, menus, drawer, list search/filter/sort/paging, copy, theme switch |
-| `wwwroot/js/forge/pages.js` | Pages only (`@section Scripts`) |
-| `wwwroot/js/forge/entries.js` | Content Manager entry list and entry form |
-| `wwwroot/js/forge/content-types.js` | Content types builder (`/admin/content-types/{id}`) |
-| `wwwroot/img/` | `icons.svg` (icon sprite for `<icon>`), `favicon.svg`, `logo-dark.svg` (dark sidebar, auth panel), `logo-mark.svg` (public header, auth on phones), `logo.svg` (light sidebar, README) |
-| `Ui/UiTagHelpers.cs` | `@addTagHelper *, DotNetForge.Web` in both `_ViewImports.cshtml` |
+| `/_content/DotNetForge.UI/dnf-theme.js` (library) | every built-in layout, synchronously in `<head>` (applies the saved light/dark choice) |
+| `/_content/DotNetForge.UI/dnf.css` (library) | every built-in layout |
+| `/_content/DotNetForge.UI/dnf.js` (library) | `_AdminLayout`, `_AuthLayout` (`defer`) - `data-confirm`, toasts, menus, drawer, list search/filter/sort/paging, copy, theme switch |
+| `wwwroot/css/admin/shell.css`, `content.css`, `media.css`, `tools.css`, `people.css` | `_AdminLayout` |
+| `wwwroot/css/admin/docs.css`, `wwwroot/js/admin/docs.js` | the [UI docs](../pages/ui-docs.md) layout and examples |
+| `wwwroot/css/auth.css` / `site.css` | `_AuthLayout` / `_Layout` |
+| `wwwroot/js/admin/nav-state.js` | `_AdminLayout`, synchronously right after the sidebar (restores open sidebar groups and scroll position before the first paint) |
+| `wwwroot/js/admin/pages.js`, `entries.js`, `content-types.js`, `media.js`, `endpoints.js`, `email-templates.js`, `webhooks.js`, `showcase.js` | their screen only (`@section Scripts`) |
+| `wwwroot/js/admin/passkeys.js` | Sign-in security and the two-step verification step |
+| `wwwroot/img/` | `favicon.svg`, `logo-dark.svg` (dark sidebar, auth panel), `logo-mark.svg` (public header, auth on phones), `logo.svg` (light sidebar, README); the icon sprite is the library's |
+| `src/DotNetForge.UI` tag helpers | `@addTagHelper *, DotNetForge.UI` in both `_ViewImports.cshtml` |
 
 No view contains inline `<script>`, `<style>`, `style=` or `on*=` handlers: the CSP (`script-src 'self'; style-src
 'self'`) would block them. `AdminUiTests` checks every admin screen, sign-in and the public pages for this.
@@ -345,6 +351,7 @@ The shared kernel referenced by everything above `Abstractions`.
 | `Content/PublishedPages.cs` | `PageVisibility.Live` (the public "live" rule), `IPublishedPages`, `PublishedPage` |
 | `Auditing/IAuditService.cs` | `IAuditService.LogAsync` |
 | `Dtos/SetupRequest.cs` | Setup-wizard form model |
+| `Dtos/IAccountFields.cs` | The model of the `_AccountFields` partial (Register and the setup wizard) |
 | `Manifests/` | `ExtensionManifest`, `ValidationResult`, `ValidationError` |
 | `Results/Result.cs` | `Result` success-or-error type (used by `InstallationService`) |
 | `Stores/IInstallationStore.cs` | Persistence contract implemented by `Data` |
@@ -428,10 +435,27 @@ to the core one ([storage connectors](../features/media-storage.md#storage-conne
 Enabled state (`ExtensionState`), enable/disable (`ExtensionLifecycleService`) and the slot services live in the web
 host because they need the database or MVC. See [extensions](../features/extensions.md).
 
+#### `src/DotNetForge.UI`
+
+The DotNetForge UI component library ([.docs/ui](../ui/README.md)), a Razor class library served under
+`/_content/DotNetForge.UI/`: `Styles/` (the stylesheet sources: Tailwind import, `theme.css`, `tokens.css`,
+`base.css`, `components/*.css`), `DnfTagHelper.cs` (enums `DnfSize`, `DnfTone`, `DnfButtonVariant`, `DnfAssets`, the
+tag helper base class), `Components/` (the `<dnf-*>` tag helpers), `wwwroot/` (`dnf.js`, `dnf-theme.js`,
+`icons.svg`, and `dnf.css` - git-ignored build output) and `build/Tailwind.targets` (compiles the stylesheet with the
+Tailwind CLI on every build, [styling → build](../ui/styling.md#build)).
+
+- **Belongs here:** anything generic a screen or an extension can reuse - components, tokens, utilities, tag helpers,
+  `data-*` behaviours, icons.
+- **Does not belong:** CMS data, services or routes (it references only the ASP.NET Core shared framework, never a
+  CMS project); screen-specific blocks (`src/DotNetForge.Web/wwwroot/css/`).
+
+Referenced by the web host and by `DotNetForge.Sdk` (so extensions get it). A change to a class, token, tag helper
+attribute or `data-*` hook is a breaking change for extensions.
+
 #### `src/DotNetForge.Sdk`
 
-The one assembly extensions compile against (references `Abstractions` and `Shared`, framework reference to ASP.NET
-Core): `IExtension`, `ExtensionContext`, `ExtensionServiceCollectionExtensions` (`AddMediaStorage`,
+The one assembly extensions compile against (references `Abstractions`, `Shared` and `UI`, framework reference to
+ASP.NET Core): `IExtension`, `ExtensionContext`, `ExtensionServiceCollectionExtensions` (`AddMediaStorage`,
 `AddLoginProvider`, `AddAuditEventHandler`) and their contribution records, `IExtensionState`, `IAuditEventHandler` /
 `AuditEvent`, `ExternalLogin.SignInScheme`. Extensions compile against it, so a change is a breaking change for every
 extension ([extensions → Extension SDK](../features/extensions.md#extension-sdk)).
@@ -561,8 +585,9 @@ admin, and **`ApiToken`** (bearer) selected only by `ApiControllerBase` (custom 
 `CustomEndpointsApiController` instead); plus the 10-minute `dnf.external` cookie that
 carries a provider's result (built-in `oauth-<key>` schemes, added at runtime by `OAuthProviderRegistry`, or an
 extension's) to `ExternalLoginController`, and the 10-minute `dnf.mfa` cookie of a sign-in waiting for its
-[second factor](../features/mfa.md). Every cookie request is re-validated
-(`OnValidatePrincipal` → `AuthService.IsActiveAsync`, cached 30 s), so disabled or deleted users are signed out.
+[second factor](../features/mfa.md). Every cookie request is checked against its
+[server-side session](../features/authentication.md#sessions) (`OnValidatePrincipal` → `UserSessionService`, cached 30 s),
+which also supplies the current roles.
 The Data Protection key ring that protects cookies, antiforgery tokens and TempData is stored in the
 `DataProtectionKeys` table, so sessions survive restarts and work across instances. See
 [authentication](../features/authentication.md).
@@ -636,7 +661,8 @@ get signed `POST`s from `WebhookSender` ([webhooks](../features/webhooks.md)).
 
 ### UI architecture
 
-Server-rendered Razor with progressive enhancement and no inline script or style. See [pages.md](pages.md).
+Server-rendered Razor with progressive enhancement and no inline script or style, built from the
+[DotNetForge UI library](../ui/README.md). See [pages.md](pages.md) and [design-system.md](design-system.md).
 
 ### API architecture
 
@@ -654,7 +680,9 @@ start. Structured commands for the CMS database or any additional database go th
 MSBuild with `Directory.Build.props` (target framework, nullable, `ManagePackageVersionsCentrally`,
 `InvariantGlobalization=false` - SQL Server's client, used for additional databases, needs ICU) and `Directory.Packages.props` (all versions, transitive pinning). Local tool `dotnet-ef`
 10.0.12 pinned in `.config/dotnet-tools.json`. `Microsoft.EntityFrameworkCore.Design` is referenced only by `Data`
-with `PrivateAssets="all"`, so it never reaches the published app. `DotNetForge.slnx` at the root lists every
+with `PrivateAssets="all"`, so it never reaches the published app. `src/DotNetForge.UI/build/Tailwind.targets`
+compiles the UI stylesheet with the pinned Tailwind CSS standalone CLI (downloaded once into the git-ignored
+`tools/tailwind/`, SHA-256 verified; [styling → build](../ui/styling.md#build)). `DotNetForge.slnx` at the root lists every
 project, so `dotnet build` and `dotnet test` work without arguments - see
 [development guide](../guides/development.md#everyday-commands-repository-root).
 
@@ -814,7 +842,7 @@ Update/rollback and import/export criteria are tracked in [transfer and updates]
 - [ ] RBAC enforces a permission check on every admin and API action with the six default roles (roles ✔ seeded;
   API ✔; Pages, Content Manager and Media ✔ via `Can`/`CanModify`; other admin screens use role checks).
 - [x] Permission areas cover Collection types, Single types, Plugins, Settings, Extensions, Media, Users, Roles, API,
-  Webhooks (`PermissionAreas.Canonical`).
+  Webhooks (`PermissionAreas`).
 - [ ] Content, media, theme and API systems are implemented in their specified layers.
 - [x] The admin area is never affected by public frontend themes (only `HomeController.ThemedViewAsync` renders theme
   views; no test asserts the admin side).
@@ -870,9 +898,11 @@ update this document in the same change).
     user input (`StorageKey` validates them). New configuration must not default to a path inside the deployment
     directory outside Development.
 12. **No inline script or style in views** (the CSP forbids it). Build screens from the
-    [design system](design-system.md): behaviour as a data attribute handled in `wwwroot/js/forge/ui.js` (e.g.
-    `data-confirm`) or a page script, styles in `wwwroot/css/forge/` using the tokens, validation errors with
-    `<form-errors />` (never `asp-validation-summary`, whose empty state carries an inline style).
+    [DotNetForge UI library](../ui/README.md) ([design system](design-system.md)): behaviour as a `data-*` hook of
+    `dnf.js` (e.g. `data-confirm`) or a page script in `wwwroot/js/admin/`, styles as Dnf components and Tailwind
+    utilities, screen-specific CSS in `wwwroot/css/` using the `--dnf-*` tokens, validation errors with
+    `<dnf-validation-summary />` (never `asp-validation-summary`, whose empty state carries an inline style).
+    `DotNetForge.UI` never references a CMS project.
 13. **Extension discovery goes through `IExtensionLoader`** (`Discover()`), and "may this extension contribute now?"
     through `ExtensionCatalog` (`GetActiveAsync`, `FindActiveAsync`, `IsActiveAsync`); never combine discovery, code
     and enabled state in a caller, never scan `extensions/` directly, and never build file paths from request input

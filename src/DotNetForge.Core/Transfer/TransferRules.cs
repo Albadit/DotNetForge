@@ -87,7 +87,7 @@ public static partial class TransferRules
         return errors;
     }
 
-    /// <summary>The download/storage file name, e.g. <c>dotnetforge-sqlite-20261027-143005.zip</c>.</summary>
+    /// <summary>The download/storage file name, e.g. <c>dotnetforge-export-postgresql-20261027-143005.zip</c>.</summary>
     public static string FileName(string provider, DateTime utc, string kind = "export") =>
         $"dotnetforge-{kind}-{Slug().Replace(provider.ToLowerInvariant(), string.Empty)}-{utc:yyyyMMdd-HHmmss}.zip";
 

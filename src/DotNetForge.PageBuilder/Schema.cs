@@ -1,8 +1,4 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -338,11 +334,6 @@ namespace DotNetForge.PageBuilder
         public static bool IsBuiltIn(string type)
         {
             return type != null && BuiltIns.ContainsKey(type);
-        }
-
-        public static bool IsContainerType(string type)
-        {
-            return Component(type)?.Container == true;
         }
 
         /// <summary>Whether a node of <paramref name="childType"/> may be placed in one of <paramref name="parentType"/>.</summary>

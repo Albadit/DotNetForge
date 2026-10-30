@@ -1,0 +1,377 @@
+/*
+  UI docs (.docs/pages/ui-docs.md): the documentation site layout - header, navigation, article, "On this page" - and
+  the example frames. CMS-internal blocks (dnf-docs*), not part of the library.
+  Breakpoints: the table of contents hides below 80rem, the navigation becomes a drawer below 64rem.
+*/
+
+@layer components {
+    .dnf-docs {
+        --dnf-docs-header-height: 3.75rem;
+        --dnf-docs-nav-width: 16rem;
+        --dnf-docs-toc-width: 14rem;
+        display: grid;
+        grid-template-columns: var(--dnf-docs-nav-width) minmax(0, 1fr) var(--dnf-docs-toc-width);
+        grid-template-rows: var(--dnf-docs-header-height) 1fr;
+        grid-template-areas: "header header header" "nav main toc";
+        min-height: 100vh;
+        background: var(--dnf-surface);
+    }
+
+    /* ---- Header ----------------------------------------------------------------------------------------------- */
+    .dnf-docs__header {
+        grid-area: header;
+        position: sticky; top: 0; z-index: var(--dnf-z-sticky);
+        display: flex; align-items: center; gap: var(--dnf-space-4);
+        padding: 0 var(--dnf-space-6);
+        border-bottom: 1px solid var(--dnf-border);
+        background: color-mix(in srgb, var(--dnf-surface) 90%, transparent);
+        backdrop-filter: blur(8px);
+    }
+    .dnf-docs__menu { display: none; }
+    .dnf-docs__brand { display: inline-flex; align-items: center; gap: var(--dnf-space-2); border-radius: var(--dnf-radius-md); }
+    .dnf-docs__brand:hover { text-decoration: none; }
+    .dnf-docs__brand img { height: 2rem; width: auto; }
+    .dnf-docs__search { flex: 0 1 18rem; margin-inline-start: var(--dnf-space-6); }
+    .dnf-docs__search-key {
+        position: absolute; inset-inline-end: 0.5rem; top: 50%; translate: 0 -50%;
+        pointer-events: none;
+    }
+    .dnf-docs__search:focus-within .dnf-docs__search-key { display: none; }
+    .dnf-docs__header-actions { display: flex; align-items: center; gap: var(--dnf-space-1); margin-inline-start: auto; }
+
+    /* ---- Navigation ------------------------------------------------------------------------------------------- */
+    .dnf-docs__nav {
+        grid-area: nav;
+        position: sticky; top: var(--dnf-docs-header-height);
+        align-self: start;
+        height: calc(100vh - var(--dnf-docs-header-height));
+        overflow-y: auto;
+        padding: var(--dnf-space-6) var(--dnf-space-4) var(--dnf-space-10);
+        border-inline-end: 1px solid var(--dnf-border);
+        scrollbar-width: thin;
+    }
+    .dnf-docs__nav-head { display: none; }
+    .dnf-docs__nav-group + .dnf-docs__nav-group { margin-top: var(--dnf-space-5); }
+    .dnf-docs__nav-title {
+        margin-bottom: var(--dnf-space-1);
+        padding: 0 var(--dnf-space-3);
+        color: var(--dnf-foreground);
+        font-size: var(--dnf-text-sm);
+        font-weight: var(--dnf-weight-semibold);
+    }
+    .dnf-docs__nav-list { display: flex; flex-direction: column; gap: 1px; }
+    .dnf-docs__nav-link {
+        display: block;
+        padding: 0.3rem var(--dnf-space-3);
+        border-radius: var(--dnf-radius-md);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-docs__nav-link:hover { background: var(--dnf-surface-hover); color: var(--dnf-foreground); text-decoration: none; }
+    .dnf-docs__nav-link[aria-current="page"] { background: var(--dnf-primary-soft); color: var(--dnf-primary-text); font-weight: var(--dnf-weight-semibold); }
+    .dnf-docs__nav-empty { padding: 0 var(--dnf-space-3); color: var(--dnf-subtle-foreground); font-size: var(--dnf-text-sm); }
+    .dnf-docs__backdrop { position: fixed; inset: 0; z-index: calc(var(--dnf-z-drawer) - 1); background: var(--dnf-backdrop); }
+
+    /* ---- Article ---------------------------------------------------------------------------------------------- */
+    .dnf-docs__main { grid-area: main; min-width: 0; padding: var(--dnf-space-10) var(--dnf-space-10) var(--dnf-space-16); }
+    .dnf-docs__main:focus { outline: none; }
+    .dnf-docs__article { max-width: 52rem; margin-inline: auto; }
+    .dnf-docs__page-header { margin-bottom: var(--dnf-space-8); }
+    .dnf-docs__page-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--dnf-space-4); margin-bottom: var(--dnf-space-2); }
+    .dnf-docs__page-meta > .dnf-docs__eyebrow { margin-bottom: 0; }
+    .dnf-docs__copy-menu { width: 17rem; }
+    .dnf-docs__eyebrow { margin-bottom: var(--dnf-space-2); color: var(--dnf-primary-text); font-size: var(--dnf-text-sm); font-weight: var(--dnf-weight-semibold); }
+    .dnf-docs__title { font-size: var(--dnf-text-3xl); letter-spacing: -0.02em; }
+    .dnf-docs__lead { margin-top: var(--dnf-space-3); color: var(--dnf-muted-foreground); font-size: var(--dnf-text-lg); }
+
+    /* Prose: the page's own headings, text, lists and tables - never what an example renders. */
+    .dnf-docs__article :is(h2, h3, p, ul, ol, table):not(.dnf-docs-example__preview *, .dnf-docs-cards *) { margin-bottom: var(--dnf-space-4); }
+    .dnf-docs__article h2:not(.dnf-docs-example__preview *) {
+        margin-top: var(--dnf-space-12);
+        padding-top: var(--dnf-space-2);
+        font-size: var(--dnf-text-2xl);
+        scroll-margin-top: calc(var(--dnf-docs-header-height) + var(--dnf-space-4));
+    }
+    .dnf-docs__article h3:not(.dnf-docs-example__preview *) {
+        margin-top: var(--dnf-space-8);
+        font-size: var(--dnf-text-lg);
+        scroll-margin-top: calc(var(--dnf-docs-header-height) + var(--dnf-space-4));
+    }
+    .dnf-docs__article :is(p, li):not(.dnf-docs-example__preview *, .dnf-docs-cards *) { color: var(--dnf-muted-foreground); line-height: 1.7; }
+    .dnf-docs__article :is(ul, ol):not(.dnf-docs-example__preview *, .dnf-docs-source) { padding-inline-start: var(--dnf-space-5); }
+    .dnf-docs__article ul:not(.dnf-docs-example__preview *, .dnf-docs-source) { list-style: disc; }
+    .dnf-docs__article ol:not(.dnf-docs-example__preview *) { list-style: decimal; }
+    .dnf-docs__article li:not(.dnf-docs-example__preview *) + li { margin-top: var(--dnf-space-1); }
+    .dnf-docs__article :is(p, li, td) > a:not(.dnf-button) { text-decoration: underline; text-underline-offset: 0.2em; }
+    .dnf-docs__article strong:not(.dnf-docs-example__preview *) { color: var(--dnf-foreground); }
+    /* Reference tables. docs.js wraps each in .dnf-docs-table-scroll (scrolls sideways when wide, and is then a
+       focusable region); without JS the table itself scrolls. */
+    :is(.dnf-docs__article > table, .dnf-docs__article section > table, .dnf-docs-table-scroll) {
+        display: block;
+        width: 100%;
+        margin-bottom: var(--dnf-space-4);
+        overflow-x: auto;
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-docs-table-scroll:focus-visible { outline: 2px solid var(--dnf-focus); outline-offset: 2px; }
+    .dnf-docs-table-scroll > table { display: table; width: 100%; }
+    :where(.dnf-docs__article > table, .dnf-docs__article section > table, .dnf-docs-table-scroll > table) :is(th, td) {
+        padding: var(--dnf-space-2) var(--dnf-space-4);
+        border-bottom: 1px solid var(--dnf-border);
+        text-align: start;
+        vertical-align: top;
+    }
+    :where(.dnf-docs__article > table, .dnf-docs__article section > table, .dnf-docs-table-scroll > table) thead th {
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+        font-weight: var(--dnf-weight-semibold);
+        white-space: nowrap;
+    }
+    :where(.dnf-docs__article > table, .dnf-docs__article section > table, .dnf-docs-table-scroll > table) tbody tr:last-child td { border-bottom: 0; }
+    :where(.dnf-docs__article > table, .dnf-docs__article section > table, .dnf-docs-table-scroll > table) td { color: var(--dnf-muted-foreground); }
+    :where(.dnf-docs__article > table, .dnf-docs__article section > table, .dnf-docs-table-scroll > table) td:first-child { white-space: nowrap; }
+
+    /* Where the component's files are. */
+    .dnf-docs-source { display: flex; flex-wrap: wrap; gap: var(--dnf-space-2) var(--dnf-space-6); margin-bottom: var(--dnf-space-6); font-size: var(--dnf-text-sm); }
+    .dnf-docs-source > li { color: var(--dnf-subtle-foreground); }
+
+    /* ---- Example: heading, description, Preview / Razor / HTML ------------------------------------------------ */
+    .dnf-docs-example { margin-bottom: var(--dnf-space-8); }
+    .dnf-docs-example__title { color: var(--dnf-foreground); }
+    .dnf-docs-example__description { margin-top: calc(var(--dnf-space-2) * -1); }
+    .dnf-docs-example__frame { overflow: hidden; border: 1px solid var(--dnf-border); border-radius: var(--dnf-radius-lg); background: var(--dnf-surface); }
+    .dnf-docs-example__tabs { padding: 0 var(--dnf-space-2); background: var(--dnf-surface-muted); }
+    .dnf-docs-example__preview {
+        padding: var(--dnf-space-8) var(--dnf-space-6);
+        background:
+            radial-gradient(circle, color-mix(in srgb, var(--dnf-border) 70%, transparent) 1px, transparent 1px) 0 0 / 1rem 1rem,
+            var(--dnf-background);
+    }
+    .dnf-docs-example__preview--row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--dnf-space-3); }
+    .dnf-docs-example__preview--stack { display: flex; flex-direction: column; gap: var(--dnf-space-4); }
+    .dnf-docs-example__preview--block { display: block; }
+
+
+    /* Code: highlighted Razor / HTML with a copy button. */
+    /* Code: a scrolling <pre> and, outside it, the Copy button - it stays in the corner while the code scrolls. */
+    .dnf-docs-code { position: relative; }
+    .dnf-docs-code__pre {
+        max-height: 32rem;
+        margin: 0;
+        padding-inline-end: 6rem;
+        overflow: auto;
+        scrollbar-gutter: stable;
+        white-space: pre;
+        word-break: normal;
+        tab-size: 4;
+    }
+    .dnf-docs-code__copy { position: absolute; top: var(--dnf-space-2); inset-inline-end: 1.25rem; }
+    /* Inside an example the frame draws the border; the code fills the panel edge to edge. */
+    .dnf-docs-example__code .dnf-docs-code__pre { border: 0; border-radius: 0; }
+    .dnf-docs-token--tag { color: var(--dnf-primary-text); }
+    .dnf-docs-token--attr { color: var(--dnf-info); }
+    .dnf-docs-token--string { color: var(--dnf-success); }
+    .dnf-docs-token--razor { color: var(--dnf-warning); }
+    .dnf-docs-token--comment { color: var(--dnf-subtle-foreground); font-style: italic; }
+    /* A snippet on its own keeps a gap to what follows (not the code inside an example frame). */
+    .dnf-docs__article .dnf-docs-code:not(.dnf-docs-example__code *) { margin-bottom: var(--dnf-space-6); }
+
+    /* The API table: the type column wraps (enums list their values). */
+    .dnf-docs-api { margin-bottom: var(--dnf-space-6); border: 1px solid var(--dnf-border); border-radius: var(--dnf-radius-lg); }
+    .dnf-docs-api .dnf-table__table { table-layout: fixed; font-size: var(--dnf-text-sm); }
+    .dnf-docs-api .dnf-table__table th:nth-child(1) { width: 9rem; }
+    .dnf-docs-api .dnf-table__table th:nth-child(2) { width: 13rem; }
+    .dnf-docs-api .dnf-table__table th:nth-child(3) { width: 7rem; }
+    .dnf-docs-api .dnf-table__table td { vertical-align: top; color: var(--dnf-muted-foreground); overflow-wrap: anywhere; }
+    .dnf-docs-api .dnf-table__table code { white-space: normal; overflow-wrap: anywhere; }
+    .dnf-docs-api__type { color: var(--dnf-info); }
+    @media (max-width: 40rem) {
+        .dnf-docs-api .dnf-table__table { table-layout: auto; }
+        .dnf-docs-api .dnf-table__table th { width: auto; }
+    }
+
+    /* Cards linking to pages (the components overview, next steps). */
+    .dnf-docs-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: var(--dnf-space-3); margin-bottom: var(--dnf-space-6); }
+    .dnf-docs-cards__card { display: flex; flex-direction: column; gap: var(--dnf-space-1); padding: var(--dnf-space-4); }
+    .dnf-docs-cards__card:hover { border-color: var(--dnf-primary-soft-border); }
+    .dnf-docs-cards__title { color: var(--dnf-foreground); font-weight: var(--dnf-weight-semibold); }
+    .dnf-docs-cards__description { color: var(--dnf-muted-foreground); font-size: var(--dnf-text-sm); }
+
+    /* Previous / next page. */
+    .dnf-docs__pager { display: grid; grid-template-columns: 1fr 1fr; gap: var(--dnf-space-4); max-width: 52rem; margin: var(--dnf-space-16) auto 0; }
+    .dnf-docs__pager-link {
+        display: flex; flex-direction: column; gap: var(--dnf-space-1);
+        padding: var(--dnf-space-4) var(--dnf-space-5);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+    }
+    .dnf-docs__pager-link:hover { border-color: var(--dnf-primary-soft-border); text-decoration: none; }
+    .dnf-docs__pager-link--next { grid-column: 2; align-items: flex-end; text-align: end; }
+    .dnf-docs__pager-label { display: inline-flex; align-items: center; gap: var(--dnf-space-1); color: var(--dnf-muted-foreground); font-size: var(--dnf-text-sm); }
+    .dnf-docs__pager-title { color: var(--dnf-foreground); font-weight: var(--dnf-weight-semibold); }
+
+    /* ---- On this page ----------------------------------------------------------------------------------------- */
+    .dnf-docs__toc {
+        grid-area: toc;
+        position: sticky; top: var(--dnf-docs-header-height);
+        align-self: start;
+        max-height: calc(100vh - var(--dnf-docs-header-height));
+        overflow-y: auto;
+        padding: var(--dnf-space-10) var(--dnf-space-6) var(--dnf-space-6) 0;
+    }
+    .dnf-docs__toc:not(:has(li)) { visibility: hidden; }
+    .dnf-docs__toc-title { margin-bottom: var(--dnf-space-2); font-size: var(--dnf-text-sm); font-weight: var(--dnf-weight-semibold); }
+    .dnf-docs__toc-list { border-inline-start: 1px solid var(--dnf-border); }
+    .dnf-docs__toc-link {
+        display: block;
+        margin-inline-start: -1px;
+        padding: 0.2rem 0 0.2rem var(--dnf-space-3);
+        border-inline-start: 2px solid transparent;
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-docs__toc-link--sub { padding-inline-start: var(--dnf-space-6); }
+    .dnf-docs__toc-link:hover { color: var(--dnf-foreground); text-decoration: none; }
+    .dnf-docs__toc-link[aria-current="true"] { border-inline-start-color: var(--dnf-primary); color: var(--dnf-foreground); font-weight: var(--dnf-weight-medium); }
+
+    /* ---- Narrower screens ------------------------------------------------------------------------------------- */
+    @media (max-width: 80rem) {
+        .dnf-docs { grid-template-columns: var(--dnf-docs-nav-width) minmax(0, 1fr); grid-template-areas: "header header" "nav main"; }
+        .dnf-docs__toc { display: none; }
+    }
+    @media (max-width: 64rem) {
+        .dnf-docs { grid-template-columns: minmax(0, 1fr); grid-template-areas: "header" "main"; }
+        .dnf-docs__menu { display: inline-flex; }
+        .dnf-docs__header { gap: var(--dnf-space-2); padding: 0 var(--dnf-space-4); }
+        .dnf-docs__search { margin-inline-start: auto; }
+        .dnf-docs__header-actions { margin-inline-start: 0; }
+        .dnf-docs__nav {
+            position: fixed; inset-block: 0; inset-inline-start: 0; z-index: var(--dnf-z-drawer);
+            width: min(var(--dnf-docs-nav-width), 85vw); height: 100vh;
+            background: var(--dnf-surface);
+            box-shadow: var(--dnf-shadow-lg);
+            translate: -100% 0;
+            transition: translate var(--dnf-duration) var(--dnf-ease);
+        }
+        .dnf-docs[data-nav-open="true"] .dnf-docs__nav { translate: 0 0; }
+        .dnf-docs__nav-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--dnf-space-4); padding-inline-start: var(--dnf-space-3); }
+        .dnf-docs__main { padding: var(--dnf-space-8) var(--dnf-space-4) var(--dnf-space-12); }
+    }
+    @media (max-width: 40rem) {
+        .dnf-docs__brand img { height: 1.75rem; }
+        .dnf-docs__header-actions > a { display: none; }
+        .dnf-docs__search { flex-basis: 9rem; }
+        .dnf-docs__pager { grid-template-columns: 1fr; }
+        .dnf-docs__pager-link--next { grid-column: 1; }
+    }
+}
+
+/* Customization demos (Level 3): written without a layer on purpose - unlayered CSS beats every component style. */
+.dnf-docs-demo-buttons .dnf-button {
+    --dnf-button-radius: var(--dnf-radius-full);
+    --dnf-button-height: var(--dnf-control-lg);
+    --dnf-button-padding-x: var(--dnf-space-6);
+}
+.dnf-docs-demo-brand {
+    --dnf-primary: #7c3aed;
+    --dnf-primary-foreground: #ffffff;
+    --dnf-primary-text: light-dark(#6d28d9, #c4b5fd);
+}
+
+/* Forms pages (form, field, input ... fieldset). */
+/* Form: an uneven grid from 40rem up; below it the grid's own one-column fallback stays. */
+@media (min-width: 40rem) {
+    .dnf-docs-demo-form .dnf-form-grid { grid-template-columns: 2fr 1fr; }
+}
+/* Field: small uppercase labels. */
+.dnf-docs-demo-field .dnf-field__label { font-size: var(--dnf-text-xs); text-transform: uppercase; letter-spacing: 0.04em; }
+/* Input, select, textarea: the control tokens, set on the controls themselves (each control defines its own). */
+.dnf-docs-demo-controls :is(.dnf-input, .dnf-select, .dnf-textarea) {
+    --dnf-control-height: var(--dnf-control-lg);
+    --dnf-control-padding-x: var(--dnf-space-4);
+    --dnf-control-font-size: var(--dnf-text-md);
+}
+/* Input group: a monospace prefix. */
+.dnf-docs-demo-input-group .dnf-input-group__prefix { font-family: var(--dnf-font-mono); }
+/* Checkbox, radio: another accent colour. */
+.dnf-docs-demo-accent :is(.dnf-checkbox, .dnf-radio) { --dnf-check-color: var(--dnf-success); }
+/* Switch: a success-coloured track when on. */
+.dnf-docs-demo-switch .dnf-switch:checked { background: var(--dnf-success); }
+/* Choice card: the selected card in the success colours. */
+.dnf-docs-demo-choice .dnf-choice-card:has(input:checked) { border-color: var(--dnf-success); background: var(--dnf-success-soft); }
+/* File upload: a solid, rounder drop area. */
+.dnf-docs-demo-upload .dnf-file-upload { border-style: solid; border-radius: var(--dnf-radius-xl); }
+/* Fieldset: a dashed frame. */
+.dnf-docs-demo-fieldset .dnf-fieldset--framed { border-style: dashed; }
+/* Table: roomier cells through the two padding tokens. */
+.dnf-docs-demo-table .dnf-table { --dnf-table-cell-y: var(--dnf-space-4); --dnf-table-cell-x: var(--dnf-space-6); }
+/* Toolbar: a tinted bar. */
+.dnf-docs-demo-toolbar .dnf-toolbar { background: var(--dnf-surface-muted); }
+/* Pagination: centred. */
+.dnf-docs-demo-pagination .dnf-pagination { justify-content: center; }
+/* Card: more padding, a larger radius, a primary-tinted border. */
+.dnf-docs-demo-card .dnf-card {
+    --dnf-card-padding: var(--dnf-space-8);
+    --dnf-card-radius: var(--dnf-radius-xl);
+    --dnf-card-border: var(--dnf-primary-soft-border);
+}
+/* Stat card: an info-coloured icon tile. */
+.dnf-docs-demo-stats .dnf-stat-card__icon { background: var(--dnf-info-soft); color: var(--dnf-info); }
+/* Badge: on the surface with a border. */
+.dnf-docs-demo-badges .dnf-badge { --dnf-badge-background: var(--dnf-surface); box-shadow: inset 0 0 0 1px var(--dnf-border-strong); }
+/* Chip: square corners. */
+.dnf-docs-demo-chips .dnf-chip { border-radius: var(--dnf-radius-sm); }
+/* Avatar: larger rounded squares. */
+.dnf-docs-demo-avatars .dnf-avatar { --dnf-avatar-size: 2.5rem; border-radius: var(--dnf-radius-md); }
+/* Description list: a narrow label column. */
+.dnf-docs-demo-details .dnf-description-list { grid-template-columns: 6rem 1fr; }
+/* List: narrower rows. */
+.dnf-docs-demo-list .dnf-list__item { padding-inline: var(--dnf-space-3); }
+/* Code block: on the muted surface. */
+.dnf-docs-demo-code .dnf-code-block { background: var(--dnf-surface-muted); color: var(--dnf-foreground); }
+/* Icon: larger and thinner. */
+.dnf-docs-demo-icons .dnf-icon { --dnf-icon-size: 1.5rem; stroke-width: 1.25; }
+/* Extensions guide: an extension root (dnf-scope) re-themed by its own unlayered stylesheet, selected by its manifest id. */
+[data-dnf-extension="yourcompany.admin.reports"] {
+    --dnf-primary: #2563eb;
+    --dnf-primary-foreground: #ffffff;
+    --dnf-primary-text: light-dark(#1d4ed8, #93c5fd);
+}
+
+/* Feedback, navigation, overlay and layout pages (alert ... layout). */
+/* Alert: a stronger border and a primary icon. */
+.dnf-docs-demo-alerts .dnf-alert { --dnf-alert-border: var(--dnf-border-strong); --dnf-alert-icon: var(--dnf-primary-text); }
+/* Toast: the icon in the primary colour. */
+.dnf-docs-demo-toasts .dnf-toast { --dnf-toast-icon: var(--dnf-primary-text); }
+/* Progress: a success-coloured fill (div bar, then a native bar - one rule per browser pseudo-element). */
+.dnf-docs-demo-progress .dnf-progress__bar { background: var(--dnf-success); }
+.dnf-docs-demo-progress .dnf-progress::-webkit-progress-value { background: var(--dnf-success); }
+.dnf-docs-demo-progress .dnf-progress::-moz-progress-bar { background: var(--dnf-success); }
+/* Spinner: larger, with a success-coloured arc. */
+.dnf-docs-demo-spinner .dnf-spinner { --dnf-spinner-size: 2.5rem; border-top-color: var(--dnf-success); }
+/* Skeleton: fully rounded placeholders. */
+.dnf-docs-demo-skeleton .dnf-skeleton { border-radius: var(--dnf-radius-full); }
+/* Empty state: a primary icon tile. */
+.dnf-docs-demo-empty .dnf-empty-state__icon { background: var(--dnf-primary-soft); color: var(--dnf-primary-text); }
+/* Page header: a larger title. */
+.dnf-docs-demo-page-header .dnf-page-header__title { font-size: var(--dnf-text-3xl); }
+/* Breadcrumbs: another separator (a single right-pointing angle quotation mark). */
+.dnf-docs-demo-breadcrumbs .dnf-breadcrumbs__item + .dnf-breadcrumbs__item::before { content: "\203A"; }
+/* Tabs: wider tabs with a thicker underline. */
+.dnf-docs-demo-tabs .dnf-tabs__tab { padding-inline: var(--dnf-space-5); border-bottom-width: 3px; }
+/* Segmented: a pill-shaped track and items. */
+.dnf-docs-demo-segmented :is(.dnf-segmented, .dnf-segmented__item) { border-radius: var(--dnf-radius-full); }
+/* Accordion: an indented panel. */
+.dnf-docs-demo-accordion .dnf-accordion__panel { padding-inline-start: var(--dnf-space-4); }
+/* Dialog: wider, with the footer's buttons at both ends. */
+.dnf-docs-demo-dialog .dnf-dialog { --dnf-dialog-width: 40rem; }
+.dnf-docs-demo-dialog .dnf-dialog__footer { justify-content: space-between; }
+/* Dropdown: a wider menu with roomier items. */
+.dnf-docs-demo-dropdown .dnf-dropdown__menu { min-width: 16rem; }
+.dnf-docs-demo-dropdown .dnf-dropdown__item { padding-block: var(--dnf-space-3); }
+/* Popover: tighter padding and a primary border. */
+.dnf-docs-demo-popover .dnf-popover { padding: var(--dnf-space-3); border-color: var(--dnf-primary); }
+/* Layout: a five-column grid. */
+.dnf-docs-demo-grid .dnf-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }

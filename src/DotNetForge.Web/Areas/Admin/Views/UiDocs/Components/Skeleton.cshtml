@@ -1,0 +1,128 @@
+@* Skeleton (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/content.css</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A shimmering placeholder in the shape of the content that is on its way, so nothing jumps when it arrives. Mark the
+    loading region busy and give it a name; the skeleton blocks themselves carry no meaning.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div role="status" aria-busy="true" aria-label="Loading the page">
+        <div class="dnf-skeleton dnf-skeleton--title"></div>
+        <div class="dnf-skeleton dnf-skeleton--line"></div>
+        <div class="dnf-skeleton dnf-skeleton--line"></div>
+        <div class="dnf-skeleton dnf-skeleton--line w-2/3"></div>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="lines" title="Lines" description="dnf-skeleton--line is a 0.8rem text line; vary the widths with utilities so the block reads like a paragraph." layout="block">
+    <div role="status" aria-busy="true" aria-label="Loading the description">
+        <div class="dnf-skeleton dnf-skeleton--line w-full"></div>
+        <div class="dnf-skeleton dnf-skeleton--line w-4/5"></div>
+        <div class="dnf-skeleton dnf-skeleton--line w-2/5"></div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="card" title="Card" description="A card that mirrors the one that is coming: a title, two lines and an image area sized with utilities." layout="block">
+    <div class="dnf-card" role="status" aria-busy="true" aria-label="Loading the page summary">
+        <div class="dnf-card__body">
+            <div class="dnf-skeleton dnf-skeleton--title"></div>
+            <div class="dnf-skeleton h-32 w-full"></div>
+            <div class="dnf-skeleton dnf-skeleton--line"></div>
+            <div class="dnf-skeleton dnf-skeleton--line w-2/3"></div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="list" title="List rows" description="Round avatars and two short lines per row - the shape of a members or activity list." layout="block">
+    <div role="status" aria-busy="true" aria-label="Loading users">
+        <ul class="dnf-list dnf-list--plain">
+            <li class="dnf-list__item">
+                <div class="dnf-skeleton size-8 shrink-0 rounded-full"></div>
+                <div class="dnf-list__content">
+                    <div class="dnf-skeleton h-3 w-40"></div>
+                    <div class="dnf-skeleton h-3 w-24"></div>
+                </div>
+            </li>
+            <li class="dnf-list__item">
+                <div class="dnf-skeleton size-8 shrink-0 rounded-full"></div>
+                <div class="dnf-list__content">
+                    <div class="dnf-skeleton h-3 w-32"></div>
+                    <div class="dnf-skeleton h-3 w-20"></div>
+                </div>
+            </li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="grid" title="Media grid" description="Tiles in a dnf-grid while thumbnails load." layout="block">
+    <div class="dnf-grid dnf-grid--cols-3" role="status" aria-busy="true" aria-label="Loading media">
+        <div class="dnf-skeleton h-24"></div>
+        <div class="dnf-skeleton h-24"></div>
+        <div class="dnf-skeleton h-24"></div>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The <a href="@UiDocsCatalog.Root/customization">customization levels</a>: the skeleton has no modifiers beyond line and
+    title, so utilities do most of the work.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Widths, heights and radius utilities shape any placeholder: a button, a badge, a thumbnail.">
+    <div class="dnf-skeleton h-9 w-28"></div>
+    <div class="dnf-skeleton h-5 w-16 rounded-full"></div>
+    <div class="dnf-skeleton size-16 rounded-lg"></div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS restyles every skeleton in a scope - here fully rounded lines." layout="block">
+    <div class="dnf-docs-demo-skeleton" role="status" aria-busy="true" aria-label="Loading comments">
+        <div class="dnf-skeleton dnf-skeleton--line"></div>
+        <div class="dnf-skeleton dnf-skeleton--line w-3/4"></div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-skeleton .dnf-skeleton {
+    border-radius: var(--dnf-radius-full);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-skeleton</code></td><td>block</td><td>a <code>--dnf-radius-md</code> block with a moving muted gradient (1.4s); size it with utilities</td></tr>
+        <tr><td><code>dnf-skeleton--line</code></td><td>modifier</td><td>0.8rem high, <code>--dnf-space-3</code> vertical margin</td></tr>
+        <tr><td><code>dnf-skeleton--title</code></td><td>modifier</td><td>30% wide, 1.4rem high, <code>--dnf-space-5</code> below</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>reduced motion</td><td><code>@@media (prefers-reduced-motion: reduce)</code></td><td>the shimmer stops</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes are the API.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Skeleton blocks carry no meaning. Mark the loading region <code>aria-busy="true"</code> and name it (here a
+        <code>role="status"</code> with <code>aria-label</code>).</li>
+    <li>When the content arrives, replace the skeleton and remove <code>aria-busy</code>.</li>
+    <li>Under reduced motion the shimmer stops.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do mirror the layout that is coming, so nothing jumps.</li>
+    <li>Don't leave skeletons on screen when loading failed - show an <a href="@UiDocsCatalog.Root/components/alert">alert</a>.</li>
+    <li>Don't use a skeleton for a short action like saving - that is a pending <a href="@UiDocsCatalog.Root/components/button">button</a>.</li>
+</ul>

@@ -1,10 +1,10 @@
 @using DotNetForge.Web.Areas.Admin.Navigation
 @model NavLinkView
-<a class="nav-link" href="@Model.Href" aria-current="@(Model.Active ? "page" : null)">
-    <icon name="@Model.Icon" />
-    <span class="nav-link-label">@Model.Label</span>
+<a class="dnf-nav__link" href="@Model.Href" aria-current="@(Model.Active ? "page" : null)">
+    <dnf-icon name="@Model.Icon" />
+    <span class="dnf-nav__link-label">@Model.Label</span>
     @if (Model.Planned)
     {
-        <span class="nav-badge" title="Planned - not built yet">Soon</span>
+        <span class="dnf-nav__badge" title="Planned - not built yet">Soon</span>
     }
 </a>

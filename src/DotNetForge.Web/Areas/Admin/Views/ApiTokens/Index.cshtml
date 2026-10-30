@@ -5,33 +5,33 @@
 }
 
 @section Actions {
-    <a class="btn btn-primary" href="/admin/api-tokens/create"><icon name="plus" /> Create token</a>
+    <a class="dnf-button dnf-button--primary" href="/admin/api-tokens/create"><dnf-icon name="plus" /> Create token</a>
 }
 
-<section class="card" aria-labelledby="tokens-title" data-collection data-page-size="25">
-    <div class="card-header">
+<section class="dnf-card" aria-labelledby="tokens-title" data-collection data-page-size="25">
+    <div class="dnf-card__header">
         <div>
-            <h2 class="card-title" id="tokens-title">Tokens</h2>
-            <p class="card-description" data-collection-count>@Model.Count total</p>
+            <h2 class="dnf-card__title" id="tokens-title">Tokens</h2>
+            <p class="dnf-card__description" data-collection-count>@Model.Count total</p>
         </div>
         @if (Model.Count > 0)
         {
-            <div class="segmented" role="group" aria-label="Filter tokens" data-js-only hidden>
-                <button type="button" data-collection-filter="state" data-value="" aria-pressed="true">All</button>
-                <button type="button" data-collection-filter="state" data-value="active" aria-pressed="false">Active</button>
-                <button type="button" data-collection-filter="state" data-value="expired" aria-pressed="false">Expired</button>
-                <button type="button" data-collection-filter="state" data-value="revoked" aria-pressed="false">Revoked</button>
+            <div class="dnf-segmented" role="group" aria-label="Filter tokens" data-js-only hidden>
+                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="" aria-pressed="true">All</button>
+                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="active" aria-pressed="false">Active</button>
+                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="expired" aria-pressed="false">Expired</button>
+                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="revoked" aria-pressed="false">Revoked</button>
             </div>
         }
     </div>
     @if (Model.Count == 0)
     {
-        <empty-state icon="key" title="No API tokens yet" text="Create a token to let an app or website read your content through the API." />
+        <dnf-empty-state icon="key" title="No API tokens yet" description="Create a token to let an app or website read your content through the API." />
     }
     else
     {
-        <div class="table-wrap">
-            <table class="table table-stack">
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
                 <thead>
                     <tr>
                         <th scope="col" data-sort="text">Name</th>
@@ -40,7 +40,7 @@
                         <th scope="col" data-sort="date">Last used</th>
                         <th scope="col" data-sort="date">Expires</th>
                         <th scope="col">Status</th>
-                        <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -48,45 +48,45 @@
                     {
                         var expired = token.ExpirationDate is { } exp && exp < DateTime.UtcNow;
                         <tr data-item data-state="@(token.Revoked ? "revoked" : expired ? "expired" : "active")">
-                            <td class="cell-lead">
-                                <span class="cell-primary">@token.Name</span>
-                                <span class="cell-sub">Created <timestamp value="@token.CreatedDate" /></span>
+                            <td class="dnf-table__cell--lead">
+                                <span class="dnf-table__primary">@token.Name</span>
+                                <span class="dnf-table__secondary">Created <dnf-timestamp value="@token.CreatedDate" /></span>
                             </td>
                             <td data-label="Token"><code>@token.TokenPrefix…</code></td>
                             <td data-label="Scopes" data-sort-value="@token.Permissions.Count">@token.Permissions.Count</td>
-                            <td data-label="Last used" data-sort-value="@(token.LastUsedDate?.ToString("O") ?? "")"><timestamp value="@token.LastUsedDate" /></td>
-                            <td data-label="Expires" data-sort-value="@(token.ExpirationDate?.ToString("O") ?? "9999")"><timestamp value="@token.ExpirationDate" empty="Never" /></td>
+                            <td data-label="Last used" data-sort-value="@(token.LastUsedDate?.ToString("O") ?? "")"><dnf-timestamp value="@token.LastUsedDate" /></td>
+                            <td data-label="Expires" data-sort-value="@(token.ExpirationDate?.ToString("O") ?? "9999")"><dnf-timestamp value="@token.ExpirationDate" empty="Never" /></td>
                             <td data-label="Status">
                                 @if (token.Revoked)
                                 {
-                                    <badge tone="Danger" dot="true">Revoked</badge>
+                                    <dnf-badge tone="Danger" dot="true">Revoked</dnf-badge>
                                 }
                                 else if (expired)
                                 {
-                                    <badge tone="Warning" dot="true">Expired</badge>
+                                    <dnf-badge tone="Warning" dot="true">Expired</dnf-badge>
                                 }
                                 else
                                 {
-                                    <badge tone="Success" dot="true">Active</badge>
+                                    <dnf-badge tone="Success" dot="true">Active</dnf-badge>
                                 }
                             </td>
-                            <td class="col-actions">
+                            <td class="dnf-table__cell--actions">
                                 @if (!token.Revoked && !expired)
                                 {
                                     <form method="post" asp-action="Revoke" asp-route-id="@token.Id" class="inline"
                                           data-confirm="Revoke '@token.Name'? Apps using it lose access immediately. This can't be undone."
                                           data-confirm-title="Revoke token" data-confirm-action="Revoke token">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-danger-soft btn-sm">Revoke</button>
+                                        <button type="submit" class="dnf-button dnf-button--danger-soft dnf-button--sm">Revoke</button>
                                     </form>
                                 }
                             </td>
                         </tr>
                     }
-                    <tr class="table-empty" data-collection-empty hidden><td colspan="7">No token matches the filter.</td></tr>
+                    <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="7">No token matches the filter.</td></tr>
                 </tbody>
             </table>
         </div>
-        <div class="pagination" data-collection-pagination hidden></div>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
     }
 </section>

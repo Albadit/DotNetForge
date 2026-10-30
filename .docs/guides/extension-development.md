@@ -149,6 +149,11 @@ MVC controllers in your assembly work too (attribute routes) and are switched of
 | Validate a form post | inject `IAntiforgery`, `await antiforgery.ValidateRequestAsync(http)`; render `@Html.AntiForgeryToken()` |
 | Anything else the CMS registers | constructor injection, e.g. `DotNetForgeDbContext` - this couples you to host internals |
 
+**The public contract** is `DotNetForge.Sdk`, `DotNetForge.UI` and what this table names, plus
+`IDatabaseService` ([additional databases](../database/configuration.md)) and `Roles.AdminCapable`. Other members of
+`DotNetForge.Abstractions` and `DotNetForge.Shared` compile, because those assemblies are shared with the host, but they
+are host internals and can change.
+
 ## Slots by type
 
 ### Admin tab (`type: admin`)
@@ -157,20 +162,22 @@ MVC controllers in your assembly work too (attribute routes) and are switched of
 **Extensions** entry. Use a layout (`Views/_ViewStart.cshtml` → `Layout = "Shared/_Layout.cshtml";`) and link your
 files through `ViewData["ResourceBase"]`. Sample: `extensions/admin/audit-dashboard` ([extension host](../pages/extension-host.md)).
 
-**Look like the admin.** The iframe document does not inherit the admin's styles, but it may reuse them: link
-`<link rel="stylesheet" href="/css/forge/tokens.css">`, `base.css` and `components.css` and load
-`<script src="/js/forge/theme.js">` in `<head>` (the document then
-follows the admin's light/dark choice), and add `@using DotNetForge.Web.Ui` + `@addTagHelper *, DotNetForge.Web` to
-your `_ViewImports.cshtml` for `<icon>`, `<badge>`, `<stat-card>`, `<timestamp>`, `<empty-state>` and `<alert>`. The
-audit-dashboard sample does all of this. Classes and tag helpers: [design system](../architecture/design-system.md).
+**Look like the admin.** The iframe document does not inherit the admin's styles, but it uses the same
+[DotNetForge UI library](../ui/README.md): load `/_content/DotNetForge.UI/dnf-theme.js` in `<head>` (the document then
+follows the admin's light/dark choice), link `/_content/DotNetForge.UI/dnf.css` before your own CSS, add `dnf.js` if
+you use its `data-*` hooks, and add `@using DotNetForge.UI`, `@using DotNetForge.UI.Components` and
+`@addTagHelper *, DotNetForge.UI` to your `_ViewImports.cshtml` for `<dnf-icon>`, `<dnf-badge>`, `<dnf-stat-card>`,
+`<dnf-timestamp>`, `<dnf-empty-state>`, `<dnf-alert>`, `<dnf-dropdown>`, ... Mark your root
+`class="dnf-scope" data-dnf-extension="<id>"` and keep your CSS unlayered. The audit-dashboard sample does this. The
+whole pattern, isolation and Tailwind in an extension: [using DotNetForge UI in an extension](../ui/extensions.md).
 
 ### Dashboard widget (`type: widget`)
 
 `Views/Widget.cshtml` renders inside a card on `/admin` (the card title is the manifest `name`). It is a partial:
-no layout; it sits inside the admin page, so the [design system](../architecture/design-system.md#components) classes
-(`stat-value`, `text-muted`, `text-sm`, `badge`, ...) apply. The host's tag helpers are only available if your
-widget's `_ViewImports.cshtml` adds `@addTagHelper *, DotNetForge.Web`. Get data by injecting a service
-your `ConfigureServices` registered. Sample: `extensions/widgets/weather-widget`.
+no layout; it sits inside the admin page, so the [DotNetForge UI](../ui/README.md#components) classes and the Tailwind
+utilities the host compiled (`text-2xl`, `text-muted`, `text-sm`, `dnf-badge`, ...) apply. The `<dnf-*>` tag helpers
+are only available if your widget's `_ViewImports.cshtml` adds `@addTagHelper *, DotNetForge.UI`. Get data by
+injecting a service your `ConfigureServices` registered. Sample: `extensions/widgets/weather-widget`.
 
 ### Theme (`type: theme`)
 
@@ -308,6 +315,7 @@ logged as information).
 | `InvalidCastException` between "identical" types | you shipped your own copy of a host contract; reference SDK projects with `Private="false"` (the props file does) |
 | View compile error | `_ViewImports.cshtml` `@using`s; types from your assembly need it built and loaded (restart) |
 | Works locally, unstyled in production | inline style/script blocked by the CSP |
+| A Tailwind class has no effect | the host's `dnf.css` contains only the utilities the CMS and the bundled extensions use - use component classes and your own CSS, or compile your own utilities ([Tailwind in an extension](../ui/extensions.md#tailwind-in-an-extension)) |
 | `IOException` / `UnauthorizedAccessException` in production | your code writes to disk |
 
 ## Reference samples

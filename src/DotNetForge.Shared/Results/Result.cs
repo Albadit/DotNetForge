@@ -20,6 +20,4 @@ public class Result
     public static Result Ok() => new(true, Array.Empty<string>());
 
     public static Result Fail(string error) => new(false, new[] { error });
-
-    public static Result Fail(IReadOnlyList<string> errors) => new(false, errors);
 }

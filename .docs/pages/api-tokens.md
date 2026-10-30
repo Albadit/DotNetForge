@@ -32,9 +32,9 @@ src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Create.cshtml         Details ca
 src/DotNetForge.Web/Areas/Admin/Views/ApiTokens/Created.cshtml        one-time secret + usage example, copy buttons
 src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs             CreatedTokenViewModel
 src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs         sidebar entry, active link, breadcrumbs
-src/DotNetForge.Web/Ui/UiTagHelpers.cs                                <timestamp>, <badge>, <alert>, <empty-state>, <form-errors>, <icon>
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                            data-collection, data-confirm dialog, data-check-group, data-copy-target
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                       .permission-groups / .permission-group
+src/DotNetForge.UI/Components/BasicTagHelpers.cs                      <dnf-timestamp>, <dnf-badge>, <dnf-alert>, <dnf-empty-state>, <dnf-validation-summary>, <dnf-icon>
+src/DotNetForge.UI/wwwroot/dnf.js                                     data-collection, data-confirm dialog, data-check-group, data-copy-target
+src/DotNetForge.Web/wwwroot/css/admin/people.css                      .dnf-permission-groups / .dnf-permission-group
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                     confirm dialog, toasts
 src/DotNetForge.Shared/Entities/ApiToken.cs                           entity (Permissions parsed from PermissionsCsv)
 src/DotNetForge.Shared/Constants/Permissions.cs                       PermissionKeys.All, IsKnown
@@ -45,32 +45,32 @@ src/DotNetForge.Infrastructure/Security/ApiTokenFactory.cs            Generate (
 
 ```text
 API Tokens (h1) - "Scoped tokens for the headless API. A token's secret is shown once, when it is created."   [+ Create token]
-└── section.card[data-collection][data-page-size=25]
-    ├── card-header: **Tokens** · "N total" · .segmented (JS only, when tokens exist): **All** | **Active** | **Expired** | **Revoked**
-    ├── <empty-state> when there are no tokens (see Empty states)
-    ├── table.table.table-stack: **Name** ⇅ · **Token** · **Scopes** ⇅ · **Last used** ⇅ · **Expires** ⇅ · **Status** · actions
-    │   └── row: name / "Created <timestamp>" · <code>prefix…</code> · key count · <timestamp> ("Never") ·
-    │            <timestamp> ("Never") · Active | Expired | Revoked badge · [Revoke] (only for active tokens)
+└── section.dnf-card[data-collection][data-page-size=25]
+    ├── dnf-card__header: **Tokens** · "N total" · .dnf-segmented (JS only, when tokens exist): **All** | **Active** | **Expired** | **Revoked**
+    ├── <dnf-empty-state> when there are no tokens (see Empty states)
+    ├── div.dnf-table.dnf-table--stack > table: **Name** ⇅ · **Token** · **Scopes** ⇅ · **Last used** ⇅ · **Expires** ⇅ · **Status** · actions
+    │   └── row: name / "Created <dnf-timestamp>" · <code>prefix…</code> · key count · <dnf-timestamp> ("Never") ·
+    │            <dnf-timestamp> ("Never") · Active | Expired | Revoked badge · [Revoke] (only for active tokens)
     └── .pagination (JS, only when more than 10 rows match: **Rows per page** 10/25/50/100, default 25, remembered)
 
 Create API token (h1) - "Give the token a name you'll recognise, choose how long it lives and what it may do."
 └── form.form (POST) - centred narrow page (`ViewData["PageWidth"] = "narrow"`)
-    ├── <form-errors />
+    ├── <dnf-validation-summary />
     ├── card **Details**: Name* (placeholder "Marketing website") · Description (optional, "What uses this token?")
-    │   └── fieldset **Expires after**: .choice-cards  7 days · 30 days (default) · 90 days · No expiry
+    │   └── fieldset **Expires after**: .dnf-choice-cards  7 days · 30 days (default) · 90 days · No expiry
     └── card **Permissions*** - "Grant only what the app needs. Requests outside these scopes are refused."
-        ├── .permission-groups: one fieldset per key prefix, in `PermissionKeys.All` order (Core, Pages, Content types,
+        ├── .dnf-permission-groups: one fieldset per key prefix, in `PermissionKeys.All` order (Core, Pages, Content types,
         │   Content Manager, Media, Users, Roles, Settings, Extensions, Webhooks): "All of <group>" (JS only) + one
         │   checkbox per key (<code>key</code>)
-        └── card-footer: [Cancel] [Generate token]
+        └── dnf-card__footer: [Cancel] [Generate token]
 
 Token created (h1) - "'<name>' is ready to use."
-├── <alert tone="Warning" title="Copy the token now"> only shown once, only a hash is stored
-├── card.card-accent **Your token**: pre.code-block with the plaintext + [Copy] (JS only)
+├── <dnf-alert tone="Warning" title="Copy the token now"> only shown once, only a hash is stored
+├── dnf-card.dnf-card--accent **Your token**: pre.dnf-code-block with the plaintext + [Copy] (JS only)
 └── card **How to use it** - "Send it in an Authorization: Bearer header."
-    ├── .dl: API URL <origin>/api (link, new tab)
+    ├── .dnf-description-list: API URL <origin>/api (link, new tab)
     ├── **Example request**: curl -H "Authorization: Bearer <token>" <origin>/api/content/pages + [Copy] (JS only)
-    └── card-footer: [Done] → list
+    └── dnf-card__footer: [Done] → list
 ```
 
 ## Components
@@ -101,7 +101,7 @@ Token created (h1) - "'<name>' is ready to use."
 5. **Backend:** save, audit `apitoken.created`.
 6. **UI:** renders `Created` directly (no redirect) with the plaintext. Refreshing re-posts the form and creates
    another token (browser warns).
-7. **Errors:** validation → the form is re-rendered with the error in `<form-errors />` and the posted name,
+7. **Errors:** validation → the form is re-rendered with the error in `<dnf-validation-summary />` and the posted name,
    description, expiry and ticked permissions kept. Covered by
    `SecurityTests.Duplicate_api_token_name_is_a_validation_error_not_a_crash`.
 
@@ -120,7 +120,7 @@ Token created (h1) - "'<name>' is ready to use."
 ```mermaid
 sequenceDiagram
     actor A as Admin
-    participant UI as List (ui.js)
+    participant UI as List (dnf.js)
     participant C as ApiTokensController
     participant DB as DotNetForgeDbContext
     A->>UI: Revoke
@@ -174,10 +174,10 @@ own role.
 
 | Failure | Detection | User sees | Recovery |
 | --- | --- | --- | --- |
-| Validation error | `ApiTokensController.Create` | danger alert from `<form-errors />`, form with posted values | fix and resubmit |
+| Validation error | `ApiTokensController.Create` | danger alert from `<dnf-validation-summary />`, form with posted values | fix and resubmit |
 | Two simultaneous creates with the same name | DB unique index | global [error page](error.md) | retry with another name |
 | Revoke of an unknown / revoked id | lookup returns nothing to change | redirect to the list, no message | none needed |
-| Copy fails | `ui.js` | danger toast | select the text manually |
+| Copy fails | `dnf.js` | danger toast | select the text manually |
 | Other DB errors | global handling | [error page](error.md) | retry |
 
 ## Loading behaviour
@@ -189,7 +189,7 @@ unnoticeable.
 
 | Case | Text |
 | --- | --- |
-| No tokens yet | `<empty-state icon="key">` "No API tokens yet" - "Create a token to let an app or website read your content through the API." (no button of its own - **Create token** is in the header; the filter is not shown) |
+| No tokens yet | `<dnf-empty-state icon="key">` "No API tokens yet" - "Create a token to let an app or website read your content through the API." (no button of its own - **Create token** is in the header; the filter is not shown) |
 | Filter matches nothing (JS) | "No token matches the filter." (`[data-collection-empty]`) |
 
 ## User interactions
@@ -206,7 +206,7 @@ ApiTokensController
 ├── IApiTokenFactory → ApiTokenFactory
 ├── IDateTimeProvider → SystemClock
 └── IAuditService → AuditService
-Views → <timestamp>, <badge>, <alert>, <empty-state>, <form-errors>, <icon>; ui.js; _Feedback.cshtml (confirm dialog, toasts)
+Views → <dnf-timestamp>, <dnf-badge>, <dnf-alert>, <dnf-empty-state>, <dnf-validation-summary>, <dnf-icon>; dnf.js; _Feedback.cshtml (confirm dialog, toasts)
 ```
 
 ## Page flow
@@ -216,7 +216,7 @@ flowchart TD
     L["GET /admin/api-tokens"] --> C["Create token → GET /admin/api-tokens/create"]
     C --> P["POST /admin/api-tokens/create"]
     P --> V{"name valid, unique + ≥1 known permission?"}
-    V -- no --> C2["Create form + form-errors (values kept)"] --> P
+    V -- no --> C2["Create form + dnf-validation-summary (values kept)"] --> P
     V -- yes --> G["Generate, save, audit"] --> K["Created view (plaintext once, Copy)"]
     K -- Done --> L
     L -- "Revoke → confirm" --> R["POST /admin/api-tokens/revoke/{id} → Revoked = true, audit"] --> L

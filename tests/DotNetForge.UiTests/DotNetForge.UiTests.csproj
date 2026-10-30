@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Browser tests of the DotNetForge UI library (.docs/guides/testing.md#ui-tests): the real app on Kestrel against a
+    throwaway PostgreSQL database (DNF_TEST_POSTGRES), driven by Playwright in Chromium - screenshots of the component
+    showcase compared with Baselines/, axe-core accessibility checks, behaviour smoke tests and the bundled Audit
+    Dashboard admin extension.
+    One-time setup: install Chromium with the playwright script in the build output (see the guide).
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="Deque.AxeCore.Playwright" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DotNetForge.Web\DotNetForge.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The integration tests' host factory: the same isolated database, storage and email setup. -->
+    <Compile Include="..\DotNetForge.IntegrationTests\DotNetForgeWebFactory.cs" Link="Shared\DotNetForgeWebFactory.cs" />
+    <Compile Include="..\DotNetForge.IntegrationTests\TestDatabaseServer.cs" Link="Shared\TestDatabaseServer.cs" />
+  </ItemGroup>
+
+</Project>

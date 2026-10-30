@@ -176,14 +176,6 @@ public sealed class AuthService
     }
 
     /// <summary>
-    /// Whether a signed-in user may keep their session: the account still exists and is enabled. Called for every
-    /// authenticated cookie (see <c>DependencyRegistration</c>), so disabling or deleting a user ends their session
-    /// instead of leaving it valid until the cookie expires.
-    /// </summary>
-    public Task<bool> IsActiveAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        _db.Users.AnyAsync(u => u.Id == userId && u.Status == UserStatus.Enabled, cancellationToken);
-
-    /// <summary>
     /// A fresh cookie principal for an already signed-in user (after they change their own name or email), so the
     /// shell shows the new values without signing in again. Null when the account is gone or disabled.
     /// </summary>

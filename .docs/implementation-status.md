@@ -11,7 +11,8 @@ placeholder only, no behaviour. **Missing** - nothing in the code.
 | Module (planned section) | Status | What exists | Main gaps | Docs |
 | --- | --- | --- | --- | --- |
 | [Installation & setup](features/installation.md#planned-not-implemented) | **Built** | `.env` loading/validation, install gate, one-step setup wizard, transactional first admin | `cms.installed` audit, richer wizard | [installation](features/installation.md), [configuration](features/configuration.md), [setup](pages/setup.md) |
-| [Admin area](architecture/pages.md#planned-not-implemented) | **Partial** | `_AdminLayout` on the Forge [design system](architecture/design-system.md) (light/dark, drawer on phones, toasts, confirm dialog, breadcrumbs), sidebar tree from `AdminNavigation.Tree` hiding links by role with child-route active state and collapsible Settings groups, placeholders for unbuilt items, admin-extension tabs | hiding by permission/module availability, File Manager naming | [pages architecture](architecture/pages.md) |
+| [Admin area](architecture/pages.md#planned-not-implemented) | **Partial** | `_AdminLayout` on the [design system](architecture/design-system.md) (DotNetForge UI; light/dark, drawer on phones, toasts, confirm dialog, breadcrumbs), sidebar tree from `AdminNavigation.Tree` hiding links by role with child-route active state and collapsible Settings groups, placeholders for unbuilt items, admin-extension tabs | hiding by permission/module availability, File Manager naming | [pages architecture](architecture/pages.md) |
+| [UI component library](ui/README.md#planned-not-implemented) | **Built** | `src/DotNetForge.UI` (DotNetForge UI): `--dnf-*` tokens with light/dark (`light-dark()`, `data-theme` on any subtree, derived tokens per `.dnf-scope`), BEM `dnf-*` components in cascade layers with Tailwind CSS v4 utilities (standalone CLI at build time, pinned and SHA-256 verified), `<dnf-*>` tag helpers (icon, button, badge, status dot, alert, validation summary, empty state, stat card, spinner, avatar, timestamp, dropdown + items), `dnf.js` behaviours (`window.dnfUI`), 110-icon sprite; used by every built-in screen and shared with extensions through the SDK; in-app UI docs (guides, a page per component with live examples, code and generated API tables) | - | [ui](ui/README.md), [design system](architecture/design-system.md), [UI docs](pages/ui-docs.md) |
 | [Dashboard](pages/dashboard.md#planned-not-implemented) | **Partial** | welcome band with permitted quick actions, KPI cards, recent activity (last 8 audit entries), at-a-glance and system cards, widget-extension cards | built-in widgets, layout personalisation, health, updates | [dashboard](pages/dashboard.md) |
 | [Structured content](features/structured-content.md#planned-not-implemented) | **Built** | content types with 16 field types (groups, repeaters, relationships, media, validation, unique, defaults) built visually or from templates, collection and single types, generated entry list (search, status filter, sorting, paging, bulk delete, reorder) and form (drafts, publish, conflicts, duplicate), value index for filtering on every database, content lists in the page builder (bindings, filters, sort, pagination, grid/list/carousel/table/detail, item links, `[param]` detail pages), headless API | entry version history, review, scheduling, tags, localization | [content manager](pages/content-manager.md), [content types](pages/content-types.md), [structured content](features/structured-content.md) |
 | [Custom API endpoints](features/custom-endpoints.md#planned-not-implemented) | **Built** | Super Admin / Developer screen for an API under `/api/custom/<path>` with several operations (any method, optional sub-path such as `{id}`), each with its own SQL and typed `@parameters` (route, query, JSON body); access per endpoint with its own encrypted token (regenerable, one for all its operations) or public, result shapes, row limit, timeout, rolled-back test runs per operation, audit, listed in the API docs (one group per endpoint); SQL on the CMS database (PostgreSQL) or an additional SQLite, PostgreSQL, SQL Server or MySQL database | several tokens per endpoint, caching | [API endpoints](pages/api-endpoints.md), [custom endpoints](features/custom-endpoints.md) |
@@ -45,19 +46,20 @@ Code that exists but has no runtime caller - don't assume it does anything:
 
 | Item | Where |
 | --- | --- |
-| `PermissionAreas.Canonical` | no callers (the role editor uses `PermissionCatalog`) |
 | `PermissionKeys.WebhooksRead` / `WebhooksManage` | grantable to API tokens, but no endpoint checks them (no webhook API) |
 | `AuditActions`: `PluginInstalled`, `AuditExported` | never written |
 | `InstalledExtension.UpdateAvailable` | never written (no update source) |
-| `DashboardViewModel.AppName` | set by `DashboardController`, no longer shown by the dashboard view |
 | `TokenDuration.Custom` | never offered |
+| `Segments.Split`, `ModuleSegment` | only tests use them; kept for the planned [module slots](features/page-builder.md), like the schema's `module` type, which never renders |
 
-Removed as dead code in the production-readiness pass: `FileSystemEmailSender`, the old `LocalFileStorage` (replaced),
+Removed as dead code in the repository-wide cleanup: `PermissionAreas.Canonical`, `Roles.BuiltIn`,
+`DashboardViewModel.AppName`, `ValidationResult.Success`, `DatabaseCommand.IsSingle`, `ContentSchema.Find`,
+`PagePermissionService.RemoveUserAsync` and the builder's `BoxField`. Removed as dead code in the production-readiness pass: `FileSystemEmailSender`, the old `LocalFileStorage` (replaced),
 `SlugHelper`, `Result<T>`, `Roles.IsBuiltIn`, `AuthService.GetRolesAsync`, `InstallationStatusCache.KnownInstalled`,
 `ModulePlaceholderViewModel.Tokens`, and the unused `storage/backups|logs|updates` folders. Now in use:
 `IPermissionService` (all admin permission checks), `IFileStorage`, `Roles.AdminCapable` (kept for extensions; the
 `AdminArea` policy now uses `Roles.CanEnterAdmin`), `HmacWebhookSigner` / `IWebhookSigner`, `WebhookEvents.IsValid`
-and `AuditActions.WebhookCreated` (with [webhooks](features/webhooks.md)), `data-confirm` (now in `src/DotNetForge.Web/wwwroot/js/forge/ui.js`), `AuditActions.MediaUploaded`/`CmsInstalled`, and
+and `AuditActions.WebhookCreated` (with [webhooks](features/webhooks.md)), `data-confirm` (now in `src/DotNetForge.UI/wwwroot/dnf.js`), `AuditActions.MediaUploaded`/`CmsInstalled`, and
 - with the extension host - the `InstalledExtensions` table (enabled state), `AuditActions.PluginDisabled`,
 the default theme (`ThemeResolver`) and `DisplayInMenu` (theme menus). Removed with it: the unused extension-point
 interfaces of `DotNetForge.Abstractions` (file `IExtensionPoints.cs`: `IThemeExtension`, `IWidgetExtension`,

@@ -1,0 +1,143 @@
+/*
+  DnfButton, DnfIconButton, DnfButtonGroup (.docs/ui/components/button.md).
+  Anatomy: .dnf-button > .dnf-button__spinner? .dnf-button__icon? .dnf-button__label .dnf-button__icon?
+  Every modifier only sets the --dnf-button-* tokens; the base rule draws them. States: :hover / [data-hovered],
+  :active / [data-pressed], :focus-visible / [data-focus-visible], :disabled / [aria-disabled="true"], [data-pending].
+*/
+
+@layer components {
+    .dnf-button {
+        --dnf-button-height: var(--dnf-control-md);
+        --dnf-button-padding-x: var(--dnf-space-4);
+        --dnf-button-gap: var(--dnf-space-2);
+        --dnf-button-font-size: var(--dnf-text-base);
+        --dnf-button-radius: var(--dnf-radius-md);
+        --dnf-button-background: var(--dnf-secondary);
+        --dnf-button-foreground: var(--dnf-secondary-foreground);
+        --dnf-button-border: var(--dnf-border-strong);
+        --dnf-button-shadow: var(--dnf-shadow-xs);
+        --dnf-button-hover-background: var(--dnf-surface-hover);
+        --dnf-button-hover-foreground: var(--dnf-button-foreground);
+        --dnf-button-hover-border: var(--dnf-button-border);
+
+        @apply relative inline-flex shrink-0 items-center justify-center whitespace-nowrap select-none;
+        gap: var(--dnf-button-gap);
+        height: var(--dnf-button-height);
+        padding: 0 var(--dnf-button-padding-x);
+        border: 1px solid var(--dnf-button-border);
+        border-radius: var(--dnf-button-radius);
+        background: var(--dnf-button-background);
+        color: var(--dnf-button-foreground);
+        font-size: var(--dnf-button-font-size);
+        font-weight: var(--dnf-weight-semibold);
+        line-height: 1;
+        text-decoration: none;
+        box-shadow: var(--dnf-button-shadow);
+        transition: background-color var(--dnf-duration) var(--dnf-ease), border-color var(--dnf-duration) var(--dnf-ease),
+            color var(--dnf-duration) var(--dnf-ease), transform var(--dnf-duration-fast) var(--dnf-ease);
+    }
+
+    .dnf-button:is(:hover, [data-hovered="true"]):not(:disabled, [aria-disabled="true"], [data-pending]) {
+        background: var(--dnf-button-hover-background);
+        border-color: var(--dnf-button-hover-border);
+        color: var(--dnf-button-hover-foreground);
+        text-decoration: none;
+    }
+    .dnf-button:is(:active, [data-pressed="true"]):not(:disabled, [aria-disabled="true"], [data-pending]) { transform: translateY(1px); }
+    .dnf-button:is(:focus-visible, [data-focus-visible="true"]) { outline: none; box-shadow: var(--dnf-focus-ring); }
+    .dnf-button:is(:disabled, [aria-disabled="true"]) { opacity: 0.55; pointer-events: none; }
+    .dnf-button[data-pending] { pointer-events: none; cursor: progress; }
+
+    /* ---- Sizes ------------------------------------------------------------------------------------------------ */
+    .dnf-button--sm {
+        --dnf-button-height: var(--dnf-control-sm);
+        --dnf-button-padding-x: var(--dnf-space-3);
+        --dnf-button-gap: var(--dnf-space-1);
+        --dnf-button-font-size: var(--dnf-text-sm);
+    }
+    .dnf-button--md { --dnf-button-height: var(--dnf-control-md); }
+    .dnf-button--lg {
+        --dnf-button-height: var(--dnf-control-lg);
+        --dnf-button-padding-x: var(--dnf-space-5);
+        --dnf-button-font-size: var(--dnf-text-md);
+    }
+
+    /* ---- Variants --------------------------------------------------------------------------------------------- */
+    .dnf-button--primary {
+        --dnf-button-background: var(--dnf-primary);
+        --dnf-button-foreground: var(--dnf-primary-foreground);
+        --dnf-button-border: var(--dnf-primary);
+        --dnf-button-hover-background: var(--dnf-primary-hover);
+        --dnf-button-hover-border: var(--dnf-primary-hover);
+    }
+    .dnf-button--secondary { /* the defaults above */ }
+    .dnf-button--tertiary {
+        --dnf-button-background: var(--dnf-surface-muted);
+        --dnf-button-border: transparent;
+        --dnf-button-shadow: none;
+        --dnf-button-hover-background: var(--dnf-surface-hover);
+    }
+    .dnf-button--outline {
+        --dnf-button-background: transparent;
+        --dnf-button-shadow: none;
+        --dnf-button-hover-background: var(--dnf-surface-hover);
+    }
+    .dnf-button--ghost {
+        --dnf-button-background: transparent;
+        --dnf-button-border: transparent;
+        --dnf-button-shadow: none;
+        --dnf-button-foreground: var(--dnf-muted-foreground);
+        --dnf-button-hover-background: var(--dnf-surface-hover);
+        --dnf-button-hover-foreground: var(--dnf-foreground);
+    }
+    .dnf-button--danger {
+        --dnf-button-background: var(--dnf-danger);
+        --dnf-button-foreground: var(--dnf-danger-foreground);
+        --dnf-button-border: var(--dnf-danger);
+        --dnf-button-hover-background: var(--dnf-danger-hover);
+        --dnf-button-hover-border: var(--dnf-danger-hover);
+    }
+    .dnf-button--danger-soft {
+        --dnf-button-foreground: var(--dnf-danger);
+        --dnf-button-hover-background: var(--dnf-danger-soft);
+        --dnf-button-hover-border: var(--dnf-danger);
+    }
+
+    /* ---- Modifiers -------------------------------------------------------------------------------------------- */
+    .dnf-button--full-width { width: 100%; }
+    .dnf-button--icon-only { width: var(--dnf-button-height); padding: 0; }
+
+    /* Pressed toggle buttons (aria-pressed) and the current page in a pager read as selected. */
+    .dnf-button:is([aria-pressed="true"], [aria-current="page"]) {
+        --dnf-button-background: var(--dnf-primary);
+        --dnf-button-foreground: var(--dnf-primary-foreground);
+        --dnf-button-border: var(--dnf-primary);
+        --dnf-button-hover-background: var(--dnf-primary-hover);
+    }
+
+    /* ---- Elements --------------------------------------------------------------------------------------------- */
+    /* Truncates long text; its own line box is taller than the button's line-height: 1, so the overflow clip keeps the
+       descenders (g, p, y). */
+    .dnf-button__label { @apply truncate; line-height: var(--dnf-leading-tight); }
+    .dnf-button__icon { @apply shrink-0; }
+    .dnf-button__spinner {
+        display: none;
+        width: 1em; height: 1em;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: dnf-spin 0.7s linear infinite;
+    }
+    .dnf-button[data-pending] .dnf-button__spinner { display: inline-block; }
+    /* While pending the spinner takes the leading icon's place. */
+    .dnf-button[data-pending] .dnf-button__icon:first-of-type { display: none; }
+
+    /* ---- Group ------------------------------------------------------------------------------------------------ */
+    .dnf-button-group { @apply inline-flex flex-wrap items-center gap-2; }
+    .dnf-button-group--attached { @apply flex-nowrap gap-0; }
+    .dnf-button-group--attached > .dnf-button:not(:first-child) { border-start-start-radius: 0; border-end-start-radius: 0; margin-inline-start: -1px; }
+    .dnf-button-group--attached > .dnf-button:not(:last-child) { border-start-end-radius: 0; border-end-end-radius: 0; }
+    .dnf-button-group--attached > .dnf-button:is(:hover, :focus-visible) { z-index: 1; }
+
+    @keyframes dnf-spin { to { transform: rotate(360deg); } }
+}

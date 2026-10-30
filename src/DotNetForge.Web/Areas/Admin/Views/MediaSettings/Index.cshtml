@@ -8,36 +8,36 @@
     var savedPercent = storage.SavedBytes > 0 ? (int)Math.Round(storage.SavedBytes * 100d / (storage.StoredBytes + storage.SavedBytes)) : 0;
 }
 
-<div class="stack">
-    <section class="card" aria-labelledby="storage-title">
-        <div class="card-header">
+<div class="dnf-stack">
+    <section class="dnf-card" aria-labelledby="storage-title">
+        <div class="dnf-card__header">
             <div>
-                <h2 class="card-title" id="storage-title">Storage</h2>
-                <p class="card-description">What the <a href="/admin/media">media library</a> uses in the media storage now.</p>
+                <h2 class="dnf-card__title" id="storage-title">Storage</h2>
+                <p class="dnf-card__description">What the <a href="/admin/media">media library</a> uses in the media storage now.</p>
             </div>
         </div>
-        <div class="stat-grid">
-            <div class="stat">
-                <span class="stat-icon" aria-hidden="true"><icon name="image" /></span>
-                <span class="stat-text"><span class="stat-value">@storage.Files.ToString("N0")</span><span class="stat-label">files</span></span>
+        <div class="dnf-stat-group">
+            <div class="dnf-stat-card">
+                <span class="dnf-stat-card__icon" aria-hidden="true"><dnf-icon name="image" /></span>
+                <span class="dnf-stat-card__text"><span class="dnf-stat-card__value">@storage.Files.ToString("N0")</span><span class="dnf-stat-card__label">files</span></span>
             </div>
-            <div class="stat">
-                <span class="stat-icon" aria-hidden="true"><icon name="database" /></span>
-                <span class="stat-text"><span class="stat-value">@MediaPresentation.Size(storage.StoredBytes)</span><span class="stat-label">stored</span></span>
+            <div class="dnf-stat-card">
+                <span class="dnf-stat-card__icon" aria-hidden="true"><dnf-icon name="database" /></span>
+                <span class="dnf-stat-card__text"><span class="dnf-stat-card__value">@MediaPresentation.Size(storage.StoredBytes)</span><span class="dnf-stat-card__label">stored</span></span>
             </div>
-            <div class="stat">
-                <span class="stat-icon" aria-hidden="true"><icon name="gauge" /></span>
-                <span class="stat-text">
-                    <span class="stat-value">@MediaPresentation.Size(storage.SavedBytes)</span>
-                    <span class="stat-label">saved by optimization@(savedPercent > 0 ? $" ({savedPercent}%)" : null)</span>
+            <div class="dnf-stat-card">
+                <span class="dnf-stat-card__icon" aria-hidden="true"><dnf-icon name="gauge" /></span>
+                <span class="dnf-stat-card__text">
+                    <span class="dnf-stat-card__value">@MediaPresentation.Size(storage.SavedBytes)</span>
+                    <span class="dnf-stat-card__label">saved by optimization@(savedPercent > 0 ? $" ({savedPercent}%)" : null)</span>
                 </span>
             </div>
         </div>
         @if (storage.Queued > 0 || storage.Failed > 0)
         {
-            <div class="card-body">
+            <div class="dnf-card__body">
                 <p class="text-sm text-muted">
-                    <icon name="info" size="sm" />
+                    <dnf-icon name="info" size="Sm" />
                     @if (storage.Queued > 0)
                     {
                         <text>@storage.Queued video(s) waiting for compression. </text>
@@ -51,132 +51,132 @@
         }
     </section>
 
-    <form method="post" action="/admin/media-settings" class="stack">
+    <form method="post" action="/admin/media-settings" class="dnf-stack">
         @Html.AntiForgeryToken()
-        <form-errors />
-        <fieldset class="fieldset stack" disabled="@(Model.CanEdit ? null : "disabled")">
+        <dnf-validation-summary />
+        <fieldset class="dnf-fieldset dnf-stack" disabled="@(Model.CanEdit ? null : "disabled")">
             <legend class="sr-only">Media Library settings</legend>
 
-            <section class="card" aria-labelledby="limits-title">
-                <div class="card-header">
+            <section class="dnf-card" aria-labelledby="limits-title">
+                <div class="dnf-card__header">
                     <div>
-                        <h2 class="card-title" id="limits-title">Upload limits</h2>
-                        <p class="card-description">The largest file people can upload, per kind - on the Media screen, in entry forms and in the page builder.</p>
+                        <h2 class="dnf-card__title" id="limits-title">Upload limits</h2>
+                        <p class="dnf-card__description">The largest file people can upload, per kind - on the Media screen, in entry forms and in the page builder.</p>
                     </div>
                 </div>
-                <div class="card-body stack">
-                    <div class="form-grid form-grid-3">
-                        <div class="field">
-                            <label class="field-label" for="MaxImageMb">Images (MB)</label>
-                            <input id="MaxImageMb" name="MaxImageMb" type="number" min="1" max="@MediaSettings.MaxLimitMb" required value="@Model.MaxImageMb" />
+                <div class="dnf-card__body dnf-stack">
+                    <div class="dnf-form-grid dnf-form-grid--3">
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="MaxImageMb">Images (MB)</label>
+                            <input id="MaxImageMb" name="MaxImageMb" type="number" class="dnf-input" min="1" max="@MediaSettings.MaxLimitMb" required value="@Model.MaxImageMb" />
                         </div>
-                        <div class="field">
-                            <label class="field-label" for="MaxVideoMb">Videos and audio (MB)</label>
-                            <input id="MaxVideoMb" name="MaxVideoMb" type="number" min="1" max="@MediaSettings.MaxLimitMb" required value="@Model.MaxVideoMb" />
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="MaxVideoMb">Videos and audio (MB)</label>
+                            <input id="MaxVideoMb" name="MaxVideoMb" type="number" class="dnf-input" min="1" max="@MediaSettings.MaxLimitMb" required value="@Model.MaxVideoMb" />
                         </div>
-                        <div class="field">
-                            <label class="field-label" for="MaxOtherMb">Other files (MB)</label>
-                            <input id="MaxOtherMb" name="MaxOtherMb" type="number" min="1" max="@MediaSettings.MaxLimitMb" required value="@Model.MaxOtherMb" />
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="MaxOtherMb">Other files (MB)</label>
+                            <input id="MaxOtherMb" name="MaxOtherMb" type="number" class="dnf-input" min="1" max="@MediaSettings.MaxLimitMb" required value="@Model.MaxOtherMb" />
                         </div>
                     </div>
-                    <p class="note text-sm text-muted"><icon name="info" size="sm" /><span>Up to @MediaSettings.MaxLimitMb MB. Behind a reverse proxy, allow large request bodies there too (nginx: <code>client_max_body_size</code>).</span></p>
+                    <p class="dnf-note text-sm text-muted"><dnf-icon name="info" size="Sm" /><span>Up to @MediaSettings.MaxLimitMb MB. Behind a reverse proxy, allow large request bodies there too (nginx: <code>client_max_body_size</code>).</span></p>
                 </div>
             </section>
 
-            <section class="card" aria-labelledby="images-title">
-                <div class="card-header">
+            <section class="dnf-card" aria-labelledby="images-title">
+                <div class="dnf-card__header">
                     <div>
-                        <h2 class="card-title" id="images-title">Images</h2>
-                        <p class="card-description">JPEG, PNG and WebP uploads. GIF and AVIF, animations and very large images are stored as uploaded.</p>
+                        <h2 class="dnf-card__title" id="images-title">Images</h2>
+                        <p class="dnf-card__description">JPEG, PNG and WebP uploads. GIF and AVIF, animations and very large images are stored as uploaded.</p>
                     </div>
                 </div>
-                <div class="card-body stack">
-                    <label class="switch-row">
-                        <span class="check-text">
+                <div class="dnf-card__body dnf-stack">
+                    <label class="dnf-switch-row">
+                        <span class="dnf-check__text">
                             <span>Optimize images on upload</span>
-                            <span class="check-hint">Turned upright, scaled down to the size below and re-encoded at the quality below; camera metadata (EXIF, GPS) is removed. The smaller version is kept only when it is smaller than the upload.</span>
+                            <span class="dnf-check__description">Turned upright, scaled down to the size below and re-encoded at the quality below; camera metadata (EXIF, GPS) is removed. The smaller version is kept only when it is smaller than the upload.</span>
                         </span>
                         @* The checkbox first: a bound bool takes the first posted value. *@
-                        <input type="checkbox" class="switch" role="switch" name="OptimizeImages" value="true" checked="@(Model.OptimizeImages ? "checked" : null)" />
+                        <input type="checkbox" class="dnf-switch" role="switch" name="OptimizeImages" value="true" checked="@(Model.OptimizeImages ? "checked" : null)" />
                         <input type="hidden" name="OptimizeImages" value="false" />
                     </label>
-                    <div class="form-grid form-grid-3">
-                        <div class="field">
-                            <label class="field-label" for="ImageMaxWidth">Maximum width (px)</label>
-                            <input id="ImageMaxWidth" name="ImageMaxWidth" type="number" min="320" max="10000" required value="@Model.ImageMaxWidth" />
+                    <div class="dnf-form-grid dnf-form-grid--3">
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="ImageMaxWidth">Maximum width (px)</label>
+                            <input id="ImageMaxWidth" name="ImageMaxWidth" type="number" class="dnf-input" min="320" max="10000" required value="@Model.ImageMaxWidth" />
                         </div>
-                        <div class="field">
-                            <label class="field-label" for="ImageMaxHeight">Maximum height (px)</label>
-                            <input id="ImageMaxHeight" name="ImageMaxHeight" type="number" min="320" max="10000" required value="@Model.ImageMaxHeight" />
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="ImageMaxHeight">Maximum height (px)</label>
+                            <input id="ImageMaxHeight" name="ImageMaxHeight" type="number" class="dnf-input" min="320" max="10000" required value="@Model.ImageMaxHeight" />
                         </div>
-                        <div class="field">
-                            <label class="field-label" for="ImageQuality">Quality (40-100)</label>
-                            <input id="ImageQuality" name="ImageQuality" type="number" min="40" max="100" required value="@Model.ImageQuality" aria-describedby="quality-hint" />
-                            <span class="field-hint" id="quality-hint">80-85 looks the same as the original for photos.</span>
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="ImageQuality">Quality (40-100)</label>
+                            <input id="ImageQuality" name="ImageQuality" type="number" class="dnf-input" min="40" max="100" required value="@Model.ImageQuality" aria-describedby="quality-hint" />
+                            <span class="dnf-field__description" id="quality-hint">80-85 looks the same as the original for photos.</span>
                         </div>
                     </div>
-                    <label class="switch-row">
-                        <span class="check-text">
+                    <label class="dnf-switch-row">
+                        <span class="dnf-check__text">
                             <span>Store as WebP</span>
-                            <span class="check-hint">JPEG and PNG become WebP - usually 25-35% smaller, shown by every current browser. The file name gets the .webp extension.</span>
+                            <span class="dnf-check__description">JPEG and PNG become WebP - usually 25-35% smaller, shown by every current browser. The file name gets the .webp extension.</span>
                         </span>
-                        <input type="checkbox" class="switch" role="switch" name="ConvertToWebP" value="true" checked="@(Model.ConvertToWebP ? "checked" : null)" />
+                        <input type="checkbox" class="dnf-switch" role="switch" name="ConvertToWebP" value="true" checked="@(Model.ConvertToWebP ? "checked" : null)" />
                         <input type="hidden" name="ConvertToWebP" value="false" />
                     </label>
                 </div>
             </section>
 
-            <section class="card" aria-labelledby="videos-title">
-                <div class="card-header">
+            <section class="dnf-card" aria-labelledby="videos-title">
+                <div class="dnf-card__header">
                     <div>
-                        <h2 class="card-title" id="videos-title">Videos</h2>
-                        <p class="card-description">MP4 uploads, compressed with ffmpeg in the background after upload (H.264 video, AAC audio).</p>
+                        <h2 class="dnf-card__title" id="videos-title">Videos</h2>
+                        <p class="dnf-card__description">MP4 uploads, compressed with ffmpeg in the background after upload (H.264 video, AAC audio).</p>
                     </div>
                     @if (Model.Ffmpeg.Available)
                     {
-                        <badge tone="Success" dot="true">ffmpeg found</badge>
+                        <dnf-badge tone="Success" dot="true">ffmpeg found</dnf-badge>
                     }
                     else
                     {
-                        <badge dot="true">No ffmpeg</badge>
+                        <dnf-badge dot="true">No ffmpeg</dnf-badge>
                     }
                 </div>
-                <div class="card-body stack">
+                <div class="dnf-card__body dnf-stack">
                     @if (Model.Ffmpeg.Available)
                     {
-                        <p class="note text-sm text-muted"><icon name="check" size="sm" /><span>@Model.Ffmpeg.Version - <code>@Model.Ffmpeg.Path</code></span></p>
+                        <p class="dnf-note text-sm text-muted"><dnf-icon name="check" size="Sm" /><span>@Model.Ffmpeg.Version - <code>@Model.Ffmpeg.Path</code></span></p>
                     }
                     else if (Model.Ffmpeg.Configured)
                     {
-                        <alert tone="Warning" title="ffmpeg doesn't run">@Model.Ffmpeg.Problem Check <code>FFMPEG_PATH</code> in <code>.env</code> and restart.</alert>
+                        <dnf-alert tone="Warning" title="ffmpeg doesn't run">@Model.Ffmpeg.Problem Check <code>FFMPEG_PATH</code> in <code>.env</code> and restart.</dnf-alert>
                     }
                     else
                     {
-                        <alert tone="Info" title="Video compression needs ffmpeg">Install ffmpeg on the server and set <code>FFMPEG_PATH</code> in <code>.env</code> (for example <code>/usr/bin/ffmpeg</code>), then restart. The Docker image includes it when built with <code>--build-arg WITH_FFMPEG=true</code>. Until then videos are stored as uploaded.</alert>
+                        <dnf-alert tone="Info" title="Video compression needs ffmpeg">Install ffmpeg on the server and set <code>FFMPEG_PATH</code> in <code>.env</code> (for example <code>/usr/bin/ffmpeg</code>), then restart. The Docker image includes it when built with <code>--build-arg WITH_FFMPEG=true</code>. Until then videos are stored as uploaded.</dnf-alert>
                     }
-                    <label class="switch-row">
-                        <span class="check-text">
+                    <label class="dnf-switch-row">
+                        <span class="dnf-check__text">
                             <span>Compress videos</span>
-                            <span class="check-hint">The upload is available right away; when the compressed version is ready and smaller, it replaces it (same link). One video at a time.</span>
+                            <span class="dnf-check__description">The upload is available right away; when the compressed version is ready and smaller, it replaces it (same link). One video at a time.</span>
                         </span>
-                        <input type="checkbox" class="switch" role="switch" name="CompressVideos" value="true"
+                        <input type="checkbox" class="dnf-switch" role="switch" name="CompressVideos" value="true"
                                checked="@(Model.CompressVideos ? "checked" : null)" disabled="@(Model.Ffmpeg.Available ? null : "disabled")" />
                         <input type="hidden" name="CompressVideos" value="false" />
                     </label>
-                    <div class="form-grid">
-                        <div class="field">
-                            <label class="field-label" for="VideoResolution">Maximum resolution</label>
-                            <select id="VideoResolution" name="VideoResolution" aria-describedby="resolution-hint">
+                    <div class="dnf-form-grid">
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="VideoResolution">Maximum resolution</label>
+                            <select id="VideoResolution" name="VideoResolution" class="dnf-select" aria-describedby="resolution-hint">
                                 @foreach (var resolution in MediaSettings.VideoResolutions)
                                 {
                                     <option value="@resolution" selected="@(resolution == Model.VideoResolution ? "selected" : null)">@(resolution == 2160 ? "4K (2160p)" : resolution + "p")</option>
                                 }
                             </select>
-                            <span class="field-hint" id="resolution-hint">Larger videos are scaled down (the short side); smaller ones keep their size.</span>
+                            <span class="dnf-field__description" id="resolution-hint">Larger videos are scaled down (the short side); smaller ones keep their size.</span>
                         </div>
-                        <div class="field">
-                            <label class="field-label" for="VideoCrf">Quality</label>
-                            <select id="VideoCrf" name="VideoCrf">
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="VideoCrf">Quality</label>
+                            <select id="VideoCrf" name="VideoCrf" class="dnf-select">
                                 @foreach (var (label, crf) in MediaSettings.VideoQualities)
                                 {
                                     <option value="@crf" selected="@(crf == Model.VideoCrf ? "selected" : null)">@label</option>
@@ -188,8 +188,8 @@
                 @if (Model.CanEdit)
                 {
                     @* One form across the three cards: this saves the limits and image settings too. *@
-                    <div class="card-footer">
-                        <button type="submit" class="btn btn-primary"><icon name="check" /> Save settings</button>
+                    <div class="dnf-card__footer">
+                        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Save settings</button>
                     </div>
                 }
             </section>

@@ -174,7 +174,9 @@ over the defaults on `:root`); the sample default theme maps them to its accent,
 
 ## Editor
 
-Plain ES modules loaded by `Index.cshtml` (`<script type="module" src="/js/builder/main.js">`); no build step.
+Plain ES modules loaded by `Index.cshtml` (`<script type="module" src="/js/builder/main.js">`); no build step. Below
+768px the top bar wraps and the canvas and panels stack in one scrolling column; on touch screens controls are 32px
+tall (`--pe-control`). Dragging on the canvas by touch is not covered by tests.
 
 - **Ported** from the reference TypeScript (converted once to readable JavaScript with esbuild): `core/` - the
   `Store` (transactions, undo/redo with merging), `commands` (insert, move, duplicate, wrap/unwrap, grid placement,
@@ -209,7 +211,7 @@ Plain ES modules loaded by `Index.cshtml` (`<script type="module" src="/js/build
   (`ViewData["BuilderCanvas"]`). The editor renders the layout into the mount with the JS renderer and patches only
   the changed nodes. `GET preview` renders the draft through the same theme.
 - The canvas shows the page light or dark (⋯ menu, remembered per browser, light by default): the editor sets
-  `data-theme` and `color-scheme` on the iframe's `<html>`. The Forge tokens and the sample theme honour it; a
+  `data-theme` and `color-scheme` on the iframe's `<html>`. The DotNetForge UI tokens (`dnf.css`, used by the built-in fallback layout) and the sample theme honour it; a
   theme that only uses `prefers-color-scheme` follows the system instead.
 
 ## Testing

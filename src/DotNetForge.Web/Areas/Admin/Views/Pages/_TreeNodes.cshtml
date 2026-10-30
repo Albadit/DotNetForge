@@ -2,59 +2,82 @@
 @{
     var selectedId = ViewData["SelectedId"] as Guid?;
     var canReorder = ViewData["CanReorder"] as bool? == true;
+    PageTreeNode? previous = null;
 }
-<ul class="page-tree" role="list">
+<ul class="dnf-tree" role="list">
     @foreach (var node in Model)
     {
+        // The home page is the site's root: it stays where it is, and nothing goes before it or under it.
+        var isHome = DotNetForge.Web.Services.PageService.IsHome(node.Slug);
+        var canMove = canReorder && !isHome;
+        var isFirst = previous is null || DotNetForge.Web.Services.PageService.IsHome(previous.Slug);
+        var isLast = ReferenceEquals(node, Model[Model.Count - 1]);
         var isSelected = selectedId == node.Id;
-        var (dot, status) = node.Published ? ("dot-success", "Published") : ("dot-danger", "Disabled");
+        var (dot, status) = node.Published ? ("dnf-status-dot--success", "Published") : ("dnf-status-dot--danger", "Disabled");
         var hasChildren = node.Children.Count > 0;
-        <li class="tree-item" draggable="@(canReorder ? "true" : "false")" data-id="@node.Id" data-tree-item
+        <li class="dnf-tree__item" draggable="@(canMove ? "true" : "false")" data-id="@node.Id" data-tree-item data-tree-home="@(isHome ? "true" : null)"
             data-search="@node.Title @node.Slug">
-            <div class="tree-row @(isSelected ? "active" : null)">
+            <div class="dnf-tree__row" data-active="@(isSelected ? "true" : null)">
                 @* Open/close the child pages (pages.js, remembered per browser); the slot keeps rows aligned. *@
-                <span class="tree-toggle-slot">
+                <span class="dnf-tree__toggle-slot">
                     @if (hasChildren)
                     {
-                        <button type="button" class="tree-toggle" aria-expanded="true" aria-label="Hide the pages under @node.Title"
+                        <button type="button" class="dnf-tree__toggle" aria-expanded="true" aria-label="Hide the pages under @node.Title"
                                 data-tree-toggle data-js-only hidden>
-                            <icon name="chevron-down" size="sm" />
+                            <dnf-icon name="chevron-down" size="Sm" />
                         </button>
                     }
                 </span>
                 @* draggable=false: dragging the title moves the whole row (the item), not the link. *@
-                <a class="tree-link" href="/admin/pages?selected=@node.Id" draggable="false" aria-current="@(isSelected ? "page" : null)">
-                    <span class="dot @dot" aria-hidden="true" title="@status"></span>
+                <a class="dnf-tree__link" href="/admin/pages?selected=@node.Id" draggable="false" aria-current="@(isSelected ? "page" : null)">
+                    <span class="dnf-status-dot @dot" aria-hidden="true" title="@status"></span>
                     <span class="sr-only">@status:</span>
-                    <span class="tree-title">@node.Title</span>
-                    <span class="tree-slug">/@node.Slug.TrimStart('/')</span>
+                    <span class="dnf-tree__title">@node.Title</span>
+                    <span class="dnf-tree__slug">/@node.Slug.TrimStart('/')</span>
                 </a>
                 @* Row actions in one ⋯ menu (opens in the top layer, so the tree's scroll area never clips it). *@
-                <action-menu class="tree-action" label="Actions for @node.Title">
+                <dnf-dropdown class="dnf-tree__action" label="Actions for @node.Title">
                     @if (node.ViewUrl is not null)
                     {
-                        <menu-link href="@node.ViewUrl" icon="eye" new-tab="true">View on site</menu-link>
+                        <dnf-dropdown-link href="@node.ViewUrl" icon="eye" new-tab="true">View on site</dnf-dropdown-link>
                     }
                     else
                     {
-                        <menu-note>@node.NotOnSite</menu-note>
+                        <dnf-dropdown-note>@node.NotOnSite</dnf-dropdown-note>
                     }
-                    <menu-separator />
-                    <menu-post action="/admin/pages/create?parent=@node.Id" icon="plus">Add child page</menu-post>
-                    <menu-post action="/admin/pages/duplicate/@node.Id" icon="copy">Duplicate</menu-post>
+                    <dnf-dropdown-separator />
+                    @if (!isHome)
+                    {
+                        <dnf-dropdown-post action="/admin/pages/create?parent=@node.Id" icon="plus">Add child page</dnf-dropdown-post>
+                    }
+                    <dnf-dropdown-post action="/admin/pages/duplicate/@node.Id" icon="copy">Duplicate</dnf-dropdown-post>
+                    @* The reorder without dragging, for touch screens and keyboards (pages.js). *@
+                    @if (canMove)
+                    {
+                        <dnf-dropdown-button icon="arrow-right" data-page-move data-js-only hidden>Move…</dnf-dropdown-button>
+                    }
+                    @if (canMove && !isFirst)
+                    {
+                        <dnf-dropdown-button icon="chevron-up" data-tree-move="up" data-js-only hidden>Move up</dnf-dropdown-button>
+                    }
+                    @if (canMove && !isLast)
+                    {
+                        <dnf-dropdown-button icon="chevron-down" data-tree-move="down" data-js-only hidden>Move down</dnf-dropdown-button>
+                    }
                     @if (node.CanDelete)
                     {
-                        <menu-separator />
-                        <menu-post action="/admin/pages/delete/@node.Id" icon="trash" danger="true"
+                        <dnf-dropdown-separator />
+                        <dnf-dropdown-post action="/admin/pages/delete/@node.Id" icon="trash" danger="true"
                                    confirm="Delete '@node.Title'?@(hasChildren ? " Its child pages move up a level." : "")"
-                                   confirm-title="Delete page" confirm-action="Delete page">Delete</menu-post>
+                                   confirm-title="Delete page" confirm-action="Delete page">Delete</dnf-dropdown-post>
                     }
-                </action-menu>
+                </dnf-dropdown>
             </div>
             @if (hasChildren)
             {
                 <partial name="_TreeNodes" model="node.Children" />
             }
         </li>
+        previous = node;
     }
 </ul>

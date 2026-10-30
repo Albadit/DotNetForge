@@ -20,98 +20,98 @@
     };
 }
 
-<div class="auth-heading">
+<div class="dnf-auth__heading">
     <h1>Two-step verification</h1>
     <p class="text-muted">Signing in as @masked@(Model.Via is null ? "" : $" with {Model.Via}").</p>
 </div>
 
-<form-errors />
+<dnf-validation-summary />
 
 @if (Model.Recovery)
 {
-    <form method="post" action="/login/mfa" class="form">
+    <form method="post" action="/login/mfa" class="dnf-form">
         @Html.AntiForgeryToken()
         <input type="hidden" name="recovery" value="true" />
-        <div class="field">
-            <label class="field-label" for="code">Recovery code</label>
-            <input id="code" name="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="code">Recovery code</label>
+            <input class="dnf-input" id="code" name="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus
                    placeholder="XXXXX-XXXXX" aria-describedby="code-hint" />
-            <span class="field-hint" id="code-hint">One of the codes you saved when you set up two-step verification. Each works once.</span>
+            <span class="dnf-field__description" id="code-hint">One of the codes you saved when you set up two-step verification. Each works once.</span>
         </div>
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Verify</button>
+        <button type="submit" class="dnf-button dnf-button--primary dnf-button--lg dnf-button--full-width">Verify</button>
     </form>
 }
 else if (selected?.Type == MfaMethodType.Passkey)
 {
-    <div class="stack" data-passkey-signin>
+    <div class="dnf-stack" data-passkey-signin>
         <p class="text-muted">Use the passkey or security key you added to your account: Face ID, Touch ID, Windows Hello, your phone or a USB key.</p>
         @Html.AntiForgeryToken()
         <p class="text-sm text-danger" data-passkey-error role="alert" hidden></p>
-        <button type="button" class="btn btn-primary btn-lg btn-block" data-passkey-start data-js-only hidden><icon name="key" /> Use passkey</button>
+        <button type="button" class="dnf-button dnf-button--primary dnf-button--lg dnf-button--full-width" data-passkey-start data-js-only hidden><dnf-icon name="key" /> Use passkey</button>
         <noscript><p class="text-sm text-muted">Passkeys need JavaScript. Use another way below.</p></noscript>
     </div>
 }
 else if (selected is { Type: MfaMethodType.Email or MfaMethodType.Sms } && !Model.CodeSent)
 {
-    <form method="post" action="/login/mfa/send" class="form">
+    <form method="post" action="/login/mfa/send" class="dnf-form">
         @Html.AntiForgeryToken()
         <input type="hidden" name="method" value="@selected.Id" />
         <p class="text-muted">
             @(selected.Type == MfaMethodType.Sms ? $"We'll text a 6-digit code to {selected.Name}." : $"We'll email a 6-digit code to {masked}.")
             It works for @MfaService.CodeLifetime.TotalMinutes.ToString("0") minutes.
         </p>
-        <button type="submit" class="btn btn-primary btn-lg btn-block"><icon name="@Icon(selected.Type)" /> Send code</button>
+        <button type="submit" class="dnf-button dnf-button--primary dnf-button--lg dnf-button--full-width"><dnf-icon name="@Icon(selected.Type)" /> Send code</button>
     </form>
 }
 else if (selected is not null)
 {
-    <form method="post" action="/login/mfa" class="form">
+    <form method="post" action="/login/mfa" class="dnf-form">
         @Html.AntiForgeryToken()
         <input type="hidden" name="method" value="@selected.Id" />
-        <div class="field">
-            <label class="field-label" for="code">@(selected.Type switch
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="code">@(selected.Type switch
             {
                 MfaMethodType.AuthenticatorApp => "Code from your authenticator app",
                 MfaMethodType.Sms => $"Code we texted to {selected.Name}",
                 _ => "Code we emailed you",
             })</label>
             <input id="code" name="code" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" autofocus
-                   class="input-code" />
+                   class="dnf-input dnf-input--code" />
         </div>
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Verify</button>
+        <button type="submit" class="dnf-button dnf-button--primary dnf-button--lg dnf-button--full-width">Verify</button>
     </form>
     @if (selected.Type is MfaMethodType.Email or MfaMethodType.Sms)
     {
         <form method="post" action="/login/mfa/send">
             @Html.AntiForgeryToken()
             <input type="hidden" name="method" value="@selected.Id" />
-            <button type="submit" class="btn btn-ghost btn-block">Send a new code</button>
+            <button type="submit" class="dnf-button dnf-button--ghost dnf-button--full-width">Send a new code</button>
         </form>
     }
 }
 
-<div class="auth-divider"><span>Try another way</span></div>
-<ul class="mfa-ways">
+<div class="dnf-divider dnf-divider--label"><span>Try another way</span></div>
+<ul class="dnf-auth__ways">
     @foreach (var method in Model.Methods.Where(m => Model.Recovery || m.Id != selected?.Id))
     {
         <li>
-            <a href="/login/mfa?method=@method.Id">
-                <icon name="@Icon(method.Type)" />
-                <span>@MfaService.Label(method.Type)<span class="text-xs text-muted">@(method.Type is MfaMethodType.Passkey or MfaMethodType.Sms ? method.Name : null)</span></span>
+            <a class="dnf-auth__way" href="/login/mfa?method=@method.Id">
+                <dnf-icon name="@Icon(method.Type)" />
+                <span class="dnf-auth__way-text">@MfaService.Label(method.Type)<span class="text-xs text-muted">@(method.Type is MfaMethodType.Passkey or MfaMethodType.Sms ? method.Name : null)</span></span>
             </a>
         </li>
     }
     @if (!Model.Recovery)
     {
-        <li><a href="/login/mfa?recovery=true"><icon name="shield" /><span>Use a recovery code</span></a></li>
+        <li><a class="dnf-auth__way" href="/login/mfa?recovery=true"><dnf-icon name="shield" /><span class="dnf-auth__way-text">Use a recovery code</span></a></li>
     }
 </ul>
 
-<form method="post" action="/login/mfa/cancel" class="auth-switch">
+<form method="post" action="/login/mfa/cancel" class="dnf-auth__switch">
     @Html.AntiForgeryToken()
-    <button type="submit" class="btn btn-ghost">Cancel and sign in again</button>
+    <button type="submit" class="dnf-button dnf-button--ghost">Cancel and sign in again</button>
 </form>
 
 @section Scripts {
-    <script src="~/js/forge/passkeys.js" asp-append-version="true" defer></script>
+    <script src="~/js/admin/passkeys.js" asp-append-version="true" defer></script>
 }

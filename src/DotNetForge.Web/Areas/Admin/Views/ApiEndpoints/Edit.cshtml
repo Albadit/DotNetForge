@@ -15,78 +15,91 @@
         $"curl -X {method} \"{origin}/api/custom/{template}\""
         + (withToken ? $" \\\n  -H \"Authorization: Bearer {Model.Token ?? "<token>"}\"" : "")
         + (method is "POST" or "PUT" or "PATCH" ? " \\\n  -H \"Content-Type: application/json\" -d '{ ... }'" : "");
-    Tone MethodTone(string method) => method switch { "GET" => Tone.Info, "POST" => Tone.Success, "DELETE" => Tone.Danger, _ => Tone.Warning };
+    DnfTone MethodTone(string method) => method switch { "GET" => DnfTone.Info, "POST" => DnfTone.Success, "DELETE" => DnfTone.Danger, _ => DnfTone.Warning };
 }
 
 @section Actions {
-    <a class="btn btn-secondary" href="/admin/api-endpoints"><icon name="arrow-left" /> All endpoints</a>
-    <button type="submit" form="endpointForm" class="btn btn-primary"><icon name="save" /> Save endpoint</button>
+    <a class="dnf-button dnf-button--secondary" href="/admin/api-endpoints"><dnf-icon name="chevron-left" /> All endpoints</a>
+    <button type="submit" form="endpointForm" class="dnf-button dnf-button--primary"><dnf-icon name="save" /> Save endpoint</button>
 }
 
-<form id="endpointForm" method="post" action="@action" class="editor" novalidate data-endpoint-form
+<form id="endpointForm" method="post" action="@action" class="dnf-split" novalidate data-endpoint-form
       data-methods="@System.Text.Json.JsonSerializer.Serialize(EndpointRules.Methods)"
       data-types="@System.Text.Json.JsonSerializer.Serialize(EndpointRules.Types)">
     @Html.AntiForgeryToken()
-    <div class="editor-main">
-        <form-errors />
-        <section class="card" aria-labelledby="path-title">
-            <div class="card-header">
+    <div class="dnf-split__main">
+        <dnf-validation-summary />
+        <section class="dnf-card" aria-labelledby="path-title">
+            <div class="dnf-card__header">
                 <div>
-                    <h2 class="card-title" id="path-title">Path</h2>
-                    <p class="card-description">Where the API lives. Each operation answers this path, or a sub-path of it such as <span class="text-mono">{id}</span>. Write <span class="text-mono">{name}</span> for a value taken from the URL.</p>
+                    <h2 class="dnf-card__title" id="path-title">Path</h2>
+                    <p class="dnf-card__description">Where the API lives. Each operation answers this path, or a sub-path of it such as <span class="font-mono">{id}</span>. Write <span class="font-mono">{name}</span> for a value taken from the URL.</p>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="field">
-                    <label class="field-label" for="Path">Path<span class="field-required" aria-hidden="true">*</span></label>
-                    <div class="endpoint-path">
-                        <span class="endpoint-path-prefix text-mono" aria-hidden="true">/api/custom/</span>
-                        <input id="Path" name="Path" value="@input.Path" maxlength="200" class="text-mono" required
+            <div class="dnf-card__body">
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="Path">Path<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                    <div class="dnf-input-group">
+                        <span class="dnf-input-group__prefix font-mono max-sm:hidden" aria-hidden="true">/api/custom/</span>
+                        <input id="Path" name="Path" value="@input.Path" maxlength="200" class="dnf-input dnf-input--mono max-sm:rounded-md" required
                                placeholder="products" aria-describedby="path-hint" data-endpoint-path />
                     </div>
-                    <span class="field-hint" id="path-hint">Lower-case letters, digits, '-', '_' and '.'; up to 10 segments together with an operation's sub-path.</span>
+                    <span class="dnf-field__description" id="path-hint">Lower-case letters, digits, '-', '_' and '.'; up to 10 segments together with an operation's sub-path.</span>
                 </div>
             </div>
         </section>
 
-        <section class="stack" aria-labelledby="operations-title">
-            <div class="spread">
+        <section class="dnf-stack" aria-labelledby="operations-title">
+            <div class="dnf-spread">
                 <div>
-                    <h2 class="card-title" id="operations-title">Operations</h2>
+                    <h2 class="text-md font-semibold" id="operations-title">Operations</h2>
                     <p class="text-sm text-muted">What the API answers: one per method and sub-path, each with its own SQL, parameters and test run.</p>
                 </div>
-                <div class="cluster">
-                    <button type="button" class="btn btn-ghost" data-op-toggle-all hidden><icon name="chevrons-up-down" /> <span data-op-toggle-all-label>Open all</span></button>
-                    <button type="button" class="btn btn-secondary" data-op-add data-js-only hidden><icon name="plus" /> Add operation</button>
+                <div class="dnf-cluster">
+                    <button type="button" class="dnf-button dnf-button--ghost" data-op-toggle-all hidden><dnf-icon name="chevrons-up-down" /> <span data-op-toggle-all-label>Open all</span></button>
+                    <button type="button" class="dnf-button dnf-button--secondary" data-op-add data-js-only hidden><dnf-icon name="plus" /> Add operation</button>
                 </div>
             </div>
-            <div class="stack" data-operations data-js-only hidden></div>
-            <details class="schema-json">
-                <summary>Operations as JSON <span class="text-subtle text-xs">(the cards keep it in sync)</span></summary>
-                <textarea id="OperationsJson" name="OperationsJson" rows="10" class="text-mono" spellcheck="false"
+            @* Holds the place until endpoints.js draws the cards: one opens by itself, several start closed. *@
+            <div class="dnf-stack" data-operations data-js-only hidden>
+                @if (Model.Calls.Count <= 1)
+                {
+                    <div class="dnf-skeleton dnf-endpoint-op__placeholder"></div>
+                }
+                else
+                {
+                    @for (var i = 0; i < Model.Calls.Count; i++)
+                    {
+                        <div class="dnf-skeleton dnf-endpoint-op__placeholder dnf-endpoint-op__placeholder--closed"></div>
+                    }
+                }
+            </div>
+            <details>
+                <summary class="cursor-pointer text-sm text-muted">Operations as JSON <span class="text-subtle text-xs">(the cards keep it in sync)</span></summary>
+                <textarea id="OperationsJson" name="OperationsJson" rows="10" class="dnf-textarea dnf-textarea--code mt-2 text-xs" spellcheck="false"
                           aria-label="Operations as JSON" data-operations-source>@input.OperationsJson</textarea>
             </details>
         </section>
     </div>
 
-    <aside class="editor-aside">
-        <div class="card">
-            <div class="card-header"><h2 class="card-title">Settings</h2></div>
-            <div class="card-body stack">
-                <div class="field">
-                    <label class="field-label" for="Name">Name<span class="field-required" aria-hidden="true">*</span></label>
-                    <input id="Name" name="Name" value="@input.Name" maxlength="100" required placeholder="Products" />
+    <aside class="dnf-split__aside">
+        <div class="dnf-card">
+            <div class="dnf-card__header"><h2 class="dnf-card__title">Settings</h2></div>
+            <div class="dnf-card__body dnf-stack">
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="Name">Name<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                    <input id="Name" name="Name" class="dnf-input" value="@input.Name" maxlength="100" required placeholder="Products" />
                 </div>
-                <div class="field">
-                    <label class="field-label" for="Description">Description<span class="field-optional">optional</span></label>
-                    <textarea id="Description" name="Description" rows="2" maxlength="500">@input.Description</textarea>
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="Description">Description<span class="dnf-field__optional">optional</span></label>
+                    <textarea id="Description" name="Description" class="dnf-textarea" rows="2" maxlength="500">@input.Description</textarea>
                 </div>
                 @if (Model.Databases.Count > 1 || input.Database is not null)
                 {
                     @* Additional databases come from DATABASES_<NAME>_* (.docs/database/configuration.md#more-databases). *@
-                    <div class="field">
-                        <label class="field-label" for="Database">Database</label>
-                        <select id="Database" name="Database" aria-describedby="database-hint">
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" for="Database">Database</label>
+                        <select id="Database" name="Database" class="dnf-select" aria-describedby="database-hint">
                             @foreach (var database in Model.Databases)
                             {
                                 <option value="@database.Name" selected="@(database.Name == input.Database ? "selected" : null)">@database.Label</option>
@@ -96,99 +109,99 @@
                                 <option value="@input.Database" selected>@input.Database (not configured)</option>
                             }
                         </select>
-                        <span class="field-hint" id="database-hint">Where the SQL runs. More databases: <code>DATABASES_&lt;NAME&gt;_*</code> in the configuration.</span>
+                        <span class="dnf-field__description" id="database-hint">Where the SQL runs. More databases: <code>DATABASES_&lt;NAME&gt;_*</code> in the configuration.</span>
                     </div>
                 }
-                <fieldset class="fieldset">
-                    <legend>Who may call it</legend>
-                    <div class="choice-cards">
-                        <label class="choice-card">
-                            <input type="radio" name="Access" value="Token" checked="@(input.Access == EndpointAccess.Token ? "checked" : null)" />
+                <fieldset class="dnf-fieldset">
+                    <legend class="dnf-fieldset__legend">Who may call it</legend>
+                    <div class="dnf-choice-cards">
+                        <label class="dnf-choice-card">
+                            <input type="radio" class="dnf-radio" name="Access" value="Token" checked="@(input.Access == EndpointAccess.Token ? "checked" : null)" />
                             <span>Token</span>
                         </label>
-                        <label class="choice-card">
-                            <input type="radio" name="Access" value="Public" checked="@(input.Access == EndpointAccess.Public ? "checked" : null)" />
+                        <label class="dnf-choice-card">
+                            <input type="radio" class="dnf-radio" name="Access" value="Public" checked="@(input.Access == EndpointAccess.Public ? "checked" : null)" />
                             <span>Anyone</span>
                         </label>
                     </div>
                 </fieldset>
-                <label class="switch-row">
-                    <span class="check-text">
+                <label class="dnf-switch-row">
+                    <span class="dnf-check__text">
                         <span>Enabled</span>
                     </span>
                     @* The checkbox first: a bound bool takes the first posted value. *@
-                    <input type="checkbox" class="switch" role="switch" name="Enabled" value="true" checked="@(input.Enabled ? "checked" : null)" />
+                    <input type="checkbox" class="dnf-switch" role="switch" name="Enabled" value="true" checked="@(input.Enabled ? "checked" : null)" />
                     <input type="hidden" name="Enabled" value="false" />
                 </label>
             </div>
-            <div class="card-footer">
-                <button type="submit" class="btn btn-primary btn-block"><icon name="save" /> Save endpoint</button>
+            <div class="dnf-card__footer">
+                <button type="submit" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="save" /> Save endpoint</button>
             </div>
         </div>
 
         @if (!isNew)
         {
-            <section class="card" aria-labelledby="call-title">
-                <div class="card-header">
+            <section class="dnf-card" aria-labelledby="call-title">
+                <div class="dnf-card__header">
                     <div>
-                        <h2 class="card-title" id="call-title">Call it</h2>
+                        <h2 class="dnf-card__title" id="call-title">Call it</h2>
                         @if (!withToken)
                         {
-                            <p class="card-description">Anyone can call it, no token needed.</p>
+                            <p class="dnf-card__description">Anyone can call it, no token needed.</p>
                         }
                     </div>
                 </div>
-                <div class="card-body stack-sm">
+                <div class="dnf-card__body dnf-stack dnf-stack--sm">
                     @if (withToken)
                     {
-                        <span class="field-label">Token</span>
+                        <span class="text-sm font-semibold">Token</span>
                         @if (Model.Token is null)
                         {
                             <p class="text-sm text-muted">This endpoint has no token yet. Generate one below.</p>
                         }
                         else
                         {
-                            <div class="endpoint-call-row">
-                                <code class="endpoint-call-text" title="@Model.Token">@Model.Token</code>
-                                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-copy-text="@Model.Token" aria-label="Copy the token" data-tooltip="Copy token"><icon name="copy" size="sm" /></button>
+                            <div class="flex min-w-0 items-center gap-2">
+                                <code class="min-w-0 flex-1 truncate text-xs" title="@Model.Token">@Model.Token</code>
+                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-copy-text="@Model.Token" aria-label="Copy the token" data-tooltip="Copy token"><dnf-icon name="copy" size="Sm" /></button>
                             </div>
                         }
                     }
                     @if (Model.Calls.Count > 0)
                     {
-                        <span class="field-label">Operations <span class="field-optional">under /api/custom - copy a ready curl command</span></span>
-                        <ul class="endpoint-calls">
+                        <span class="text-sm font-semibold">Operations <span class="ms-1 font-normal text-subtle">under /api/custom - copy a ready curl command</span></span>
+                        <ul class="flex flex-col gap-1">
                             @foreach (var (operation, template) in Model.Calls)
                             {
                                 var route = $"/api/custom/{template}";
-                                <li class="endpoint-call-row">
-                                    <badge tone="@MethodTone(operation.Method)" class="method-badge">@operation.Method</badge>
-                                    <code class="endpoint-call-text" title="@(string.IsNullOrEmpty(operation.Name) ? route : $"{operation.Name}: {route}")">/@template</code>
-                                    <button type="button" class="btn btn-ghost btn-icon btn-sm" data-copy-text="@Curl(operation.Method, template)"
-                                            aria-label="Copy the curl command for @operation.Method @route" data-tooltip="Copy curl"><icon name="copy" size="sm" /></button>
+                                <li class="flex min-w-0 items-center gap-2">
+                                    <dnf-badge tone="@MethodTone(operation.Method)" class="dnf-badge--mono">@operation.Method</dnf-badge>
+                                    <code class="min-w-0 flex-1 truncate text-xs" title="@(string.IsNullOrEmpty(operation.Name) ? route : $"{operation.Name}: {route}")">/@template</code>
+                                    <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-copy-text="@Curl(operation.Method, template)"
+                                            aria-label="Copy the curl command for @operation.Method @route" data-tooltip="Copy curl"><dnf-icon name="copy" size="Sm" /></button>
                                 </li>
                             }
                         </ul>
                     }
-                    <a class="btn btn-secondary btn-sm btn-block" href="/admin/api-docs"><icon name="book" size="sm" /> Try it in the API docs</a>
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm dnf-button--full-width" href="/admin/api-docs"><dnf-icon name="book" size="Sm" /> Try it in the API docs</a>
                     @if (withToken)
                     {
-                        <button type="submit" form="tokenForm" class="btn btn-ghost btn-sm btn-block"
+                        <button type="submit" form="tokenForm" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--full-width"
                                 data-confirm="Create a new token for '@input.Name'? Apps using the current token get 401 until they switch."
                                 data-confirm-title="Regenerate token" data-confirm-action="Regenerate">
-                            <icon name="rotate-ccw" size="sm" /> @(Model.Token is null ? "Generate token" : "Regenerate token")
+                            <dnf-icon name="rotate-ccw" size="Sm" /> @(Model.Token is null ? "Generate token" : "Regenerate token")
                         </button>
                     }
                 </div>
             </section>
 
-            <section class="card card-danger" aria-labelledby="delete-title">
-                <div class="card-header"><h2 class="card-title" id="delete-title">Delete endpoint</h2></div>
-                <div class="card-body stack-sm">
-                    <button type="submit" form="deleteEndpointForm" class="btn btn-danger-soft btn-block"
+            <section class="dnf-card dnf-card--danger" aria-labelledby="delete-title">
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="delete-title">Delete endpoint</h2></div>
+                <div class="dnf-card__body dnf-stack dnf-stack--sm">
+                    <button type="submit" form="deleteEndpointForm" class="dnf-button dnf-button--danger-soft dnf-button--full-width"
                             data-confirm="Delete '@input.Name' and its operations? Apps calling them get 404. This can't be undone."
                             data-confirm-title="Delete endpoint" data-confirm-action="Delete">
-                        <icon name="trash" /> Delete endpoint
+                        <dnf-icon name="trash" /> Delete endpoint
                     </button>
                 </div>
             </section>
@@ -207,5 +220,5 @@
 }
 
 @section Scripts {
-    <script src="~/js/forge/endpoints.js" asp-append-version="true" defer></script>
+    <script src="~/js/admin/endpoints.js" asp-append-version="true" defer></script>
 }

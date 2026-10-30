@@ -37,7 +37,7 @@ Email Configuration (header action in Development with a local Mailpit: [Open Ma
 ├── card **Test connection** (header button [Test connection])
 │   └── after a run: alert works / failed, the steps (✓/✗, name, detail, ms) and the server's extensions
 ├── card **Send a test** - form: **Email** (Test message | each template) · **Send to**; card-footer [Send test]
-└── card **Email log** - table: When · To · Email (template name or "Test message" + subject) · Result (Sent / Failed + reason) - or <empty-state>
+└── card **Email log** - table: When · To · Email (template name or "Test message" + subject) · Result (Sent / Failed + reason) - or <dnf-empty-state>
 ```
 
 ## Functionality

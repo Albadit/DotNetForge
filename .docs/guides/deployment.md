@@ -72,8 +72,9 @@ Full key reference with validation messages: [configuration](../features/configu
 `docker/Dockerfile` builds a framework-dependent image (`mcr.microsoft.com/dotnet/aspnet:10.0`, non-root
 `$APP_UID`, port 8080, `ASPNETCORE_ENVIRONMENT=Production`). Before `dotnet publish` it builds every
 `extensions/**/*.csproj` in Release (each into its own `bin/`); `dotnet publish` then includes `wwwroot/` and
-`extensions/` (without `obj/`), so the image carries the extensions' views and compiled code. Build from the
-repository root (the build context):
+`extensions/` (without `obj/`), so the image carries the extensions' views and compiled code. It publishes with
+`--use-current-runtime`, so it holds only its own platform's native libraries. Build from the repository root (the
+build context):
 
 ```bash
 docker build -f docker/Dockerfile -t dotnetforge .
@@ -109,7 +110,7 @@ is not affected by the install gate - use it for liveness probes.
 
 Without Docker: build the extensions with code first (`dotnet build -c Release` builds the solution, samples
 included), then `dotnet publish src/DotNetForge.Web/DotNetForge.Web.csproj -c Release -o out`, deploy `out/`
-read-only, set the same environment variables, run `dotnet DotNetForge.Web.dll`.
+read-only (add `-r linux-x64 --self-contained false` for one platform's native libraries instead of every platform's), set the same environment variables, run `dotnet DotNetForge.Web.dll`.
 
 ### Extensions in production
 
@@ -216,6 +217,10 @@ Back up the database and the media bucket together; rows reference object keys.
 - The app's own backups ([Data Management](../pages/data-management.md): manual or scheduled, off by default) are
   exports of the CMS data stored in the media storage under `backups/` - no media files, and restoring them works
   only in Development. They complement the database's own backups; they don't replace them.
+
+## Upgrading to server-side sessions
+
+The first start after `20261030133232_AddUserSessions` signs everyone out once: older cookies name no session.
 
 ## Verification
 

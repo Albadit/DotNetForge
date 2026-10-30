@@ -1,0 +1,195 @@
+/*
+  DotNetForge design tokens (.docs/ui/theming.md). The one source of every colour, size and effect of the Dnf
+  components. Components use these semantic tokens only - never literal values.
+
+  Brand: the logo's charcoal (#14171c) and forge orange (#f76707). Orange is a FILL colour (buttons, indicators) with
+  white on top (--dnf-primary-foreground: 3.0:1 - a deliberate brand choice, below WCAG AA for small text; the
+  accessibility tests allow exactly this pair); orange TEXT uses --dnf-primary-text (5.2:1 light, 8.4:1 dark). All
+  other text tokens meet WCAG 2.2 AA (>= 4.5:1) on --dnf-surface and --dnf-background in both themes.
+
+  Themes: every colour is light-dark(light, dark). The effective theme is the element's color-scheme - the system
+  preference, or data-theme="light|dark" on <html> (dnf-theme.js) or on any subtree.
+
+  Two kinds of tokens:
+  - leaf tokens (the palette and semantic colours): override them anywhere;
+  - derived tokens (hover shades, soft tints): computed from the leaves on :root and on every .dnf-scope element, so a
+    scope that overrides --dnf-primary also gets matching --dnf-primary-hover / -soft. Extension roots are scopes.
+*/
+
+@layer base {
+    :root {
+        color-scheme: light dark;
+
+        /* ---- Palette ---------------------------------------------------------------------------------------- */
+        --dnf-forge-50: #fff4ec;
+        --dnf-forge-100: #ffe3cf;
+        --dnf-forge-200: #ffc49c;
+        --dnf-forge-300: #ff9a4d;
+        --dnf-forge-400: #ff8124;
+        --dnf-forge-500: #f76707;
+        --dnf-forge-600: #e8590c;
+        --dnf-forge-700: #c2410c;
+        --dnf-forge-800: #9a3412;
+
+        --dnf-gray-0: #ffffff;
+        --dnf-gray-50: #f7f8f9;
+        --dnf-gray-100: #eef0f2;
+        --dnf-gray-200: #e1e4e8;
+        --dnf-gray-300: #c9ced5;
+        --dnf-gray-400: #9aa1ab;
+        --dnf-gray-500: #6c727d;
+        --dnf-gray-600: #4d535c;
+        --dnf-gray-700: #363b42;
+        --dnf-gray-800: #23272d;
+        --dnf-gray-850: #1d2127;
+        --dnf-gray-900: #16191e;
+        --dnf-gray-950: #14171c;
+        --dnf-gray-1000: #0d0f12;
+
+        /* ---- Typography ------------------------------------------------------------------------------------- */
+        --dnf-font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Inter",
+            "Helvetica Neue", Arial, sans-serif;
+        --dnf-font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        --dnf-text-xs: 0.75rem;     /* 12px */
+        --dnf-text-sm: 0.8125rem;   /* 13px */
+        --dnf-text-base: 0.875rem;  /* 14px - admin body */
+        --dnf-text-md: 0.9375rem;   /* 15px */
+        --dnf-text-lg: 1rem;        /* 16px */
+        --dnf-text-xl: 1.125rem;    /* 18px */
+        --dnf-text-2xl: 1.375rem;   /* 22px - page titles */
+        --dnf-text-3xl: 1.75rem;    /* 28px */
+        --dnf-text-4xl: 2.25rem;    /* 36px */
+        --dnf-leading-tight: 1.25;
+        --dnf-leading: 1.5;
+        --dnf-weight-regular: 400;
+        --dnf-weight-medium: 500;
+        --dnf-weight-semibold: 600;
+        --dnf-weight-bold: 700;
+
+        /* ---- Space (4px grid), controls, radius --------------------------------------------------------------- */
+        --dnf-space-1: 0.25rem;
+        --dnf-space-2: 0.5rem;
+        --dnf-space-3: 0.75rem;
+        --dnf-space-4: 1rem;
+        --dnf-space-5: 1.25rem;
+        --dnf-space-6: 1.5rem;
+        --dnf-space-8: 2rem;
+        --dnf-space-10: 2.5rem;
+        --dnf-space-12: 3rem;
+        --dnf-space-16: 4rem;
+
+        --dnf-control-sm: 1.875rem;  /* 30px */
+        --dnf-control-md: 2.25rem;   /* 36px */
+        --dnf-control-lg: 2.75rem;   /* 44px - also the minimum touch target */
+
+        --dnf-radius-sm: 4px;
+        --dnf-radius-md: 6px;
+        --dnf-radius-lg: 10px;
+        --dnf-radius-xl: 14px;
+        --dnf-radius-full: 999px;
+
+        /* The logo's diagonal cut, for brand accents (clip-path). */
+        --dnf-forge-cut: polygon(0 0, 100% 0, calc(100% - 0.5rem) 100%, 0 100%);
+
+        /* ---- Layout ----------------------------------------------------------------------------------------- */
+        --dnf-sidebar-width: 16rem;
+        --dnf-topbar-height: 3.5rem;
+        --dnf-content-max: 96rem;
+        --dnf-form-max: 44rem;
+
+        /* ---- Motion ----------------------------------------------------------------------------------------- */
+        --dnf-duration-fast: 100ms;
+        --dnf-duration: 160ms;
+        --dnf-ease: cubic-bezier(0.2, 0, 0, 1);
+
+        /* ---- Stacking --------------------------------------------------------------------------------------- */
+        --dnf-z-sticky: 10;
+        --dnf-z-drawer: 40;
+        --dnf-z-dialog: 50;
+        --dnf-z-toast: 60;
+        --dnf-z-tooltip: 70;
+
+        /* ---- Semantic colours (light, dark) -------------------------------------------------------------------- */
+        --dnf-background: light-dark(var(--dnf-gray-50), var(--dnf-gray-1000));
+        --dnf-foreground: light-dark(var(--dnf-gray-950), var(--dnf-gray-100));
+        --dnf-muted-foreground: light-dark(var(--dnf-gray-600), #a6adb8);
+        --dnf-subtle-foreground: light-dark(var(--dnf-gray-500), #8a919c);
+        --dnf-inverse-foreground: light-dark(var(--dnf-gray-0), var(--dnf-gray-950));
+
+        --dnf-surface: light-dark(var(--dnf-gray-0), var(--dnf-gray-900));
+        --dnf-surface-foreground: var(--dnf-foreground);
+        --dnf-surface-raised: light-dark(var(--dnf-gray-0), var(--dnf-gray-850));
+        --dnf-surface-muted: light-dark(var(--dnf-gray-100), var(--dnf-gray-850));
+        --dnf-surface-hover: light-dark(var(--dnf-gray-100), var(--dnf-gray-800));
+
+        --dnf-border: light-dark(var(--dnf-gray-200), #2a2f37);
+        --dnf-border-strong: light-dark(var(--dnf-gray-300), #3a4049);
+
+        --dnf-primary: var(--dnf-forge-500);
+        --dnf-primary-foreground: var(--dnf-gray-0);
+        --dnf-primary-text: light-dark(var(--dnf-forge-700), var(--dnf-forge-300));
+
+        --dnf-secondary: var(--dnf-surface);
+        --dnf-secondary-foreground: var(--dnf-foreground);
+
+        --dnf-success: light-dark(#15703f, #4cc38a);
+        --dnf-warning: light-dark(#9a5200, #f5b041);
+        --dnf-danger: light-dark(#c92a2a, #ff6b6b);
+        --dnf-danger-foreground: light-dark(var(--dnf-gray-0), var(--dnf-gray-950));
+        --dnf-info: light-dark(#1c64c8, #74a7ff);
+
+        --dnf-focus: var(--dnf-primary);
+
+        /* Navigation (sidebar) and brand chrome (dashboard band, sign-in panel): white in light, charcoal in dark. */
+        --dnf-nav-background: light-dark(var(--dnf-gray-0), #0a0c0f);
+        --dnf-nav-surface: light-dark(var(--dnf-gray-100), #171a1f);
+        --dnf-nav-hover: light-dark(var(--dnf-gray-50), #1d2127);
+        --dnf-nav-border: light-dark(var(--dnf-gray-200), #22262c);
+        --dnf-nav-foreground: light-dark(var(--dnf-gray-700), #c3c8d0);
+        --dnf-nav-muted-foreground: light-dark(var(--dnf-gray-500), #8e959f);
+        --dnf-nav-strong-foreground: light-dark(var(--dnf-gray-950), var(--dnf-gray-0));
+        --dnf-brand-background: light-dark(var(--dnf-gray-0), #0a0c0f);
+        --dnf-brand-surface: light-dark(var(--dnf-gray-100), #171a1f);
+        --dnf-brand-hover: light-dark(var(--dnf-gray-200), #1d2127);
+        --dnf-brand-border: light-dark(var(--dnf-gray-200), #22262c);
+        --dnf-brand-foreground: light-dark(var(--dnf-gray-600), #c3c8d0);
+        --dnf-brand-strong-foreground: light-dark(var(--dnf-gray-950), var(--dnf-gray-0));
+
+        /* Code blocks and tooltips contrast with the page in either theme. */
+        --dnf-code-background: light-dark(var(--dnf-gray-100), #0a0c0f);
+        --dnf-code-foreground: light-dark(var(--dnf-gray-950), var(--dnf-forge-100));
+        --dnf-tooltip-background: light-dark(var(--dnf-gray-950), var(--dnf-gray-100));
+        --dnf-tooltip-foreground: light-dark(var(--dnf-gray-0), var(--dnf-gray-950));
+
+        --dnf-shadow-xs: 0 1px 2px light-dark(rgb(20 23 28 / 0.06), rgb(0 0 0 / 0.4));
+        --dnf-shadow-sm: 0 1px 3px light-dark(rgb(20 23 28 / 0.08), rgb(0 0 0 / 0.45)), 0 1px 2px light-dark(rgb(20 23 28 / 0.04), rgb(0 0 0 / 0.2));
+        --dnf-shadow-md: 0 6px 16px -4px light-dark(rgb(20 23 28 / 0.12), rgb(0 0 0 / 0.6)), 0 2px 4px light-dark(rgb(20 23 28 / 0.05), rgb(0 0 0 / 0.3));
+        --dnf-shadow-lg: 0 20px 40px -12px light-dark(rgb(20 23 28 / 0.28), rgb(0 0 0 / 0.7));
+        --dnf-backdrop: light-dark(rgb(13 15 18 / 0.55), rgb(0 0 0 / 0.65));
+        --dnf-selection: var(--dnf-forge-200);
+    }
+
+    /* Derived tokens: recomputed wherever the leaves can be overridden (see the header). */
+    :root, .dnf-scope {
+        --dnf-primary-hover: color-mix(in oklab, var(--dnf-primary), black 8%);
+        --dnf-primary-soft: light-dark(color-mix(in srgb, var(--dnf-primary) 7%, white), color-mix(in srgb, var(--dnf-primary) 14%, transparent));
+        --dnf-primary-soft-border: light-dark(color-mix(in srgb, var(--dnf-primary) 38%, white), color-mix(in srgb, var(--dnf-primary) 40%, transparent));
+        --dnf-success-soft: light-dark(color-mix(in srgb, var(--dnf-success) 10%, white), color-mix(in srgb, var(--dnf-success) 14%, transparent));
+        --dnf-warning-soft: light-dark(color-mix(in srgb, var(--dnf-warning) 10%, white), color-mix(in srgb, var(--dnf-warning) 14%, transparent));
+        --dnf-danger-soft: light-dark(color-mix(in srgb, var(--dnf-danger) 9%, white), color-mix(in srgb, var(--dnf-danger) 14%, transparent));
+        --dnf-danger-hover: light-dark(color-mix(in oklab, var(--dnf-danger), black 12%), color-mix(in oklab, var(--dnf-danger), white 12%));
+        --dnf-info-soft: light-dark(color-mix(in srgb, var(--dnf-info) 10%, white), color-mix(in srgb, var(--dnf-info) 14%, transparent));
+        --dnf-focus-ring: 0 0 0 2px var(--dnf-surface), 0 0 0 4px var(--dnf-focus);
+    }
+
+    /* An explicit theme on <html> or any subtree. */
+    [data-theme="light"] { color-scheme: light; }
+    [data-theme="dark"] { color-scheme: dark; }
+
+    @media (prefers-reduced-motion: reduce) {
+        :root {
+            --dnf-duration-fast: 0ms;
+            --dnf-duration: 0ms;
+        }
+    }
+}

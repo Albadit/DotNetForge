@@ -22,7 +22,8 @@ Entry point: `.docs/README.md`. The layout is fixed - put new material where it 
 
 | Folder / file | Holds | One document per |
 | --- | --- | --- |
-| `.docs/architecture/` | `codebase.md`, `data-flow.md`, `pages.md` (route map), `design-system.md` (UI), `database.md`, `dependencies.md` | architectural view |
+| `.docs/architecture/` | `codebase.md`, `data-flow.md`, `pages.md` (route map), `design-system.md` (how the CMS uses the UI library: brand, layouts, feedback), `database.md`, `dependencies.md` | architectural view |
+| `.docs/ui/` | the DotNetForge UI component library (`src/DotNetForge.UI`): `README.md` (API, states, catalogue), `styling.md`, `theming.md`, `behaviours.md`, `extensions.md`, `migration.md`, `components/<name>.md` | component (one page per component) |
 | `.docs/features/` | cross-screen concepts (installation, authentication, authorization, content pages and routing, headless API, extensions, audit logging, ...) - the **authoritative** place for rules | concept |
 | `.docs/pages/` | one file per screen (UI view), in the fixed section template of [screen-template.md](reference/screen-template.md) | screen |
 | `.docs/guides/` | how-tos: development, testing, extension development | task |
@@ -45,7 +46,8 @@ When code changes, update in the same change:
 | Extension host, a slot, the SDK (`src/DotNetForge.Sdk`), manifest rules, a sample extension | `features/extensions.md` (the slot's owning feature doc too: themes, media storage, authentication, audit logging), `guides/extension-development.md`, `extensions/README.md` for samples |
 | New API endpoint or permission key | `features/headless-api.md` endpoint table, `features/authorization.md` key list |
 | `[Authorize]` / policy change | `features/authorization.md` matrix, `architecture/pages.md` route map auth column |
-| UI component, token, layout, icon, tag helper, `ui.js` behaviour | `architecture/design-system.md` (screen docs only if what the user sees changes) |
+| Component, token, utility setup, icon, `<dnf-*>` tag helper, `dnf.js` behaviour (`src/DotNetForge.UI`) | its page in the in-app UI docs (`src/DotNetForge.Web/Areas/Admin/Views/UiDocs/Components/<Name>.cshtml`, listed in `UiDocsCatalog`; the API table comes from the tag helper's XML doc comments) and `ui/README.md` (catalogue, tag helper and state tables); `ui/styling.md` (layers, Tailwind build), `ui/theming.md` (tokens), `ui/behaviours.md` (`dnf.js`), `ui/extensions.md` (anything extensions rely on) |
+| CMS layout, screen CSS (`src/DotNetForge.Web/wwwroot/css/`), feedback partials | `architecture/design-system.md` (screen docs only if what the user sees changes) |
 | Sidebar entry (`AdminNavigation.Tree`) or navigation behaviour | navigation section of `architecture/pages.md`, the screen's Route / Navigation table |
 | Entity, index, migration, seed | `architecture/database.md` |
 | DI registration, project reference, package | `architecture/dependencies.md` |

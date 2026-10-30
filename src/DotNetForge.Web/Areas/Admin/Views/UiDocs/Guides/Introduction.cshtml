@@ -1,0 +1,70 @@
+@* Introduction (UI docs): what the library is and how its parts fit together. *@
+
+<p>DotNetForge UI is the component library of the CMS: every admin screen, the sign-in pages and the bundled extensions
+    are built from it, and your extensions can be too. It is server-rendered - Razor tag helpers and plain HTML classes,
+    styled by one stylesheet and enhanced by one small script - with no build step in your project and no inline script
+    or style, so it works under the CMS's strict Content Security Policy.</p>
+
+<ui-doc-example id="quick-look" layout="stack">
+    <div class="dnf-card">
+        <div class="dnf-card__header">
+            <div>
+                <h3 class="dnf-card__title">Newsletter</h3>
+                <p class="dnf-card__description">Sent every Monday at 9:00.</p>
+            </div>
+            <dnf-badge tone="Success" dot="true">Active</dnf-badge>
+        </div>
+        <div class="dnf-card__body dnf-form">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="intro-subject">Subject</label>
+                <input class="dnf-input" id="intro-subject" value="This week at DotNetForge" />
+            </div>
+            <label class="dnf-switch-row"><span class="dnf-check__text">Send a copy to me</span><input type="checkbox" role="switch" class="dnf-switch" checked /></label>
+        </div>
+        <div class="dnf-card__footer">
+            <dnf-button>Preview</dnf-button>
+            <dnf-button variant="Primary" icon="send">Send now</dnf-button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="parts">The parts</h2>
+<table>
+    <thead><tr><th>Part</th><th>What it is</th><th>Where</th></tr></thead>
+    <tbody>
+        <tr><td>Components</td><td>BEM classes with the <code>dnf-</code> prefix: block <code>dnf-card</code>, element <code>dnf-card__title</code>, modifier <code>dnf-card--danger</code></td><td><code>src/DotNetForge.UI/Styles/components/</code></td></tr>
+        <tr><td>Tokens</td><td>CSS custom properties <code>--dnf-*</code> for every colour, size and effect, in light and dark</td><td><code>Styles/tokens.css</code></td></tr>
+        <tr><td>Utilities</td><td>Tailwind CSS v4 for layout and small adjustments (<code>flex</code>, <code>gap-2</code>, <code>text-muted</code>), mapped to the tokens</td><td><code>Styles/theme.css</code></td></tr>
+        <tr><td>Tag helpers</td><td><code>&lt;dnf-button&gt;</code>, <code>&lt;dnf-badge&gt;</code>, <code>&lt;dnf-dropdown&gt;</code> … - shortcuts that render the same classes</td><td><code>src/DotNetForge.UI/Components/</code></td></tr>
+        <tr><td>Behaviours</td><td><code>dnf.js</code>: menus, dialogs, tabs, collections, toasts - wired by <code>data-*</code> attributes</td><td><code>wwwroot/dnf.js</code></td></tr>
+        <tr><td>Icons</td><td>A sprite of stroke icons that follow the text colour</td><td><code>wwwroot/icons.svg</code></td></tr>
+    </tbody>
+</table>
+<p>One stylesheet, <code>/_content/DotNetForge.UI/dnf.css</code>, holds the tokens, the base styles, every component and
+    the utilities; it is built by the Tailwind standalone CLI when the solution builds.</p>
+
+<h2 id="principles">Principles</h2>
+<ul>
+    <li><strong>Classes are the API.</strong> A tag helper is a shortcut, never the only way: <code>&lt;button class="dnf-button dnf-button--primary"&gt;</code> is a complete button.</li>
+    <li><strong>State is an attribute.</strong> <code>data-selected</code>, <code>data-pending</code>, <code>aria-expanded</code>, <code>aria-pressed</code> - never <code>is-*</code> classes.</li>
+    <li><strong>Customize in three levels</strong> - properties, Tailwind utilities, your own CSS and tokens - without <code>!important</code> (<a href="@UiDocsCatalog.Root/customization">Customization</a>).</li>
+    <li><strong>Light and dark everywhere.</strong> Every token has both; any part of a page can force one (<a href="@UiDocsCatalog.Root/theming">Theming</a>).</li>
+    <li><strong>Progressive enhancement.</strong> Every screen works without JavaScript; <code>dnf.js</code> adds convenience (<a href="@UiDocsCatalog.Root/behaviours">Behaviours</a>).</li>
+    <li><strong>Accessible by default.</strong> Native elements, labels, roles and keyboard support; text contrast meets WCAG 2.2 AA in both themes.</li>
+</ul>
+
+<h2 id="next">Next steps</h2>
+<div class="dnf-docs-cards">
+    <a class="dnf-card dnf-card--interactive dnf-docs-cards__card" href="@UiDocsCatalog.Root/installation">
+        <span class="dnf-docs-cards__title">Using the library</span>
+        <span class="dnf-docs-cards__description">The view imports and assets for a screen or an extension.</span>
+    </a>
+    <a class="dnf-card dnf-card--interactive dnf-docs-cards__card" href="@UiDocsCatalog.Root/components">
+        <span class="dnf-docs-cards__title">Components</span>
+        <span class="dnf-docs-cards__description">Every component with live examples and its API.</span>
+    </a>
+    <a class="dnf-card dnf-card--interactive dnf-docs-cards__card" href="@UiDocsCatalog.Root/customization">
+        <span class="dnf-docs-cards__title">Customization</span>
+        <span class="dnf-docs-cards__description">Make a component yours without fighting its CSS.</span>
+    </a>
+</div>

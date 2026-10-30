@@ -1,0 +1,207 @@
+@* Radio (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+@* The MVC tag helpers are off on this page: the asp-for snippet is shown as text, not compiled against the docs
+   page's own model. *@
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/choice.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A radio is the browser's own <code>&lt;input type="radio"&gt;</code> with <code>dnf-radio</code>, in the primary colour,
+    inside a <code>&lt;label class="dnf-check"&gt;</code> like a <a href="@UiDocsCatalog.Root/components/checkbox">checkbox</a>.
+    Radios with one <code>name</code> form a group; give it a <a href="@UiDocsCatalog.Root/components/fieldset">fieldset</a>
+    legend.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <fieldset class="dnf-fieldset">
+        <legend class="dnf-fieldset__legend">Visibility</legend>
+        <div class="dnf-stack dnf-stack--sm">
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-visibility" value="Public" checked />
+                <span class="dnf-check__text">Public</span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-visibility" value="Private" />
+                <span class="dnf-check__text">Private</span>
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="descriptions" title="With descriptions" description="dnf-check__description explains each option in a muted line." layout="block">
+    <fieldset class="dnf-fieldset">
+        <legend class="dnf-fieldset__legend">Who can sign up</legend>
+        <div class="dnf-stack dnf-stack--sm">
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-signup" value="Anyone" />
+                <span class="dnf-check__text">Anyone<span class="dnf-check__description">Visitors create an account themselves.</span></span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-signup" value="Invited" checked />
+                <span class="dnf-check__text">Invited people<span class="dnf-check__description">An administrator sends an invitation.</span></span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-signup" value="Nobody" />
+                <span class="dnf-check__text">Nobody<span class="dnf-check__description">Only administrators add users.</span></span>
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="list" title="In a check list" description="dnf-check-list draws the options as ruled rows." layout="block">
+    <fieldset class="dnf-fieldset max-w-md">
+        <legend class="dnf-fieldset__legend">Image format</legend>
+        <div class="dnf-check-list">
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-format" value="original" checked />
+                <span class="dnf-check__text">Keep the original</span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-format" value="webp" />
+                <span class="dnf-check__text">Convert to WebP</span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-format" value="avif" disabled />
+                <span class="dnf-check__text">Convert to AVIF<span class="dnf-check__description">Not supported by the image library.</span></span>
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="inline" title="In a row" description="A cluster lays short options out side by side." layout="block">
+    <fieldset class="dnf-fieldset">
+        <legend class="dnf-fieldset__legend">Theme</legend>
+        <div class="dnf-cluster">
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-theme" value="light" />
+                <span class="dnf-check__text">Light</span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-theme" value="dark" />
+                <span class="dnf-check__text">Dark</span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-theme" value="system" checked />
+                <span class="dnf-check__text">System</span>
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="invalid" title="Invalid" description="aria-invalid on the radios draws a danger border; link the error from the group." layout="block">
+    <fieldset class="dnf-fieldset" aria-describedby="radio-plan-error">
+        <legend class="dnf-fieldset__legend">Plan</legend>
+        <div class="dnf-stack dnf-stack--sm">
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-plan" value="monthly" required aria-invalid="true" />
+                <span class="dnf-check__text">Monthly</span>
+            </label>
+            <label class="dnf-check">
+                <input type="radio" class="dnf-radio" name="radio-plan" value="yearly" required aria-invalid="true" />
+                <span class="dnf-check__text">Yearly</span>
+            </label>
+        </div>
+        <span class="dnf-field__error" id="radio-plan-error">Choose a plan.</span>
+    </fieldset>
+</ui-doc-example>
+
+<h3 id="asp-for">With asp-for</h3>
+<p>Every radio of the group takes the same <code>asp-for</code> and its own <code>value</code>; ASP.NET checks the one that
+    matches the model.</p>
+
+<ui-doc-code id="asp-for-code" lang="razor">
+<fieldset class="dnf-fieldset">
+    <legend class="dnf-fieldset__legend">Visibility</legend>
+    <div class="dnf-stack dnf-stack--sm">
+        <label class="dnf-check">
+            <input type="radio" class="dnf-radio" asp-for="Visibility" value="Public" />
+            <span class="dnf-check__text">Public<span class="dnf-check__description">Anyone with the link.</span></span>
+        </label>
+        <label class="dnf-check">
+            <input type="radio" class="dnf-radio" asp-for="Visibility" value="Private" />
+            <span class="dnf-check__text">Private</span>
+        </label>
+    </div>
+</fieldset>
+</ui-doc-code>
+<p>Every radio of the group then gets the same <code>id</code> from <code>asp-for</code>. That is harmless while each radio
+    sits inside its label, but set an <code>id</code> per radio if anything refers to one.</p>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. A radio has
+    no modifiers; the one component token is <code>--dnf-check-color</code>, the fill when checked. To draw options as cards use
+    <a href="@UiDocsCatalog.Root/components/choice-card">choice cards</a>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Spacing utilities on the wrapper - a wider gap between options." layout="block">
+    <div class="dnf-cluster gap-8" role="radiogroup" aria-label="Sort order">
+        <label class="dnf-check">
+            <input type="radio" class="dnf-radio" name="radio-sort" value="asc" checked />
+            <span class="dnf-check__text">Ascending</span>
+        </label>
+        <label class="dnf-check">
+            <input type="radio" class="dnf-radio" name="radio-sort" value="desc" />
+            <span class="dnf-check__text">Descending</span>
+        </label>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS in a scope beats the component style - another accent colour." layout="block">
+    <div class="dnf-docs-demo-accent dnf-cluster" role="radiogroup" aria-label="Delivery status">
+        <label class="dnf-check">
+            <input type="radio" class="dnf-radio" name="radio-accent" value="ok" checked />
+            <span class="dnf-check__text">Succeeded</span>
+        </label>
+        <label class="dnf-check">
+            <input type="radio" class="dnf-radio" name="radio-accent" value="all" />
+            <span class="dnf-check__text">All</span>
+        </label>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-accent :is(.dnf-checkbox, .dnf-radio) { --dnf-check-color: var(--dnf-success); }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-radio</code></td><td>block</td><td>a 1rem circle (1.5rem on touch screens) drawn on the native radio: <code>--dnf-border-strong</code> border, <code>--dnf-surface</code> fill</td></tr>
+        <tr><td><code>dnf-check</code>, <code>dnf-check__text</code>, <code>dnf-check__description</code>, <code>dnf-check-list</code></td><td>block / element</td><td>the label row, its text, its description and a ruled list - as on the <a href="@UiDocsCatalog.Root/components/checkbox#classes">checkbox</a> page</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>:hover</code></td><td><code>--dnf-subtle-foreground</code> border</td></tr>
+        <tr><td>checked</td><td><code>:checked</code></td><td><code>--dnf-check-color</code> fill with a dot in <code>--dnf-primary-foreground</code></td></tr>
+        <tr><td>keyboard focus</td><td><code>:focus-visible</code></td><td>the focus ring</td></tr>
+        <tr><td>invalid</td><td><code>[aria-invalid="true"]</code></td><td><code>--dnf-danger</code> border</td></tr>
+        <tr><td>disabled</td><td><code>:disabled</code>; <code>.dnf-check:has(&gt; :disabled)</code></td><td>55% opacity, no shadow; the label gets the default cursor, and 75% opacity in a check list</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper and no behaviour: the classes above are the API, on native radios grouped by their
+    <code>name</code>.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Radios with one <code>name</code> form a group that Tab enters once and the arrow keys move through.</li>
+    <li>Name the group with a fieldset legend, or <code>role="radiogroup"</code> and <code>aria-label</code> on a wrapper.</li>
+    <li>Wrapping each radio in its label names it and makes the whole row clickable.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use radios for one choice out of 2 to 6 visible options; a <a href="@UiDocsCatalog.Root/components/select">select</a> for longer lists.</li>
+    <li>Do check a sensible default when there is one.</li>
+    <li>Don't use a single radio - use a <a href="@UiDocsCatalog.Root/components/checkbox">checkbox</a>.</li>
+</ul>

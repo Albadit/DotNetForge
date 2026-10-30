@@ -7,7 +7,7 @@ namespace DotNetForge.Data;
 
 /// <summary>
 /// <see cref="IRoleGrantStore"/> over the <c>Roles</c> and <c>RolePermissions</c> tables (two single-table queries, so
-/// it runs on every provider). Grants are needed on almost every admin request and are read synchronously by
+/// it stays cheap). Grants are needed on almost every admin request and are read synchronously by
 /// <c>PermissionService</c>, so the set is cached: dropped at once by <see cref="Invalidate"/> after a change on this
 /// instance, and re-read at most <see cref="Lifetime"/> after a change made by another instance.
 /// </summary>

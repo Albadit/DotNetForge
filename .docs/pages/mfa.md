@@ -13,7 +13,7 @@ many accounts use each method. Used by roles with `Settings` / `read` (by defaul
 | --- | --- |
 | Route | `GET /admin/mfa`, `POST /admin/mfa` |
 | Title (h1, last breadcrumb) | "Two-factor authentication" (description "A second step after the password: which methods people can set up on Profile → Sign-in security, and who must use one.") |
-| Navigation entry | sidebar **Settings → Users & Permissions Plugin → Two-factor (MFA)** (icon `shield`), between Providers and Advanced Settings |
+| Navigation entry | sidebar **Settings → Authentication → Two-factor (MFA)** (icon `shield`), between Providers and Advanced Settings |
 | Parent / children | none |
 
 ## Relevant source files
@@ -31,7 +31,7 @@ tests/DotNetForge.IntegrationTests/SignInSecurityTests.cs             requiremen
 ```text
 Two-factor authentication (admin layout, medium width)
 └── form (POST /admin/mfa, antiforgery) - fieldset disabled without Settings update
-    ├── <form-errors />
+    ├── <dnf-validation-summary />
     ├── card **Methods** ("N accounts use two-factor authentication. Turning a method off stops it at sign-in; what people set up is kept.")
     │   ├── switch **Authenticator app** [Recommended] - TOTP apps, QR code, offline · "N accounts."
     │   ├── switch **Passkeys and security keys** [Recommended] - WebAuthn, phishing-resistant, only at APP_URL · "N accounts."
@@ -95,7 +95,7 @@ All server side (`Settings`). The "required?" value is cached 30 s per instance.
 
 | Failure | User sees | Recovery |
 | --- | --- | --- |
-| A rule above | `<form-errors />`, nothing saved | fix and save |
+| A rule above | `<dnf-validation-summary />`, nothing saved | fix and save |
 | SMTP or Twilio removed after the method was turned on | **Needs email** / **Needs Twilio**; the method counts as off at sign-in (users with only that method sign in with the password alone) | configure the service again and restart |
 
 ## Loading behaviour
@@ -125,7 +125,7 @@ MfaSettingsController
 flowchart LR
     A["GET /admin/mfa"] -- Save settings --> B{"SaveAsync valid?"}
     B -- yes --> C["mfa.* rows + settings.changed → toast"] --> A
-    B -- no --> D["form-errors, nothing saved"] --> A
+    B -- no --> D["dnf-validation-summary, nothing saved"] --> A
 ```
 
 ## Related pages

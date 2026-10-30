@@ -19,6 +19,10 @@ public interface IPageService
     Task<string?> ReorderAsync(
         IReadOnlyList<PagePosition> positions, CancellationToken cancellationToken = default);
 
+    /// <summary>Puts a page under <paramref name="parentPageId"/> (null = Root), last among its new siblings.</summary>
+    /// <returns>A user-facing error message, or <c>null</c> when the page was moved.</returns>
+    Task<string?> MoveAsync(Guid pageId, Guid? parentPageId, CancellationToken cancellationToken = default);
+
     /// <summary>Re-parents the page's children to its parent and removes the page, when that keeps the tree valid.</summary>
     /// <returns>A user-facing error message, or <c>null</c> when the page was removed.</returns>
     Task<string?> DeleteAsync(Page page, CancellationToken cancellationToken = default);

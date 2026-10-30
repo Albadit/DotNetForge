@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
-using MySql.EntityFrameworkCore.Extensions;
 
 namespace DotNetForge.Data.Database.Providers.MySql;
 
@@ -98,11 +97,6 @@ public sealed class MySqlDatabaseProvider : IDatabaseProvider
         var database = Find("Database", "Initial Catalog", "Db");
         return $"{DisplayName} {server}{(port is null ? "" : ":" + port)}{(database is null ? "" : "/" + database)}".TrimEnd();
     }
-
-    /// <summary>The keys present in a connection string (case-insensitive); empty for null or unparsable strings.</summary>
-    private static ISet<string> Keys(string? connectionString) =>
-        TryParse(connectionString)?.Keys.Cast<string>().ToHashSet(StringComparer.OrdinalIgnoreCase)
-            ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     private static DbConnectionStringBuilder? TryParse(string? connectionString)
     {

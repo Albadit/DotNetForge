@@ -59,7 +59,7 @@ Seen on a healthy start; none needs action unless noted.
 | Extensions | failing extension code at startup → "not running", never a crash; endpoints of inactive extensions → `404`; a throwing widget/module view → a notice in its place; audit handler failures → logged only ([extensions](extensions.md)) |
 | API | `[ApiController]` automatic 400 ProblemDetails; explicit `BadRequest(new { error })`; 401/403 from auth (403 body `{ error }`) |
 | Background | `ScheduledPublishingService` catches everything per tick and logs a warning; `WebhookDispatcher` logs an error and tries again after 15 s; receiver failures of webhooks are delivery-log rows, not exceptions |
-| Client | `wwwroot/js/forge/pages.js` shows the server's `{ error }` message (or "Could not save the new order.") in a danger toast when a reorder fails, then reloads; `ui.js` shows toasts for copy failures |
+| Client | `wwwroot/js/admin/pages.js` shows the server's `{ error }` message (or "Could not save the new order.") in a danger toast when a reorder fails, then reloads; `dnf.js` shows toasts for copy failures |
 
 ### Storage failures
 

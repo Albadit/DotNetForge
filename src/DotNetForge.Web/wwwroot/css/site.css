@@ -1,0 +1,60 @@
+/*
+  The built-in public site (.docs/architecture/design-system.md#public-fallback), shown while no theme extension is
+  enabled: the site root, content pages and the error page (.docs/pages/public-home.md, public-page.md, error.md).
+  Built on the Dnf components (/_content/DotNetForge.UI/dnf.css); this file only adds the site frame.
+  Anatomy: body.dnf-site > header.dnf-site__header + main.dnf-site__main (or --full) + footer.dnf-site__footer
+*/
+
+@layer components {
+    .dnf-site { display: flex; flex-direction: column; background: var(--dnf-surface); font-size: var(--dnf-text-md); }
+    .dnf-site__wrap { width: 100%; max-width: 52rem; margin: 0 auto; padding: 0 var(--dnf-space-6); }
+
+    /* ---- Header ---------------------------------------------------------------------------------------------- */
+    .dnf-site__header { border-bottom: 1px solid var(--dnf-border); }
+    .dnf-site__header > .dnf-site__wrap { display: flex; align-items: center; justify-content: space-between; gap: var(--dnf-space-4); min-height: 4rem; }
+    .dnf-site__brand {
+        display: inline-flex; align-items: center; gap: var(--dnf-space-2);
+        color: var(--dnf-foreground);
+        font-size: var(--dnf-text-lg);
+        font-weight: var(--dnf-weight-bold);
+    }
+    .dnf-site__brand:hover { text-decoration: none; }
+    .dnf-site__brand img { width: 1.75rem; height: 1.75rem; }
+    .dnf-site__nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-1) var(--dnf-space-4); margin-left: auto; }
+    .dnf-site__nav > a { color: var(--dnf-muted-foreground); font-size: var(--dnf-text-sm); }
+    .dnf-site__nav > a:is(:hover, [aria-current="page"]) { color: var(--dnf-foreground); text-decoration: none; }
+    .dnf-site__nav > a[aria-current="page"] { font-weight: var(--dnf-weight-semibold); }
+
+    /* ---- Main ------------------------------------------------------------------------------------------------ */
+    .dnf-site__main { display: flex; flex: 1 0 auto; flex-direction: column; gap: var(--dnf-space-10); padding-top: var(--dnf-space-12); padding-bottom: var(--dnf-space-16); }
+    .dnf-site__main:focus { outline: none; }
+    /* A page builder layout: full width, its sections set their own content width (.docs/features/page-builder.md). */
+    .dnf-site__main--full { display: block; padding-top: 0; padding-bottom: 0; }
+    .dnf-site__preview-bar {
+        padding: var(--dnf-space-2) var(--dnf-space-4);
+        border-bottom: 1px solid var(--dnf-border);
+        background: var(--dnf-warning-soft);
+        color: var(--dnf-foreground);
+        font-size: var(--dnf-text-sm);
+        text-align: center;
+    }
+    .dnf-site__hero { display: flex; flex-direction: column; gap: var(--dnf-space-3); }
+    .dnf-site__title { font-size: var(--dnf-text-4xl); letter-spacing: -0.02em; }
+    .dnf-site__lead { margin: 0; color: var(--dnf-muted-foreground); font-size: var(--dnf-text-xl); }
+    .dnf-site__page-list { margin: 0; padding: 0; list-style: none; }
+    .dnf-site__page-list > li {
+        display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-4) var(--dnf-space-5);
+        border-bottom: 1px solid var(--dnf-border);
+    }
+    .dnf-site__page-list > li:last-child { border-bottom: 0; }
+    .dnf-site__page-list a { display: inline-flex; align-items: center; gap: var(--dnf-space-2); font-weight: var(--dnf-weight-semibold); }
+    .dnf-site__article { display: flex; flex-direction: column; gap: var(--dnf-space-8); }
+
+    /* ---- Footer ---------------------------------------------------------------------------------------------- */
+    .dnf-site__footer { border-top: 1px solid var(--dnf-border); color: var(--dnf-subtle-foreground); font-size: var(--dnf-text-sm); }
+    .dnf-site__footer > .dnf-site__wrap { padding-top: var(--dnf-space-6); padding-bottom: var(--dnf-space-6); }
+
+    /* A module that failed to render (ExtensionViewRenderer); public themes style the same class. */
+    .dnf-ext-error { color: var(--dnf-muted-foreground); font-style: italic; }
+}

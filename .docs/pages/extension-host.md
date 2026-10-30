@@ -31,11 +31,11 @@ The public counterpart for themes and modules, `GET /ext/{id}/resources/{**path}
 
 ```text
 src/DotNetForge.Web/Areas/Admin/Controllers/ExtensionsController.cs                         Host
-src/DotNetForge.Web/Areas/Admin/Views/Extensions/Host.cshtml                                card + loading skeleton + iframe[data-frame] (.ext-frame)
+src/DotNetForge.Web/Areas/Admin/Views/Extensions/Host.cshtml                                card + loading skeleton + iframe[data-frame] (.dnf-ext-frame__frame)
 src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs                               AdminNavigationService: appends the Extensions section (sidebar + breadcrumbs)
 src/DotNetForge.Web/Areas/Admin/Views/Shared/_Sidebar.cshtml, _NavLink.cshtml               render the sections and links
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                                                  iframe[data-frame]: hides the skeleton once the frame has loaded
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                                             .ext-frame-card, .ext-frame, .ext-frame-loading
+src/DotNetForge.UI/wwwroot/dnf.js                                                           iframe[data-frame]: data-loaded on [data-frame-host] once the frame has loaded
+src/DotNetForge.Web/wwwroot/css/admin/shell.css                                             .dnf-ext-frame, __frame, __loading
 src/DotNetForge.Web/Controllers/ExtensionViewController.cs                                  Render, Resource (+ ExtensionResources.Serve, the public ExtensionResourcesController)
 src/DotNetForge.Web/Services/ExtensionViewRenderer.cs                                       AddExtensionViewData (Extension, Settings, ResourceBase), ToViewPath
 src/DotNetForge.Web/Startup/DependencyRegistration.cs                                       AddRazorRuntimeCompilation + PhysicalFileProvider(ExtensionViewRoot); AddExtensionHost
@@ -51,14 +51,14 @@ extensions/admin/audit-dashboard/**                                     the samp
 
 ```text
 <Extension name> (_AdminLayout, h1 = manifest name, breadcrumbs Extensions › <name>)
-└── div.card.ext-frame-card
-    ├── .ext-frame-loading skeleton (title + 3 lines; JS only, hidden once the frame has loaded)
-    └── iframe.ext-frame src=/admin/ext/{id}/raw  title=<name>  data-frame   (viewport height minus header, min 28rem)
+└── div.dnf-card.dnf-ext-frame[data-frame-host]
+    ├── .dnf-ext-frame__loading skeleton (title + 3 lines; JS only, hidden once the frame has loaded)
+    └── iframe.dnf-ext-frame__frame src=/admin/ext/{id}/raw  title=<name>  data-frame   (viewport height minus header, min 28rem)
         └── extension document (its own _Layout)
-            e.g. Audit Dashboard (host tokens/base/components CSS + theme.js, the host's tag helpers):
+            e.g. Audit Dashboard (dnf.css + dnf-theme.js, the DotNetForge UI tag helpers):
             ├── sr-only h1 "Audit Dashboard" + "Recent administrative activity."
-            ├── <stat-card>s: Recent events · Failed sign-ins (if settings.showFailedLogins != false) · Last activity (relative)
-            ├── card: table.table of the latest 50 audit entries (When, User, Action, Entity, Result, IP)
+            ├── <dnf-stat-card>s: Recent events · Failed sign-ins (if settings.showFailedLogins != false) · Last activity (relative)
+            ├── card: div.dnf-table of the latest 50 audit entries (When, User, Action, Entity, Result, IP)
             │   or empty state "No audit activity yet"
             └── footer "Loaded at <time>" (set by Resources/js/index.js)
 ```
@@ -69,7 +69,7 @@ extensions/admin/audit-dashboard/**                                     the samp
 | --- | --- | --- |
 | Extensions section (`AdminNavigationService.BuildAsync`) | `ExtensionCatalog.GetActiveAsync("admin")` (ordered by name) | one `NavLink` per extension: label = manifest `name`, href `/admin/ext/{id}`, icon `panel`, controller `ExtensionsController` (so visibility follows its `AdminArea` policy); the section is added after **Settings** only when the list is not empty; active by the same longest-matching-href rule as every link |
 | `Host.cshtml` | `ViewData["Title"]`, `ViewData["ExtensionId"]` | card with skeleton + iframe (`title` = extension name) |
-| `ui.js` (`iframe[data-frame]`) | the iframe's `load` event (or an already complete document) | adds `.is-loaded` to `.ext-frame-card`, which hides the skeleton ([behaviours](../architecture/design-system.md#behaviours)) |
+| `dnf.js` (`iframe[data-frame]`) | the iframe's `load` event (or an already complete document) | sets `data-loaded="true"` on the `[data-frame-host]` card, which hides the skeleton ([behaviours](../architecture/design-system.md#behaviours)) |
 | `ExtensionViewController.Render` | active extension, `Views/Index.cshtml` path | `ViewData["Extension"]`, `ViewData["Settings"]`, `ViewData["ResourceBase"] = /admin/ext/{id}/resources` ([extension view data](../features/extensions.md#slots)) |
 | `ExtensionViewController.Resource` | `path` | file under `Views/Resources/` of any active extension, content type by file extension |
 
@@ -118,8 +118,8 @@ Only active extensions (`ExtensionCatalog`) are served; the tab and `/raw` also 
 
 ## Loading behaviour
 
-Shell renders immediately; the iframe loads separately. With JavaScript a skeleton (`.skeleton-title` + three
-`.skeleton-line`s, `aria-hidden`) covers the frame until `ui.js` sees the frame's `load` event; without JavaScript
+Shell renders immediately; the iframe loads separately. With JavaScript a skeleton (`.dnf-skeleton--title` + three
+`.dnf-skeleton--line`s, `aria-hidden`) covers the frame until `dnf.js` sees the frame's `load` event; without JavaScript
 the skeleton stays hidden (`data-js-only`) and the frame simply fills in. First render of an extension view triggers
 Razor compilation (slower); later renders reuse it until the file changes. A 404 or error document in the frame
 also counts as loaded.
@@ -180,9 +180,10 @@ route), [Audit Logs](audit-logs.md) (the sample's data source).
 - The active-link match lowercases the request path but not the href built from the manifest `id`, so an extension
   whose `id` contains capital letters still opens, but its sidebar link is never marked active and the breadcrumb
   trail is missing (ids are conventionally lowercase, like the sample's).
-- The extension document can reuse the host's design system: the sample links the host's `tokens.css`, `base.css`,
-  `components.css` (`src/DotNetForge.Web/wwwroot/css/forge/`) and `theme.js` and registers the host's tag helpers in its `_ViewImports.cshtml`
-  ([tag helpers](../architecture/design-system.md#tag-helpers)). It does not load `ui.js`, so there are no toasts,
+- The extension document can reuse the DotNetForge UI library ([.docs/ui](../ui/README.md)): the sample links
+  the library's `dnf.css` and `dnf-theme.js` (served by the `DotNetForge.UI` Razor class library), marks its `<body>` as a `.dnf-scope`
+  (`data-dnf-extension="audit-dashboard"`) and registers the `DotNetForge.UI` tag helpers in its `_ViewImports.cshtml`
+  ([tag helpers](../architecture/design-system.md#tag-helpers)). It does not load `dnf.js`, so there are no toasts,
   confirm dialog or data-attribute behaviours inside the frame.
 - `extensions/` is copied to the publish output (`CopyToPublishDirectory="PreserveNewest"` as `None` items, so the
   Razor SDK does not precompile them). The folder is read at runtime and never written - a read-only deployment
@@ -198,7 +199,7 @@ route), [Audit Logs](audit-logs.md) (the sample's data source).
 ## Known limitations
 
 - Extensions run with host privileges; no permission sandbox.
-- The frame applies the saved theme when it loads (`theme.js`); switching Light/Dark in the shell's theme menu does
+- The frame applies the saved theme when it loads (`dnf-theme.js`); switching Light/Dark in the shell's theme menu does
   not re-theme an already loaded frame until it reloads (no storage listener). "System" follows the OS in both.
 - No CSP nonce support: an extension cannot opt into inline script or style.
 - Supported resource types are limited to the switch in `ExtensionResources.Serve` (others served as

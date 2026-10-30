@@ -39,8 +39,8 @@ src/DotNetForge.Web/Services/EntryForm.cs                            the posted 
 src/DotNetForge.Content/ContentEntryService.cs                       save, publish, unpublish, duplicate, delete, reorder (rules + audit)
 src/DotNetForge.Content/ContentQueryService.cs                       search, status, filters, sort, paging
 src/DotNetForge.Web/Services/ContentRenderService.cs                 ItemsAsync: list column text (same formatting as the site)
-src/DotNetForge.Web/wwwroot/js/forge/entries.js                      rich text editor, media and relationship pickers, repeaters, slugs, row drag, unsaved-changes guard
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                      .type-grid, .type-card, .entry-*, .repeater*, .rte*, .media-picker*, .media-dialog*, .relation-*
+src/DotNetForge.Web/wwwroot/js/admin/entries.js                      rich text editor, media and relationship pickers, repeaters, slugs, row drag, unsaved-changes guard
+src/DotNetForge.Web/wwwroot/css/admin/content.css                     .dnf-type-card, .dnf-type-icon, .dnf-workflow, .dnf-repeater*, .dnf-rte*, .dnf-media-picker*, .dnf-media-dialog*, .dnf-media-tile*, .dnf-relation-picker*
 ```
 
 ## Page layout
@@ -48,24 +48,24 @@ src/DotNetForge.Web/wwwroot/css/forge/admin.css                      .type-grid,
 ```text
 Overview - Content Manager (h1), "Your structured content - blog posts, products, events - kept apart from the pages that show it."
 ├── header: [Content types] (with Content types / create)
-├── no types:  card <empty-state "Start with a content type"> [New content type]  +  card "How it fits together"
+├── no types:  card <dnf-empty-state "Start with a content type"> [New content type]  +  card "How it fits together"
 │              (1. Content type · 2. Entries · 3. Page builder · 4. Map fields · 5. Publish)
-└── types:     .type-grid of cards: icon, name (link), "<n> entries · <m> published" (or "Single entry"),
+└── types:     grid of .dnf-type-card cards: icon, name (link), "<n> entries · <m> published" (or "Single entry"),
                description, [Open] / [Edit] (single), [New entry] (collection, with create)
 
 Entry list - <type name> (h1), the type's description
 ├── header: [Fields] (with Content types / read) [New entry] (with create)
 └── card "Entries" "<n> entries"   segmented: All | Published | Changed | Draft
-    ├── toolbar (GET form): [select all] Search <type> [Search] [Clear]   "Drag rows to set the order…" (when reorderable)
-    ├── bulk bar (overlays the toolbar when rows are checked): "<n> selected" [Clear] [Delete selected]
+    ├── toolbar (GET form): [select all] Search <type> [Search] [Clear]   "Drag rows, or use Move up and Move down…" (when reorderable)
+    ├── bulk bar (overlays the toolbar when rows are checked; replaces it at 64rem and below): "<n> selected" [Clear] [Delete selected]
     ├── table: [✓] Title ↕ | <show-in-list fields> ↕ | Status | Updated ↕ | ⋯
     │          row ⋯: Edit/View, Duplicate, Publish / Publish changes, Unpublish, Delete
     └── pagination: "Page x of y" [Previous] 1 2 3 [Next]
 
 Entry form - "New entry" / the entry's title / the type name (single) (h1)
 ├── header: [All <type>] (collection) [New entry] (existing entry, with create)
-└── .editor
-    ├── main: <form-errors/>, card with the generated fields (.form-grid; half-width fields side by side)
+└── .dnf-split
+    ├── main: <dnf-validation-summary/>, card with the generated fields (.dnf-form-grid; half-width fields side by side)
     └── aside: card "Status" (badge Draft | Changes not published | Published; Published / Updated by / Created;
                [Publish] or [Publish changes] + [Save draft] - or [Save] for a type without drafts)
                card "More" ([Unpublish] [Duplicate] [Delete])
@@ -90,10 +90,11 @@ Entry form - "New entry" / the entry's title / the type name (single) (h1)
 - **Columns:** the title, then up to four fields marked **Show in entry list** (the title field excluded); the cell text
   is the same formatted text content lists show (numbers with their decimals, dates as `Oct 26, 2026`, option labels,
   linked entries' titles - [item data](../features/structured-content.md#data-binding)).
-- **Sorting:** column headers are links (`th-sort`, `aria-sort`); clicking the sorted column again reverses it.
-- **Selection / bulk delete:** `data-collection` + `data-select-*` (`ui.js`); checkboxes only on rows the user may
+- **Sorting:** column headers are links (`dnf-table__sort`, `aria-sort`); clicking the sorted column again reverses it.
+- **Selection / bulk delete:** `data-collection` + `data-select-*` (`dnf.js`); checkboxes only on rows the user may
   delete; the bulk form posts `ids` to `delete-selected` with a confirm dialog.
 - **Reorder:** offered (`CanReorder`) only with `Entries` / `update`, the manual order, no search and no status filter.
+  Rows drag, or **Move up** / **Move down** in a row's menu do the same without a mouse (touch screens, keyboards).
   Rows drag by the grip (`entries.js`), and the new order of the page's rows is posted as JSON; the moved rows keep the
   positions they had, so other pages of the list are untouched. Toast "Order saved." or the error.
 
@@ -117,7 +118,7 @@ the post back into values, guided by the type's fields. Controls per [field type
 | Group | a `fieldset` with the nested fields |
 | Repeater | numbered rows with move up / down / remove, **Add <label> row** (from a `<template>` whose paths say `__index__`); `f.<path>.__rows` is always posted so removing every row clears the field |
 
-Errors are shown at the top (`<form-errors />`) and under each field whose path matches (`.has-error`). The form is
+Errors are shown at the top (`<dnf-validation-summary />`) and under each field whose path matches (`.dnf-field[data-invalid="true"]`). The form is
 `novalidate`; leaving it with changes asks first (`beforeunload`).
 
 ## Functionality
@@ -197,7 +198,7 @@ save creates it; a GET never writes). A second "new" form of a single type edits
 | Search, status, sort, page | URL query | toolbar, segmented filter, column headers, pagination |
 | Unsaved form input | DOM; posted values on a failed save | typing |
 | Rich text | DOM + hidden JSON textarea | editing |
-| Selection / bulk bar | DOM (`ui.js`) | checking rows |
+| Selection / bulk bar | DOM (`dnf.js`) | checking rows |
 | Entries | database | save, publish, unpublish, duplicate, delete, reorder |
 
 ## Permissions
@@ -231,7 +232,7 @@ All on the server (`EntryData`, `ContentEntryService`); messages name the field 
 
 | Failure | What the user sees | Recovery |
 | --- | --- | --- |
-| Invalid values | form with `<form-errors />` and errors under the fields, input kept | fix, save again |
+| Invalid values | form with `<dnf-validation-summary />` and errors under the fields, input kept | fix, save again |
 | Saved by someone else meanwhile | "Someone else saved this entry while you were editing it…" | save again to overwrite, or reload |
 | Publish refused (row menu) | danger toast "Can't publish yet: …" | open the entry, fill in what is missing |
 | No permission | `/account/denied` (403) | - |
@@ -266,7 +267,7 @@ ContentController
 ├── MediaService                                                    (upload)
 ├── EntryForm                                                       (form → values)
 └── AdminControllerBase (CurrentUserId, Can / CanModify)
-entries.js (api/entries, api/media, api/media/upload, {type}/reorder; window.Forge.toast / confirm from ui.js)
+entries.js (api/entries, api/media, api/media/upload, {type}/reorder; window.dnfUI.toast / icon from dnf.js)
 ```
 
 ## Page flow

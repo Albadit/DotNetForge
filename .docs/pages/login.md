@@ -34,15 +34,15 @@ src/DotNetForge.Web/Services/LoginProviders.cs              LoginOption list: en
 src/DotNetForge.Web/Controllers/MfaLoginController.cs       the two-factor step (/login/mfa)
 src/DotNetForge.Web/Views/MfaLogin/Index.cshtml             two-factor step: one method, "Try another way", recovery code, cancel
 src/DotNetForge.Web/Services/Mfa/PendingSignIn.cs           the dnf.mfa cookie between the two steps
-src/DotNetForge.Web/wwwroot/js/forge/passkeys.js            "Use passkey" (WebAuthn)
+src/DotNetForge.Web/wwwroot/js/admin/passkeys.js            "Use passkey" (WebAuthn)
 src/DotNetForge.Web/Views/Account/Login.cshtml              heading, form (password reveal) + "or continue with" provider buttons (Layout = "_AuthLayout")
-src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml         brand panel + form column, theme menu, _Feedback; loads theme.js, ui.js, auth.css
+src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml         brand panel + form column, theme menu, _Feedback; loads dnf-theme.js, dnf.css, auth.css, dnf.js
 src/DotNetForge.Web/Views/Shared/_ThemeMenu.cshtml          Light / Dark / System menu (needs JS)
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml           toast region (sign-in errors) + confirm dialog
-src/DotNetForge.Web/Ui/UiTagHelpers.cs                      <form-errors /> (model-state errors), <icon>
-src/DotNetForge.Web/wwwroot/css/forge/auth.css              .auth-shell, .auth-panel, .auth-card, .auth-heading, .auth-divider
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                  data-reveal (show/hide password), data-js-only, theme menu
-src/DotNetForge.Web/Services/AuthService.cs                 ValidateAsync (credentials, lockout, principal), ValidateExternalAsync, CompleteSecondFactorAsync, RecordFailedSecondFactorAsync, IsActiveAsync
+src/DotNetForge.UI/Components/BasicTagHelpers.cs            <dnf-validation-summary /> (model-state errors), <dnf-icon>
+src/DotNetForge.Web/wwwroot/css/auth.css                    .dnf-auth, .dnf-auth__panel, .dnf-auth__card, .dnf-auth__heading, .dnf-auth__ways
+src/DotNetForge.UI/wwwroot/dnf.js                           data-reveal (show/hide password), data-js-only, theme menu
+src/DotNetForge.Web/Services/AuthService.cs                 ValidateAsync (credentials, lockout, principal), ValidateExternalAsync, CompleteSecondFactorAsync, RecordFailedSecondFactorAsync
 src/DotNetForge.Web/Services/AuditService.cs                user.login / user.login.failed / user.logout (via IAuditService)
 src/DotNetForge.Web/Startup/DependencyRegistration.cs       cookie options (paths, lifetime, flags), ValidateSessionAsync, AddRateLimits
 src/DotNetForge.Shared/Constants/RateLimitPolicies.cs   policy names (credentials, api)
@@ -52,26 +52,26 @@ src/DotNetForge.Shared/Constants/RateLimitPolicies.cs   policy names (credential
 
 ```text
 Sign in (_AuthLayout, title "Sign in · <APP_NAME>")
-├── aside.auth-panel (brand panel - white in light, charcoal in dark; hidden below 56rem)
+├── aside.dnf-auth__panel (brand panel - white in light, charcoal in dark; hidden below 56rem)
 │   ├── DotNetForge logo
 │   ├── "Build, publish and extend - from one place."
 │   └── 3 points: Pages, media and SEO… · Extensions without touching the core · Roles, audit log and scoped API tokens
-└── main.auth-main
-    ├── .auth-top: <APP_NAME> mark (→ /, only below 56rem) · theme menu (JS only)
-    ├── .auth-card
+└── main.dnf-auth__main
+    ├── .dnf-auth__top: <APP_NAME> mark (→ /, only below 56rem) · theme menu (JS only)
+    ├── .dnf-auth__card
     │   ├── h1 **Sign in** + "Welcome back. Sign in to manage your site."
-    │   ├── form.form (POST /login?returnUrl=..., antiforgery)
-    │   │   ├── <form-errors />                     (model-state errors; sign-in failures are toasts)
+    │   ├── form.dnf-form (POST /login?returnUrl=..., antiforgery)
+    │   │   ├── <dnf-validation-summary />          (model-state errors; sign-in failures are toasts)
     │   │   ├── **Email** (type=email; autofocus, or re-filled after a failure)
-    │   │   ├── .auth-label-row: **Password** label · **Forgot password?** (→ /forgot-password, only when SMTP is configured)
+    │   │   ├── .dnf-auth__label-row: **Password** label · **Forgot password?** (→ /forgot-password, only when SMTP is configured)
     │   │   ├── **Password** + eye button (data-reveal, JS only; autofocus after a failure)
-    │   │   ├── ☐ **Remember me** "Stay signed in on this device for 30 days." (.check)
-    │   │   └── [**Sign in**] (.btn-primary.btn-lg.btn-block)
+    │   │   ├── ☐ **Remember me** "Stay signed in on this device for 30 days." (.dnf-check)
+    │   │   └── [**Sign in**] (.dnf-button--primary.dnf-button--lg.dnf-button--full-width)
     │   ├── only after "confirm your email first": form (POST /confirm-email/resend, hidden email) → [**Send the confirmation link again**]
     │   ├── only when a provider is active:
-    │   │   ├── .auth-divider "or continue with"
+    │   │   ├── .dnf-divider--label "or continue with"
     │   │   └── per provider: form (POST /account/external/{scheme}, antiforgery, hidden returnUrl) → [**Sign in with <DisplayName>**]
-    │   └── only when sign-ups are on: .auth-switch "No account yet? **Create an account**" (→ /register)
+    │   └── only when sign-ups are on: .dnf-auth__switch "No account yet? **Create an account**" (→ /register)
     └── footer line "<APP_NAME> · Powered by DotNetForge"
 ```
 
@@ -82,9 +82,9 @@ Layout mechanics (panel, one column below 56rem, theme menu): [design system →
 | Component | Purpose | Inputs | Output |
 | --- | --- | --- | --- |
 | Login form | credentials | `email`, `password`, `rememberMe` (simple parameters, no model), `returnUrl` via `asp-route-returnUrl` | `AccountController.Login(email, password, rememberMe, returnUrl)` |
-| Error toast | a sign-in failure (`.toast-danger`, `role=alert`, stays until dismissed) | `TempData["Error"]`, rendered by `_Feedback` in the same response (password) or after the redirect (external) | - |
-| `<form-errors />` | model-state errors (`div.validation-summary-errors[role=alert]`); renders nothing today, since sign-in failures are toasts | `ModelState` | - |
-| Password reveal | eye / eye-off button that toggles the field between `password` and `text`, `aria-pressed` and the label "Show password" / "Hide password" | `data-reveal="#password"` ([behaviours](../architecture/design-system.md#behaviours)); hidden until `ui.js` runs (`data-js-only`) | - |
+| Error toast | a sign-in failure (`.dnf-toast--danger`, `role=alert`, stays until dismissed) | `TempData["Error"]`, rendered by `_Feedback` in the same response (password) or after the redirect (external) | - |
+| `<dnf-validation-summary />` | model-state errors (`div.dnf-validation-summary[role=alert]`); renders nothing today, since sign-in failures are toasts | `ModelState` | - |
+| Password reveal | eye / eye-off button that toggles the field between `password` and `text`, `aria-pressed` and the label "Show password" / "Hide password" | `data-reveal="#password"` ([behaviours](../architecture/design-system.md#behaviours)); hidden until `dnf.js` runs (`data-js-only`) | - |
 | External sign-in buttons | one per enabled built-in provider ([Providers](providers.md), catalog order), then one per provider of an active authentication extension, under "or continue with" | `ViewData["LoginProviders"]` (`LoginProviders.GetActiveAsync`, `LoginOption { Scheme, DisplayName, ProviderKey, ExtensionId }`) | `ExternalLoginController.Challenge(scheme, returnUrl)` - **Remember me** is not posted with it |
 | Theme menu | Light / Dark / System ([design system → themes](../architecture/design-system.md#themes)) | `localStorage` `dnf-theme` | - |
 
@@ -126,14 +126,14 @@ expired. Sign in again."
 
 ```text
 Two-step verification (h1) · "Signing in as a••••••@example.com[ with <provider>]."
-├── <form-errors />
+├── <dnf-validation-summary />
 ├── one of (the method selected with ?method={id}, else the first in the order app, passkey, SMS, email):
 │   ├── authenticator app / sent email or SMS code: **Code from your authenticator app** / **Code we texted to +41 *** *** 67** / **Code we emailed you** (6 digits, one-time-code) · [Verify]
 │   │   └── email/SMS: [Send a new code]
 │   ├── email/SMS before a code was sent: "We'll email/text a 6-digit code to …  It works for 10 minutes." · [Send code]
 │   ├── passkey: hint · [Use passkey] (JS only; without JS: "Passkeys need JavaScript. Use another way below.")
 │   └── ?recovery=true: **Recovery code** (XXXXX-XXXXX) · [Verify]
-├── .auth-divider "Try another way": the user's other methods · **Use a recovery code**
+├── .dnf-divider--label "Try another way": the user's other methods · **Use a recovery code**
 └── [Cancel and sign in again] (POST /login/mfa/cancel)
 ```
 
@@ -148,7 +148,7 @@ Two-step verification (h1) · "Signing in as a••••••@example.com[ wi
 ### Sign out
 
 `POST /account/logout` from **Sign out** in the admin sidebar's account menu or **Sign in as someone else** on the
-[denied screen](access-denied.md) → audit `user.logout` → sign out → `302 /login`.
+[denied screen](access-denied.md) → audit `user.logout` → the session ends on the server, the cookie is cleared → `302 /login`.
 
 ## Data used by the page
 
@@ -161,16 +161,16 @@ the two-factor step: the user's usable `UserMfaMethods` and unused `UserRecovery
 (8 h, sliding, `HttpOnly`, `SameSite=Lax`, `Secure` outside Development - `CookieSecurePolicy.Always`; in
 Development `SameAsRequest`). Without **Remember me** it is a browser-session cookie (gone when the browser closes);
 with it, `IsPersistent` and `ExpiresUtc` = now + `AccountController.RememberMeLifetime` (30 days, renewed while in
-use), so it survives closing the browser. Session re-validation below applies either way. `User.FailedLoginCount`/`LockoutEndUtc` persist lockout state. The rate-limit
+use), so it survives closing the browser. The session check below applies either way. `User.FailedLoginCount`/`LockoutEndUtc` persist lockout state. The rate-limit
 counters are in memory per instance. A failed external sign-in passes its message in `TempData["Error"]` across the redirect (an error
 toast). Between the two steps of a two-factor sign-in the encrypted `dnf.mfa` cookie (10 minutes, not sliding) holds
 the user id, **Remember me**, the `returnUrl`, the provider and the token of a sent code or passkey request. Client side: the password field's
 `type` while revealed (not persisted) and the theme choice (`localStorage` `dnf-theme`).
 
-Session validity: on every request with the cookie, `OnValidatePrincipal` (`ValidateSessionAsync`) checks
-`AuthService.IsActiveAsync(userId)` (user exists and is `Enabled`), cached 30 s per user in `IMemoryCache`
-(`dnf:session:{id}`). A disabled or deleted user is signed out within 30 seconds and redirected here on the next
-admin request. Roles are not re-read; they stay as issued at sign-in.
+Session validity: on every request with the cookie, `OnValidatePrincipal` (`ValidateSessionAsync`) asks
+`UserSessionService` whether the session still counts and which roles the user has, cached 30 s per user in `IMemoryCache`
+(`dnf:session:{id}`) and dropped by any change ([sessions](../features/authentication.md#sessions)). A user who no longer
+has a session is redirected here on the next admin request.
 
 ## Permissions
 
@@ -213,7 +213,7 @@ A non-local `returnUrl` is ignored (redirect to `/admin`); it no longer throws.
 ## Loading behaviour
 
 Synchronous POST; PBKDF2 verification (~120 000 iterations) adds a small delay. No indicator. Everything is
-server-rendered; `ui.js` (deferred) only reveals the password and theme buttons.
+server-rendered; `dnf.js` (deferred) only reveals the password button; the theme menu shows once `dnf-theme.js` has run.
 
 ## Empty states
 
@@ -239,7 +239,7 @@ AccountController
 └── LoginProviders → OAuthProviderRegistry, ExtensionCatalog (+ every LoginProviderContribution registered by extensions)
 ExternalLoginController → LoginProviders, AuthService, AccountService (sign-up), IAuditService, AppEnvironment
 MfaLoginController → AuthService, MfaService, IAuditService, AppEnvironment
-Rate limiter (credentials policy) · cookie OnValidatePrincipal → AuthService.IsActiveAsync + IMemoryCache
+Rate limiter (credentials policy) · cookie OnValidatePrincipal → UserSessionService + IMemoryCache
 ```
 
 ## Page flow

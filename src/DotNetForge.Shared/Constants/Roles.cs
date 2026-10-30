@@ -17,12 +17,6 @@ public static class Roles
     public const string Authenticated = "Authenticated";
     public const string Public = "Public";
 
-    /// <summary>All built-in roles, ordered most-privileged to least.</summary>
-    public static readonly IReadOnlyList<string> BuiltIn = new[]
-    {
-        SuperAdmin, Admin, Developer, Editor, Author, Authenticated, Public,
-    };
-
     /// <summary>The built-in roles that may enter the admin area (admin-capable roles).</summary>
     public static readonly IReadOnlyList<string> AdminCapable = new[]
     {

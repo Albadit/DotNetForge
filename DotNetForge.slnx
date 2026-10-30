@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/build/">
+    <Project Path="build/DotNetForge.Minify/DotNetForge.Minify.csproj" />
+  </Folder>
   <Folder Name="/extensions/">
     <Project Path="extensions/authentication/discord-login/DiscordLogin.csproj" />
     <Project Path="extensions/connectors/s3-storage/S3Storage.csproj" />
@@ -19,10 +22,12 @@
     <Project Path="src/DotNetForge.PageBuilder/DotNetForge.PageBuilder.csproj" />
     <Project Path="src/DotNetForge.Sdk/DotNetForge.Sdk.csproj" />
     <Project Path="src/DotNetForge.Shared/DotNetForge.Shared.csproj" />
+    <Project Path="src/DotNetForge.UI/DotNetForge.UI.csproj" />
     <Project Path="src/DotNetForge.Web/DotNetForge.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DotNetForge.IntegrationTests/DotNetForge.IntegrationTests.csproj" />
     <Project Path="tests/DotNetForge.Tests/DotNetForge.Tests.csproj" />
+    <Project Path="tests/DotNetForge.UiTests/DotNetForge.UiTests.csproj" />
   </Folder>
 </Solution>

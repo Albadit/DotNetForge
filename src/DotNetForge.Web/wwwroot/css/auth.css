@@ -1,0 +1,88 @@
+/*
+  Auth layout (.docs/architecture/design-system.md#auth-layout): setup, sign-in, two-step verification, the
+  self-service account screens and access denied (.docs/pages/setup.md, login.md, mfa.md, account-self-service.md,
+  access-denied.md). Built on the Dnf components (/_content/DotNetForge.UI/dnf.css); this file only adds the
+  two-column layout with the brand panel.
+  Anatomy: .dnf-auth > aside.dnf-auth__panel + main.dnf-auth__main > .dnf-auth__top + .dnf-auth__card + .dnf-auth__foot
+*/
+
+@layer components {
+    .dnf-auth { display: grid; grid-template-columns: minmax(20rem, 34rem) minmax(0, 1fr); min-height: 100vh; }
+
+    /* ---- Brand panel: the brand surface (white in light, charcoal in dark), with the logo's slanted bars as the
+       only decoration. */
+    .dnf-auth__panel {
+        position: relative; overflow: hidden;
+        display: flex; flex-direction: column; justify-content: space-between; gap: var(--dnf-space-10);
+        padding: var(--dnf-space-10);
+        border-right: 1px solid var(--dnf-brand-border);
+        background: var(--dnf-brand-background);
+        color: var(--dnf-brand-foreground);
+    }
+    .dnf-auth__logo { width: 12.25rem; height: auto; }
+    .dnf-auth__pitch { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--dnf-space-5); max-width: 24rem; }
+    .dnf-auth__pitch-title {
+        margin: 0;
+        color: var(--dnf-brand-strong-foreground);
+        font-size: var(--dnf-text-3xl);
+        font-weight: var(--dnf-weight-bold);
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+    }
+    .dnf-auth__points { display: flex; flex-direction: column; gap: var(--dnf-space-3); margin: 0; padding: 0; list-style: none; }
+    .dnf-auth__point { display: flex; align-items: center; gap: var(--dnf-space-3); }
+    .dnf-auth__point > .dnf-icon { color: var(--dnf-primary); }
+    .dnf-auth__forge {
+        position: absolute; right: -3rem; top: 34%;
+        display: flex; flex-direction: column; gap: 1rem;
+        transform: skewX(-24deg);
+        pointer-events: none;
+    }
+    .dnf-auth__forge > span { display: block; height: 2.25rem; background: var(--dnf-brand-surface); }
+    .dnf-auth__forge > span:nth-child(1) { width: 14rem; }
+    .dnf-auth__forge > span:nth-child(2) { width: 9rem; background: var(--dnf-primary); }
+    .dnf-auth__forge > span:nth-child(3) { width: 11rem; }
+
+    /* ---- Form side ------------------------------------------------------------------------------------------- */
+    .dnf-auth__main {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--dnf-space-6);
+        padding: var(--dnf-space-8) var(--dnf-space-6);
+    }
+    .dnf-auth__main:focus { outline: none; }
+    .dnf-auth__top { display: flex; align-items: center; justify-content: flex-end; width: 100%; max-width: 26rem; }
+    .dnf-auth__mobile-brand {
+        display: none; align-items: center; gap: var(--dnf-space-2);
+        margin-right: auto;
+        color: var(--dnf-foreground);
+        font-weight: var(--dnf-weight-bold);
+    }
+    .dnf-auth__mobile-brand:hover { text-decoration: none; }
+    .dnf-auth__mobile-brand img { width: 2rem; height: 2rem; }
+    .dnf-auth__card { display: flex; flex-direction: column; gap: var(--dnf-space-6); width: 100%; max-width: 26rem; }
+    .dnf-auth__heading { display: flex; flex-direction: column; align-items: flex-start; gap: var(--dnf-space-2); }
+    .dnf-auth__heading > h1 { font-size: var(--dnf-text-3xl); letter-spacing: -0.02em; }
+    /* A one-message screen (access denied, notices): icon, title and text centred. */
+    .dnf-auth__heading--state { align-items: center; text-align: center; }
+    .dnf-auth__label-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--dnf-space-3); }
+    .dnf-auth__label-row > a { font-size: var(--dnf-text-sm); }
+    .dnf-auth__switch { margin: 0; color: var(--dnf-muted-foreground); font-size: var(--dnf-text-sm); text-align: center; }
+    .dnf-auth__foot { margin: 0; color: var(--dnf-subtle-foreground); font-size: var(--dnf-text-xs); }
+
+    @media (max-width: 56rem) {
+        .dnf-auth { grid-template-columns: minmax(0, 1fr); }
+        .dnf-auth__panel { display: none; }
+        .dnf-auth__mobile-brand { display: inline-flex; }
+        .dnf-auth__main { justify-content: flex-start; padding-top: var(--dnf-space-6); }
+    }
+
+    /* ---- Two-step verification (.docs/pages/login.md#two-factor-step): the other ways to confirm ------------- */
+    .dnf-auth__ways { display: flex; flex-direction: column; gap: var(--dnf-space-1); margin: 0; padding: 0; list-style: none; }
+    .dnf-auth__way {
+        display: flex; align-items: center; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-2) var(--dnf-space-3);
+        border-radius: var(--dnf-radius-md);
+        color: var(--dnf-foreground);
+    }
+    .dnf-auth__way:hover { background: var(--dnf-surface-hover); text-decoration: none; }
+    .dnf-auth__way-text { display: flex; flex-direction: column; }
+}

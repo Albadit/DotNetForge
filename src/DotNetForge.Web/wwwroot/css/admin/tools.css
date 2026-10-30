@@ -1,0 +1,120 @@
+/*
+  Tool screens (.docs/pages/api-endpoints.md, .docs/pages/email-templates.md, .docs/pages/email-configuration.md,
+  .docs/pages/data-management.md) - CMS-internal blocks on top of the Dnf components (/_content/DotNetForge.UI/dnf.css):
+
+  .dnf-endpoint-op      an operation card of the API Endpoints editor (endpoints.js; on a .dnf-card):
+                        __request (method + sub-path), __toggle (open/close chevron), __settings, __test (the test run);
+                        data-collapsed="true" while closed
+  .dnf-code-editor      the Monaco editor frame of Email → Templates (email-templates.js): __surface, __status >
+                        __item (data-over="true" past the length limit) + __count (--errors / --warnings,
+                        data-active="true" while there are any); __var = a {{variable}} in the text
+  .dnf-email-preview    the sandboxed preview frame of Email → Templates
+  .dnf-probe            the connection test steps of Email Configuration: __step > icon + __name + __detail + __time
+
+  Data Management needs nothing beyond the Dnf components. Method badges are dnf-badge--mono, the path prefix a
+  dnf-input-group__prefix, test output a dnf-code-block (data-invalid="true" on errors).
+*/
+
+@layer components {
+    /* ---- API Endpoints editor ---------------------------------------------------------------------------------- */
+    .dnf-endpoint-op__request { display: grid; flex: 1; grid-template-columns: 8rem minmax(0, 1fr); gap: var(--dnf-space-4); min-width: 0; }
+    .dnf-endpoint-op__settings { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--dnf-space-4); }
+    .dnf-endpoint-op__toggle > .dnf-icon { transition: transform var(--dnf-duration) var(--dnf-ease); }
+    .dnf-endpoint-op__toggle[aria-expanded="true"] > .dnf-icon { transform: rotate(90deg); }
+    /* A closed card is its header only (the hidden body still follows it). */
+    .dnf-endpoint-op[data-collapsed="true"] > .dnf-card__header { border-bottom: 0; }
+    .dnf-endpoint-op__test > summary { cursor: pointer; font-size: var(--dnf-text-sm); font-weight: var(--dnf-weight-semibold); }
+    .dnf-endpoint-op__test[open] > summary { margin-bottom: var(--dnf-space-3); }
+    /* What the server draws until endpoints.js has the cards: as tall as an open card, or a closed one. */
+    .dnf-endpoint-op__placeholder { height: 37.25rem; border-radius: var(--dnf-radius-lg); }
+    .dnf-endpoint-op__placeholder--closed { height: 5rem; }
+    @media (max-width: 40rem) {
+        .dnf-endpoint-op__request, .dnf-endpoint-op__settings { grid-template-columns: minmax(0, 1fr); }
+        .dnf-endpoint-op__placeholder:not(.dnf-endpoint-op__placeholder--closed) { height: 52.75rem; }
+    }
+
+    /* ---- Email → Templates: the Monaco code editor that replaces the body textarea (Monaco is in /lib/monaco) ---- */
+    .dnf-code-editor {
+        display: flex; flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--dnf-border-strong);
+        border-radius: var(--dnf-radius-md);
+    }
+    .dnf-code-editor:focus-within { border-color: var(--dnf-primary); box-shadow: var(--dnf-focus-ring); }
+    .dnf-code-editor__surface { height: 24rem; }
+    /* The textarea it replaces is as tall as the editor with its status bar, so nothing moves when it arrives. */
+    html.dnf-js .dnf-textarea[data-code-editor] { height: 25.875rem; }
+    @media (max-width: 40rem) { html.dnf-js .dnf-textarea[data-code-editor] { height: 27.75rem; } }
+    .dnf-code-editor__status {
+        display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-1);
+        padding: 0.125rem var(--dnf-space-2);
+        border-top: 1px solid var(--dnf-border);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-xs);
+    }
+    .dnf-code-editor__item {
+        display: inline-flex; align-items: center; gap: var(--dnf-space-2);
+        padding: 0.125rem 0.375rem;
+        border-radius: var(--dnf-radius-sm);
+        white-space: nowrap;
+    }
+    button.dnf-code-editor__item { border: 0; background: none; color: inherit; font: inherit; }
+    @media (pointer: coarse) { button.dnf-code-editor__item { min-height: 1.5rem; } }
+    button.dnf-code-editor__item:hover { background: var(--dnf-surface-hover); color: var(--dnf-foreground); }
+    button.dnf-code-editor__item:focus-visible { outline: none; box-shadow: var(--dnf-focus-ring); }
+    .dnf-code-editor__item[aria-pressed="true"] { color: var(--dnf-primary-text); }
+    .dnf-code-editor__item[data-over="true"] { color: var(--dnf-danger); font-weight: var(--dnf-weight-semibold); }
+    .dnf-code-editor__count { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .dnf-code-editor__count--errors[data-active="true"] { color: var(--dnf-danger); }
+    .dnf-code-editor__count--warnings[data-active="true"] { color: var(--dnf-warning); }
+
+    /* The email as sent, with sample data: white like an email client, whatever the admin theme. */
+    .dnf-email-preview {
+        display: block;
+        width: 100%; height: 26rem;
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-md);
+        background: #fff;
+    }
+
+    /* ---- Email Configuration: connection test steps -------------------------------------------------------------- */
+    .dnf-probe { display: flex; flex-direction: column; gap: var(--dnf-space-2); }
+    .dnf-probe__step {
+        display: grid; grid-template-columns: auto 7rem minmax(0, 1fr) auto; align-items: center; gap: var(--dnf-space-3);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-probe__name { font-weight: var(--dnf-weight-semibold); }
+    .dnf-probe__detail { color: var(--dnf-muted-foreground); overflow-wrap: anywhere; }
+    .dnf-probe__time { color: var(--dnf-subtle-foreground); font-variant-numeric: tabular-nums; }
+    @media (max-width: 40rem) {
+        .dnf-probe__step { grid-template-columns: auto minmax(0, 1fr); }
+        .dnf-probe__detail, .dnf-probe__time { grid-column: 2; }
+    }
+}
+
+/* A {{variable}} in the template text (a Monaco inline decoration, email-templates.js). Monaco colours every token
+   with its own stylesheet, which is not in a cascade layer - and an unlayered rule beats every layered one. So this
+   rule is unlayered too (outside @layer components) and one class more specific than Monaco's
+   ".monaco-editor .mtkN" token colours: it wins without !important. */
+.dnf-code-editor .monaco-editor .dnf-code-editor__var { color: var(--dnf-primary-text); font-weight: var(--dnf-weight-semibold); }
+
+/* ---- Move dialog (Shared/_MoveDialog.cshtml, move-dialog.js): a tree of places, for Media and Pages -------------- */
+@layer components {
+    .dnf-move-list { display: flex; flex-direction: column; gap: 1px; max-height: min(24rem, 50vh); overflow-y: auto; }
+    .dnf-move-option {
+        display: flex; flex: none; align-items: center; gap: var(--dnf-space-2);
+        min-height: 2.5rem;
+        padding: var(--dnf-space-1) var(--dnf-space-2);
+        border-radius: var(--dnf-radius-md);
+        cursor: pointer;
+    }
+    .dnf-move-option:hover { background: var(--dnf-surface-hover); }
+    .dnf-move-option:has(:checked) { background: var(--dnf-primary-soft); }
+    .dnf-move-option:has(:disabled) { color: var(--dnf-muted-foreground); background: none; cursor: not-allowed; }
+    .dnf-move-option > .dnf-icon { flex: none; color: var(--dnf-primary-text); }
+    .dnf-move-option:has(:disabled) > .dnf-icon { color: var(--dnf-subtle-foreground); }
+    .dnf-move-option__label { min-width: 0; overflow: hidden; font-weight: var(--dnf-weight-medium); text-overflow: ellipsis; white-space: nowrap; }
+    .dnf-move-option__hint { flex: 0 1 auto; min-width: 0; overflow: hidden; color: var(--dnf-muted-foreground); font-size: var(--dnf-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+    .dnf-move-option__note { flex: none; margin-inline-start: auto; color: var(--dnf-muted-foreground); font-size: var(--dnf-text-xs); }
+}

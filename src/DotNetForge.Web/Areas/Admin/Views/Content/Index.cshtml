@@ -8,50 +8,50 @@
 @section Actions {
     @if (Model.CanManageTypes)
     {
-        <a class="btn btn-secondary" href="/admin/content-types"><icon name="layers" /> Content types</a>
+        <a class="dnf-button dnf-button--secondary" href="/admin/content-types"><dnf-icon name="layers" /> Content types</a>
     }
 }
 
 @if (Model.Types.Count == 0)
 {
-    <section class="card">
-        <div class="card-body">
-            <empty-state icon="database" title="Start with a content type"
-                         text="Describe what you publish - a product has a name, a price and pictures - and the Content Manager builds the forms. Then show it on any page with a content list.">
+    <section class="dnf-card">
+        <div class="dnf-card__body">
+            <dnf-empty-state icon="database" title="Start with a content type"
+                         description="Describe what you publish - a product has a name, a price and pictures - and the Content Manager builds the forms. Then show it on any page with a content list.">
                 @if (Model.CanManageTypes)
                 {
-                    <a class="btn btn-primary" href="/admin/content-types/new"><icon name="plus" /> New content type</a>
+                    <a class="dnf-button dnf-button--primary" href="/admin/content-types/new"><dnf-icon name="plus" /> New content type</a>
                 }
                 else
                 {
                     <p class="text-sm text-muted">Ask an administrator to create a content type.</p>
                 }
-            </empty-state>
+            </dnf-empty-state>
         </div>
     </section>
 
-    <section class="card workflow-card" aria-labelledby="how-title">
-        <div class="card-header"><h2 class="card-title" id="how-title">How it fits together</h2></div>
-        <ol class="workflow">
-            <li><icon name="layers" /><strong>Content type</strong><span>Define the fields once.</span></li>
-            <li><icon name="database" /><strong>Entries</strong><span>Add content with the generated form.</span></li>
-            <li><icon name="pages" /><strong>Page builder</strong><span>Add a content list to a page.</span></li>
-            <li><icon name="link" /><strong>Map fields</strong><span>Bind heading, image, price to fields.</span></li>
-            <li><icon name="send" /><strong>Publish</strong><span>Edits to entries show everywhere at once.</span></li>
+    <section class="dnf-card mt-5" aria-labelledby="how-title">
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="how-title">How it fits together</h2></div>
+        <ol class="dnf-workflow">
+            <li class="dnf-workflow__step"><dnf-icon name="layers" /><strong class="dnf-workflow__title">Content type</strong><span class="dnf-workflow__text">Define the fields once.</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="database" /><strong class="dnf-workflow__title">Entries</strong><span class="dnf-workflow__text">Add content with the generated form.</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="pages" /><strong class="dnf-workflow__title">Page builder</strong><span class="dnf-workflow__text">Add a content list to a page.</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="link" /><strong class="dnf-workflow__title">Map fields</strong><span class="dnf-workflow__text">Bind heading, image, price to fields.</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="send" /><strong class="dnf-workflow__title">Publish</strong><span class="dnf-workflow__text">Edits to entries show everywhere at once.</span></li>
         </ol>
     </section>
 }
 else
 {
-    <section class="type-grid" aria-label="Content types">
+    <section class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-4" aria-label="Content types">
         @foreach (var type in Model.Types)
         {
             var single = type.Kind == ContentTypeKind.Single;
-            <article class="card type-card">
-                <div class="type-card-head">
-                    <span class="type-icon" aria-hidden="true"><icon name="@type.Icon" /></span>
-                    <div class="type-card-title">
-                        <h2 class="card-title"><a href="/admin/content/@type.Slug">@type.Name</a></h2>
+            <article class="dnf-card dnf-type-card">
+                <div class="dnf-type-card__head">
+                    <span class="dnf-type-icon" aria-hidden="true"><dnf-icon name="@type.Icon" /></span>
+                    <div class="dnf-type-card__title">
+                        <h2 class="dnf-card__title"><a href="/admin/content/@type.Slug">@type.Name</a></h2>
                         <span class="text-xs text-subtle">@(single ? "Single entry" : $"{type.EntryCount} entr{(type.EntryCount == 1 ? "y" : "ies")} · {type.PublishedCount} published")</span>
                     </div>
                 </div>
@@ -59,11 +59,11 @@ else
                 {
                     <p class="text-sm text-muted">@type.Description</p>
                 }
-                <div class="type-card-actions">
-                    <a class="btn btn-secondary btn-sm" href="/admin/content/@type.Slug">@(single ? "Edit" : "Open")</a>
+                <div class="dnf-type-card__actions">
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="/admin/content/@type.Slug">@(single ? "Edit" : "Open")</a>
                     @if (!single && Model.CanCreateEntries)
                     {
-                        <a class="btn btn-ghost btn-sm" href="/admin/content/@type.Slug/new"><icon name="plus" size="sm" /> New entry</a>
+                        <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/content/@type.Slug/new"><dnf-icon name="plus" size="Sm" /> New entry</a>
                     }
                 </div>
             </article>

@@ -8,13 +8,13 @@
         .FirstOrDefault(l => string.Equals(l.Href, path, StringComparison.OrdinalIgnoreCase))?.Icon ?? "box";
 }
 
-<section class="card">
-    <empty-state icon="@icon" title="@Model.Title is coming soon" text="@Model.Description">
-        <a class="btn" href="/admin"><icon name="arrow-left" /> Back to dashboard</a>
-    </empty-state>
-    <div class="card-footer">
-        <span class="text-sm text-muted grow">
-            <badge tone="Accent">Planned</badge>
+<section class="dnf-card">
+    <dnf-empty-state icon="@icon" title="@Model.Title is coming soon" description="@Model.Description">
+        <a class="dnf-button dnf-button--secondary" href="/admin"><dnf-icon name="chevron-left" /> Back to dashboard</a>
+    </dnf-empty-state>
+    <div class="dnf-card__footer">
+        <span class="text-sm text-muted grow min-w-0">
+            <dnf-badge tone="Primary">Planned</dnf-badge>
             The planned behaviour is described in <code>@Model.DocPath</code>, section "Planned (not implemented)".
         </span>
     </div>

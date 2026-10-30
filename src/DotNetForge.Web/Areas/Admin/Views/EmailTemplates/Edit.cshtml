@@ -14,77 +14,77 @@
 }
 
 @section Actions {
-    <a class="btn btn-ghost" href="/admin/email/templates"><icon name="arrow-left" /> All templates</a>
+    <a class="dnf-button dnf-button--ghost" href="/admin/email/templates"><dnf-icon name="chevron-left" /> All templates</a>
 }
 
-<div class="editor">
-    <div class="editor-main">
+<div class="dnf-split">
+    <div class="dnf-split__main">
         <form method="post" action="@action" id="templateForm">
             @Html.AntiForgeryToken()
             <input type="hidden" name="version" value="@Model.Version" />
-            <section class="card" aria-labelledby="template-title">
-                <div class="card-header">
+            <section class="dnf-card" aria-labelledby="template-title">
+                <div class="dnf-card__header">
                     <div>
-                        <h2 class="card-title" id="template-title">Message</h2>
-                        <p class="card-description">
+                        <h2 class="dnf-card__title" id="template-title">Message</h2>
+                        <p class="dnf-card__description">
                             @if (Model.State.IsCustomized)
                             {
-                                <badge tone="Info" dot="true">Customized</badge> <span>Saved <timestamp value="@Model.State.UpdatedDate" /></span>
+                                <dnf-badge tone="Info" dot="true">Customized</dnf-badge> <span>Saved <dnf-timestamp value="@Model.State.UpdatedDate" /></span>
                             }
                             else
                             {
-                                <badge tone="Neutral" dot="true">Default</badge>
+                                <dnf-badge tone="Neutral" dot="true">Default</dnf-badge>
                             }
                         </p>
                     </div>
                 </div>
-                <fieldset class="fieldset card-body stack" disabled="@(Model.CanEdit ? null : "disabled")">
+                <fieldset class="dnf-fieldset dnf-card__body dnf-stack" disabled="@(Model.CanEdit ? null : "disabled")">
                     <legend class="sr-only">Message</legend>
-                    <form-errors />
-                    <div class="field">
-                        <label class="field-label" for="subject">Subject<span class="field-required" aria-hidden="true">*</span></label>
-                        <input id="subject" name="subject" value="@Model.Subject" required maxlength="500" />
+                    <dnf-validation-summary />
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" for="subject">Subject<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                        <input id="subject" name="subject" class="dnf-input" value="@Model.Subject" required maxlength="500" />
                     </div>
-                    <div class="field">
-                        <label class="field-label" for="body">Body (HTML)<span class="field-required" aria-hidden="true">*</span></label>
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" for="body">Body (HTML)<span class="dnf-field__required" aria-hidden="true">*</span></label>
                         @* Replaced by the Monaco editor when its scripts load; it stays the form field either way. *@
-                        <textarea id="body" name="body" rows="14" required maxlength="20000" class="text-mono template-body" spellcheck="false" aria-describedby="body-hint"
+                        <textarea id="body" name="body" rows="14" required maxlength="20000" class="dnf-textarea dnf-textarea--code min-h-64" spellcheck="false" aria-describedby="body-hint"
                                   data-code-editor="html" data-template-variables="@variablesJson">@Model.Body</textarea>
-                        <div class="code-editor" data-code-editor-frame hidden>
-                            <div class="code-editor-surface" data-code-editor-host></div>
+                        <div class="dnf-code-editor" data-code-editor-frame hidden>
+                            <div class="dnf-code-editor__surface" data-code-editor-host></div>
                             @* Filled by email-templates.js from the editor. *@
-                            <div class="code-editor-status" role="group" aria-label="Editor status">
-                                <button type="button" class="code-status-item" data-status-problems
+                            <div class="dnf-code-editor__status" role="group" aria-label="Editor status" data-code-editor-status>
+                                <button type="button" class="dnf-code-editor__item" data-status-problems
                                         aria-label="Go to the next problem" data-tooltip="Go to the next problem (F8)">
-                                    <span class="code-status-count code-status-errors"><icon name="circle-x" size="sm" /><span data-status-errors>0</span></span>
-                                    <span class="code-status-count code-status-warnings"><icon name="triangle-alert" size="sm" /><span data-status-warnings>0</span></span>
+                                    <span class="dnf-code-editor__count dnf-code-editor__count--errors"><dnf-icon name="circle-x" size="Sm" /><span data-status-errors>0</span></span>
+                                    <span class="dnf-code-editor__count dnf-code-editor__count--warnings"><dnf-icon name="triangle-alert" size="Sm" /><span data-status-warnings>0</span></span>
                                 </button>
-                                <span class="code-status-spacer"></span>
-                                <span class="code-status-item" data-status-position>Ln 1, Col 1</span>
-                                <span class="code-status-item" data-status-length data-max="@DotNetForge.Core.Email.EmailTemplateRenderer.MaxBodyLength"></span>
-                                <span class="code-status-item">Spaces: 2</span>
-                                <span class="code-status-item">HTML</span>
-                                <button type="button" class="code-status-item" data-status-wrap aria-pressed="true"
+                                <span class="flex-1"></span>
+                                <span class="dnf-code-editor__item" data-status-position>Ln 1, Col 1</span>
+                                <span class="dnf-code-editor__item" data-status-length data-max="@DotNetForge.Core.Email.EmailTemplateRenderer.MaxBodyLength"></span>
+                                <span class="dnf-code-editor__item">Spaces: 2</span>
+                                <span class="dnf-code-editor__item">HTML</span>
+                                <button type="button" class="dnf-code-editor__item" data-status-wrap aria-pressed="true"
                                         data-tooltip="Wrap long lines (Alt+Z)">
-                                    <icon name="wrap-text" size="sm" /> Wrap
+                                    <dnf-icon name="wrap-text" size="Sm" /> Wrap
                                 </button>
                             </div>
                         </div>
-                        <span class="field-hint" id="body-hint">Use the variables on the right as <code>{{name}}</code>. Their values are HTML-encoded; scripts don't run in email clients.</span>
+                        <span class="dnf-field__description" id="body-hint">Use the variables on the right as <code>{{name}}</code>. Their values are HTML-encoded; scripts don't run in email clients.</span>
                     </div>
                 </fieldset>
                 @if (Model.CanEdit)
                 {
-                    <div class="card-footer">
+                    <div class="dnf-card__footer">
                         @if (Model.State.IsCustomized)
                         {
-                            <button type="submit" form="restoreForm" class="btn btn-ghost"
+                            <button type="submit" form="restoreForm" class="dnf-button dnf-button--ghost"
                                     data-confirm="Replace your version of '@definition.Name' with the default? Your changes are lost."
                                     data-confirm-title="Restore default" data-confirm-action="Restore">
-                                <icon name="rotate-ccw" /> Restore default
+                                <dnf-icon name="rotate-ccw" /> Restore default
                             </button>
                         }
-                        <button type="submit" class="btn btn-primary"><icon name="check" /> Save template</button>
+                        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Save template</button>
                     </div>
                 }
             </section>
@@ -99,48 +99,48 @@
             <input type="hidden" name="body" />
         </form>
 
-        <section class="card" aria-labelledby="preview-title">
-            <div class="card-header">
+        <section class="dnf-card" aria-labelledby="preview-title">
+            <div class="dnf-card__header">
                 <div>
-                    <h2 class="card-title" id="preview-title">Preview</h2>
-                    <p class="card-description">The email as it is sent, with sample data. Follows your changes as you type; nothing is sent.</p>
+                    <h2 class="dnf-card__title" id="preview-title">Preview</h2>
+                    <p class="dnf-card__description">The email as it is sent, with sample data. Follows your changes as you type; nothing is sent.</p>
                 </div>
                 @* Renders the editor's text again, e.g. after a link in the preview navigated the frame away (email-templates.js). *@
-                <button type="button" class="btn btn-ghost btn-sm" data-preview-refresh data-js-only hidden
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" data-preview-refresh data-js-only hidden
                         aria-controls="email-preview" data-tooltip="Render the preview again">
-                    <icon name="refresh-cw" size="sm" /> Refresh
+                    <dnf-icon name="refresh-cw" size="Sm" /> Refresh
                 </button>
             </div>
-            <div class="card-body">
+            <div class="dnf-card__body">
                 @* Administrator-written HTML: sandboxed (no scripts, no forms) and served with its own strict policy. *@
-                <iframe id="email-preview" name="email-preview" class="email-preview" title="Email preview" sandbox src="@action/preview"></iframe>
+                <iframe id="email-preview" name="email-preview" class="dnf-email-preview" title="Email preview" sandbox src="@action/preview"></iframe>
             </div>
         </section>
     </div>
 
-    <aside class="editor-aside">
-        <section class="card" aria-labelledby="variables-title">
-            <div class="card-header">
+    <aside class="dnf-split__aside">
+        <section class="dnf-card" aria-labelledby="variables-title">
+            <div class="dnf-card__header">
                 <div>
-                    <h2 class="card-title" id="variables-title">Variables</h2>
-                    <p class="card-description">Only these work in this template.</p>
+                    <h2 class="dnf-card__title" id="variables-title">Variables</h2>
+                    <p class="dnf-card__description">Only these work in this template.</p>
                 </div>
             </div>
-            <ul class="card-body template-variables">
+            <ul class="dnf-card__body flex flex-col gap-3">
                 @foreach (var variable in definition.Variables)
                 {
                     var token = "{{" + variable + "}}";
-                    <li>
-                        <div class="template-variable">
+                    <li class="flex flex-col gap-1">
+                        <div class="flex items-center justify-between gap-2">
                             <code>@token</code>
-                            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-copy-text="@token" aria-label="Copy @token" data-tooltip="Copy"><icon name="copy" size="sm" /></button>
+                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-copy-text="@token" aria-label="Copy @token" data-tooltip="Copy"><dnf-icon name="copy" size="Sm" /></button>
                         </div>
-                        <div class="template-sample">
+                        <div class="flex flex-wrap items-center gap-2 text-xs text-muted">
                             @if (definition.Required.Contains(variable))
                             {
-                                <badge tone="Warning">Required</badge>
+                                <dnf-badge tone="Warning">Required</dnf-badge>
                             }
-                            <span>e.g. @definition.SampleValues.GetValueOrDefault(variable)</span>
+                            <span class="min-w-0 wrap-anywhere">e.g. @definition.SampleValues.GetValueOrDefault(variable)</span>
                         </div>
                     </li>
                 }
@@ -152,5 +152,5 @@
 @section Scripts {
     @* Monaco (self-hosted, wwwroot/lib/monaco, MIT) - its AMD loader first; email-templates.js starts the editor. *@
     <script src="~/lib/monaco/vs/loader.js" defer></script>
-    <script src="~/js/forge/email-templates.js" asp-append-version="true" defer></script>
+    <script src="~/js/admin/email-templates.js" asp-append-version="true" defer></script>
 }

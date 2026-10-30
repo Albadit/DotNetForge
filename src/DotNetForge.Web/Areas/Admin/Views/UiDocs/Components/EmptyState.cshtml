@@ -1,0 +1,111 @@
+@* Empty state (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/content.css</code></li>
+    <li>Tag helper <code>&lt;dnf-empty-state&gt;</code> in <code>src/DotNetForge.UI/Components/BasicTagHelpers.cs</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>What a list or screen shows when there is nothing in it yet: an icon, a title, one sentence and the next action. Use the
+    <code>&lt;dnf-empty-state&gt;</code> tag helper - its child content becomes the actions - or write the classes yourself.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <dnf-empty-state icon="pages" title="No pages yet" description="Create the first page of the site; it becomes the home page.">
+        <dnf-button variant="Primary" icon="plus" href="/admin/pages">New page</dnf-button>
+    </dnf-empty-state>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="without-actions" title="Without actions" description="Leave the content empty when the page header already offers the action; the actions row is then left out." layout="block">
+    <dnf-empty-state icon="webhook" title="No deliveries yet" description="Deliveries appear here once an entry or a media file changes." />
+</ui-doc-example>
+
+<ui-doc-example id="several-actions" title="Several actions" description="A centred, wrapping row: the main action primary, the alternative secondary." layout="block">
+    <dnf-empty-state icon="image" title="No media" description="Upload images, documents and videos, or import them from another site.">
+        <dnf-button icon="download">Import</dnf-button>
+        <dnf-button variant="Primary" icon="upload">Upload files</dnf-button>
+    </dnf-empty-state>
+</ui-doc-example>
+
+<ui-doc-example id="compact" title="Compact" description="compact uses less padding - inside cards and side panes." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-card__header">
+            <h3 class="dnf-card__title">API tokens</h3>
+        </div>
+        <dnf-empty-state icon="key" title="No tokens" description="Create a token to call the API from another app." compact="true" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="heading-level" title="Heading level" description="heading-level renders the title as a heading (here an h2) - for a page whose only content is the empty state. The default is a paragraph." layout="block">
+    <dnf-empty-state icon="search" title="Page not found" description="The address may be mistyped, or the page was moved." heading-level="2">
+        <dnf-button href="/admin" icon="chevron-left">Back to the dashboard</dnf-button>
+    </dnf-empty-state>
+</ui-doc-example>
+
+<ui-doc-example id="plain-classes" title="Plain classes" description="The same markup written by hand." layout="block">
+    <div class="dnf-empty-state">
+        <div class="dnf-empty-state__icon"><dnf-icon name="users" size="Lg" /></div>
+        <p class="dnf-empty-state__title">No users match</p>
+        <p class="dnf-empty-state__description">Invite someone, or change the role filter.</p>
+        <div class="dnf-empty-state__actions">
+            <a class="dnf-button dnf-button--primary" href="/admin/users">Invite user</a>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A padding utility beats the component's large vertical padding." layout="block">
+    <dnf-empty-state icon="inbox" title="Inbox zero" description="No form submissions to review." class="py-6" />
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS restyles the parts in a scope - here a primary icon tile." layout="block">
+    <div class="dnf-docs-demo-empty">
+        <dnf-empty-state icon="puzzle" title="No extensions installed" description="Extensions add admin screens, widgets and endpoints." compact="true" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-empty .dnf-empty-state__icon {
+    background: var(--dnf-primary-soft);
+    color: var(--dnf-primary-text);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-empty-state</code></td><td>block</td><td>a centred column with large vertical padding</td></tr>
+        <tr><td><code>dnf-empty-state--compact</code></td><td>modifier</td><td>less padding (inside cards and side panes)</td></tr>
+        <tr><td><code>dnf-empty-state__icon</code></td><td>element</td><td>a 3rem muted tile around the icon</td></tr>
+        <tr><td><code>dnf-empty-state__title</code></td><td>element</td><td><code>text-lg</code>, semibold</td></tr>
+        <tr><td><code>dnf-empty-state__description</code></td><td>element</td><td>muted, at most 26rem wide</td></tr>
+        <tr><td><code>dnf-empty-state__actions</code></td><td>element</td><td>a centred, wrapping row of buttons</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<h3 id="api-empty-state"><code>&lt;dnf-empty-state&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfEmptyStateTagHelper)" />
+<p>The icon renders large (<code>dnf-icon--lg</code>); <code>title</code> and <code>description</code> are encoded. The child
+    content becomes <code>dnf-empty-state__actions</code>, left out when empty. <code>class</code> is appended; other attributes
+    pass through.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Use <code>heading-level="1"</code> when the empty state is the page's only content (an error page); otherwise the title
+        is a paragraph under the screen's heading.</li>
+    <li>The icon is decorative; the title says what is empty.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do offer the next action - unless the page header already has it.</li>
+    <li>Do say what will appear here, not only that nothing is there.</li>
+    <li>Don't use it for "no search results" inside a collection: that is <code>[data-collection-empty]</code>
+        (<a href="@UiDocsCatalog.Root/behaviours">behaviours</a>), usually a compact empty state shown by <code>dnf.js</code>.</li>
+</ul>

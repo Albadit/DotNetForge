@@ -26,7 +26,8 @@ src/DotNetForge.Web/Areas/Admin/Controllers/ContentTypesController.cs   list, ne
 src/DotNetForge.Web/Areas/Admin/Views/ContentTypes/Index.cshtml        type cards
 src/DotNetForge.Web/Areas/Admin/Views/ContentTypes/New.cshtml          template gallery + name
 src/DotNetForge.Web/Areas/Admin/Views/ContentTypes/Edit.cshtml         builder: fields card (+ JSON), Settings and Delete cards
-src/DotNetForge.Web/wwwroot/js/forge/content-types.js                  the visual field builder (keeps FieldsJson in sync)
+src/DotNetForge.Web/wwwroot/js/admin/content-types.js                  the visual field builder (keeps FieldsJson in sync)
+src/DotNetForge.Web/wwwroot/css/admin/content.css                     .dnf-field-builder* (the builder), .dnf-type-card, .dnf-type-icon
 src/DotNetForge.Content/ContentTypeService.cs                          create (templates), update (+ entry migration), delete, Icons
 src/DotNetForge.Core/Content/ContentSchema.cs                          field definitions: parse and validate
 src/DotNetForge.Core/Content/ContentTypeTemplates.cs                   the starter templates
@@ -37,8 +38,8 @@ src/DotNetForge.Core/Content/ContentTypeTemplates.cs                   the start
 ```text
 Content types (h1)  "Define the shape of your content: a type has fields, the Content Manager generates its forms, and pages show it with content lists."
 ├── header: [Content Manager] [New content type] (with the right to create)
-├── no types: card <empty-state "No content types yet"> (no button - New content type is in the header)
-└── .type-grid of cards: icon, name, API id, Collection | Single, description, Fields / Entries / Published, [Edit fields] [Entries →]
+├── no types: card <dnf-empty-state "No content types yet"> (no button - New content type is in the header)
+└── grid of .dnf-type-card cards: icon, name, API id, Collection | Single, description, Fields / Entries / Published, [Edit fields] [Entries →]
 
 New content type (h1)
 ├── card "Start from": Blank + one card per template (Blog posts, Categories, Authors, Products, Events, Projects,
@@ -47,8 +48,8 @@ New content type (h1)
 
 <type name> (h1)  "<n> fields · <m> entries · API /api/entries/<slug>"
 ├── header: [All types] [Entries] [Save content type]
-└── form#typeForm.editor
-    ├── main: <form-errors/>, "This type has entries" note, card "Fields"
+└── form#typeForm.dnf-split
+    ├── main: <dnf-validation-summary/>, "This type has entries" note, card "Fields"
     │         field list: ⠿ type icon · Label · key · type · badges (Required, Unique, Many, In list) · ↑ ↓ ⧉ 🗑
     │         open field: its settings (+ nested field list for a group / repeater)
     │         [Add field] → palette of the 16 field types
@@ -103,7 +104,7 @@ after every change; without JavaScript the JSON is edited directly (a `<noscript
 3. When fields or the title field changed, every entry of the type is rewritten in the same save: values move with
    renamed fields (fields keep their id), removed fields lose their values, titles, search text and the value index
    are rebuilt. Audit `contenttype.updated` ("<n> field(s)").
-4. Success: toast "Saved '<name>'."; problems: listed in `<form-errors />` with the posted state kept.
+4. Success: toast "Saved '<name>'."; problems: listed in `<dnf-validation-summary />` with the posted state kept.
 
 ### Delete a type
 
@@ -139,7 +140,7 @@ are named \"price\"; API names must be unique.", "Category: choose the content t
 
 | Failure | What the user sees | Recovery |
 | --- | --- | --- |
-| Invalid settings or fields | `<form-errors />`, builder shows the posted fields | fix, save |
+| Invalid settings or fields | `<dnf-validation-summary />`, builder shows the posted fields | fix, save |
 | Delete refused | danger toast with the reason | remove the linking field first |
 | Unreadable JSON typed into the textarea | textarea outlined red; the builder keeps its state | fix the JSON |
 | No permission | `/account/denied` | - |
@@ -165,7 +166,7 @@ deleting the type.
 ContentTypesController
 ├── ContentTypeService (DotNetForge.Content) → ContentEntryService (migration, single entries), IAuditService
 └── DotNetForgeDbContext (counts)
-content-types.js (no server calls; ui.js Forge.confirm)
+content-types.js (no server calls; dnf.js dnfUI.confirm / icon)
 ```
 
 ## Page flow

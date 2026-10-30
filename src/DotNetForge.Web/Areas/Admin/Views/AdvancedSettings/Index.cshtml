@@ -7,70 +7,70 @@
     var selectedRole = Model.DefaultRoleId ?? authenticatedId;
 }
 
-<form method="post" action="/admin/advanced-settings" class="stack">
+<form method="post" action="/admin/advanced-settings" class="dnf-stack">
     @Html.AntiForgeryToken()
-    <form-errors />
-    <fieldset class="fieldset stack" disabled="@(Model.CanEdit ? null : "disabled")">
+    <dnf-validation-summary />
+    <fieldset class="dnf-fieldset dnf-stack" disabled="@(Model.CanEdit ? null : "disabled")">
         <legend class="sr-only">Advanced user settings</legend>
 
-        <section class="card" aria-labelledby="signups-title">
-            <div class="card-header"><h2 class="card-title" id="signups-title">Sign-ups</h2></div>
-            <div class="card-body stack">
-                <label class="switch-row">
-                    <span class="check-text">
+        <section class="dnf-card" aria-labelledby="signups-title">
+            <div class="dnf-card__header"><h2 class="dnf-card__title" id="signups-title">Sign-ups</h2></div>
+            <div class="dnf-card__body dnf-stack">
+                <label class="dnf-switch-row">
+                    <span class="dnf-check__text">
                         <span>Enable sign-ups</span>
-                        <span class="check-hint">Visitors can create an account at <code>/register</code>, and the sign-in page links to it; signing in with a provider (Providers) creates an account for a new email. When off, <code>/register</code> answers 404 and providers sign in existing accounts only.</span>
+                        <span class="dnf-check__description">Visitors can create an account at <code>/register</code>, and the sign-in page links to it; signing in with a provider (Providers) creates an account for a new email. When off, <code>/register</code> answers 404 and providers sign in existing accounts only.</span>
                     </span>
                     @* The checkbox first: a bound bool takes the first posted value. *@
-                    <input type="checkbox" class="switch" role="switch" name="SignUps" value="true" checked="@(Model.SignUps ? "checked" : null)" />
+                    <input type="checkbox" class="dnf-switch" role="switch" name="SignUps" value="true" checked="@(Model.SignUps ? "checked" : null)" />
                     <input type="hidden" name="SignUps" value="false" />
                 </label>
-                <div class="field">
-                    <label class="field-label" for="DefaultRoleId">Default role for new accounts</label>
-                    <select id="DefaultRoleId" name="DefaultRoleId" aria-describedby="role-hint">
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="DefaultRoleId">Default role for new accounts</label>
+                    <select id="DefaultRoleId" class="dnf-select" name="DefaultRoleId" aria-describedby="role-hint">
                         @foreach (var role in Model.Roles)
                         {
                             <option value="@role.Id" selected="@(role.Id == selectedRole ? "selected" : null)">@role.Name@(role.OpensAdmin ? " (opens the admin)" : "")</option>
                         }
                     </select>
-                    <span class="field-hint" id="role-hint">Authenticated is a site-only role: signed in, but no admin. Only a Super Admin can choose a role that opens the admin.</span>
+                    <span class="dnf-field__description" id="role-hint">Authenticated is a site-only role: signed in, but no admin. Only a Super Admin can choose a role that opens the admin.</span>
                 </div>
-                <p class="note text-sm text-muted"><icon name="info" size="sm" /><span>One account per email address - always on: a sign-up with an email that already has an account is refused.</span></p>
+                <p class="dnf-note text-sm text-muted"><dnf-icon name="info" size="Sm" /><span>One account per email address - always on: a sign-up with an email that already has an account is refused.</span></p>
             </div>
         </section>
 
-        <section class="card" aria-labelledby="email-title">
-            <div class="card-header"><h2 class="card-title" id="email-title">Confirmation and password reset</h2></div>
-            <div class="card-body stack">
+        <section class="dnf-card" aria-labelledby="email-title">
+            <div class="dnf-card__header"><h2 class="dnf-card__title" id="email-title">Confirmation and password reset</h2></div>
+            <div class="dnf-card__body dnf-stack">
                 @if (!Model.EmailConfigured)
                 {
-                    <alert tone="Warning" title="Email is not configured">Set the SMTP server with <code>SMTP_*</code> in <code>.env</code> (see <a href="/admin/email/configuration">Email → Configuration</a>). Until then email confirmation stays off and the sign-in page has no "Forgot password?" link.</alert>
+                    <dnf-alert tone="Warning" title="Email is not configured">Set the SMTP server with <code>SMTP_*</code> in <code>.env</code> (see <a href="/admin/email/configuration">Email › Configuration</a>). Until then email confirmation stays off and the sign-in page has no "Forgot password?" link.</dnf-alert>
                 }
-                <label class="switch-row">
-                    <span class="check-text">
+                <label class="dnf-switch-row">
+                    <span class="dnf-check__text">
                         <span>Enable email confirmation</span>
-                        <span class="check-hint">New accounts get a confirmation link and can't sign in until they open it. Accounts created on the Users screen are confirmed already.</span>
+                        <span class="dnf-check__description">New accounts get a confirmation link and can't sign in until they open it. Accounts created on the Users screen are confirmed already.</span>
                     </span>
-                    <input type="checkbox" class="switch" role="switch" name="EmailConfirmation" value="true"
+                    <input type="checkbox" class="dnf-switch" role="switch" name="EmailConfirmation" value="true"
                            checked="@(Model.EmailConfirmation ? "checked" : null)" disabled="@(Model.EmailConfigured ? null : "disabled")" />
                     <input type="hidden" name="EmailConfirmation" value="false" />
                 </label>
-                <div class="field">
-                    <label class="field-label" for="ResetPasswordUrl">Reset password page<span class="field-optional">optional</span></label>
-                    <input id="ResetPasswordUrl" name="ResetPasswordUrl" type="url" value="@Model.ResetPasswordUrl" placeholder="https://app.example.com/reset-password" aria-describedby="reset-hint" />
-                    <span class="field-hint" id="reset-hint">For a front end with its own page: reset links point there with <code>?token=</code>, and it posts a form with <code>token</code>, <code>password</code> and <code>confirmPassword</code> to <code>/reset-password</code>. Empty: the built-in page.</span>
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="ResetPasswordUrl">Reset password page<span class="dnf-field__optional">optional</span></label>
+                    <input id="ResetPasswordUrl" class="dnf-input" name="ResetPasswordUrl" type="url" value="@Model.ResetPasswordUrl" placeholder="https://app.example.com/reset-password" aria-describedby="reset-hint" />
+                    <span class="dnf-field__description" id="reset-hint">For a front end with its own page: reset links point there with <code>?token=</code>, and it posts a form with <code>token</code>, <code>password</code> and <code>confirmPassword</code> to <code>/reset-password</code>. Empty: the built-in page.</span>
                 </div>
-                <div class="field">
-                    <label class="field-label" for="ConfirmationRedirectUrl">Redirection after email confirmation<span class="field-optional">optional</span></label>
-                    <input id="ConfirmationRedirectUrl" name="ConfirmationRedirectUrl" type="url" value="@Model.ConfirmationRedirectUrl" placeholder="https://app.example.com/welcome" aria-describedby="confirm-hint" />
-                    <span class="field-hint" id="confirm-hint">Where people land after opening the confirmation link. Empty: the sign-in page.</span>
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="ConfirmationRedirectUrl">Redirection after email confirmation<span class="dnf-field__optional">optional</span></label>
+                    <input id="ConfirmationRedirectUrl" class="dnf-input" name="ConfirmationRedirectUrl" type="url" value="@Model.ConfirmationRedirectUrl" placeholder="https://app.example.com/welcome" aria-describedby="confirm-hint" />
+                    <span class="dnf-field__description" id="confirm-hint">Where people land after opening the confirmation link. Empty: the sign-in page.</span>
                 </div>
             </div>
             @if (Model.CanEdit)
             {
                 @* One form across both cards: this saves the sign-up settings too. *@
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-primary"><icon name="check" /> Save settings</button>
+                <div class="dnf-card__footer">
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Save settings</button>
                 </div>
             }
         </section>

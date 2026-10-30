@@ -16,7 +16,7 @@ obj/
 .vs/
 
 # ---- Development runtime data ----
-# storage/ only exists in Development (default SQLite database + local media). Production writes
+# storage/ only exists in Development (local media). Production writes
 # nothing here: the deployment directory is read-only (.docs/guides/deployment.md).
 /storage/
 
@@ -45,3 +45,10 @@ coverage/
 # Logs and local tool caches.
 *.log
 .cache/
+
+# ---- Tailwind CSS CLI (downloaded by src/DotNetForge.UI/build/Tailwind.targets) and its output ----
+/tools/
+src/DotNetForge.UI/wwwroot/dnf.css
+
+# ---- UI test screenshots: baselines are recorded per machine on the first run (.docs/guides/testing.md#ui-tests) ----
+tests/DotNetForge.UiTests/Baselines/

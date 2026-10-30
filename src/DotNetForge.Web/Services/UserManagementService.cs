@@ -48,12 +48,14 @@ public sealed class UserManagementService
     private readonly DotNetForgeDbContext _db;
     private readonly IPasswordHasher _hasher;
     private readonly IAuditService _audit;
+    private readonly UserSessionService _sessions;
 
-    public UserManagementService(DotNetForgeDbContext db, IPasswordHasher hasher, IAuditService audit)
+    public UserManagementService(DotNetForgeDbContext db, IPasswordHasher hasher, IAuditService audit, UserSessionService sessions)
     {
         _db = db;
         _hasher = hasher;
         _audit = audit;
+        _sessions = sessions;
     }
 
     public async Task<(Guid? Id, string? Error)> CreateAsync(UserInput input, ManagementActor actor, CancellationToken ct = default)
@@ -125,8 +127,14 @@ public sealed class UserManagementService
 
         await _db.SaveChangesAsync(ct);
         await _audit.LogAsync(AuditActions.UserUpdated, "User", user.Id.ToString(), user.Email, cancellationToken: ct);
+        if (!string.IsNullOrEmpty(input.Password))
+        {
+            await _sessions.EndAllAsync(user.Id, ct);
+        }
+
         if (rolesChanged)
         {
+            _sessions.Forget(user.Id);
             await _audit.LogAsync(AuditActions.RoleChanged, "User", user.Id.ToString(), user.Email,
                 details: "Role assignment changed", cancellationToken: ct);
         }
@@ -153,6 +161,15 @@ public sealed class UserManagementService
 
         user.Status = enabled ? UserStatus.Enabled : UserStatus.Disabled;
         await _db.SaveChangesAsync(ct);
+        if (enabled)
+        {
+            _sessions.Forget(id);
+        }
+        else
+        {
+            await _sessions.EndAllAsync(id, ct);
+        }
+
         await _audit.LogAsync(AuditActions.UserUpdated, "User", user.Id.ToString(), user.Email,
             details: enabled ? "Enabled" : "Disabled", cancellationToken: ct);
         return null;
@@ -178,11 +195,12 @@ public sealed class UserManagementService
             return error;
         }
 
-        // Role links and page entries first (MongoDB has no cascading deletes); audit entries keep the user's name snapshot.
+        // Role links and page entries first; audit entries keep the user's name snapshot.
         _db.UserRoles.RemoveRange(await _db.UserRoles.Where(ur => ur.UserId == id).ToListAsync(ct));
         _db.PageUserPermissions.RemoveRange(await _db.PageUserPermissions.Where(p => p.UserId == id).ToListAsync(ct));
         _db.Users.Remove(user);
         await _db.SaveChangesAsync(ct);
+        await _sessions.EndAllAsync(id, ct);
         await _audit.LogAsync(AuditActions.UserDeleted, "User", user.Id.ToString(), user.Email, cancellationToken: ct);
         return null;
     }

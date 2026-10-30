@@ -372,6 +372,96 @@ public sealed class MediaTests
         Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync($"/admin/media/{files["notes.csv"]}/inline")).StatusCode);
     }
 
+    [Fact]
+    public async Task The_preview_reads_documents_on_the_server_and_only_for_people_who_may_read_the_library()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        var admin = await factory.SignInAsync();
+        await UploadAsync(admin, "people.csv", "name;city\nAda;London"u8.ToArray(), isPublic: false);
+        await UploadAsync(admin, "broken.docx", "this is not an archive"u8.ToArray(), isPublic: true);
+        await UploadAsync(admin, "notes.txt", "hello"u8.ToArray(), isPublic: true);
+
+        Dictionary<string, Guid> files = new();
+        await factory.WithDbAsync(async db => files = await db.MediaFiles.ToDictionaryAsync(f => f.FileName, f => f.Id));
+
+        // A private file is read for the admin: data, not markup, and never cached.
+        var response = await admin.GetAsync($"/admin/media/{files["people.csv"]}/document");
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("no-store", response.Headers.CacheControl?.ToString());
+        var preview = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("spreadsheet", preview.GetProperty("kind").GetString());
+        var rows = preview.GetProperty("sheets")[0].GetProperty("rows");
+        Assert.Equal("London", rows[1][1].GetString());
+
+        // A damaged file is an answer the dialog can show, not a server error.
+        var broken = System.Text.Json.JsonDocument.Parse(await admin.GetStringAsync($"/admin/media/{files["broken.docx"]}/document")).RootElement;
+        Assert.Contains("couldn't be read", broken.GetProperty("error").GetString());
+
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/admin/media/{files["notes.txt"]}/document")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/admin/media/{Guid.NewGuid()}/document")).StatusCode);
+
+        using var visitor = factory.CreateNoRedirectClient();
+        Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync($"/admin/media/{files["people.csv"]}/document")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Pages_move_with_the_right_to_change_them_and_say_where_they_went()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        var admin = await factory.SignInAsync();
+        Guid about = default, blog = default;
+        await factory.WithDbAsync(async db =>
+        {
+            var pages = await db.Pages.Where(p => p.ParentPageId == null && p.Slug != "/").Select(p => p.Id).Take(2).ToListAsync();
+            about = pages[0];
+            blog = pages[1];
+        });
+
+        var page = await admin.GetStringAsync("/admin/pages");
+        Assert.Contains("id=\"page-move-dialog\"", page);
+        Assert.Contains("data-page-move", page);
+
+        Assert.Equal(HttpStatusCode.Redirect, (await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", $"/admin/pages/move/{about}",
+            new Dictionary<string, string> { ["parentId"] = blog.ToString() })).StatusCode);
+        await factory.WithDbAsync(async db => Assert.Equal(blog, await db.Pages.Where(p => p.Id == about).Select(p => p.ParentPageId).SingleAsync()));
+
+        // Back to Root: an empty parent. And a move into its own child is refused, with nothing changed.
+        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", $"/admin/pages/move/{blog}", new Dictionary<string, string> { ["parentId"] = about.ToString() });
+        await factory.WithDbAsync(async db => Assert.Null(await db.Pages.Where(p => p.Id == blog).Select(p => p.ParentPageId).SingleAsync()));
+        await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", $"/admin/pages/move/{about}", new Dictionary<string, string> { ["parentId"] = string.Empty });
+        await factory.WithDbAsync(async db => Assert.Null(await db.Pages.Where(p => p.Id == about).Select(p => p.ParentPageId).SingleAsync()));
+
+        await factory.CreateUserAsync("developer@example.com", DotNetForgeWebFactory.AdminPassword, "Developer");
+        var developer = await factory.SignInAsync("developer@example.com");
+        var token = await DotNetForgeWebFactory.GetAntiforgeryTokenAsync(admin, "/admin/pages");
+        Assert.NotEqual(HttpStatusCode.OK, (await developer.PostAsync($"/admin/pages/move/{about}", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = token }))).StatusCode);
+        await factory.WithDbAsync(async db => Assert.Null(await db.Pages.Where(p => p.Id == about).Select(p => p.ParentPageId).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task The_home_page_cant_be_deleted()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        var admin = await factory.SignInAsync();
+        Guid home = default;
+        await factory.WithDbAsync(async db =>
+        {
+            home = await db.Pages.Where(p => p.Slug == "/").Select(p => p.Id).SingleAsync();
+        });
+
+        var editor = await admin.GetStringAsync($"/admin/pages?selected={home}");
+        Assert.DoesNotContain("deletePageForm", editor);
+        Assert.DoesNotContain($"/admin/pages/delete/{home}", editor);
+
+        // Not by a direct post either.
+        var response = await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/pages", $"/admin/pages/delete/{home}", new Dictionary<string, string>());
+        Assert.Contains("root and can", await response.Content.ReadAsStringAsync()); // the refusal, not the form's hint
+        await factory.WithDbAsync(async db => Assert.True(await db.Pages.AnyAsync(p => p.Id == home)));
+    }
+
     private static Task<HttpResponseMessage> RenameAsync(HttpClient client, Guid id, string name) =>
         DotNetForgeWebFactory.PostFormAsync(client, "/admin/media", $"/admin/media/{id}/rename",
             new Dictionary<string, string> { ["name"] = name });

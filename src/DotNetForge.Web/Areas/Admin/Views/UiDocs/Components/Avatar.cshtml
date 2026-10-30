@@ -1,0 +1,121 @@
+@* Avatar (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/status.css</code></li>
+    <li>Tag helper <code>&lt;dnf-avatar&gt;</code> in <code>src/DotNetForge.UI/Components/BasicTagHelpers.cs</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>An avatar is a person's initials - or their picture - in a circle. It is decorative: the person's name is always
+    shown next to it.</p>
+
+<ui-doc-example id="basic">
+    <div class="dnf-cluster">
+        <dnf-avatar name="Ada Lovelace" />
+        <span class="font-semibold">Ada Lovelace</span>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="sizes" title="Sizes" description="Sm (1.625rem), Md (2rem, the default) and Lg (3rem); Xl renders Lg.">
+    <dnf-avatar name="Grace Hopper" size="Sm" />
+    <dnf-avatar name="Grace Hopper" />
+    <dnf-avatar name="Grace Hopper" size="Lg" />
+</ui-doc-example>
+
+<ui-doc-example id="initials" title="Initials" description="The name is split on spaces, dots, underscores, hyphens and the at sign: two parts or more give the first letter of the first two, one part its first two letters, nothing a question mark.">
+    <dnf-avatar name="Ada Lovelace" />
+    <dnf-avatar name="grace.hopper@@example.com" />
+    <dnf-avatar name="admin" />
+    <dnf-avatar name="" />
+</ui-doc-example>
+
+<ui-doc-example id="picture" title="Picture" description="With src the avatar shows the image, cropped to the circle, instead of the initials.">
+    <dnf-avatar name="DotNetForge" src="/img/logo-mark.svg" />
+    <dnf-avatar name="DotNetForge" src="/img/logo-mark.svg" size="Lg" />
+</ui-doc-example>
+
+<ui-doc-example id="in-a-list" title="In a list" description="The usual place: at the start of a row, before the person's name and email." layout="block">
+    <div class="dnf-card">
+        <ul class="dnf-list">
+            <li class="dnf-list__item">
+                <dnf-avatar name="Ada Lovelace" />
+                <div class="dnf-list__content">
+                    <span class="font-semibold">Ada Lovelace</span>
+                    <span class="text-sm text-muted">ada@@example.com</span>
+                </div>
+                <dnf-badge tone="Primary">Administrator</dnf-badge>
+            </li>
+            <li class="dnf-list__item">
+                <dnf-avatar name="Grace Hopper" />
+                <div class="dnf-list__content">
+                    <span class="font-semibold">Grace Hopper</span>
+                    <span class="text-sm text-muted">grace@@example.com</span>
+                </div>
+                <dnf-badge>Editor</dnf-badge>
+            </li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="plain" title="Plain classes" description="The same markup without the tag helper; keep it hidden from assistive technology.">
+    <span class="dnf-avatar" aria-hidden="true">AL</span>
+    <span class="dnf-avatar dnf-avatar--lg" aria-hidden="true">GH</span>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A class on the tag helper is appended: set the size token for one avatar, or recolour it.">
+    <dnf-avatar name="Ada Lovelace" class="[--dnf-avatar-size:2.5rem]" />
+    <dnf-avatar name="Grace Hopper" class="bg-success-soft text-success" />
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="The size is the --dnf-avatar-size token; set it, and any other property, in your own (unlayered) CSS - here larger rounded squares.">
+    <div class="dnf-docs-demo-avatars dnf-cluster">
+        <dnf-avatar name="Ada Lovelace" />
+        <dnf-avatar name="Grace Hopper" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-avatars .dnf-avatar {
+    --dnf-avatar-size: 2.5rem;
+    border-radius: var(--dnf-radius-md);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-avatar</code></td><td>block</td><td>a <code>--dnf-avatar-size</code> circle, primary-soft background, bold uppercase <code>text-xs</code> initials; an <code>&lt;img&gt;</code> inside covers it</td></tr>
+        <tr><td><code>dnf-avatar--sm</code></td><td>size</td><td>1.625rem, smaller text</td></tr>
+        <tr><td><code>dnf-avatar--lg</code></td><td>size</td><td>3rem, <code>text-md</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-avatar-size</code> (2rem): the width and height.</p>
+
+<h2 id="api">API</h2>
+<h3 id="api-avatar"><code>&lt;dnf-avatar&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfAvatarTagHelper)" />
+<p>A self-closing element that renders a <code>&lt;span aria-hidden="true"&gt;</code>; with <code>src</code> it holds an
+    <code>&lt;img alt=""&gt;</code>. The initials come from <code>DnfAvatarTagHelper.Initials(name)</code>, also usable from
+    code. Other attributes pass through; <code>class</code> is appended.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Decorative: <code>aria-hidden="true"</code> and an empty <code>alt</code> - the name next to it is what is read.</li>
+    <li>When you recolour an avatar, keep the initials at a 4.5:1 contrast with their background.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do show the person's name (or email) next to the avatar.</li>
+    <li>Do pass the display name, falling back to the email - not an id.</li>
+    <li>Don't use an avatar as the only identification of a person, or as a button on its own.</li>
+</ul>

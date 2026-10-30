@@ -166,7 +166,7 @@ function MoreMenu() {
                 theme === t.value && jsx("span", { class: "pe-menu-check" },
                     jsx(Icon, { name: "check", size: 16 }))))))))));
 }
-export function SaveIndicator() {
+function SaveIndicator() {
     const { session } = useEditor();
     const state = useSignal(session.saveState);
     const error = useSignal(session.saveError);

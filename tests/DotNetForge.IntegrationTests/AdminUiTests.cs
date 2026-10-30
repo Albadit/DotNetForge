@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using DotNetForge.Infrastructure.Configuration;
 using DotNetForge.Shared.Constants;
+using DotNetForge.UI.Components;
 using DotNetForge.Web.Areas.Admin.Navigation;
 using DotNetForge.Web.Ui;
 using Microsoft.EntityFrameworkCore;
@@ -10,9 +11,9 @@ using Xunit;
 namespace DotNetForge.IntegrationTests;
 
 /// <summary>
-/// The Forge UI (.docs/architecture/design-system.md): every screen honours the CSP and the page structure, the
-/// sidebar only offers what the user may open, the media bulk action keeps per-file permissions, and every icon the
-/// UI asks for exists in the sprite.
+/// The admin UI on the DotNetForge UI library (.docs/ui/README.md): every screen honours the CSP and the page structure,
+/// loads the library's assets, the sidebar only offers what the user may open, the media bulk action keeps per-file
+/// permissions, and every icon the UI asks for exists in the sprite.
 /// </summary>
 public sealed partial class AdminUiTests
 {
@@ -43,7 +44,8 @@ public sealed partial class AdminUiTests
         Assert.False(block.Success, $"{path} has an inline script, style block or event handler: {Around(html, block.Index)}");
         Assert.True(H1().Matches(html).Count == 1, $"{path} must have exactly one <h1>.");
         Assert.Contains("<html lang=\"en\">", html);
-        Assert.Contains("class=\"skip-link\" href=\"#main\"", html);
+        Assert.Contains("class=\"dnf-skip-link\" href=\"#main\"", html);
+        Assert.Matches("<link rel=\"stylesheet\" href=\"/_content/DotNetForge.UI/dnf.css\\?v=[^\"]+\"", html);
     }
 
     private static string Around(string html, int index) =>
@@ -65,12 +67,22 @@ public sealed partial class AdminUiTests
         });
 
         var editors = roleIds.Select(id => $"/admin/roles/{id}").Append($"/admin/users/{userId}").Append($"/admin/pages?selected={pageId}");
-        foreach (var path in AdminScreens.Concat(editors))
+        var docs = DotNetForge.Web.Areas.Admin.UiDocs.UiDocsCatalog.Pages.Select(p => p.Href).Append("/admin/docs/ui/components");
+        foreach (var path in AdminScreens.Concat(editors).Concat(docs))
         {
             var response = await admin.GetAsync(path);
             Assert.True(response.StatusCode == HttpStatusCode.OK, $"{path} returned {(int)response.StatusCode}.");
-            AssertWellFormed(path, await response.Content.ReadAsStringAsync());
+            var html = await response.Content.ReadAsStringAsync();
+            AssertWellFormed(path, html);
+            // Admin screens also load the behaviours (the public fallback site needs none).
+            Assert.Matches("<script src=\"/_content/DotNetForge.UI/dnf.js\\?v=[^\"]+\" defer", html);
         }
+
+        // The served library: the compiled stylesheet with its components, and the sprite.
+        var css = await admin.GetAsync("/_content/DotNetForge.UI/dnf.css");
+        Assert.Equal(HttpStatusCode.OK, css.StatusCode);
+        Assert.Contains(".dnf-button", await css.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/_content/DotNetForge.UI/icons.svg")).StatusCode);
 
         // The access-denied screen answers 403 on purpose; its markup follows the same rules.
         AssertWellFormed("/account/denied", await (await admin.GetAsync("/account/denied")).Content.ReadAsStringAsync());
@@ -113,7 +125,7 @@ public sealed partial class AdminUiTests
         Assert.Matches("data-nav-group=\"API &amp; Webhooks\" open=\"open\"\\s+data-nav-active=\"true\"", adminHtml);
         Assert.Matches("data-nav-group=\"Global Settings\"\\s+data-nav-active=\"false\"", adminHtml);
         Assert.Matches("data-nav-group=\"Email\"\\s+data-nav-active=\"false\"", adminHtml);
-        Assert.Matches("</aside>\\s*<script src=\"/js/forge/nav-state.js\\?v=[^\"]+\"></script>", adminHtml);
+        Assert.Matches("</aside>\\s*<script src=\"/js/admin/nav-state.js\\?v=[^\"]+\"></script>", adminHtml);
 
         // Pages comes before the Content Manager in the Main section.
         Assert.True(adminHtml.IndexOf("href=\"/admin/pages\"", StringComparison.Ordinal)
@@ -174,7 +186,7 @@ public sealed partial class AdminUiTests
     public void Every_icon_the_ui_uses_exists_in_the_sprite()
     {
         var root = AppPaths.FindRepositoryRoot(AppContext.BaseDirectory)!;
-        var sprite = File.ReadAllText(Path.Combine(root, "src", "DotNetForge.Web", "wwwroot", "img", "icons.svg"));
+        var sprite = File.ReadAllText(Path.Combine(root, "src", "DotNetForge.UI", "wwwroot", "icons.svg"));
         var symbols = Regex.Matches(sprite, "<symbol id=\"([a-z0-9-]+)\"").Select(m => m.Groups[1].Value).ToHashSet();
 
         var used = new HashSet<string>();
@@ -211,13 +223,13 @@ public sealed partial class AdminUiTests
     public void Timestamps_read_relative_to_now(int secondsAgo, string expected)
     {
         var now = new DateTime(2026, 10, 23, 12, 0, 0, DateTimeKind.Utc);
-        Assert.Equal(expected, TimestampTagHelper.Relative(now.AddSeconds(-secondsAgo), now));
+        Assert.Equal(expected, DnfTimestampTagHelper.Relative(now.AddSeconds(-secondsAgo), now));
     }
 
     [Fact]
     public void Old_timestamps_show_the_date()
     {
         var now = new DateTime(2026, 10, 23, 12, 0, 0, DateTimeKind.Utc);
-        Assert.Equal("3 Oct 2026", TimestampTagHelper.Relative(new DateTime(2026, 10, 3, 8, 0, 0, DateTimeKind.Utc), now));
+        Assert.Equal("3 Oct 2026", DnfTimestampTagHelper.Relative(new DateTime(2026, 10, 3, 8, 0, 0, DateTimeKind.Utc), now));
     }
 }

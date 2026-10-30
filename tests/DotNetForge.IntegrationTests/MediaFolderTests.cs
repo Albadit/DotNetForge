@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using DotNetForge.Shared.Constants;
-using DotNetForge.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -55,10 +54,10 @@ public sealed class MediaFolderTests
         // Drag and drop (media.js): the folder tiles are drop targets and can be dragged themselves.
         Assert.Contains($"data-drop-folder=\"{photos}\"", top);
         Assert.Contains($"data-drag-folder=\"{photos}\"", top);
-        Assert.Contains("/js/forge/media.js", top);
+        Assert.Contains("/js/admin/media.js", top);
         // Upload and New folder are dialogs in the markup (nothing on the page until opened), plus the folder menu's
         // Edit… dialog.
-        Assert.Matches("<dialog class=\"dialog upload-dialog\"[^>]*>\\s*<section class=\"card upload-panel\"", top);
+        Assert.Matches("<dialog class=\"dnf-dialog dnf-dialog--lg dnf-dialog--bare\"[^>]*>\\s*<section class=\"dnf-card\" id=\"upload\"", top);
         Assert.Contains("data-upload-panel", top);
         Assert.Contains("data-upload-toggle", top);
         Assert.Contains($"data-folder-edit=\"{photos}\"", top);

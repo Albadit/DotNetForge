@@ -15,123 +15,135 @@
 }
 
 @section Actions {
-    <a class="btn btn-secondary" href="/admin/content-types"><icon name="arrow-left" /> All types</a>
-    <a class="btn btn-secondary" href="/admin/content/@input.Slug"><icon name="database" /> Entries</a>
+    <a class="dnf-button dnf-button--secondary" href="/admin/content-types"><dnf-icon name="chevron-left" /> All types</a>
+    <a class="dnf-button dnf-button--secondary" href="/admin/content/@input.Slug"><dnf-icon name="database" /> Entries</a>
     @if (!readOnly)
     {
-        <button type="submit" form="typeForm" class="btn btn-primary"><icon name="save" /> Save content type</button>
+        <button type="submit" form="typeForm" class="dnf-button dnf-button--primary"><dnf-icon name="save" /> Save content type</button>
     }
 }
 
-<form id="typeForm" method="post" action="/admin/content-types/@Model.Id" class="editor" novalidate data-type-form>
+<form id="typeForm" method="post" action="/admin/content-types/@Model.Id" class="dnf-split" novalidate>
     @Html.AntiForgeryToken()
-    <div class="editor-main">
-        <form-errors />
+    <div class="dnf-split__main">
+        <dnf-validation-summary />
         @if (readOnly)
         {
-            <alert tone="Info" title="View only">You can see this content type but not change it.</alert>
+            <dnf-alert tone="Info" title="View only">You can see this content type but not change it.</dnf-alert>
         }
         @if (Model.EntryCount > 0 && !readOnly)
         {
-            <alert tone="Info" title="This type has entries">
+            <dnf-alert tone="Info" title="This type has entries">
                 Renaming a field's API name keeps its values. Removing a field removes its values from every entry when you save.
-            </alert>
+            </dnf-alert>
         }
 
-        <section class="card" aria-labelledby="fields-title">
-            <div class="card-header">
+        <section class="dnf-card" aria-labelledby="fields-title">
+            <div class="dnf-card__header">
                 <div>
-                    <h2 class="card-title" id="fields-title">Fields</h2>
-                    <p class="card-description">Drag to reorder. Groups and repeaters hold fields of their own. The entry form is generated from this list.</p>
+                    <h2 class="dnf-card__title" id="fields-title">Fields</h2>
+                    <p class="dnf-card__description">Drag to reorder. Groups and repeaters hold fields of their own. The entry form is generated from this list.</p>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="schema-builder" data-schema-builder data-js-only hidden
-                     data-relations="@relations" data-readonly="@(readOnly ? "true" : "false")"></div>
+            <div class="dnf-card__body">
+                <div class="dnf-field-builder" data-schema-builder data-js-only hidden
+                     data-relations="@relations" data-readonly="@(readOnly ? "true" : "false")">
+                    @* Holds the place until content-types.js draws the list, so what is below it doesn't jump. *@
+                    <div class="dnf-field-builder__list">
+                        @for (var i = 0; i < fields.Count; i++)
+                        {
+                            <div class="dnf-skeleton dnf-field-builder__placeholder"></div>
+                        }
+                    </div>
+                    @if (!readOnly)
+                    {
+                        <div class="dnf-field-builder__add-placeholder"></div>
+                    }
+                </div>
                 <noscript>
                     <p class="text-sm text-muted">The visual field builder needs JavaScript. You can still edit the fields as JSON below.</p>
                 </noscript>
-                <details class="schema-json" data-schema-json>
-                    <summary>Fields as JSON <span class="text-subtle text-xs">(for developers; the builder keeps it in sync)</span></summary>
-                    <textarea id="FieldsJson" name="FieldsJson" rows="16" class="text-mono" spellcheck="false" readonly="@(readOnly ? "readonly" : null)"
+                <details data-schema-json>
+                    <summary class="cursor-pointer text-sm text-muted">Fields as JSON <span class="text-subtle text-xs">(for developers; the builder keeps it in sync)</span></summary>
+                    <textarea id="FieldsJson" name="FieldsJson" rows="16" class="dnf-textarea dnf-textarea--mono mt-2 text-xs" spellcheck="false" readonly="@(readOnly ? "readonly" : null)"
                               aria-label="Fields as JSON" data-schema-source>@input.FieldsJson</textarea>
                 </details>
             </div>
         </section>
     </div>
 
-    <aside class="editor-aside">
-        <fieldset class="card" disabled="@(readOnly ? "disabled" : null)">
-            <div class="card-header"><h2 class="card-title">Settings</h2></div>
-            <div class="card-body stack">
-                <div class="field">
-                    <label class="field-label" for="Name">Name<span class="field-required" aria-hidden="true">*</span></label>
-                    <input id="Name" name="Name" value="@input.Name" maxlength="100" required />
+    <aside class="dnf-split__aside">
+        <fieldset class="dnf-card" disabled="@(readOnly ? "disabled" : null)">
+            <div class="dnf-card__header"><h2 class="dnf-card__title">Settings</h2></div>
+            <div class="dnf-card__body dnf-stack">
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="Name">Name<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                    <input id="Name" name="Name" class="dnf-input" value="@input.Name" maxlength="100" required />
                 </div>
-                <div class="field">
-                    <label class="field-label" for="Slug">API id<span class="field-required" aria-hidden="true">*</span></label>
-                    <input id="Slug" name="Slug" value="@input.Slug" maxlength="64" class="text-mono" required aria-describedby="slug-hint" />
-                    <span class="field-hint" id="slug-hint">Lower-case letters, digits and hyphens. Used in /api/entries/<span class="text-mono">@input.Slug</span> and the admin URL.</span>
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="Slug">API id<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                    <input id="Slug" name="Slug" value="@input.Slug" maxlength="64" class="dnf-input dnf-input--mono" required aria-describedby="slug-hint" />
+                    <span class="dnf-field__description" id="slug-hint">Lower-case letters, digits and hyphens. Used in /api/entries/<span class="font-mono">@input.Slug</span> and the admin URL.</span>
                 </div>
-                <div class="field">
-                    <label class="field-label" for="Description">Description<span class="field-optional">optional</span></label>
-                    <textarea id="Description" name="Description" rows="2" maxlength="500">@input.Description</textarea>
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="Description">Description<span class="dnf-field__optional">optional</span></label>
+                    <textarea id="Description" name="Description" class="dnf-textarea" rows="2" maxlength="500">@input.Description</textarea>
                 </div>
-                <div class="field">
-                    <label class="field-label" for="Icon">Icon</label>
-                    <select id="Icon" name="Icon">
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="Icon">Icon</label>
+                    <select id="Icon" name="Icon" class="dnf-select">
                         @foreach (var icon in ContentTypeService.Icons)
                         {
                             <option value="@icon" selected="@(icon == input.Icon ? "selected" : null)">@icon</option>
                         }
                     </select>
                 </div>
-                <fieldset class="fieldset">
-                    <legend>Holds</legend>
-                    <div class="choice-cards">
-                        <label class="choice-card">
-                            <input type="radio" name="Kind" value="Collection" checked="@(input.Kind == ContentTypeKind.Collection ? "checked" : null)" />
+                <fieldset class="dnf-fieldset">
+                    <legend class="dnf-fieldset__legend">Holds</legend>
+                    <div class="dnf-choice-cards">
+                        <label class="dnf-choice-card">
+                            <input type="radio" class="dnf-radio" name="Kind" value="Collection" checked="@(input.Kind == ContentTypeKind.Collection ? "checked" : null)" />
                             <span>Many entries</span>
                         </label>
-                        <label class="choice-card">
-                            <input type="radio" name="Kind" value="Single" checked="@(input.Kind == ContentTypeKind.Single ? "checked" : null)" />
+                        <label class="dnf-choice-card">
+                            <input type="radio" class="dnf-radio" name="Kind" value="Single" checked="@(input.Kind == ContentTypeKind.Single ? "checked" : null)" />
                             <span>One entry</span>
                         </label>
                     </div>
                 </fieldset>
-                <div class="field">
-                    <label class="field-label" for="TitleField">Title field</label>
-                    <select id="TitleField" name="TitleField" data-title-field aria-describedby="title-hint">
+                <div class="dnf-field">
+                    <label class="dnf-field__label" for="TitleField">Title field</label>
+                    <select id="TitleField" name="TitleField" class="dnf-select" data-title-field aria-describedby="title-hint">
                         @foreach (var f in titleCandidates)
                         {
                             <option value="@f.Key" selected="@(f.Key == titleKey ? "selected" : null)">@f.Label (@f.Key)</option>
                         }
                     </select>
-                    <span class="field-hint" id="title-hint">Names an entry in lists, pickers and the browser tab of a detail page.</span>
+                    <span class="dnf-field__description" id="title-hint">Names an entry in lists, pickers and the browser tab of a detail page.</span>
                 </div>
-                <label class="switch-row">
-                    <span class="check-text">
+                <label class="dnf-switch-row">
+                    <span class="dnf-check__text">
                         <span>Drafts</span>
-                        <span class="check-hint">On: changes are saved as a draft until someone publishes them. Off: saving publishes.</span>
+                        <span class="dnf-check__description">On: changes are saved as a draft until someone publishes them. Off: saving publishes.</span>
                     </span>
                     @* The checkbox first: a bound bool takes the first posted value. *@
-                    <input type="checkbox" class="switch" role="switch" name="Drafts" value="true" checked="@(input.Drafts ? "checked" : null)" />
+                    <input type="checkbox" class="dnf-switch" role="switch" name="Drafts" value="true" checked="@(input.Drafts ? "checked" : null)" />
                     <input type="hidden" name="Drafts" value="false" />
                 </label>
             </div>
             @if (!readOnly)
             {
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-primary btn-block"><icon name="save" /> Save content type</button>
+                <div class="dnf-card__footer">
+                    <button type="submit" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="save" /> Save content type</button>
                 </div>
             }
         </fieldset>
 
         @if (Model.CanDelete)
         {
-            <section class="card card-danger" aria-labelledby="delete-title">
-                <div class="card-header"><h2 class="card-title" id="delete-title">Delete content type</h2></div>
-                <div class="card-body stack-sm">
+            <section class="dnf-card dnf-card--danger" aria-labelledby="delete-title">
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="delete-title">Delete content type</h2></div>
+                <div class="dnf-card__body dnf-stack dnf-stack--sm">
                     <p class="text-sm text-muted">
                         @(Model.EntryCount > 0 ? $"Its {Model.EntryCount} entr{(Model.EntryCount == 1 ? "y" : "ies")} are deleted with it." : "It has no entries.")
                         Content lists on pages that show it become empty.
@@ -140,10 +152,10 @@
                     {
                         <input type="hidden" name="withEntries" value="true" form="deleteTypeForm" />
                     }
-                    <button type="submit" form="deleteTypeForm" class="btn btn-danger-soft btn-block"
+                    <button type="submit" form="deleteTypeForm" class="dnf-button dnf-button--danger-soft dnf-button--full-width"
                             data-confirm="Delete '@input.Name'@(Model.EntryCount > 0 ? $" and its {Model.EntryCount} entries" : "")? This can't be undone."
                             data-confirm-title="Delete content type" data-confirm-action="Delete">
-                        <icon name="trash" /> Delete content type
+                        <dnf-icon name="trash" /> Delete content type
                     </button>
                 </div>
             </section>
@@ -159,5 +171,5 @@
 }
 
 @section Scripts {
-    <script src="~/js/forge/content-types.js" asp-append-version="true" defer></script>
+    <script src="~/js/admin/content-types.js" asp-append-version="true" defer></script>
 }

@@ -1,0 +1,108 @@
+@* Tooltip (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/overlay.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (<code>[data-tooltip]</code>)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A short label shown on hover and on keyboard focus. The markup is one attribute, <code>data-tooltip="Text"</code>, on a
+    focusable element; <code>dnf.js</code> draws one shared bubble in the top layer. Give the element the same words as its
+    accessible name - screen readers and pages without JavaScript only get that.</p>
+
+<ui-doc-example id="basic">
+    <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only" aria-label="Delete" data-tooltip="Delete"><dnf-icon name="trash" /></button>
+    <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only" aria-label="Duplicate" data-tooltip="Duplicate"><dnf-icon name="copy" /></button>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="tag-helpers" title="From the tag helpers" description="An icon-only dnf-button and a dnf-status-dot add data-tooltip themselves, from label.">
+    <dnf-button icon="pencil" icon-only="true" label="Edit page" />
+    <dnf-button variant="Ghost" icon="external-link" icon-only="true" label="View on site" />
+    <dnf-status-dot tone="Success" label="Published" />
+    <dnf-status-dot tone="Warning" label="Scheduled" />
+</ui-doc-example>
+
+<ui-doc-example id="toolbar" title="A toolbar" description="Every icon-only control gets a tooltip that names it in plain words.">
+    <div class="dnf-button-group dnf-button-group--attached" role="group" aria-label="Formatting">
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--icon-only" aria-pressed="false" aria-label="Bold" data-tooltip="Bold"><dnf-icon name="bold" /></button>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--icon-only" aria-pressed="false" aria-label="Italic" data-tooltip="Italic"><dnf-icon name="italic" /></button>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--icon-only" aria-pressed="false" aria-label="Underline" data-tooltip="Underline"><dnf-icon name="underline" /></button>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--icon-only" aria-label="Insert link" data-tooltip="Insert link"><dnf-icon name="link" /></button>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="shortcut" title="With a keyboard shortcut" description="A shortcut may follow the words, in brackets.">
+    <button type="button" class="dnf-button dnf-button--secondary dnf-button--icon-only" aria-label="Next problem" data-tooltip="Go to the next problem (F8)"><dnf-icon name="chevron-down" /></button>
+</ui-doc-example>
+
+<ui-doc-example id="links" title="On links" description="Any focusable element works - here icon links in a table row.">
+    <div class="dnf-cluster">
+        <a class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only" href="/admin/media" aria-label="Open in the media library" data-tooltip="Open in the media library"><dnf-icon name="image" size="Sm" /></a>
+        <a class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only" href="/" aria-label="View on site" data-tooltip="View on site"><dnf-icon name="external-link" size="Sm" /></a>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The bubble is appended to <code>&lt;body&gt;</code>, so it can't be scoped by a parent class: change it globally, in your own
+    unlayered CSS - by its tokens or by <code>.dnf-tooltip</code> itself (see the
+    <a href="@UiDocsCatalog.Root/customization">customization levels</a>). There is no Level 2: the bubble is not in your markup.</p>
+<ui-doc-code id="custom-css-code" lang="css">
+:root {
+    --dnf-tooltip-background: var(--dnf-primary);
+    --dnf-tooltip-foreground: var(--dnf-primary-foreground);
+}
+.dnf-tooltip { max-width: 14rem; }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-tooltip</code></td><td>block</td><td>the shared bubble <code>dnf.js</code> creates: fixed, at most 20rem wide, <code>text-xs</code> medium, an arrow (<code>::after</code>), fades in, no pointer events</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>above</td><td><code>[data-placement="top"]</code></td><td>above the element, the arrow below the bubble</td></tr>
+        <tr><td>below</td><td><code>[data-placement="bottom"]</code></td><td>below the element when there is no room above</td></tr>
+        <tr><td>arrow position</td><td><code>--dnf-tooltip-arrow-x</code> (set by <code>dnf.js</code>)</td><td>points the arrow at the element's centre</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-tooltip-background</code>, <code>--dnf-tooltip-foreground</code> - theme tokens: a dark bubble in the light theme,
+    a light one in the dark theme.</p>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: <code>data-tooltip="Text"</code> on a focusable element is the API. <code>dnf.js</code> creates the
+    bubble once:</p>
+<ui-doc-code id="bubble" lang="html">
+<div class="dnf-tooltip" role="tooltip" popover="manual" data-placement="top">Delete</div>
+</ui-doc-code>
+<p>It shows on hover and on keyboard focus (<code>:focus-visible</code>), and hides on mouse-out, blur, scroll, pointer down and
+    Escape. <code>&lt;dnf-button icon-only="true" label="…"&gt;</code> and <code>&lt;dnf-status-dot label="…"&gt;</code> add
+    <code>data-tooltip</code> themselves.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The bubble is visual help only. The element's accessible name (<code>aria-label</code>) must say the same thing,
+        because screen readers don't get the bubble and without JavaScript there is none.</li>
+    <li>It shows on keyboard focus too, not only on hover, and Escape hides it.</li>
+    <li>Put it on focusable elements - a keyboard can't reach a tooltip on plain text. (A status dot is the exception: its
+        tooltip shows on hover, and its <code>aria-label</code> carries the same words for screen readers.)</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do give every icon-only control a tooltip.</li>
+    <li>Do write tooltips as plain words that explain the control ("Next file", "Copy link") - never arrows, symbols or icon
+        characters such as an arrow or a check mark. A keyboard shortcut may follow in words: "Go to the next problem (F8)".</li>
+    <li>Don't put essential or interactive content in a tooltip - use a <a href="@UiDocsCatalog.Root/components/popover">popover</a>.</li>
+    <li>Don't repeat a button's visible text in a tooltip.</li>
+</ul>

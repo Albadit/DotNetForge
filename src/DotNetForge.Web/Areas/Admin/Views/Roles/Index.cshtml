@@ -9,86 +9,86 @@
 @section Actions {
     @if (canCreate)
     {
-        <a class="btn btn-primary" href="/admin/roles/create"><icon name="plus" /> Create role</a>
+        <a class="dnf-button dnf-button--primary" href="/admin/roles/create"><dnf-icon name="plus" /> Create role</a>
     }
 }
 
-<section class="card" aria-labelledby="roles-title" data-collection>
-    <div class="card-header">
+<section class="dnf-card" aria-labelledby="roles-title" data-collection>
+    <div class="dnf-card__header">
         <div>
-            <h2 class="card-title" id="roles-title">All roles</h2>
-            <p class="card-description" data-collection-count>@Model.Count total</p>
+            <h2 class="dnf-card__title" id="roles-title">All roles</h2>
+            <p class="dnf-card__description" data-collection-count>@Model.Count total</p>
         </div>
-        <div class="segmented" role="group" aria-label="Filter roles" data-js-only hidden>
-            <button type="button" data-collection-filter="kind" data-value="" aria-pressed="true">All</button>
-            <button type="button" data-collection-filter="kind" data-value="built-in" aria-pressed="false">Built-in</button>
-            <button type="button" data-collection-filter="kind" data-value="custom" aria-pressed="false">Custom</button>
+        <div class="dnf-segmented" role="group" aria-label="Filter roles" data-js-only hidden>
+            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="" aria-pressed="true">All</button>
+            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="built-in" aria-pressed="false">Built-in</button>
+            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="custom" aria-pressed="false">Custom</button>
         </div>
     </div>
-    <div class="table-wrap">
-        <table class="table table-stack">
+    <div class="dnf-table dnf-table--stack">
+        <table class="dnf-table__table">
             <thead>
                 <tr>
                     <th scope="col" data-sort="text">Role</th>
                     <th scope="col">Type</th>
                     <th scope="col" data-sort="number">Users</th>
                     <th scope="col" data-sort="number">Permissions</th>
-                    <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var role in Model)
                 {
                     <tr data-item data-kind="@(role.IsBuiltIn ? "built-in" : "custom")">
-                        <td class="cell-lead">
-                            <div class="cluster">
-                                <span class="stat-icon" aria-hidden="true"><icon name="shield" size="sm" /></span>
+                        <td class="dnf-table__cell--lead">
+                            <div class="dnf-cluster">
+                                <span class="dnf-list__icon dnf-list__icon--primary size-10" aria-hidden="true"><dnf-icon name="shield" size="Sm" /></span>
                                 <span>
-                                    <a class="cell-primary" href="/admin/roles/@role.Id">@role.Name</a>
-                                    <span class="cell-sub">@(string.IsNullOrWhiteSpace(role.Description) ? "No description" : role.Description)</span>
+                                    <a class="dnf-table__primary" href="/admin/roles/@role.Id">@role.Name</a>
+                                    <span class="dnf-table__secondary">@(string.IsNullOrWhiteSpace(role.Description) ? "No description" : role.Description)</span>
                                 </span>
                             </div>
                         </td>
                         <td data-label="Type">
                             @if (role.IsBuiltIn)
                             {
-                                <badge tone="Accent"><icon name="lock" size="sm" /> Built-in</badge>
+                                <dnf-badge tone="Primary"><dnf-icon name="lock" size="Sm" /> Built-in</dnf-badge>
                             }
                             else
                             {
-                                <badge>Custom</badge>
+                                <dnf-badge>Custom</dnf-badge>
                             }
                         </td>
                         <td data-label="Users">@role.Users</td>
                         <td data-label="Permissions">@role.Permissions</td>
-                        <td class="col-actions">
-                            <action-menu label="Actions for @role.Name">
-                                <menu-link href="/admin/roles/@role.Id" icon="pencil">Edit</menu-link>
+                        <td class="dnf-table__cell--actions">
+                            <dnf-dropdown label="Actions for @role.Name">
+                                <dnf-dropdown-link href="/admin/roles/@role.Id" icon="pencil">Edit</dnf-dropdown-link>
                                 @if (canCreate)
                                 {
-                                    <menu-post action="/admin/roles/@role.Id/duplicate" icon="copy">Duplicate</menu-post>
+                                    <dnf-dropdown-post action="/admin/roles/@role.Id/duplicate" icon="copy">Duplicate</dnf-dropdown-post>
                                 }
                                 @if (canDelete && !role.IsBuiltIn)
                                 {
-                                    <menu-separator />
+                                    <dnf-dropdown-separator />
                                     @if (role.Users > 0)
                                     {
-                                        <menu-note>In use by @role.Users @(role.Users == 1 ? "user" : "users") - can't be deleted</menu-note>
+                                        <dnf-dropdown-note>In use by @role.Users @(role.Users == 1 ? "user" : "users") - can't be deleted</dnf-dropdown-note>
                                     }
                                     else
                                     {
-                                        <menu-post action="/admin/roles/@role.Id/delete" icon="trash" danger="true" field-returnTo="list"
-                                                   confirm="Delete the role '@role.Name'? This can't be undone." confirm-title="Delete role" confirm-action="Delete role">Delete</menu-post>
+                                        <dnf-dropdown-post action="/admin/roles/@role.Id/delete" icon="trash" danger="true" field-returnTo="list"
+                                                   confirm="Delete the role '@role.Name'? This can't be undone." confirm-title="Delete role" confirm-action="Delete role">Delete</dnf-dropdown-post>
                                     }
                                 }
-                            </action-menu>
+                            </dnf-dropdown>
                         </td>
                     </tr>
                 }
-                <tr class="table-empty" data-collection-empty hidden><td colspan="5">No role matches the filter.</td></tr>
+                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="5">No role matches the filter.</td></tr>
                 @if (Model.Count == 0)
                 {
-                    <tr class="table-empty"><td colspan="5">No roles yet.</td></tr>
+                    <tr class="dnf-table__empty"><td colspan="5">No roles yet.</td></tr>
                 }
             </tbody>
         </table>

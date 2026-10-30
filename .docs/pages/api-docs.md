@@ -30,15 +30,15 @@ All three routes are listed in the [route map](../architecture/pages.md#route-ma
 
 ```text
 src/DotNetForge.Web/Areas/Admin/Controllers/ApiDocsController.cs     Index ([Authorize(Policy = AuthorizationPolicies.ApiDocs)])
-src/DotNetForge.Web/Areas/Admin/Views/ApiDocs/Index.cshtml           header actions + .ext-frame card (skeleton, iframe[data-frame])
+src/DotNetForge.Web/Areas/Admin/Views/ApiDocs/Index.cshtml           header actions + .dnf-ext-frame card (skeleton, iframe[data-frame])
 src/DotNetForge.Web/ApiDocs/ApiDocsEndpoints.cs                      MapApiDocs: MapOpenApi + MapScalarApiReference (options, pre-filled endpoint tokens)
 src/DotNetForge.Web/ApiDocs/ApiDocsTransformers.cs                   ApiDocsDocument, ApiDocsDocumentTransformer, ApiDocsOperationTransformer
 src/DotNetForge.Web/Startup/DependencyRegistration.cs                AddOpenApi("v1", ...), the ApiDocs policy
 src/DotNetForge.Web/Program.cs                                       app.MapApiDocs(env)
 src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs          ApiReferencePolicy: the Scalar page's nonce'd CSP
 src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs        sidebar entry
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                           iframe[data-frame]: hides the skeleton once the frame has loaded
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                      .ext-frame-card, .ext-frame, .ext-frame-loading (shared with admin extension tabs)
+src/DotNetForge.UI/wwwroot/dnf.js                                    iframe[data-frame]: data-loaded on [data-frame-host] once the frame has loaded
+src/DotNetForge.Web/wwwroot/css/admin/shell.css                      .dnf-ext-frame, __frame, __loading (shared with admin extension tabs)
 src/DotNetForge.Shared/Constants/AuthorizationPolicies.cs            AuthorizationPolicies.ApiDocs
 src/DotNetForge.Content/Endpoints/CustomEndpointService.cs           ListAsync, OperationsAsync, TokenOf (the endpoints, their operations and tokens)
 ```
@@ -48,9 +48,9 @@ src/DotNetForge.Content/Endpoints/CustomEndpointService.cs           ListAsync, 
 ```text
 API Docs (h1) - "Try the API: the headless API with an API token, and your custom endpoints with their own tokens (filled in)."
    [API tokens] → /admin/api-tokens   [API endpoints] → /admin/api-endpoints   [Open full screen] → /admin/api-docs/reference/ (new tab)
-└── div.card.ext-frame-card
-    ├── .ext-frame-loading skeleton (title + 3 lines; JS only, hidden once the frame has loaded)
-    └── iframe.ext-frame src=/admin/api-docs/reference/  title="API reference"  data-frame   (viewport height minus header, min 28rem)
+└── div.dnf-card.dnf-ext-frame[data-frame-host]
+    ├── .dnf-ext-frame__loading skeleton (title + 3 lines; JS only, hidden once the frame has loaded)
+    └── iframe.dnf-ext-frame__frame src=/admin/api-docs/reference/  title="API reference"  data-frame   (viewport height minus header, min 28rem)
         └── Scalar ("<AppName> API", document description, then the operations grouped by tag - the API's
             controllers, and one tag per enabled custom endpoint named like it; authentication with
             ApiToken and one "Endpoint xxxxxxxx" scheme per token endpoint)
@@ -60,8 +60,8 @@ API Docs (h1) - "Try the API: the headless API with an API token, and your custo
 
 | Component | Inputs | Behaviour |
 | --- | --- | --- |
-| Header actions | none | three links (`btn-secondary`): **API tokens** (icon `key`), **API endpoints** (icon `code`), **Open full screen** (icon `external-link`, `target="_blank" rel="noopener"`) |
-| Frame card | none | the same markup as an [admin extension tab](extension-host.md): `.ext-frame-card` with a skeleton and `iframe.ext-frame[data-frame]`; `ui.js` adds `is-loaded` on the frame's `load` event, which hides the skeleton |
+| Header actions | none | three links (`dnf-button dnf-button--secondary`): **API tokens** (icon `key`), **API endpoints** (icon `code`), **Open full screen** (icon `external-link`, `target="_blank" rel="noopener"`) |
+| Frame card | none | the same markup as an [admin extension tab](extension-host.md): `.dnf-ext-frame[data-frame-host]` with a skeleton and `iframe.dnf-ext-frame__frame[data-frame]`; `dnf.js` sets `data-loaded="true"` on the host on the frame's `load` event, which hides the skeleton |
 | Scalar reference | `GET /admin/api-docs/openapi/v1.json`, the pre-filled endpoint tokens | Scalar's own UI (operations, schemas, "Test Request"); configured in `MapApiDocs` without the font CDN, telemetry, the "Ask AI" agent, MCP and developer tools ([API docs → Tokens in Scalar](../features/api-docs.md#tokens-in-scalar)) |
 
 The controller passes no model: everything inside the frame comes from the two mapped routes.
@@ -189,7 +189,7 @@ MapApiDocs (Program.cs)
 │   └── ApiDocsOperationTransformer → RequireApiPermissionAttribute metadata
 └── MapScalarApiReference("/admin/api-docs/reference") → CustomEndpointService (ListAsync, TokenOf), AppEnvironment
 SecurityHeadersMiddleware → ApiReferencePolicy(nonce) for the Scalar page only
-View → ui.js (iframe[data-frame]), admin.css (.ext-frame-*), <icon>
+View → dnf.js (iframe[data-frame]), shell.css (.dnf-ext-frame*), <dnf-icon>
 ```
 
 ## Page flow

@@ -13,8 +13,6 @@ public sealed record PageUserGrant(Guid UserId, bool? View, bool? Edit);
 /// <summary>The grants of one page: roles (allow only) and users (allow or block).</summary>
 public sealed record PageGrants(IReadOnlySet<Guid> View, IReadOnlySet<Guid> Edit, IReadOnlyList<PageUserGrant> Users)
 {
-    public static readonly PageGrants None = new(new HashSet<Guid>(), new HashSet<Guid>(), Array.Empty<PageUserGrant>());
-
     /// <summary>A page is restricted when anyone is explicitly allowed to view it (role or user).</summary>
     public bool Restricted => View.Count > 0 || Users.Any(u => u.View == true);
 }
@@ -228,10 +226,6 @@ public sealed class PagePermissionService
         _db.PagePermissions.RemoveRange(await _db.PagePermissions.Where(p => p.PageId == pageId).ToListAsync(ct));
         _db.PageUserPermissions.RemoveRange(await _db.PageUserPermissions.Where(p => p.PageId == pageId).ToListAsync(ct));
     }
-
-    /// <summary>Removes a user's entries on every page (when the user is deleted).</summary>
-    public async Task RemoveUserAsync(Guid userId, CancellationToken ct = default) =>
-        _db.PageUserPermissions.RemoveRange(await _db.PageUserPermissions.Where(p => p.UserId == userId).ToListAsync(ct));
 
     /// <summary>
     /// Whether <paramref name="user"/> may see the page on the site (see the class remarks). <paramref name="canEdit"/>:

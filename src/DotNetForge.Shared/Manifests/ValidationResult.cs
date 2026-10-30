@@ -30,6 +30,4 @@ public sealed class ValidationResult
     public IReadOnlyList<ValidationError> Errors => _errors;
 
     public void Add(string field, string message) => _errors.Add(new ValidationError(field, message));
-
-    public static ValidationResult Success() => new();
 }

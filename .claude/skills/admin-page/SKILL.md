@@ -2,8 +2,8 @@
 name: admin-page
 description: >-
   Adds or changes a server-rendered admin screen in DotNetForge CMS (src/DotNetForge.Web/Areas/Admin): controller deriving
-  AdminControllerBase, attribute route under /admin, role restriction, view model, Razor view built from the Forge
-  design system, POST + antiforgery + audit for mutations, sidebar link, and the matching .docs/pages document. Use when
+  AdminControllerBase, attribute route under /admin, role restriction, view model, Razor view built from the DotNetForge
+  UI library (Dnf components), POST + antiforgery + audit for mutations, sidebar link, and the matching .docs/pages document. Use when
   asked to build an admin page/screen, replace one of the module placeholders (Marketplace, Content History,
   Internationalization), or add an
   action/form to an existing admin screen.
@@ -12,7 +12,8 @@ description: >-
 # Admin screen
 
 Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.docs/architecture/design-system.md`
-(components, tag helpers, behaviours) and the screen's doc in `.docs/pages/` if it exists. Model screens: `PagesController` (forms + service + audit), `ContentController` (forms generated from data, JSON for pickers), `SettingsController` (simple upsert),
+(how screens use the UI: layouts, feedback, building a screen), `.docs/ui/README.md` (components, tag helpers, states;
+the component reference in the in-app UI docs, `/admin/docs/ui`, source in `src/DotNetForge.Web/Areas/Admin/Views/UiDocs/Components/`) and the screen's doc in `.docs/pages/` if it exists. Model screens: `PagesController` (forms + service + audit), `ContentController` (forms generated from data, JSON for pickers), `SettingsController` (simple upsert),
 `UsersController` / `RolesController` (list + edit form + service with rules, `[RequirePermission]` per action).
 
 ## Steps
@@ -39,25 +40,31 @@ Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.doc
    matrix use `Can(area, action)` / `CanModify(area, any, own, createdById)` from `AdminControllerBase` and return
    `Forbid()` when they fail. Validate string lengths before saving. On validation failure: `ModelState.AddModelError(string.Empty, msg)` and re-render the
    same view with a model built by a shared private `Build...Async` helper.
-5. **View** - `src/DotNetForge.Web/Areas/Admin/Views/<Name>/Index.cshtml`, built from the design system
+5. **View** - `src/DotNetForge.Web/Areas/Admin/Views/<Name>/Index.cshtml`, built from the DotNetForge UI library
    (`.docs/architecture/design-system.md#building-a-screen`; model: `Settings/Index.cshtml`, `Users/Index.cshtml`):
    - `ViewData["Title"]` (the only `<h1>`, tab title, last breadcrumb), optional `ViewData["Description"]`; header
      buttons in `@section Actions { }` (primary last).
-   - Content in `.card`s (`.card-header` / `.card-body`). Lists: `.card[data-collection]` > `.toolbar` +
-     `.table-wrap` > `table.table.table-stack` (`data-label` on each cell), `<empty-state>` for "nothing yet",
-     `[data-collection-empty]` for "no match". Status: `<badge tone="Success">`; dates: `<timestamp value="@utc" />`.
-   - Forms: `<form method="post" class="form">` + `@Html.AntiForgeryToken()`, `<form-errors />` at the top (never
-     `asp-validation-summary` - its empty state is an inline style), `.field` > `label.field-label` + control +
-     `span.field-hint`, buttons `.btn` + `.btn-primary` / `.btn-danger`, `.form-actions`.
+   - Content in `dnf-card`s (`dnf-card__header` / `dnf-card__body`). Lists: `<div class="dnf-card" data-collection>` >
+     `dnf-toolbar` + `div.dnf-table.dnf-table--stack` > `table.dnf-table__table` (`data-label` on each cell),
+     `<dnf-empty-state>` for "nothing yet", `[data-collection-empty]` for "no match". Status:
+     `<dnf-badge tone="Success">`; dates: `<dnf-timestamp value="@utc" />`. Layout: `dnf-stack`, `dnf-grid`,
+     `dnf-split` or Tailwind utilities (`flex gap-2`, `text-sm text-muted`).
+   - Forms: `<form method="post" class="dnf-form">` + `@Html.AntiForgeryToken()`, `<dnf-validation-summary />` at the
+     top (never `asp-validation-summary` - its empty state is an inline style), `dnf-field` > `label.dnf-field__label` +
+     control with its class (`dnf-input`, `dnf-select`, `dnf-textarea`, `dnf-checkbox`, `dnf-switch`) +
+     `span.dnf-field__description`, buttons `<dnf-button variant="Primary">` (or `class="dnf-button dnf-button--primary"`),
+     `dnf-form-actions`.
    - Feedback: set `TempData["Success"]` / `["Error"]` and redirect - the layout shows a toast; never render flash
      markup. Destructive actions: `data-confirm="..."` (+ `data-confirm-title`, `data-confirm-action`) on the form -
-     `ui.js` opens the confirm dialog.
-   - Row/card actions: `<action-menu>` with `<menu-link>`, `<menu-post>` (antiforgery + `confirm` built in),
-     `<menu-separator />` (`.docs/architecture/design-system.md#menus`) - never a hand-written dropdown.
+     `dnf.js` opens the confirm dialog.
+   - Row/card actions: `<dnf-dropdown>` with `<dnf-dropdown-link>`, `<dnf-dropdown-post>` (antiforgery + `confirm`
+     built in), `<dnf-dropdown-separator />` (UI docs: `/admin/docs/ui/components/dropdown`) - never a hand-written dropdown.
    - **No inline `<script>`, `on*=` attributes, `style=` or `<style>`** - the Content-Security-Policy blocks them in
-     production. New styles go into `wwwroot/css/forge/components.css` (reusable) or `admin.css` (screen layout) using
-     tokens; behaviour as a data attribute in `ui.js` or a page script in `wwwroot/js/forge/` via `@section Scripts`.
-     New icons go into `wwwroot/img/icons.svg`.
+     production. Prefer Dnf components and utilities; a screen-specific block goes into the matching
+     `src/DotNetForge.Web/wwwroot/css/admin/*.css` (in `@layer components`, `--dnf-*` tokens only); a reusable
+     component into `src/DotNetForge.UI` (`.docs/ui/README.md#where-to-change-things`). Behaviour as a `dnf.js`
+     `data-*` hook or a page script in `src/DotNetForge.Web/wwwroot/js/admin/` via `@section Scripts`. New icons go
+     into `src/DotNetForge.UI/wwwroot/icons.svg`. A new utility or component class needs `dotnet build` (Tailwind).
 6. **Sidebar** - add a `NavLink("Label", "/admin/<slug>", "<icon>", typeof(<Name>Controller))` in the right
    section/group of `AdminNavigation.Tree` (`src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs`); when
    replacing a placeholder, change its controller type and drop `Planned: true`. Visibility per role (from the
@@ -76,6 +83,6 @@ Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.doc
 - Return a view for a POST success (use PRG).
 - Put validation in the view or controller when a service owns the concept.
 - Add CSS/JS frameworks, web fonts or a client-side fetch layer; progressive enhancement only, like
-  `src/DotNetForge.Web/wwwroot/js/forge/pages.js`.
+  `src/DotNetForge.Web/wwwroot/js/admin/pages.js`.
 - Hard-code sidebar links or role checks in a view; use `AdminNavigation.Tree` and `AdminNavModel.Allows(href)`.
 - Write files to disk: runtime files go through `IFileStorage` (the deployment directory is read-only).
