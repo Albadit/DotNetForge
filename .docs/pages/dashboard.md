@@ -24,11 +24,11 @@ src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs            DashboardVi
 src/DotNetForge.Web/Areas/Admin/Views/Dashboard/Index.cshtml         welcome band, KPI cards, Recent activity, At a glance, System, widget slot
 src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs        AdminNavigationService / AdminNavModel.Allows (which links and actions the user may reach)
 src/DotNetForge.Web/Areas/Admin/Components/ExtensionWidgetsViewComponent.cs                  widget slot
-src/DotNetForge.Web/Areas/Admin/Views/Shared/Components/ExtensionWidgets/Default.cshtml      .widget-grid of widget cards
+src/DotNetForge.Web/Areas/Admin/Views/Shared/Components/ExtensionWidgets/Default.cshtml      grid of widget cards (Tailwind grid utilities)
 src/DotNetForge.Web/Services/ExtensionViewRenderer.cs                renders each Widget.cshtml as a partial
-src/DotNetForge.Web/Ui/UiTagHelpers.cs                               <stat-card>, <empty-state>, <badge>, <timestamp>, <icon>
+src/DotNetForge.UI/Components/BasicTagHelpers.cs                     <dnf-stat-card>, <dnf-empty-state>, <dnf-badge>, <dnf-timestamp>, <dnf-icon>
 src/DotNetForge.Web/Ui/AuditPresentation.cs                          friendly audit action labels + icons
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                      .dashboard-hero, .dashboard-columns, .activity-icon, .widget-grid
+src/DotNetForge.Web/wwwroot/css/admin/shell.css                      .dnf-dashboard-hero (welcome band)
 ```
 
 Shared look and behaviour: [design system](../architecture/design-system.md) (admin shell, components).
@@ -37,22 +37,22 @@ Shared look and behaviour: [design system](../architecture/design-system.md) (ad
 
 ```text
 Dashboard (_AdminLayout, h1 "Dashboard", no description, no breadcrumbs)
-├── section.dashboard-hero
+├── section.dnf-dashboard-hero
 │   ├── h2 "Welcome back, <first name>"  +  "Manage your pages, media and extensions from here."
 │   └── quick actions (each only when permitted): [New page] (primary) · [Upload media] · [New API token]
-├── .grid.grid-4 KPI cards (<stat-card>): Pages · Media files · Users · Enabled extensions
-├── .dashboard-columns (2 : 1, one column below 64rem)
+├── .dnf-grid.dnf-grid--cols-4 KPI cards (<dnf-stat-card>): Pages · Media files · Users · Enabled extensions
+├── two-column grid (2 : 1, one column below 64rem; Tailwind grid utilities)
 │   ├── card "Recent activity" - "The latest actions."  [View all →]
-│   │   └── ul.list: icon · <action label> · <entity> / <user or "System"> · [Failed] · <relative time>
-│   └── stack
+│   │   └── ul.dnf-list: icon (dnf-list__icon--round) · <action label> · <entity> / <user or "System"> · [Failed] · <relative time>
+│   └── dnf-stack
 │       ├── card "At a glance": Roles · Active API tokens · Webhooks · Audit entries
 │       └── card "System": CMS version (badge "v<version>") · Installed (date or "-") · Modes "Traditional · Headless · Hybrid"
-└── Widgets (only when a widget is active): sr-only h2 "Widgets", .widget-grid of section.card.widget - h3 <extension name> + its view
+└── Widgets (only when a widget is active): sr-only h2 "Widgets", a grid of section.dnf-card - h3 <extension name> + its view
 ```
 
 ## Components
 
-### Welcome band (`section.dashboard-hero`)
+### Welcome band (`section.dnf-dashboard-hero`)
 
 Greeting from `DashboardViewModel.Greeting`: the signed-in user's `FirstName`, else `User.Identity.Name`, else
 `there`. Quick actions:
@@ -67,7 +67,7 @@ By default `Admin`, `Editor` and `Author` have `create` in both content and medi
 Developer sees only **New API token**, Editors and Authors everything but it. The checks only decide visibility; each
 target enforces its own permission.
 
-### KPI cards (`<stat-card>`)
+### KPI cards (`<dnf-stat-card>`)
 
 | Card | Query | Link |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ target enforces its own permission.
 | Users | `Users.Count()` | `/admin/users` when `Allows("/admin/users")`, else a plain card |
 | Enabled extensions | `InstalledExtensions.Count(Status == Enabled)` | `/admin/plugins` when `Allows("/admin/plugins")` (`Super Admin`), else a plain card |
 
-A card with `href` renders as an `<a>`, without as a `<div>` (`StatCardTagHelper`).
+A card with `href` renders as an `<a>`, without as a `<div>` (`DnfStatCardTagHelper`).
 
 ### Recent activity
 
@@ -84,7 +84,7 @@ The last `DashboardController.RecentActivityCount` (8) `AuditLogs` rows (includi
 (`OrderByDescending(Id)`). Each row: an icon from
 `AuditPresentation.Icon(action)` (danger style when the entry failed), the friendly label
 `AuditPresentation.Label(action)` (the raw key when unmapped), `· EntityDisplaySnapshot` when present,
-`UserDisplaySnapshot` or `System`, a **Failed** badge for unsuccessful entries and a `<timestamp>` (relative, exact
+`UserDisplaySnapshot` or `System`, a **Failed** badge for unsuccessful entries and a `<dnf-timestamp>` (relative, exact
 UTC in the tooltip). **View all** links to [Audit Logs](audit-logs.md) only when `Allows("/admin/audit-logs")`
 (`Super Admin`, `Admin`); the list itself is shown to every admin-capable role.
 
@@ -96,8 +96,8 @@ UTC in the tooltip). **View all** links to [Audit Logs](audit-logs.md) only when
 | Active API tokens | `ApiTokens.Count(!Revoked && (ExpirationDate == null || ExpirationDate > now))` |
 | Webhooks | `Webhooks.Count()` (enabled and disabled) |
 | Audit entries | `AuditLogs.Count()` |
-| CMS version | `SystemState.CmsVersion` (default `1.0.0`), as an accent badge `v1.0.0` |
-| Installed | `SystemState.InstalledAtUtc` as `<timestamp absolute="true">` (`d MMM yyyy, HH:mm UTC`) or `-` |
+| CMS version | `SystemState.CmsVersion` (default `1.0.0`), as a primary badge `v1.0.0` |
+| Installed | `SystemState.InstalledAtUtc` as `<dnf-timestamp absolute="true">` (`d MMM yyyy, HH:mm UTC`) or `-` |
 | Modes | static text `Traditional · Headless · Hybrid` |
 
 ## Functionality
@@ -112,7 +112,7 @@ extension of type `widget` (valid, enabled on [Plugins](plugins.md), code loaded
 name order. The card title is the manifest `name`; the body is the view rendered by `ExtensionViewRenderer` as a
 partial with a fresh ViewData (`Extension`, `Settings`, `ResourceBase = /admin/ext/{id}/resources` -
 [extension view data](../features/extensions.md#slots)) and no model. A widget view that throws is logged and
-replaced by "<name> could not be displayed." (`.ext-error`); the rest of the Dashboard renders normally. A widget can
+replaced by "<name> could not be displayed." (`italic text-muted`); the rest of the Dashboard renders normally. A widget can
 link its own CSS/JS from `/admin/ext/{id}/resources/...` (CSP: no inline script or style). Sample:
 `extensions/widgets/weather-widget` (**Weather**, code + `Views/Widget.cshtml`).
 
@@ -330,7 +330,7 @@ admin area (today every screen is server-rendered, see
 ## Extension points
 
 Add a count: property on `DashboardViewModel`, query in `DashboardController.Index`, a
-`<stat-card>` or an `.dl` row in the view; link it only when `nav.Allows(href)` is true. Add a quick action: a flag
+`<dnf-stat-card>` or a `.dnf-description-list` row in the view; link it only when `nav.Allows(href)` is true. Add a quick action: a flag
 from `Can(...)` on the view model (or `nav.Allows`) and a button in the welcome band - the target keeps its own check.
 Add a widget without touching the core: a `widget` extension with `Views/Widget.cshtml`
 ([extension development guide](../guides/extension-development.md)); built-in widgets belong in their own view

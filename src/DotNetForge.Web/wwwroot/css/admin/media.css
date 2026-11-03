@@ -1,0 +1,250 @@
+/*
+  Media library screens (.docs/pages/media.md, .docs/pages/media-settings.md) - CMS-internal blocks on top of the
+  Dnf components (/_content/DotNetForge.UI/dnf.css):
+
+  .dnf-media-grid       the library items (#media-items); data-view-mode="grid|list" (dnf.js view switch) lays the
+                        same cards out as tiles or as rows - one DOM, one checkbox per item
+  .dnf-media-card       a file or folder (--folder): __select, __thumb, __meta > __name + __badges, __actions;
+                        states data-selected (dnf.js selection), data-dragging, data-drop-target (media.js)
+  .dnf-folder-crumbs    the folder breadcrumbs in the Library card title: __link (a drop target), __sep
+  .dnf-upload-preview   the chosen files in the Upload dialog (media.js): .dnf-upload-item > __thumb, __meta > __name +
+                        __problem, __remove; data-invalid="true" when too large or not allowed
+  .dnf-media-preview    the preview dialog (on .dnf-dialog--xl): __head > __title, __stage > __image | __video |
+                        __audio | __frame | __fallback | __zip > __entries > __entry
+
+  The dialogs, the drop area, the toolbar and bulk bar, the Media Library settings' stat cards and form grids are
+  plain Dnf components.
+*/
+
+@layer components {
+    /* ---- Library items: cards (grid) or rows (list) ----------------------------------------------------------- */
+    .dnf-media-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+        gap: var(--dnf-space-4);
+        padding: var(--dnf-space-4);
+    }
+
+    .dnf-media-card {
+        position: relative;
+        display: flex; flex-direction: column;
+        min-width: 0;
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface);
+    }
+    .dnf-media-card[data-selected="true"] { border-color: var(--dnf-primary); box-shadow: 0 0 0 1px var(--dnf-primary); }
+
+    .dnf-media-card__thumb {
+        display: grid; place-items: center;
+        aspect-ratio: 4 / 3;
+        overflow: hidden;
+        border-radius: var(--dnf-radius-lg) var(--dnf-radius-lg) 0 0;
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-subtle-foreground);
+    }
+    .dnf-media-card__thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .dnf-media-card--folder .dnf-media-card__thumb { color: var(--dnf-primary); }
+
+    .dnf-media-card__meta { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; padding: var(--dnf-space-2) var(--dnf-space-3) var(--dnf-space-3); }
+    .dnf-media-card__name {
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        color: var(--dnf-foreground);
+        font-weight: var(--dnf-weight-semibold);
+    }
+    .dnf-media-card__badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-2); }
+
+    /* The checkbox and the ⋯ menu sit on the thumbnail's corners. (The menu is a .dnf-dropdown: the child selector
+       outranks its position.) */
+    .dnf-media-card > .dnf-media-card__select {
+        position: absolute; z-index: 1; top: var(--dnf-space-2); left: var(--dnf-space-2);
+        padding: 0.25rem;
+        line-height: 0;
+        border-radius: var(--dnf-radius-sm);
+        background: var(--dnf-surface);
+        box-shadow: var(--dnf-shadow-sm);
+    }
+    .dnf-media-card > .dnf-media-card__actions { position: absolute; z-index: 1; top: var(--dnf-space-2); right: var(--dnf-space-2); }
+
+    /* List: one row per item. */
+    .dnf-media-grid[data-view-mode="list"] { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card {
+        flex-direction: row; align-items: center; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-2) var(--dnf-space-4);
+        border: 0; border-bottom: 1px solid var(--dnf-border); border-radius: 0;
+    }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card:last-child { border-bottom: 0; }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card[data-selected="true"] { box-shadow: none; background: var(--dnf-primary-soft); }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card > .dnf-media-card__select { position: static; padding: 0; background: none; box-shadow: none; }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card__thumb {
+        flex: 0 0 auto;
+        width: 2.75rem; height: 2.75rem;
+        aspect-ratio: auto;
+        border-radius: var(--dnf-radius-md);
+    }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card__thumb .dnf-icon { --dnf-icon-size: 1.25rem; }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card__meta {
+        flex: 1 1 auto; flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--dnf-space-4);
+        padding: 0;
+    }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card__name { flex: 1 1 14rem; }
+    .dnf-media-grid[data-view-mode="list"] .dnf-media-card > .dnf-media-card__actions { position: static; }
+
+    /* ---- Drag and drop (media.js): the dragged item fades, a folder or breadcrumb under it is outlined -------- */
+    .dnf-media-card[draggable="true"] { cursor: grab; }
+    .dnf-media-card[data-dragging="true"] { opacity: 0.45; }
+    .dnf-media-card[data-drop-target="true"] {
+        border-color: var(--dnf-primary);
+        background: var(--dnf-primary-soft);
+        box-shadow: 0 0 0 2px var(--dnf-primary);
+    }
+
+    /* ---- Folder breadcrumbs (the Library card's title) -------------------------------------------------------- */
+    .dnf-folder-crumbs { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--dnf-space-1); }
+    .dnf-folder-crumbs__link { color: var(--dnf-muted-foreground); text-decoration: none; }
+    .dnf-folder-crumbs__link:hover { color: var(--dnf-foreground); text-decoration: underline; }
+    .dnf-folder-crumbs__link[data-drop-target="true"] {
+        border-radius: var(--dnf-radius-sm);
+        color: var(--dnf-primary-text);
+        text-decoration: underline;
+        box-shadow: var(--dnf-focus-ring);
+    }
+    .dnf-folder-crumbs__sep { color: var(--dnf-subtle-foreground); }
+
+    /* ---- Upload dialog: previews of the chosen files (media.js) ----------------------------------------------- */
+    .dnf-upload-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: var(--dnf-space-3); }
+    .dnf-upload-item {
+        position: relative;
+        display: flex; flex-direction: column;
+        min-width: 0;
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface);
+    }
+    .dnf-upload-item[data-invalid="true"] { border-color: var(--dnf-danger); }
+    .dnf-upload-item__thumb {
+        display: grid; place-items: center;
+        aspect-ratio: 4 / 3;
+        overflow: hidden;
+        border-radius: var(--dnf-radius-lg) var(--dnf-radius-lg) 0 0;
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-subtle-foreground);
+    }
+    .dnf-upload-item__thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .dnf-upload-item__meta {
+        display: flex; flex-direction: column; gap: 0.15rem;
+        min-width: 0;
+        padding: var(--dnf-space-2);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-xs);
+    }
+    .dnf-upload-item__name {
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        color: var(--dnf-foreground);
+        font-size: var(--dnf-text-sm);
+        font-weight: var(--dnf-weight-semibold);
+    }
+    .dnf-upload-item__problem { color: var(--dnf-danger); }
+    .dnf-upload-item__remove { position: absolute; top: var(--dnf-space-1); right: var(--dnf-space-1); }
+
+    /* ---- Preview dialog (.docs/pages/media.md#preview) --------------------------------------------------------- */
+    .dnf-media-preview__head {
+        display: flex; align-items: center; gap: var(--dnf-space-1);
+        padding: var(--dnf-space-4) var(--dnf-space-4) var(--dnf-space-3) var(--dnf-space-5);
+    }
+    .dnf-media-preview__title { flex: 1 1 auto; min-width: 0; }
+    .dnf-media-preview__stage {
+        display: grid; place-items: center;
+        min-height: 16rem; max-height: calc(100vh - 14rem);
+        margin: 0 var(--dnf-space-5);
+        overflow: auto;
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-muted);
+    }
+    .dnf-media-preview__image, .dnf-media-preview__video {
+        display: block;
+        max-width: 100%; max-height: calc(100vh - 14rem);
+        object-fit: contain;
+    }
+    .dnf-media-preview__audio { display: flex; justify-content: center; width: 100%; padding: var(--dnf-space-8) var(--dnf-space-4); }
+    .dnf-media-preview__audio > audio { width: min(32rem, 100%); }
+    .dnf-media-preview__frame {
+        width: 100%; height: calc(100vh - 14rem); min-height: 24rem;
+        border: 0;
+        background: var(--dnf-surface);
+    }
+    .dnf-media-preview__fallback {
+        display: flex; flex-direction: column; align-items: center; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-10) var(--dnf-space-4);
+        color: var(--dnf-subtle-foreground);
+        text-align: center;
+    }
+    .dnf-media-preview__fallback > strong { color: var(--dnf-foreground); overflow-wrap: anywhere; }
+    .dnf-media-preview__zip { align-self: stretch; width: 100%; padding: var(--dnf-space-4); }
+    .dnf-media-preview__entries { margin-top: var(--dnf-space-2); font-size: var(--dnf-text-sm); }
+    .dnf-media-preview__entry {
+        display: flex; align-items: center; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-1) 0;
+        border-bottom: 1px solid var(--dnf-border);
+    }
+    .dnf-media-preview__entry:last-child { border-bottom: 0; }
+
+    /* Word, Excel, PowerPoint and CSV (media.js documentPreview). */
+    .dnf-media-preview__document { align-self: stretch; width: 100%; min-width: 0; padding: var(--dnf-space-4); }
+    .dnf-media-preview__note {
+        margin-bottom: var(--dnf-space-3);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-media-preview__page {
+        max-width: 48rem;
+        margin-inline: auto;
+        padding: var(--dnf-space-8);
+        border-radius: var(--dnf-radius-sm);
+        background: var(--dnf-surface);
+        box-shadow: var(--dnf-shadow-sm);
+        overflow-wrap: anywhere;
+    }
+    .dnf-media-preview__page > * + * { margin-top: var(--dnf-space-3); }
+    .dnf-media-preview__text, .dnf-media-preview__heading { white-space: pre-wrap; }
+    .dnf-media-preview__heading { font-weight: var(--dnf-weight-semibold); line-height: 1.25; }
+    .dnf-media-preview__heading--1 { font-size: var(--dnf-text-2xl); }
+    .dnf-media-preview__heading--2 { font-size: var(--dnf-text-xl); }
+    .dnf-media-preview__heading--3 { font-size: var(--dnf-text-lg); }
+    .dnf-media-preview__item { position: relative; white-space: pre-wrap; }
+    .dnf-media-preview__marker { display: inline-block; width: 1.5em; margin-inline-start: -1.5em; }
+    .dnf-media-preview__picture { display: block; max-width: 100%; height: auto; }
+
+    .dnf-media-preview__sheet-tabs { max-width: 100%; margin-bottom: var(--dnf-space-3); overflow-x: auto; }
+    .dnf-media-preview__sheet { border-radius: var(--dnf-radius-sm); background: var(--dnf-surface); }
+    .dnf-media-preview__sheet .dnf-table__table { width: auto; min-width: 100%; }
+    .dnf-media-preview__sheet tbody th { color: var(--dnf-muted-foreground); font-weight: var(--dnf-weight-regular); }
+    .dnf-media-preview__sheet td { white-space: nowrap; }
+
+    .dnf-media-preview__slides {
+        display: flex; flex-direction: column; gap: var(--dnf-space-5);
+        max-width: min(60rem, calc((100vh - 19rem) * var(--dnf-slide-ratio, 1.78)));
+        margin-inline: auto;
+    }
+    .dnf-media-preview__slide-frame { display: flex; flex-direction: column; gap: var(--dnf-space-1); margin: 0; }
+    /* A slide is the paper it was designed on, in either theme: its own colours assume white unless it sets others. */
+    .dnf-media-preview__slide {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+        background: var(--dnf-gray-0);
+        color: var(--dnf-gray-950);
+        box-shadow: var(--dnf-shadow-sm);
+        container-type: inline-size;
+        line-height: 1.15;
+    }
+    .dnf-media-preview__slide-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .dnf-media-preview__shape { position: absolute; display: flex; flex-direction: column; overflow: hidden; padding: 0.7cqw; }
+    .dnf-media-preview__shape--center { justify-content: center; }
+    .dnf-media-preview__shape--bottom { justify-content: flex-end; }
+    .dnf-media-preview__shape > img { width: 100%; height: 100%; object-fit: contain; }
+    .dnf-media-preview__shape:has(> img) { padding: 0; }
+    /* A table's style isn't read, so it brings its own paper: the slide behind it may be any colour. */
+    .dnf-media-preview__shape .dnf-table { background: var(--dnf-gray-0); color: var(--dnf-gray-950); }
+    .dnf-media-preview__shape .dnf-table__table { font-size: 2cqw; }
+}

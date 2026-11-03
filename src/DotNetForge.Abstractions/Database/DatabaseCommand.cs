@@ -114,9 +114,6 @@ public sealed record DatabaseCommand
     public DatabaseCommand Select(params string[] fields) => this with { Fields = fields };
 
     public DatabaseCommand WithTimeout(TimeSpan timeout) => this with { Timeout = timeout };
-
-    /// <summary>The first matching record for UpdateOne/DeleteOne/FindOne is the first in this order.</summary>
-    public bool IsSingle => Operation is DatabaseOperation.FindOne or DatabaseOperation.UpdateOne or DatabaseOperation.DeleteOne;
 }
 
 public sealed record DatabaseSort(string Field, bool Descending = false);

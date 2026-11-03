@@ -5,7 +5,6 @@ using DotNetForge.Abstractions.Security;
 using DotNetForge.Abstractions.Storage;
 using DotNetForge.Data;
 using DotNetForge.Infrastructure.Storage;
-using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Shared.Stores;
 using DotNetForge.Web.Services;
@@ -51,6 +50,10 @@ public sealed partial class DotNetForgeWebFactory : WebApplicationFactory<Progra
     /// </param>
     public DotNetForgeWebFactory(string environment = "Development", string? extensionsPath = null)
     {
+        // Polling file watchers, not inotify: every host's web root file provider keeps a watcher (versioned file
+        // URLs) that outlives the host, and Linux allows 128 inotify instances per user - a host per test ran out
+        // after a minute in CI. The tests never wait for the web root to notice a change.
+        Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
         Environment.SetEnvironmentVariable("EXTENSIONS_PATH", extensionsPath ?? string.Empty);
         // Never the developer's .env: a file that doesn't exist, so only the variables set here apply.
         Environment.SetEnvironmentVariable("DOTNETFORGE_ENV_FILE", Path.Combine(Path.GetTempPath(), $"dnf-it-{Guid.NewGuid():N}.env"));

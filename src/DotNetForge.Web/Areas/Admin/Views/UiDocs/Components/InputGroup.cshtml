@@ -1,0 +1,166 @@
+@* Input group (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/form.css</code></li>
+    <li>Behaviour <code>data-reveal</code> in <code>src/DotNetForge.UI/wwwroot/dnf.js</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>Wrap an <a href="@UiDocsCatalog.Root/components/input">input</a> in <code>dnf-input-group</code> and put the extra part next
+    to it: an icon inside its start (<code>__icon</code>), a button inside its end (<code>__action</code>), a joined text box
+    before it (<code>__prefix</code>) or text after it (<code>__suffix</code>). The input grows to fill the rest.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-input-group max-w-md">
+        <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+        <input class="dnf-input" type="search" placeholder="Search pages" aria-label="Search pages" />
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="icon" title="Leading icon" description="The icon sits inside the input's start, ignores the pointer and gives the input extra start padding." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="group-email">Sender address</label>
+        <div class="dnf-input-group">
+            <dnf-icon name="mail" size="Sm" class="dnf-input-group__icon" />
+            <input class="dnf-input" id="group-email" type="email" value="noreply@@example.com" autocomplete="email" />
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="prefix" title="Prefix" description="A muted box joined to the input's start - its start corners turn square." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="group-path">Endpoint path</label>
+        <div class="dnf-input-group">
+            <span class="dnf-input-group__prefix">/api/custom/</span>
+            <input class="dnf-input" id="group-path" value="top-products" aria-describedby="group-path-help" />
+        </div>
+        <span class="dnf-field__description" id="group-path-help">Served at /api/custom/ followed by this path.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="suffix" title="Suffix" description="Muted monospace text after the input, for a unit or an extension." layout="block">
+    <div class="dnf-form-grid">
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="group-size">Largest upload</label>
+            <div class="dnf-input-group">
+                <input class="dnf-input" id="group-size" type="number" value="20" />
+                <span class="dnf-input-group__suffix">MB</span>
+            </div>
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="group-file">Export file</label>
+            <div class="dnf-input-group">
+                <span class="dnf-input-group__prefix">exports/</span>
+                <input class="dnf-input" id="group-file" value="site-backup" />
+                <span class="dnf-input-group__suffix">.json</span>
+            </div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="password-reveal" title="Password reveal" description="A trailing action: data-reveal points at the input; dnf.js toggles its type, aria-pressed, the label and which data-reveal-icon is shown." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="group-password">Password</label>
+        <div class="dnf-input-group">
+            <input class="dnf-input" id="group-password" type="password" value="correct horse battery" autocomplete="new-password" />
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-input-group__action"
+                    data-reveal="#group-password" aria-pressed="false" aria-label="Show password">
+                <dnf-icon name="eye" data-reveal-icon="show" />
+                <dnf-icon name="eye-off" data-reveal-icon="hide" hidden />
+            </button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="copy-action" title="Other actions" description="Any small icon-only button works as the action - here a copy button with the data-copy-target behaviour." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="group-token">Webhook URL</label>
+        <div class="dnf-input-group">
+            <input class="dnf-input dnf-input--mono" id="group-token" value="https://cms.example.com/hooks/7f3c9a12" readonly />
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-input-group__action"
+                    data-copy-target="#group-token" aria-label="Copy URL" data-tooltip="Copy URL">
+                <dnf-icon name="copy" />
+            </button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="invalid" title="Invalid" description="The group adds no states of its own - the input shows them." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="group-invalid">Endpoint path</label>
+        <div class="dnf-input-group">
+            <span class="dnf-input-group__prefix">/api/custom/</span>
+            <input class="dnf-input" id="group-invalid" value="top products" aria-invalid="true" aria-describedby="group-invalid-error" />
+        </div>
+        <span class="dnf-field__error" id="group-invalid-error">Use letters, digits, hyphens and slashes only.</span>
+    </div>
+</ui-doc-example>
+
+<p>Show the reveal button only when <code>dnf.js</code> runs, as the sign-in pages do: add <code>hidden data-js-only</code> to
+    it, and the script un-hides it (<a href="@UiDocsCatalog.Root/behaviours">behaviours</a>).</p>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. The group
+    has no modifiers and no component tokens; the input inside keeps its own.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A capped width on the group, a smaller prefix text." layout="block">
+    <div class="dnf-input-group max-w-sm">
+        <span class="dnf-input-group__prefix text-xs">https://</span>
+        <input class="dnf-input" aria-label="Site domain" value="cms.example.com" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS in a scope beats the component style - a monospace prefix." layout="block">
+    <div class="dnf-docs-demo-input-group dnf-input-group max-w-md">
+        <span class="dnf-input-group__prefix">/api/custom/</span>
+        <input class="dnf-input" aria-label="Endpoint path" value="top-products" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-input-group .dnf-input-group__prefix { font-family: var(--dnf-font-mono); }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-input-group</code></td><td>block</td><td>a relative flex row; its <code>.dnf-input</code> grows</td></tr>
+        <tr><td><code>dnf-input-group__icon</code></td><td>element</td><td>an icon inside the start of the input, subtle colour, no pointer events; the input gets start padding</td></tr>
+        <tr><td><code>dnf-input-group__action</code></td><td>element</td><td>a button inside the end of the input; the input gets end padding</td></tr>
+        <tr><td><code>dnf-input-group__prefix</code></td><td>element</td><td>a muted box before the input, joined to it (the input's start corners turn square)</td></tr>
+        <tr><td><code>dnf-input-group__suffix</code></td><td>element</td><td>muted monospace text after the input</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<p>The input's own states (<a href="@UiDocsCatalog.Root/components/input#states">input</a>); the group adds none.</p>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes above are the API. The password reveal is a <code>dnf.js</code> behaviour:</p>
+<table>
+    <thead><tr><th>Attribute</th><th>On</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-reveal="#id"</code></td><td>the action button</td><td>on click, switches the input between <code>password</code> and <code>text</code></td></tr>
+        <tr><td><code>aria-pressed</code></td><td>the action button</td><td>set to <code>true</code> while the password shows; the label switches between "Show password" and "Hide password"</td></tr>
+        <tr><td><code>data-reveal-icon="show|hide"</code></td><td>the icons inside the button</td><td>the one not matching the state gets <code>hidden</code> - start with <code>hidden</code> on the hide icon</td></tr>
+    </tbody>
+</table>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The icon is decorative (<code>&lt;dnf-icon&gt;</code> renders it <code>aria-hidden</code>); the input still needs its label.</li>
+    <li>The action button needs an accessible name (<code>aria-label</code>); the reveal button updates its own.</li>
+    <li>A prefix or suffix that matters for the value should also be in the label or the description.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use the reveal pattern for password fields people type, not for passwords they only paste.</li>
+    <li>Don't put more than one action inside the input.</li>
+    <li>Don't use an icon as the only hint of what the input is for.</li>
+</ul>

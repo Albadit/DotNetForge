@@ -1,7 +1,7 @@
 namespace DotNetForge.Shared.Constants;
 
 /// <summary>
-/// The sign-in providers of Users &amp; Permissions Plugin → Providers (.docs/features/authentication.md#providers):
+/// The sign-in providers of Authentication → Providers (.docs/features/authentication.md#providers):
 /// the built-in Email provider and the built-in OAuth providers, by key. <c>DataSeeder</c> keeps one
 /// <c>AuthProvider</c> row per key; <c>OAuthProviderCatalog</c> (DotNetForge.Web) holds how each one signs in.
 /// </summary>

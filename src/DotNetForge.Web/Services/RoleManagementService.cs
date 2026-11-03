@@ -38,12 +38,14 @@ public sealed class RoleManagementService
     private readonly DotNetForgeDbContext _db;
     private readonly IAuditService _audit;
     private readonly IRoleGrantStore _grants;
+    private readonly UserSessionService _sessions;
 
-    public RoleManagementService(DotNetForgeDbContext db, IAuditService audit, IRoleGrantStore grants)
+    public RoleManagementService(DotNetForgeDbContext db, IAuditService audit, IRoleGrantStore grants, UserSessionService sessions)
     {
         _db = db;
         _audit = audit;
         _grants = grants;
+        _sessions = sessions;
     }
 
     /// <summary>Whether the grants of <paramref name="roleName"/> can be edited at all (not Super Admin or Public).</summary>
@@ -54,7 +56,7 @@ public sealed class RoleManagementService
     public async Task<(Guid? Id, string? Error)> CreateAsync(RoleInput input, ManagementActor actor, CancellationToken ct = default)
     {
         var name = input.Name?.Trim();
-        var error = await ValidateDetailsAsync(name, input.Description, actor, excludeId: Guid.Empty, ct) ?? ValidateGrants(input.Grants);
+        var error = await ValidateDetailsAsync(name, input.Description, excludeId: Guid.Empty, ct) ?? ValidateGrants(input.Grants);
         if (error is not null)
         {
             return (null, error);
@@ -83,7 +85,7 @@ public sealed class RoleManagementService
         }
 
         var name = role.IsBuiltIn ? role.Name : input.Name?.Trim();
-        var error = await ValidateDetailsAsync(name, input.Description, actor, role.Id, ct);
+        var error = await ValidateDetailsAsync(name, input.Description, role.Id, ct);
         if (error is not null)
         {
             return error;
@@ -118,10 +120,15 @@ public sealed class RoleManagementService
         }
 
         var detailsChanged = role.Name != name || role.Description != Clean(input.Description);
+        var renamed = role.Name != name;
         role.Name = name!;
         role.Description = Clean(input.Description);
         await _db.SaveChangesAsync(ct);
         _grants.Invalidate();
+        if (renamed)
+        {
+            await ForgetHoldersAsync(id, ct);
+        }
 
         if (detailsChanged)
         {
@@ -208,7 +215,7 @@ public sealed class RoleManagementService
         return null;
     }
 
-    private async Task<string?> ValidateDetailsAsync(string? name, string? description, ManagementActor actor, Guid excludeId, CancellationToken ct)
+    private async Task<string?> ValidateDetailsAsync(string? name, string? description, Guid excludeId, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(name) || name.Length > MaxNameLength)
         {
@@ -265,4 +272,8 @@ public sealed class RoleManagementService
         role.IsBuiltIn && string.Equals(role.Name, Roles.SuperAdmin, StringComparison.OrdinalIgnoreCase);
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>Sessions hold role names: after a rename or a delete, its holders' are read again.</summary>
+    private async Task ForgetHoldersAsync(Guid roleId, CancellationToken ct) =>
+        (await _db.UserRoles.Where(ur => ur.RoleId == roleId).Select(ur => ur.UserId).ToListAsync(ct)).ForEach(_sessions.Forget);
 }

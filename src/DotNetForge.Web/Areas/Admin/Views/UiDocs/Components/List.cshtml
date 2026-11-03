@@ -1,0 +1,195 @@
+@* List (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/content.css</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A list is a stack of rows inside a card - activity, members, sign-in methods, settings. Each row lines up an optional
+    icon tile, a growing text column and the row's actions. Put it straight into a card so the rows run to its edges.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-card">
+        <ul class="dnf-list">
+            <li class="dnf-list__item">
+                <span class="dnf-list__icon dnf-list__icon--round dnf-list__icon--primary"><dnf-icon name="smartphone" /></span>
+                <div class="dnf-list__content">
+                    <span class="font-semibold">Authenticator app</span>
+                    <span class="text-sm text-muted">Added 3 Oct 2026</span>
+                </div>
+                <dnf-button size="Sm" aria-label="Remove Authenticator app">Remove</dnf-button>
+            </li>
+            <li class="dnf-list__item">
+                <span class="dnf-list__icon dnf-list__icon--round"><dnf-icon name="key" /></span>
+                <div class="dnf-list__content">
+                    <span class="font-semibold">Recovery codes</span>
+                    <span class="text-sm text-muted">8 of 10 left</span>
+                </div>
+                <dnf-button size="Sm" aria-label="Show recovery codes">Show</dnf-button>
+            </li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="icons" title="Icon tiles" description="A muted square tile by default; round, primary or danger with the modifiers." layout="block">
+    <div class="dnf-card">
+        <ul class="dnf-list">
+            <li class="dnf-list__item">
+                <span class="dnf-list__icon"><dnf-icon name="file" /></span>
+                <span class="dnf-list__content">brochure.pdf was uploaded</span>
+            </li>
+            <li class="dnf-list__item">
+                <span class="dnf-list__icon dnf-list__icon--primary"><dnf-icon name="pages" /></span>
+                <span class="dnf-list__content">Home was published</span>
+            </li>
+            <li class="dnf-list__item">
+                <span class="dnf-list__icon dnf-list__icon--danger"><dnf-icon name="trash" /></span>
+                <span class="dnf-list__content">Old landing page was deleted</span>
+            </li>
+            <li class="dnf-list__item">
+                <span class="dnf-list__icon dnf-list__icon--round dnf-list__icon--primary"><dnf-icon name="user" /></span>
+                <span class="dnf-list__content">Grace Hopper joined as an editor</span>
+            </li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="activity" title="Activity" description="Two lines of text and a timestamp at the end - the dashboard's recent activity." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-card__header">
+            <h3 class="dnf-card__title">Recent activity</h3>
+        </div>
+        <ul class="dnf-list">
+            <li class="dnf-list__item">
+                <dnf-avatar name="Ada Lovelace" />
+                <div class="dnf-list__content">
+                    <span><span class="font-semibold">Ada Lovelace</span> published Pricing</span>
+                    <span class="text-sm text-muted">Pages</span>
+                </div>
+                <dnf-timestamp value="DateTime.UtcNow.AddMinutes(-12)" class="text-sm text-muted" />
+            </li>
+            <li class="dnf-list__item">
+                <dnf-avatar name="Grace Hopper" />
+                <div class="dnf-list__content">
+                    <span><span class="font-semibold">Grace Hopper</span> uploaded 4 files</span>
+                    <span class="text-sm text-muted">Media</span>
+                </div>
+                <dnf-timestamp value="DateTime.UtcNow.AddHours(-3)" class="text-sm text-muted" />
+            </li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="settings" title="Settings rows" description="A label, a description and the control at the end of each row." layout="block">
+    <div class="dnf-card">
+        <ul class="dnf-list">
+            <li class="dnf-list__item">
+                <div class="dnf-list__content">
+                    <label class="font-semibold" for="list-registration">Self-registration</label>
+                    <span class="text-sm text-muted">Visitors can create their own account.</span>
+                </div>
+                <input type="checkbox" role="switch" class="dnf-switch" id="list-registration" />
+            </li>
+            <li class="dnf-list__item">
+                <div class="dnf-list__content">
+                    <label class="font-semibold" for="list-confirm">Email confirmation</label>
+                    <span class="text-sm text-muted">New accounts confirm their address first.</span>
+                </div>
+                <input type="checkbox" role="switch" class="dnf-switch" id="list-confirm" checked />
+            </li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="plain" title="Plain" description="dnf-list--plain drops the side padding, for a list outside a card's edge - here in a card body." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-card__body">
+            <p class="font-semibold">Members of Editors</p>
+            <ul class="dnf-list dnf-list--plain">
+                <li class="dnf-list__item"><dnf-avatar name="Ada Lovelace" size="Sm" /><span class="dnf-list__content">Ada Lovelace</span></li>
+                <li class="dnf-list__item"><dnf-avatar name="Grace Hopper" size="Sm" /><span class="dnf-list__content">Grace Hopper</span></li>
+            </ul>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="compact" title="Compact" description="dnf-list--compact makes the rows tighter. Combine it with plain." layout="block">
+    <div class="dnf-card">
+        <ul class="dnf-list dnf-list--compact">
+            <li class="dnf-list__item"><dnf-icon name="circle-check" class="text-success" /><span class="dnf-list__content">Database connected</span></li>
+            <li class="dnf-list__item"><dnf-icon name="circle-check" class="text-success" /><span class="dnf-list__content">Media storage writable</span></li>
+            <li class="dnf-list__item"><dnf-icon name="triangle-alert" class="text-warning" /><span class="dnf-list__content">No email server configured</span></li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities on a row beat its styles - here top-aligned for a longer text." layout="block">
+    <div class="dnf-card">
+        <ul class="dnf-list">
+            <li class="dnf-list__item items-start">
+                <span class="dnf-list__icon"><dnf-icon name="message" /></span>
+                <div class="dnf-list__content">
+                    <span class="font-semibold">Grace Hopper commented on Pricing</span>
+                    <span class="text-muted">The second plan should mention the storage limit, and the table needs a row for API requests per month.</span>
+                </div>
+            </li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="The list has no component tokens; restyle it in a scope with your own (unlayered) CSS - here narrower rows." layout="block">
+    <div class="dnf-docs-demo-list">
+        <div class="dnf-card">
+            <ul class="dnf-list">
+                <li class="dnf-list__item"><span class="dnf-list__content">Monthly traffic</span></li>
+                <li class="dnf-list__item"><span class="dnf-list__content">Broken links</span></li>
+            </ul>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-list .dnf-list__item {
+    padding-inline: var(--dnf-space-3);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-list</code></td><td>block</td><td>no bullets, no margin or padding</td></tr>
+        <tr><td><code>dnf-list__item</code></td><td>element</td><td>a row (icon, content, actions), padding <code>--dnf-space-3</code> / <code>--dnf-space-5</code>, a line below (none on the last)</td></tr>
+        <tr><td><code>dnf-list__icon</code></td><td>element</td><td>a 2.25rem muted square tile</td></tr>
+        <tr><td><code>dnf-list__icon--round</code></td><td>modifier</td><td>a 2rem circle</td></tr>
+        <tr><td><code>dnf-list__icon--primary</code>, <code>--danger</code></td><td>modifier</td><td>a primary-soft or danger-soft tile with the icon in the tone's colour</td></tr>
+        <tr><td><code>dnf-list__content</code></td><td>element</td><td>the growing text column; its children stack</td></tr>
+        <tr><td><code>dnf-list--plain</code></td><td>modifier</td><td>rows without side padding</td></tr>
+        <tr><td><code>dnf-list--compact</code></td><td>modifier</td><td>less vertical padding</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>The list has no tag helper: the classes above are its API. Its rows can be the items of a collection
+    (<code>data-collection</code> on the card, <code>data-item</code> on each row) for search, filters and paging -
+    see <a href="@UiDocsCatalog.Root/components/toolbar">Toolbar</a> and <a href="@UiDocsCatalog.Root/components/pagination">Pagination</a>.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Use a real <code>&lt;ul&gt;</code> or <code>&lt;ol&gt;</code>: the bullets are removed, the list semantics stay.</li>
+    <li>Icons in tiles are decorative; a status in a row is text or a <a href="@UiDocsCatalog.Root/components/badge">badge</a>.</li>
+    <li>Buttons in rows need names that say which row they act on when the text alone is ambiguous ("Remove Authenticator app").</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do put a list directly in a card (or in a <code>--flush</code> card body) so the rows run to the card's edges.</li>
+    <li>Do keep at most one or two actions per row; more go into a dropdown.</li>
+    <li>Don't use a list for data with columns - use a <a href="@UiDocsCatalog.Root/components/table">table</a>.</li>
+</ul>

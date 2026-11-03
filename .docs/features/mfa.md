@@ -19,7 +19,7 @@ calls it "two-step verification" towards users.
 | Admin screen | `Areas/Admin/Controllers/MfaSettingsController.cs` + `Areas/Admin/Views/MfaSettings/Index.cshtml` |
 | Reset for a user | `UsersController.ResetMfa` ([Users](../pages/users.md)) |
 | Requirement gate | `AdminControllerBase.OnActionExecutionAsync` |
-| Passkeys in the browser | `src/DotNetForge.Web/wwwroot/js/forge/passkeys.js` |
+| Passkeys in the browser | `src/DotNetForge.Web/wwwroot/js/admin/passkeys.js` |
 | Tables | `UserMfaMethods`, `UserRecoveryCodes` (`src/DotNetForge.Shared/Entities/UserMfa.cs`, [database](../architecture/database.md#tables)) |
 | Packages | `Fido2` 4.2.0 (WebAuthn), `QRCoder` 1.8.0 (the setup QR code) - [dependencies](../architecture/dependencies.md#nuget-packages) |
 

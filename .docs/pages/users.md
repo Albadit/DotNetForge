@@ -31,33 +31,33 @@ src/DotNetForge.Shared/Entities/User.cs                          entity
 
 ```text
 List - Users (h1) · [Create user]
-└── section.card[data-collection][data-page-size=25]
-    ├── card-header: **All users** · "N total"
-    ├── .toolbar (JS only): search · All roles ▾ · Any status ▾
+└── section.dnf-card[data-collection][data-page-size=25]
+    ├── dnf-card__header: **All users** · "N total"
+    ├── .dnf-toolbar (JS only): search · All roles ▾ · Any status ▾
     ├── table: **User** ⇅ (avatar, name link, "You" badge, email) · **Roles** · **Status** ⇅ · **Last sign-in** ⇅ · row menu ⋯ (Edit/View, Enable/Disable, Delete)
     └── .pagination (JS, more than 10 matching rows: Rows per page 10/25/50/100, default 25, remembered)
 
 Form - "Create user" / "Edit user" (h1, the email as description)
-├── form.editor-main
+├── form.dnf-split__main
 │   ├── card **Details**: First name · Last name · Email* · Password* (create) / New password (edit, optional)
 │   └── card **Roles***: one checkbox row per role (built-in badge, description) · [Manage roles]
 │       · footer: Cancel · [Create user] / [Save changes] (the form has no status: see Disable access)
-└── aside.editor-aside (edit only)
+└── aside.dnf-split__aside (edit only)
     ├── card **Account**: status badge · Created · Last sign-in
     ├── card **Effective permissions**: per catalog area - "Full access", action badges or "No access"
     ├── card **Two-step verification**: On/Off badge · one badge per method · [Reset two-step verification] (with `update`, not on your own account)
     ├── card **Disable access** / **Enable access** (not on your own account)
-    └── card.card-danger **Delete user** (not on your own account)
+    └── dnf-card.dnf-card--danger **Delete user** (not on your own account)
 ```
 
 ## Components
 
 | Element | Rendering |
 | --- | --- |
-| **User** | `.avatar` with up to two initials; name (first + last) as a link to the form with the email below, or only the email; **You** on your own row |
+| **User** | `.dnf-avatar` with up to two initials; name (first + last) as a link to the form with the email below, or only the email; **You** on your own row |
 | **Roles** | one badge per role (`Accent` when the name contains "Admin"), "No role" when none |
 | **Status** | `Enabled` → `Success`, `Disabled` → `Danger` dot badge |
-| **Last sign-in** | `<timestamp>`, "Never" before the first sign-in |
+| **Last sign-in** | `<dnf-timestamp>`, "Never" before the first sign-in |
 | Row menu (⋯) | **Edit** (or **View** without `Users` / `update`); **Enable**/**Disable** (with `update`) and **Delete** (with `delete`, confirmation dialog) - not on your own row; these post `returnTo=list`, so the result toast shows on the list |
 | Role checkbox | every role in the database, built-in first (`IsBuiltIn`), then by name - the seven built-in roles (`Admin`, `Author`, `Authenticated`, `Developer`, `Editor`, `Public`, `Super Admin`) and the custom ones; `Developer` (API docs, API tokens and API endpoints only) is assignable like any other role. `name="RoleIds" value="{roleId}"`; `Super Admin` is disabled with "Only a Super Admin can give this role." for non-Super Admins (a held one is posted as a hidden field) |
 | Effective permissions | `PermissionCatalog.Areas` × the saved roles' grants from `IRoleGrantStore` (Super Admin: everything) |
@@ -101,7 +101,7 @@ disables or deletes their own account.
 
 ## Validation / error handling / loading
 
-Errors are shown in `<form-errors />` with the input kept (the password is cleared); enable/disable/delete errors are
+Errors are shown in `<dnf-validation-summary />` with the input kept (the password is cleared); enable/disable/delete errors are
 toasts.
 
 | Rule | Message |
@@ -201,5 +201,5 @@ Target behaviour from the original product specification. Nothing in this sectio
 ## Extension points
 
 New user rules belong in `UserManagementService`. Actions in a view go in `@section Actions` (header) or a
-`.col-actions` cell; destructive ones use `data-confirm` and report with `TempData["Success"]`/`["Error"]` toasts
+`.dnf-table__cell--actions` cell; destructive ones use `data-confirm` and report with `TempData["Success"]`/`["Error"]` toasts
 ([design system → feedback](../architecture/design-system.md#feedback)).

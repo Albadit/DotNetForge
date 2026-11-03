@@ -1,0 +1,107 @@
+@* Timestamp (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines.
+   Relative examples use DateTime.UtcNow offsets and absolute ones fixed dates, so the rendered text stays stable. *@
+
+<ul class="dnf-docs-source">
+    <li>Tag helper <code>&lt;dnf-timestamp&gt;</code> in <code>src/DotNetForge.UI/Components/BasicTagHelpers.cs</code> (no CSS of its own)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p><code>&lt;dnf-timestamp&gt;</code> shows a UTC date relative to now - "12 min ago", "yesterday", "3 Oct 2026" - inside a
+    <code>&lt;time&gt;</code> element whose <code>datetime</code> attribute and tooltip carry the exact UTC time. Hover it to
+    see the exact time.</p>
+
+<ui-doc-example id="basic">
+    <span>Last saved <dnf-timestamp value="DateTime.UtcNow.AddMinutes(-12)" /></span>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="relative" title="Relative times" description="Under 45 seconds is just now, then minutes, hours, yesterday and days; from a week on, the date. Future times read in 20 min, tomorrow and so on." layout="block">
+    <dl class="dnf-description-list dnf-description-list--compact">
+        <dt>10 seconds ago</dt>
+        <dd><dnf-timestamp value="DateTime.UtcNow.AddSeconds(-10)" /></dd>
+        <dt>12 minutes ago</dt>
+        <dd><dnf-timestamp value="DateTime.UtcNow.AddMinutes(-12)" /></dd>
+        <dt>3 hours ago</dt>
+        <dd><dnf-timestamp value="DateTime.UtcNow.AddHours(-3)" /></dd>
+        <dt>30 hours ago</dt>
+        <dd><dnf-timestamp value="DateTime.UtcNow.AddHours(-30)" /></dd>
+        <dt>4 days ago</dt>
+        <dd><dnf-timestamp value="DateTime.UtcNow.AddDays(-4)" /></dd>
+        <dt>15 January 2026</dt>
+        <dd><dnf-timestamp value="new DateTime(2026, 1, 15, 9, 30, 0, DateTimeKind.Utc)" /></dd>
+        <dt>In 20 minutes</dt>
+        <dd><dnf-timestamp value="DateTime.UtcNow.AddMinutes(20)" /></dd>
+    </dl>
+</ui-doc-example>
+
+<ui-doc-example id="absolute" title="Absolute" description="absolute shows the full date and time in UTC instead of a relative time - for audit logs and exact records.">
+    <dnf-timestamp value="new DateTime(2026, 1, 15, 9, 30, 0, DateTimeKind.Utc)" absolute="true" />
+</ui-doc-example>
+
+<ui-doc-example id="empty" title="No value" description="A null value renders the empty text in the subtle colour - Never by default, or your own wording.">
+    <dnf-timestamp value="null" />
+    <dnf-timestamp value="null" empty="Never signed in" />
+</ui-doc-example>
+
+<ui-doc-example id="in-a-table" title="In a table" description="The usual place: a column of last-changed times, muted next to the row's name." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-table">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr><th scope="col">User</th><th scope="col">Last sign-in</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Ada Lovelace</td><td><dnf-timestamp value="DateTime.UtcNow.AddMinutes(-5)" class="text-muted" /></td></tr>
+                    <tr><td>Grace Hopper</td><td><dnf-timestamp value="DateTime.UtcNow.AddDays(-2)" class="text-muted" /></td></tr>
+                    <tr><td>Alan Turing</td><td><dnf-timestamp value="null" empty="Never signed in" /></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The <a href="@UiDocsCatalog.Root/customization">customization levels</a> that apply: the timestamp is plain text with no
+    component CSS, so Tailwind utilities style it (Level 2).</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A class on the tag helper stays on the time element; on the empty text it follows text-subtle.">
+    <dnf-timestamp value="DateTime.UtcNow.AddHours(-3)" class="text-sm text-muted" />
+    <dnf-timestamp value="new DateTime(2026, 1, 15, 9, 30, 0, DateTimeKind.Utc)" absolute="true" class="font-mono text-xs" />
+</ui-doc-example>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="output">Output</h3>
+<table>
+    <thead><tr><th>Value</th><th>Element</th><th>Classes</th></tr></thead>
+    <tbody>
+        <tr><td>a date</td><td><code>&lt;time datetime="2026-01-15T09:30:00.0000000Z" title="2026-01-15 09:30:00 UTC"&gt;</code></td><td>yours only</td></tr>
+        <tr><td><code>null</code></td><td><code>&lt;span&gt;</code> with the <code>empty</code> text</td><td><code>text-subtle</code>, then yours</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<h3 id="api-timestamp"><code>&lt;dnf-timestamp&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfTimestampTagHelper)" />
+<p>A self-closing element. A <code>DateTimeKind.Local</code> value is converted to UTC; any other kind is taken as UTC.
+    The same texts are available from code:</p>
+<table>
+    <thead><tr><th>Method</th><th>Returns</th></tr></thead>
+    <tbody>
+        <tr><td><code>DnfTimestampTagHelper.Relative(utc, nowUtc)</code></td><td><code>just now</code> (under 45 s), <code>N min ago</code>, <code>N h ago</code>, <code>yesterday</code>, <code>N days ago</code> (under 7 days), then the date (<code>3 Oct 2026</code>); in the future <code>in a moment</code>, <code>in N min</code>, <code>in N h</code>, <code>tomorrow</code>, <code>in N days</code></td></tr>
+        <tr><td><code>DnfTimestampTagHelper.Format(utc)</code></td><td>the absolute form, <code>15 Jan 2026, 09:30 UTC</code></td></tr>
+    </tbody>
+</table>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li><code>&lt;time datetime&gt;</code> carries the machine-readable value; the relative text is what is read.</li>
+    <li>The exact time is in the <code>title</code> tooltip, which touch and keyboard users can't open - use <code>absolute</code> where the exact time matters.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do pass UTC values - the CMS stores UTC.</li>
+    <li>Do use relative times for recency ("last saved", "last sign-in") and absolute ones for records.</li>
+    <li>Don't format dates by hand in views when the timestamp fits.</li>
+</ul>

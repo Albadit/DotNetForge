@@ -18,7 +18,7 @@ public sealed class TransferManifest
     /// <summary>The application (assembly) version that wrote the file.</summary>
     public string AppVersion { get; set; } = string.Empty;
 
-    /// <summary>The database it was exported from, e.g. <c>SQLite</c>.</summary>
+    /// <summary>The database it was exported from, e.g. <c>PostgreSQL</c>.</summary>
     public string Provider { get; set; } = string.Empty;
 
     /// <summary>The data version (one-time data updates applied, <c>SystemState.SeedVersion</c>).</summary>

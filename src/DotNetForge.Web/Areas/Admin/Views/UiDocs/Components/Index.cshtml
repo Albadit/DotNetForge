@@ -1,0 +1,16 @@
+@* All components (UI docs): one card per component, by category, from UiDocsCatalog. *@
+
+@foreach (var category in Model.Categories.Where(c => c.Pages[0].IsComponent))
+{
+    var id = category.Name.ToLowerInvariant().Replace(' ', '-');
+    <h2 id="@id">@category.Name</h2>
+    <div class="dnf-docs-cards">
+        @foreach (var item in category.Pages)
+        {
+            <a class="dnf-card dnf-card--interactive dnf-docs-cards__card" href="@item.Href">
+                <span class="dnf-docs-cards__title">@item.Title</span>
+                <span class="dnf-docs-cards__description">@item.Description</span>
+            </a>
+        }
+    </div>
+}

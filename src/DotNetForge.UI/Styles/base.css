@@ -1,0 +1,67 @@
+/*
+  Base element styles (.docs/ui/styling.md#layers), after Tailwind's preflight reset: typography, links, code, focus.
+  Element selectors only - every class lives in a component.
+*/
+
+@layer base {
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+    body {
+        min-height: 100vh;
+        font-family: var(--dnf-font-sans);
+        font-size: var(--dnf-text-base);
+        line-height: var(--dnf-leading);
+        color: var(--dnf-foreground);
+        background: var(--dnf-background);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1, h2, h3, h4, h5, h6 { line-height: var(--dnf-leading-tight); font-weight: var(--dnf-weight-semibold); }
+    h1 { font-size: var(--dnf-text-2xl); letter-spacing: -0.01em; }
+    h2 { font-size: var(--dnf-text-xl); }
+    h3 { font-size: var(--dnf-text-lg); }
+    h4 { font-size: var(--dnf-text-md); }
+    p { margin-bottom: var(--dnf-space-3); }
+    p:last-child { margin-bottom: 0; }
+
+    a { color: var(--dnf-primary-text); text-decoration: none; text-underline-offset: 0.18em; }
+    a:hover { text-decoration: underline; }
+
+    code, kbd, pre, samp { font-family: var(--dnf-font-mono); font-size: 0.92em; }
+    code {
+        padding: 0.08rem 0.35rem;
+        border-radius: var(--dnf-radius-sm);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-foreground);
+        overflow-wrap: anywhere;
+    }
+    pre { overflow-x: auto; }
+    pre code { padding: 0; background: none; }
+    kbd {
+        padding: 0.05rem 0.35rem;
+        border: 1px solid var(--dnf-border-strong);
+        border-bottom-width: 2px;
+        border-radius: var(--dnf-radius-sm);
+        background: var(--dnf-surface);
+        font-size: var(--dnf-text-xs);
+    }
+
+    hr { border: 0; border-top: 1px solid var(--dnf-border); margin: var(--dnf-space-6) 0; }
+
+    /* Fieldsets group or disable fields; components draw their own frames. */
+    fieldset { min-width: 0; }
+
+    button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+    :disabled { cursor: not-allowed; }
+
+    /* One focus style for everything: visible for keyboard users, invisible for mouse clicks. */
+    :focus { outline: none; }
+    :focus-visible { outline: 2px solid var(--dnf-focus); outline-offset: 2px; }
+
+    ::selection { background: var(--dnf-selection); color: var(--dnf-gray-950); }
+
+    @media (pointer: coarse) { summary { min-height: 1.5rem; } }
+
+    /* [hidden] always hides (Tailwind's preflight), whatever display a component sets. */
+}

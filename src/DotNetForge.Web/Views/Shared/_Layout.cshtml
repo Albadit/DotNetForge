@@ -47,27 +47,27 @@
         <meta property="og:image" content="@(socialImage.StartsWith('/') ? $"{Context.Request.Scheme}://{Context.Request.Host}{socialImage}" : socialImage)" />
     }
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
-    <script src="~/js/forge/theme.js" asp-append-version="true"></script>
-    <link rel="stylesheet" href="~/css/forge/tokens.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/forge/base.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/forge/components.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/forge/public.css" asp-append-version="true" />
+    <script src="~/_content/DotNetForge.UI/dnf-theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/_content/DotNetForge.UI/dnf.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 @*
     The built-in public layout (.docs/architecture/design-system.md#public-fallback): used for the site root, content
     pages and the error page while no theme extension is enabled. An enabled theme replaces these views entirely.
+    Styles: the Dnf components (dnf.css) plus /css/site.css. No dnf.js: nothing here needs a behaviour (no toasts, no
+    theme menu); dnf-theme.js still applies a saved light/dark choice.
 *@
-<body class="public">
-    <a class="skip-link" href="#main">Skip to content</a>
-    <header class="site-header">
-        <div class="site-wrap">
-            <a class="site-brand" href="/">
+<body class="dnf-site">
+    <a class="dnf-skip-link" href="#main">Skip to content</a>
+    <header class="dnf-site__header">
+        <div class="dnf-site__wrap">
+            <a class="dnf-site__brand" href="/">
                 <img src="~/img/logo-mark.svg" alt="" width="28" height="28" />
                 <span>@appName</span>
             </a>
             @if (menu.Count > 0)
             {
-                <nav class="site-nav" aria-label="Site">
+                <nav class="dnf-site__nav" aria-label="Site">
                     @foreach (var item in menu)
                     {
                         var active = string.Equals(item.Path, current, StringComparison.OrdinalIgnoreCase);
@@ -77,24 +77,24 @@
             }
             @if (canEnterAdmin)
             {
-                <a class="btn btn-sm" href="/admin">Admin <icon name="arrow-right" size="sm" /></a>
+                <a class="dnf-button dnf-button--secondary dnf-button--sm" href="/admin">Admin <dnf-icon name="chevron-right" size="Sm" /></a>
             }
             else if (User.Identity?.IsAuthenticated == true)
             {
                 @* A site-only account (e.g. one that signed up at /register) signs out here; admins do it in the admin. *@
                 <form method="post" action="/account/logout">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm"><icon name="log-out" size="sm" /> Sign out</button>
+                    <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm"><dnf-icon name="log-out" size="Sm" /> Sign out</button>
                 </form>
             }
         </div>
     </header>
     @* A page builder layout spans the full width (its sections set their own content width). *@
-    <main id="main" class="@(fullWidth ? "site-main-full" : "site-wrap site-main")" tabindex="-1">
+    <main id="main" class="@(fullWidth ? "dnf-site__main dnf-site__main--full" : "dnf-site__wrap dnf-site__main")" tabindex="-1">
         @RenderBody()
     </main>
-    <footer class="site-footer">
-        <div class="site-wrap">Powered by DotNetForge CMS</div>
+    <footer class="dnf-site__footer">
+        <div class="dnf-site__wrap">Powered by DotNetForge CMS</div>
     </footer>
 </body>
 </html>

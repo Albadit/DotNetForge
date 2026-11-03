@@ -1,0 +1,160 @@
+@* Button (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/button.css</code></li>
+    <li>Tag helper <code>&lt;dnf-button&gt;</code> in <code>src/DotNetForge.UI/Components/BasicTagHelpers.cs</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>Use the <code>&lt;dnf-button&gt;</code> tag helper, or write the classes on a <code>&lt;button&gt;</code> or <code>&lt;a&gt;</code> yourself -
+    both render the same markup. Only <code>dnf-button</code> and a variant are required.</p>
+
+<ui-doc-example id="basic">
+    <dnf-button variant="Primary" icon="plus">Add page</dnf-button>
+    <button type="button" class="dnf-button dnf-button--secondary">Cancel</button>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="variants" title="Variants" description="Primary for the one main action of an area, Secondary (the default) for everything else; Danger confirms a destructive action, Danger soft opens that confirmation.">
+    <dnf-button variant="Primary">Primary</dnf-button>
+    <dnf-button variant="Secondary">Secondary</dnf-button>
+    <dnf-button variant="Tertiary">Tertiary</dnf-button>
+    <dnf-button variant="Outline">Outline</dnf-button>
+    <dnf-button variant="Ghost">Ghost</dnf-button>
+    <dnf-button variant="Danger">Danger</dnf-button>
+    <dnf-button variant="DangerSoft">Danger soft</dnf-button>
+</ui-doc-example>
+
+<ui-doc-example id="sizes" title="Sizes" description="Sm (30px), Md (36px, the default) and Lg (44px - also the minimum touch target).">
+    <dnf-button variant="Primary" size="Sm">Small</dnf-button>
+    <dnf-button variant="Primary">Medium</dnf-button>
+    <dnf-button variant="Primary" size="Lg">Large</dnf-button>
+</ui-doc-example>
+
+<ui-doc-example id="icons" title="With icons" description="A leading icon with icon, a trailing one with icon-end. Small buttons get small icons.">
+    <dnf-button variant="Primary" icon="plus">New page</dnf-button>
+    <dnf-button icon-end="external-link">View site</dnf-button>
+    <dnf-button size="Sm" icon="download">Export</dnf-button>
+</ui-doc-example>
+
+<ui-doc-example id="icon-only" title="Icon only" description="A square button. The label (or the content's text) becomes its accessible name and its tooltip.">
+    <dnf-button icon="pencil" icon-only="true" label="Edit" />
+    <dnf-button variant="Ghost" icon="trash" icon-only="true" label="Delete" />
+    <dnf-button variant="Ghost" size="Sm" icon="more" icon-only="true" label="More actions" />
+</ui-doc-example>
+
+<ui-doc-example id="pending" title="Pending" description="A spinner replaces the leading icon and the button ignores clicks while work is in progress. On a form, data-pending-on-submit does it for the submit button.">
+    <dnf-button variant="Primary" icon="save" pending="true">Saving</dnf-button>
+    <dnf-button pending="true">Loading</dnf-button>
+</ui-doc-example>
+
+<ui-doc-example id="disabled" title="Disabled" description="A disabled button; a disabled link gets aria-disabled and leaves the tab order.">
+    <dnf-button variant="Primary" disabled="true">Publish</dnf-button>
+    <dnf-button href="/admin" disabled="true">Open</dnf-button>
+</ui-doc-example>
+
+<ui-doc-example id="links" title="Links" description="With href the button is a link (<a>); use it for navigation, a <button> for actions.">
+    <dnf-button href="/admin/pages" icon-end="chevron-right">All pages</dnf-button>
+    <a class="dnf-button dnf-button--ghost" href="/admin">Dashboard</a>
+</ui-doc-example>
+
+<ui-doc-example id="full-width" title="Full width" layout="block">
+    <dnf-button variant="Primary" full-width="true">Sign in</dnf-button>
+</ui-doc-example>
+
+<ui-doc-example id="toggle" title="Toggle" description="aria-pressed draws a button as selected.">
+    <button type="button" class="dnf-button dnf-button--secondary" aria-pressed="true">Bold</button>
+    <button type="button" class="dnf-button dnf-button--secondary" aria-pressed="false">Italic</button>
+</ui-doc-example>
+
+<ui-doc-example id="group" title="Button group" description="A row of buttons; attached joins them into one control.">
+    <div class="dnf-button-group">
+        <dnf-button>Duplicate</dnf-button>
+        <dnf-button>Move</dnf-button>
+    </div>
+    <div class="dnf-button-group dnf-button-group--attached" role="group" aria-label="Alignment">
+        <button type="button" class="dnf-button dnf-button--secondary" aria-pressed="true">Left</button>
+        <button type="button" class="dnf-button dnf-button--secondary" aria-pressed="false">Center</button>
+        <button type="button" class="dnf-button dnf-button--secondary" aria-pressed="false">Right</button>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Classes you write are appended after the component's own; utilities beat component styles.">
+    <dnf-button variant="Primary" class="rounded-full px-6">Rounded</dnf-button>
+    <dnf-button class="w-full sm:w-auto">Full width on phones</dnf-button>
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="Every variant and size only sets --dnf-button-* tokens; set them in your own (unlayered) CSS to restyle buttons in a scope.">
+    <div class="dnf-docs-demo-buttons dnf-cluster">
+        <dnf-button variant="Primary">Restyled primary</dnf-button>
+        <dnf-button>Restyled secondary</dnf-button>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-buttons .dnf-button {
+    --dnf-button-radius: var(--dnf-radius-full);
+    --dnf-button-height: var(--dnf-control-lg);
+    --dnf-button-padding-x: var(--dnf-space-6);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-button</code></td><td>block</td><td>inline-flex, <code>--dnf-control-md</code> high, semibold; the secondary look by default</td></tr>
+        <tr><td><code>dnf-button__label</code></td><td>element</td><td>the text; truncates</td></tr>
+        <tr><td><code>dnf-button__icon</code></td><td>element</td><td>an icon that does not shrink</td></tr>
+        <tr><td><code>dnf-button__spinner</code></td><td>element</td><td>hidden until <code>data-pending</code>, then it replaces the first icon</td></tr>
+        <tr><td><code>dnf-button--primary</code> … <code>--danger-soft</code></td><td>variant</td><td>primary, secondary, tertiary, outline, ghost, danger, danger-soft</td></tr>
+        <tr><td><code>dnf-button--sm</code> / <code>--md</code> / <code>--lg</code></td><td>size</td><td>30 / 36 / 44px high, smaller or larger text and padding</td></tr>
+        <tr><td><code>dnf-button--icon-only</code></td><td>modifier</td><td>square: width = height, no padding</td></tr>
+        <tr><td><code>dnf-button--full-width</code></td><td>modifier</td><td><code>width: 100%</code></td></tr>
+        <tr><td><code>dnf-button-group</code> / <code>--attached</code></td><td>block</td><td>a wrapping row of buttons / joined into one control</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>:hover</code>, <code>[data-hovered="true"]</code></td><td>the <code>--dnf-button-hover-*</code> colours</td></tr>
+        <tr><td>pressed</td><td><code>:active</code>, <code>[data-pressed="true"]</code></td><td>moves down 1px</td></tr>
+        <tr><td>keyboard focus</td><td><code>:focus-visible</code>, <code>[data-focus-visible="true"]</code></td><td>the focus ring</td></tr>
+        <tr><td>disabled</td><td><code>:disabled</code>, <code>[aria-disabled="true"]</code></td><td>55% opacity, no pointer events</td></tr>
+        <tr><td>pending</td><td><code>[data-pending]</code></td><td>spinner instead of the leading icon, <code>cursor: progress</code></td></tr>
+        <tr><td>toggled / current</td><td><code>[aria-pressed="true"]</code>, <code>[aria-current="page"]</code></td><td>drawn as primary</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-button-height</code>, <code>-padding-x</code>, <code>-gap</code>, <code>-font-size</code>, <code>-radius</code>,
+    <code>-background</code>, <code>-foreground</code>, <code>-border</code>, <code>-shadow</code>, <code>-hover-background</code>,
+    <code>-hover-foreground</code>, <code>-hover-border</code>.</p>
+
+<h2 id="api">API</h2>
+<h3 id="api-button"><code>&lt;dnf-button&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfButtonTagHelper)" />
+<p>A <code>&lt;button&gt;</code> gets <code>type="button"</code> unless you set <code>type</code>. Other attributes (<code>name</code>,
+    <code>value</code>, <code>form</code>, <code>data-*</code>, <code>aria-*</code>) pass through; <code>class</code> is appended.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Use <code>&lt;button&gt;</code> for actions and <code>&lt;a&gt;</code> for navigation; <code>&lt;dnf-button&gt;</code> picks by <code>href</code>.</li>
+    <li>An icon-only button needs an accessible name - <code>label</code> or <code>aria-label</code> - and a tooltip.</li>
+    <li>A toggle uses <code>aria-pressed</code>; a pending button carries <code>aria-busy="true"</code>.</li>
+    <li>Links can't be disabled natively: <code>aria-disabled="true"</code> and <code>tabindex="-1"</code> (the tag helper does it).</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Keep one primary button per area, last in a row of actions.</li>
+    <li>Use Danger only for the action that destroys (in the confirmation); Danger soft for the button that opens it.</li>
+    <li>Don't write a modifier without its block or restyle a button by hand - pick a variant or set its tokens.</li>
+</ul>

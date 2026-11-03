@@ -1,0 +1,94 @@
+/*
+  Content display (.docs/ui/components/empty-state.md, skeleton.md, description-list.md, code-block.md, list.md):
+  DnfEmptyState, DnfSkeleton, DnfDescriptionList, DnfCodeBlock, DnfList.
+*/
+
+@layer components {
+    /* ---- Empty state ------------------------------------------------------------------------------------------- */
+    .dnf-empty-state {
+        display: flex; flex-direction: column; align-items: center; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-12) var(--dnf-space-6);
+        text-align: center;
+    }
+    .dnf-empty-state--compact { padding: var(--dnf-space-8) var(--dnf-space-4); }
+    .dnf-empty-state__icon {
+        display: grid; place-items: center;
+        width: 3rem; height: 3rem;
+        margin-bottom: var(--dnf-space-2);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+    }
+    .dnf-empty-state__title { font-size: var(--dnf-text-lg); font-weight: var(--dnf-weight-semibold); }
+    .dnf-empty-state__description { max-width: 26rem; color: var(--dnf-muted-foreground); }
+    .dnf-empty-state__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--dnf-space-2); margin-top: var(--dnf-space-3); }
+
+    /* ---- Skeleton: a placeholder while something loads ---------------------------------------------------------- */
+    .dnf-skeleton {
+        border-radius: var(--dnf-radius-md);
+        background: linear-gradient(90deg, var(--dnf-surface-muted) 25%, var(--dnf-surface-hover) 50%, var(--dnf-surface-muted) 75%);
+        background-size: 200% 100%;
+        animation: dnf-skeleton 1.4s ease-in-out infinite;
+    }
+    .dnf-skeleton--line { height: 0.8rem; margin: var(--dnf-space-3) 0; }
+    .dnf-skeleton--title { width: 30%; height: 1.4rem; margin-bottom: var(--dnf-space-5); }
+    @keyframes dnf-skeleton { to { background-position: -200% 0; } }
+    @media (prefers-reduced-motion: reduce) { .dnf-skeleton { animation: none; } }
+
+    /* ---- Description list: <dl class="dnf-description-list"> with dt/dd pairs ---------------------------------- */
+    .dnf-description-list { display: grid; grid-template-columns: minmax(8rem, 12rem) 1fr; margin: 0; }
+    .dnf-description-list > :is(dt, dd) { margin: 0; padding: var(--dnf-space-3) 0; border-bottom: 1px solid var(--dnf-border); }
+    .dnf-description-list > dt { color: var(--dnf-muted-foreground); }
+    .dnf-description-list > dd { overflow-wrap: anywhere; }
+    .dnf-description-list > :is(dt, dd):is(:last-of-type) { border-bottom: 0; }
+    /* Label column as wide as its longest label; no column-gap (it would break the row lines), the label pads instead. */
+    .dnf-description-list--compact { grid-template-columns: auto 1fr; }
+    .dnf-description-list--compact > :is(dt, dd) { padding: var(--dnf-space-2) 0; }
+    .dnf-description-list--compact > dt { padding-inline-end: var(--dnf-space-4); }
+
+    /* ---- Code block (with an optional copy button: .dnf-code-block__copy) ------------------------------------ */
+    .dnf-code-block {
+        position: relative;
+        margin: 0;
+        padding: var(--dnf-space-4);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-code-background);
+        color: var(--dnf-code-foreground);
+        font-family: var(--dnf-font-mono);
+        font-size: var(--dnf-text-sm);
+        line-height: 1.6;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    .dnf-code-block:has(> .dnf-code-block__copy) { padding-inline-end: 6rem; }
+    .dnf-code-block__copy { position: absolute; top: var(--dnf-space-2); right: var(--dnf-space-2); }
+    .dnf-code-block[data-invalid="true"] { color: var(--dnf-danger); }
+    /* Inline code shown as a small block (an API path). */
+    .dnf-code-block--inline { display: block; padding: var(--dnf-space-2); border: 0; border-radius: var(--dnf-radius-sm); overflow-wrap: anywhere; white-space: normal; }
+    .dnf-code-block--scroll { max-height: 18rem; overflow: auto; overflow-wrap: anywhere; word-break: normal; }
+
+    /* ---- List: rows of a card (activity, members, settings) ----------------------------------------------------- */
+    .dnf-list { margin: 0; padding: 0; list-style: none; }
+    .dnf-list__item {
+        display: flex; align-items: center; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-3) var(--dnf-space-5);
+        border-bottom: 1px solid var(--dnf-border);
+    }
+    .dnf-list__item:last-child { border-bottom: 0; }
+    .dnf-list--plain > .dnf-list__item { padding-inline: 0; }
+    .dnf-list--compact > .dnf-list__item { padding-block: var(--dnf-space-2); }
+    /* A round or square tile with an icon at the start of a row. */
+    .dnf-list__icon {
+        display: grid; place-items: center; flex: 0 0 auto;
+        width: 2.25rem; height: 2.25rem;
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+    }
+    .dnf-list__icon--round { width: 2rem; height: 2rem; border-radius: 50%; }
+    .dnf-list__icon--danger { background: var(--dnf-danger-soft); color: var(--dnf-danger); }
+    .dnf-list__icon--primary { background: var(--dnf-primary-soft); color: var(--dnf-primary-text); }
+    .dnf-list__content { display: flex; flex: 1 1 auto; flex-direction: column; gap: 0.125rem; min-width: 0; }
+}

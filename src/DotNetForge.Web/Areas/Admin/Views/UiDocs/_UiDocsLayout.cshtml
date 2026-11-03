@@ -1,0 +1,129 @@
+@*
+    The UI docs layout (.docs/pages/ui-docs.md): a documentation site inside the admin, without the admin shell - a header
+    (brand, search, back to the admin, theme), the docs navigation on the left (a drawer on tablets and phones), the page,
+    and "On this page" on the right (built by docs.js from the page's h2/h3 headings). Pages come from UiDocsCatalog.
+*@
+@{
+    var current = Model.Page;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>@current.Title · DotNetForge UI</title>
+    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
+    <script src="~/_content/DotNetForge.UI/dnf-theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/_content/DotNetForge.UI/dnf.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin/docs.css" asp-append-version="true" />
+    <script src="~/_content/DotNetForge.UI/dnf.js" asp-append-version="true" defer></script>
+    <script src="~/js/admin/docs.js" asp-append-version="true" defer></script>
+</head>
+<body>
+    <a class="dnf-skip-link" href="#main">Skip to content</a>
+    <div class="dnf-docs" data-shell>
+        <header class="dnf-docs__header">
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-docs__menu" data-drawer-open
+                    aria-controls="docs-nav" aria-expanded="false" aria-label="Open navigation">
+                <dnf-icon name="menu" />
+            </button>
+            <a class="dnf-docs__brand" href="@UiDocsCatalog.Root" aria-label="DotNetForge UI - Introduction">
+                <img class="block dark:hidden" src="~/img/logo.svg" alt="" width="132" height="32" />
+                <img class="hidden dark:block" src="~/img/logo-dark.svg" alt="" width="132" height="32" />
+                <span class="dnf-badge dnf-badge--primary">UI</span>
+            </a>
+            <div class="dnf-input-group dnf-docs__search dnf-js-only">
+                <dnf-icon name="search" class="dnf-input-group__icon" />
+                <input class="dnf-input dnf-input--sm" type="search" placeholder="Search docs" aria-label="Search the docs"
+                       aria-controls="docs-nav" data-docs-search />
+                <kbd class="dnf-docs__search-key" aria-hidden="true">/</kbd>
+            </div>
+            <div class="dnf-docs__header-actions">
+                <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin"><dnf-icon name="chevron-left" size="Sm" /> Back to admin</a>
+                <partial name="_ThemeMenu" />
+            </div>
+        </header>
+
+        <aside class="dnf-docs__nav" id="docs-nav" aria-label="Documentation" data-drawer-panel>
+            <div class="dnf-docs__nav-head">
+                <span class="font-semibold">Documentation</span>
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only" data-drawer-close aria-label="Close navigation">
+                    <dnf-icon name="x" />
+                </button>
+            </div>
+            <nav data-docs-nav>
+                @foreach (var category in Model.Categories)
+                {
+                    @if (category == Model.Categories.First(c => c.Pages[0].IsComponent))
+                    {
+                        <div class="dnf-docs__nav-group" data-docs-nav-group>
+                            <p class="dnf-docs__nav-title">Components</p>
+                            <ul class="dnf-docs__nav-list">
+                                <li><a class="dnf-docs__nav-link" href="@UiDocsCatalog.Root/components" aria-current="@(current.Slug == "components" ? "page" : null)">All components</a></li>
+                            </ul>
+                        </div>
+                    }
+                    <div class="dnf-docs__nav-group" data-docs-nav-group>
+                        <p class="dnf-docs__nav-title">@category.Name</p>
+                        <ul class="dnf-docs__nav-list">
+                            @foreach (var item in category.Pages)
+                            {
+                                <li><a class="dnf-docs__nav-link" href="@item.Href" aria-current="@(item == current ? "page" : null)">@item.Title</a></li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <p class="dnf-docs__nav-empty" data-docs-nav-empty hidden>No page matches.</p>
+            </nav>
+        </aside>
+        <div class="dnf-docs__backdrop" data-drawer-backdrop data-drawer-close hidden></div>
+
+        <main id="main" class="dnf-docs__main" tabindex="-1">
+            <article class="dnf-docs__article" data-docs-content>
+                <header class="dnf-docs__page-header">
+                    <div class="dnf-docs__page-meta">
+                        <p class="dnf-docs__eyebrow">@current.Category</p>
+                        @* Markdown for an AI assistant, built from the rendered page by docs.js (hidden without JavaScript). *@
+                        <dnf-dropdown text="Copy" label="Copy this documentation as Markdown" variant="Secondary" size="Sm"
+                                      placement="bottom-end" class="dnf-js-only" menu-class="dnf-docs__copy-menu">
+                            <dnf-dropdown-button icon="copy" data-docs-copy="page">Copy this page</dnf-dropdown-button>
+                            <dnf-dropdown-button icon="book" data-docs-copy="all">Copy all docs</dnf-dropdown-button>
+                            <dnf-dropdown-note>Markdown with every example's code, the styling reference and the API tables - paste it into an AI assistant as context.</dnf-dropdown-note>
+                        </dnf-dropdown>
+                    </div>
+                    <h1 class="dnf-docs__title">@current.Title</h1>
+                    <p class="dnf-docs__lead">@current.Description</p>
+                </header>
+                @RenderBody()
+            </article>
+
+            @if (Model.Previous is not null || Model.Next is not null)
+            {
+                <nav class="dnf-docs__pager" aria-label="Previous and next page">
+                    @if (Model.Previous is { } previous)
+                    {
+                        <a class="dnf-docs__pager-link" href="@previous.Href" rel="prev">
+                            <span class="dnf-docs__pager-label"><dnf-icon name="chevron-left" size="Sm" /> Previous</span>
+                            <span class="dnf-docs__pager-title">@previous.Title</span>
+                        </a>
+                    }
+                    @if (Model.Next is { } next)
+                    {
+                        <a class="dnf-docs__pager-link dnf-docs__pager-link--next" href="@next.Href" rel="next">
+                            <span class="dnf-docs__pager-label">Next <dnf-icon name="chevron-right" size="Sm" /></span>
+                            <span class="dnf-docs__pager-title">@next.Title</span>
+                        </a>
+                    }
+                </nav>
+            }
+        </main>
+
+        <aside class="dnf-docs__toc" aria-labelledby="docs-toc-title">
+            <p class="dnf-docs__toc-title" id="docs-toc-title">On this page</p>
+            <ul class="dnf-docs__toc-list" data-docs-toc></ul>
+        </aside>
+    </div>
+    <partial name="_Feedback" />
+</body>
+</html>

@@ -1,0 +1,218 @@
+@* Card (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/card.css</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A card frames one piece of content: an optional header with a title, a description and actions, a body, and an
+    optional footer for the card's own buttons. All parts are plain classes - there is no card tag helper
+    (<code>&lt;dnf-stat-card&gt;</code> renders a card, see <a href="@UiDocsCatalog.Root/components/stat-card">Stat card</a>).</p>
+
+<ui-doc-example id="basic" layout="block">
+    <section class="dnf-card">
+        <header class="dnf-card__header">
+            <div>
+                <h3 class="dnf-card__title">Email</h3>
+                <p class="dnf-card__description">Where system emails come from.</p>
+            </div>
+            <dnf-button size="Sm" icon="pencil">Edit</dnf-button>
+        </header>
+        <div class="dnf-card__body">
+            <p>Sent from <strong>noreply@@example.com</strong> through <code>smtp.example.com</code>.</p>
+        </div>
+        <footer class="dnf-card__footer">
+            <dnf-button>Send a test email</dnf-button>
+        </footer>
+    </section>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="body-only" title="Body only" description="The smallest card: a frame with padding." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-card__body">
+            <p>Pages inherit the site's default layout unless they pick their own.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="form" title="Form with a footer" description="The footer is a muted band with the card's actions at the end - the usual frame of a settings form." layout="block">
+    <form class="dnf-card" action="#form">
+        <div class="dnf-card__header">
+            <div>
+                <h3 class="dnf-card__title">General</h3>
+                <p class="dnf-card__description">The name and address of the site.</p>
+            </div>
+        </div>
+        <div class="dnf-card__body dnf-form">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="card-site-name">Site name</label>
+                <input class="dnf-input" id="card-site-name" value="DotNetForge" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="card-site-url">Public URL</label>
+                <input class="dnf-input" id="card-site-url" type="url" value="https://www.example.com" />
+            </div>
+        </div>
+        <div class="dnf-card__footer">
+            <dnf-button>Cancel</dnf-button>
+            <dnf-button variant="Primary" data-docs-toast="Settings saved." data-docs-toast-tone="success">Save</dnf-button>
+        </div>
+    </form>
+</ui-doc-example>
+
+<ui-doc-example id="header-only" title="Header only" description="A header that is the card's last child draws no line below - a compact row with a title and an action." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-card__header">
+            <div>
+                <h3 class="dnf-card__title">Sitemap</h3>
+                <p class="dnf-card__description">Rebuilt every night at 02:00.</p>
+            </div>
+            <dnf-button size="Sm" icon="refresh-cw" data-docs-toast="Sitemap rebuilt.">Rebuild now</dnf-button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="danger" title="Danger zone" description="dnf-card--danger tints the border and colours the title - for destructive actions, kept apart from the rest of a screen." layout="block">
+    <section class="dnf-card dnf-card--danger">
+        <div class="dnf-card__header">
+            <div>
+                <h3 class="dnf-card__title">Delete this content type</h3>
+                <p class="dnf-card__description">Its 128 entries are deleted with it.</p>
+            </div>
+            <dnf-button variant="DangerSoft" size="Sm" icon="trash"
+                        data-docs-confirm="Delete the content type Articles and its 128 entries? This can't be undone." data-docs-confirm-title="Delete content type" data-docs-confirm-action="Delete">Delete</dnf-button>
+        </div>
+    </section>
+</ui-doc-example>
+
+<ui-doc-example id="accent" title="Accent" description="dnf-card--accent adds a primary bar at the start - to draw attention to one card among others." layout="block">
+    <div class="dnf-card dnf-card--accent">
+        <div class="dnf-card__body dnf-stack dnf-stack--sm">
+            <p class="font-semibold">Finish setting up your site</p>
+            <p class="text-muted">Add a logo and connect an email server so users can reset their passwords.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="flush" title="Flush" description="dnf-card--flush removes the body's padding, so a list or a table inside runs to the card's edges." layout="block">
+    <div class="dnf-card dnf-card--flush">
+        <div class="dnf-card__header">
+            <h3 class="dnf-card__title">Recent activity</h3>
+        </div>
+        <div class="dnf-card__body">
+            <ul class="dnf-list">
+                <li class="dnf-list__item">
+                    <span class="dnf-list__icon"><dnf-icon name="pages" /></span>
+                    <span class="dnf-list__content">Ada Lovelace published Home</span>
+                </li>
+                <li class="dnf-list__item">
+                    <span class="dnf-list__icon"><dnf-icon name="image" /></span>
+                    <span class="dnf-list__content">Grace Hopper uploaded hero.jpg</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="interactive" title="Interactive" description="dnf-card--interactive makes the whole card one link with a hover background; lay several out with a grid." layout="block">
+    <div class="dnf-grid dnf-grid--cols-2">
+        <a class="dnf-card dnf-card--interactive" href="#interactive">
+            <span class="dnf-card__body dnf-stack dnf-stack--sm">
+                <span class="font-semibold">Content types</span>
+                <span class="text-sm text-muted">Define the fields of your entries.</span>
+            </span>
+        </a>
+        <a class="dnf-card dnf-card--interactive" href="#interactive">
+            <span class="dnf-card__body dnf-stack dnf-stack--sm">
+                <span class="font-semibold">Webhooks</span>
+                <span class="text-sm text-muted">Notify other services of changes.</span>
+            </span>
+        </a>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities beat the card's styles: drop the shadow, or lay the body out as a grid." layout="block">
+    <div class="dnf-card shadow-none">
+        <div class="dnf-card__body grid gap-4 sm:grid-cols-2">
+            <p>Without a shadow.</p>
+            <p>A two-column body.</p>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="Padding, radius and border colour are --dnf-card-* tokens; set them in your own (unlayered) CSS to restyle cards in a scope." layout="block">
+    <div class="dnf-docs-demo-card">
+        <div class="dnf-card">
+            <div class="dnf-card__header">
+                <h3 class="dnf-card__title">Restyled card</h3>
+            </div>
+            <div class="dnf-card__body">
+                <p>More padding, a larger radius and a primary-tinted border.</p>
+            </div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-card .dnf-card {
+    --dnf-card-padding: var(--dnf-space-8);
+    --dnf-card-radius: var(--dnf-radius-xl);
+    --dnf-card-border: var(--dnf-primary-soft-border);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-card</code></td><td>block</td><td><code>--dnf-surface</code>, a 1px <code>--dnf-card-border</code>, <code>--dnf-card-radius</code>, a small shadow</td></tr>
+        <tr><td><code>dnf-card__header</code></td><td>element</td><td>a row: the title block at the start, actions at the end; a line below (none when it is the last child)</td></tr>
+        <tr><td><code>dnf-card__title</code></td><td>element</td><td><code>text-md</code>, semibold</td></tr>
+        <tr><td><code>dnf-card__description</code></td><td>element</td><td><code>text-sm</code>, muted</td></tr>
+        <tr><td><code>dnf-card__body</code></td><td>element</td><td>padding <code>--dnf-card-padding</code></td></tr>
+        <tr><td><code>dnf-card__footer</code></td><td>element</td><td>a muted band with a line above, its actions at the end</td></tr>
+        <tr><td><code>dnf-card--danger</code></td><td>modifier</td><td>a danger-tinted border and a red title (destructive zone)</td></tr>
+        <tr><td><code>dnf-card--accent</code></td><td>modifier</td><td>a primary-tinted border and a 3px primary bar at the start</td></tr>
+        <tr><td><code>dnf-card--flush</code></td><td>modifier</td><td>the body has no padding (a table or list fills it)</td></tr>
+        <tr><td><code>dnf-card--interactive</code></td><td>modifier</td><td>a whole-card link: block, inherits the text colour, hover background</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>.dnf-card--interactive:hover</code></td><td><code>--dnf-surface-hover</code> background, no underline</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-card-padding</code> (<code>--dnf-space-5</code>), <code>--dnf-card-radius</code> (<code>--dnf-radius-lg</code>),
+    <code>--dnf-card-border</code> (<code>--dnf-border</code>).</p>
+
+<h2 id="api">API</h2>
+<p>The card has no tag helper: the classes above are its API. Any element can be the card - <code>&lt;section&gt;</code>
+    for a titled part of a screen, <code>&lt;form&gt;</code> for a settings form, <code>&lt;a&gt;</code> with
+    <code>--interactive</code>. A card that holds a collection carries <code>data-collection</code>
+    (<a href="@UiDocsCatalog.Root/components/table">Table</a>).</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Make <code>dnf-card__title</code> a heading at the right level (an <code>&lt;h2&gt;</code> under the screen's <code>&lt;h1&gt;</code>); a <code>&lt;section&gt;</code> card can point to it with <code>aria-labelledby</code>.</li>
+    <li>An interactive card is one <code>&lt;a&gt;</code>: don't nest other links or buttons in it.</li>
+    <li>The danger card's colour is not the only signal - say what is destroyed in the description and confirm the action.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do put a table or list directly in a card (or a <code>--flush</code> body) so the rows run to the edges.</li>
+    <li>Do keep one primary action per card, in the footer or the header.</li>
+    <li>Don't nest cards; use a <a href="@UiDocsCatalog.Root/components/list">list</a> or a <a href="@UiDocsCatalog.Root/components/description-list">description list</a> inside one.</li>
+    <li>Don't use the accent for more than one card on a screen.</li>
+</ul>

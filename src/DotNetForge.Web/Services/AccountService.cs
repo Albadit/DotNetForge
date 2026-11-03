@@ -9,6 +9,7 @@ using DotNetForge.Data;
 using DotNetForge.Shared.Auditing;
 using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
+using DotNetForge.Shared.Dtos;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Shared.Enums;
 using Microsoft.AspNetCore.DataProtection;
@@ -17,7 +18,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Services;
 
 /// <summary>What the registration form posts.</summary>
-public sealed class RegisterInput
+public sealed class RegisterInput : IAccountFields
 {
     public string? FirstName { get; set; }
 
@@ -54,11 +55,13 @@ public sealed partial class AccountService
     private readonly ITimeLimitedDataProtector _tokens;
     private readonly IEmailSettingsSource _emailSettings;
     private readonly EmailTemplateService _templates;
+    private readonly UserSessionService _sessions;
 
     public AccountService(DotNetForgeDbContext db, IPasswordHasher hasher, IEmailSender email, AppEnvironment env,
         UserAccountSettingsService settings, IAuditService audit, IDataProtectionProvider dataProtection, ILogger<AccountService> logger,
-        IEmailSettingsSource emailSettings, EmailTemplateService templates)
+        IEmailSettingsSource emailSettings, EmailTemplateService templates, UserSessionService sessions)
     {
+        _sessions = sessions;
         _emailSettings = emailSettings;
         _templates = templates;
         _db = db;
@@ -266,6 +269,7 @@ public sealed partial class AccountService
         // The link reached the inbox, so the address is confirmed too.
         user.EmailConfirmed = true;
         await _db.SaveChangesAsync(ct);
+        await _sessions.EndAllAsync(user.Id, ct);
         await _audit.LogAsync(AuditActions.PasswordReset, "User", user.Id.ToString(), user.Email, cancellationToken: ct);
         return null;
     }

@@ -1,0 +1,122 @@
+@* Chip (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/status.css</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A chip is a value the user picked - a related entry, a tag, a recipient - optionally with a button that removes it.
+    Lay several out with <code>dnf-chip-list</code>. Removing is your script's job; the chips here only show the look.</p>
+
+<ui-doc-example id="basic">
+    <div class="dnf-chip-list">
+        <span class="dnf-chip">
+            Getting started
+            <button type="button" class="dnf-chip__remove" aria-label="Remove Getting started"><dnf-icon name="x" size="Sm" /></button>
+        </span>
+        <span class="dnf-chip">
+            Release notes
+            <button type="button" class="dnf-chip__remove" aria-label="Remove Release notes"><dnf-icon name="x" size="Sm" /></button>
+        </span>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="read-only" title="Without a remove button" description="A chip without its remove button gets even padding at both ends - for values that can't be changed here.">
+    <div class="dnf-chip-list">
+        <span class="dnf-chip">news</span>
+        <span class="dnf-chip">product</span>
+        <span class="dnf-chip">2026</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="icon" title="With an icon" description="A small leading icon names the kind of value.">
+    <div class="dnf-chip-list">
+        <span class="dnf-chip">
+            <dnf-icon name="user" size="Sm" />
+            Ada Lovelace
+            <button type="button" class="dnf-chip__remove" aria-label="Remove Ada Lovelace"><dnf-icon name="x" size="Sm" /></button>
+        </span>
+        <span class="dnf-chip">
+            <dnf-icon name="users" size="Sm" />
+            Editors
+            <button type="button" class="dnf-chip__remove" aria-label="Remove Editors"><dnf-icon name="x" size="Sm" /></button>
+        </span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="in-a-form" title="In a form" description="The selected relations of an entry, followed by the button that adds more." layout="block">
+    <div class="dnf-field">
+        <p class="dnf-field__label" id="chip-related-label">Related articles</p>
+        <div class="dnf-chip-list" role="group" aria-labelledby="chip-related-label">
+            <span class="dnf-chip">
+                Why we built a CMS
+                <button type="button" class="dnf-chip__remove" aria-label="Remove Why we built a CMS"><dnf-icon name="x" size="Sm" /></button>
+            </span>
+            <span class="dnf-chip">
+                Hosting on Docker
+                <button type="button" class="dnf-chip__remove" aria-label="Remove Hosting on Docker"><dnf-icon name="x" size="Sm" /></button>
+            </span>
+            <dnf-button variant="Ghost" size="Sm" icon="plus">Add article</dnf-button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities beat the chip's styles - here a primary-tinted chip.">
+    <span class="dnf-chip bg-primary-soft border-transparent">Featured</span>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="The chip has no component tokens; restyle it in a scope with your own (unlayered) CSS - here with square corners.">
+    <div class="dnf-docs-demo-chips dnf-chip-list">
+        <span class="dnf-chip">draft</span>
+        <span class="dnf-chip">needs review</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-chips .dnf-chip {
+    border-radius: var(--dnf-radius-sm);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-chip</code></td><td>block</td><td>a 1.75rem pill with a strong border on the muted surface, <code>text-sm</code>; padding at the end only when it has no remove button</td></tr>
+        <tr><td><code>dnf-chip__remove</code></td><td>element</td><td>a 1.5rem round button in the muted colour</td></tr>
+        <tr><td><code>dnf-chip-list</code></td><td>block</td><td>a wrapping row of chips, gap <code>--dnf-space-2</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>.dnf-chip__remove:hover</code></td><td><code>--dnf-surface-hover</code> background, foreground colour</td></tr>
+        <tr><td>keyboard focus</td><td><code>:focus-visible</code></td><td>the base style's focus outline</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>The chip has no tag helper and no script: the classes above are its API. Remove the chip (and the value it stands for)
+    in your own script when its <code>dnf-chip__remove</code> button is clicked.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The remove button is icon-only: give it a name that says what it removes ("Remove Getting started").</li>
+    <li>After removing a chip, move the focus somewhere sensible - the next chip's remove button, or the picker.</li>
+    <li>Name a group of chips with <code>role="group"</code> and <code>aria-labelledby</code> pointing at its label.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use chips for the values of a multi-value selection.</li>
+    <li>Do keep the chip's text the value's own name, as the user knows it.</li>
+    <li>Don't use a chip for a status - use a <a href="@UiDocsCatalog.Root/components/badge">badge</a>.</li>
+</ul>

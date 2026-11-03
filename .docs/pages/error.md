@@ -18,11 +18,11 @@ architecture: [logging and error handling](../features/logging-and-error-handlin
 ```text
 Program.cs                                          UseExceptionHandler("/error") when !IsDevelopment()
 src/DotNetForge.Web/Controllers/HomeController.cs   Error() - plain View(), never themed
-src/DotNetForge.Web/Views/Home/Error.cshtml         card with an <empty-state> and "Return home"
+src/DotNetForge.Web/Views/Home/Error.cshtml         card with a <dnf-empty-state> and "Return home"
 src/DotNetForge.Web/Views/_ViewStart.cshtml         Layout = "_Layout"
-src/DotNetForge.Web/Views/Shared/_Layout.cshtml     public fallback layout (header, main, footer); loads theme.js + public.css, no ui.js
-src/DotNetForge.Web/Ui/UiTagHelpers.cs              <empty-state>, <icon>
-src/DotNetForge.Web/wwwroot/css/forge/public.css    .site-header, .site-main, .site-footer
+src/DotNetForge.Web/Views/Shared/_Layout.cshtml     public fallback layout (header, main, footer); loads dnf-theme.js + dnf.css + site.css, no dnf.js
+src/DotNetForge.UI/Components/BasicTagHelpers.cs    <dnf-empty-state>, <dnf-icon>
+src/DotNetForge.Web/wwwroot/css/site.css            .dnf-site__header, .dnf-site__main, .dnf-site__footer
 ```
 
 ## Page layout
@@ -30,15 +30,15 @@ src/DotNetForge.Web/wwwroot/css/forge/public.css    .site-header, .site-main, .s
 ```text
 Error (_Layout, title "Error · DotNetForge CMS")
 ├── "Skip to content" link
-├── header.site-header: logo mark + "DotNetForge CMS" (→ /) · [Admin →] (/admin, only for users who may enter the admin)
+├── header.dnf-site__header: logo mark + "DotNetForge CMS" (→ /) · [Admin →] (/admin, only for users who may enter the admin)
 │                       (brand falls back to "DotNetForge CMS" and no page menu - Error() sets neither AppName nor Menu)
-├── main#main.site-main
-│   └── section.card > div.empty-state
+├── main#main.dnf-site__main
+│   └── section.dnf-card > div.dnf-empty-state
 │       ├── triangle-alert icon
-│       ├── h1.empty-state-title "Something went wrong"
+│       ├── h1.dnf-empty-state__title "Something went wrong"
 │       ├── "An unexpected error occurred while processing your request. It has been logged; please try again in a moment."
-│       └── [Return home] (a.btn.btn-primary → /)
-└── footer.site-footer "Powered by DotNetForge CMS"
+│       └── [Return home] (a.dnf-button.dnf-button--primary → /)
+└── footer.dnf-site__footer "Powered by DotNetForge CMS"
 ```
 
 Layout: [design system → public fallback](../architecture/design-system.md#public-fallback).
@@ -48,7 +48,7 @@ Layout: [design system → public fallback](../architecture/design-system.md#pub
 Static view; no model, no actions, no data, no state. The response status is whatever the exception handler set
 (500 when re-executed). The page carries no inline script or style, so it renders under the production
 Content-Security-Policy (see [security](../features/security.md)). The public layout renders no toasts
-(`_Feedback` is not included), no theme menu and does not load `ui.js`; `theme.js` still applies a light/dark choice
+(`_Feedback` is not included), no theme menu and does not load `dnf.js`; `dnf-theme.js` still applies a light/dark choice
 saved on the admin or sign-in screens.
 
 ## Permissions

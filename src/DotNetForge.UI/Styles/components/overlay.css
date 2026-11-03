@@ -1,0 +1,167 @@
+/*
+  Overlays (.docs/ui/components/dropdown.md, dialog.md, tooltip.md, popover.md):
+  DnfDropdown, DnfDialog (also the confirmation dialog and drawers), DnfTooltip, DnfPopover.
+  All of them open in the browser's top layer (popover / showModal), so no scroll area or stacking context clips them.
+*/
+
+@layer components {
+    /* ---- Dropdown: .dnf-dropdown > button[popovertarget] + .dnf-dropdown__menu[popover][role=menu] > items -------- */
+    .dnf-dropdown { position: relative; display: inline-block; vertical-align: middle; }
+    .dnf-dropdown__menu {
+        position: fixed; inset: auto; margin: 0;
+        min-width: 12rem;
+        max-height: calc(100vh - 1rem);
+        overflow-y: auto;
+        padding: var(--dnf-space-1);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface-raised);
+        color: var(--dnf-foreground);
+        box-shadow: var(--dnf-shadow-md);
+    }
+    .dnf-dropdown__menu form { margin: 0; }
+
+    /* Menus and popovers fade and settle in on open and fade out on close; overlay/display (allow-discrete) keep them in
+       the top layer until the fade-out ends. Without that support they simply appear and disappear. */
+    :is(.dnf-dropdown__menu, .dnf-popover)[popover] {
+        opacity: 0;
+        scale: 0.98;
+        transition: opacity var(--dnf-duration) var(--dnf-ease), scale var(--dnf-duration) var(--dnf-ease),
+            overlay var(--dnf-duration) allow-discrete, display var(--dnf-duration) allow-discrete;
+    }
+    :is(.dnf-dropdown__menu, .dnf-popover):popover-open { opacity: 1; scale: 1; }
+    @starting-style {
+        :is(.dnf-dropdown__menu, .dnf-popover):popover-open { opacity: 0; scale: 0.98; }
+    }
+    .dnf-dropdown__item {
+        display: flex; align-items: center; gap: var(--dnf-space-2);
+        width: 100%;
+        padding: var(--dnf-space-2) var(--dnf-space-3);
+        border: 0;
+        border-radius: var(--dnf-radius-md);
+        background: none;
+        color: var(--dnf-foreground);
+        font-size: var(--dnf-text-base);
+        text-align: start;
+    }
+    .dnf-dropdown__item:is(:hover, :focus-visible) { outline: none; background: var(--dnf-surface-hover); text-decoration: none; }
+    .dnf-dropdown__item:is(:disabled, [aria-disabled="true"]) { opacity: 0.55; pointer-events: none; }
+    .dnf-dropdown__item--danger { color: var(--dnf-danger); }
+    .dnf-dropdown__item[aria-checked="true"]::after { content: "\2713"; margin-inline-start: auto; color: var(--dnf-primary-text); }
+    .dnf-dropdown__label { padding: var(--dnf-space-2) var(--dnf-space-3) var(--dnf-space-1); font-size: var(--dnf-text-xs); font-weight: var(--dnf-weight-semibold); color: var(--dnf-subtle-foreground); }
+    .dnf-dropdown__separator { height: 1px; margin: var(--dnf-space-1) 0; background: var(--dnf-border); }
+    /* The chevron of a dropdown trigger turns up while its menu is open (dnf.js keeps aria-expanded in sync). */
+    .dnf-dropdown__chevron { transition: rotate var(--dnf-duration) var(--dnf-ease); }
+    [aria-expanded="true"] > .dnf-dropdown__chevron { rotate: 180deg; }
+    .dnf-dropdown__note { display: block; padding: var(--dnf-space-2) var(--dnf-space-3); font-size: var(--dnf-text-xs); color: var(--dnf-subtle-foreground); white-space: normal; }
+
+    /* ---- Dialog: native <dialog class="dnf-dialog"> (focus trap, Esc and the top layer built in) -----------------
+       Anatomy: .dnf-dialog__header (> .dnf-dialog__icon? + div > .dnf-dialog__title + .dnf-dialog__description, .dnf-dialog__close?)
+                + .dnf-dialog__body + .dnf-dialog__footer
+       Fades in on showModal() and out on close(): overlay/display (allow-discrete) keep it in the top layer meanwhile. */
+    .dnf-dialog {
+        --dnf-dialog-width: 28rem;
+        width: min(var(--dnf-dialog-width), calc(100vw - 2rem));
+        max-height: calc(100vh - 2rem);
+        margin: auto;
+        padding: 0;
+        overflow: auto;
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-xl);
+        background: var(--dnf-surface-raised);
+        color: var(--dnf-foreground);
+        box-shadow: var(--dnf-shadow-lg);
+        opacity: 0;
+        transform: translateY(0.5rem) scale(0.98);
+        transition: opacity var(--dnf-duration) var(--dnf-ease), transform var(--dnf-duration) var(--dnf-ease),
+            overlay var(--dnf-duration) allow-discrete, display var(--dnf-duration) allow-discrete;
+    }
+    .dnf-dialog[open] { opacity: 1; transform: none; }
+    .dnf-dialog::backdrop {
+        background: var(--dnf-backdrop);
+        opacity: 0;
+        transition: opacity var(--dnf-duration) var(--dnf-ease), overlay var(--dnf-duration) allow-discrete, display var(--dnf-duration) allow-discrete;
+    }
+    .dnf-dialog[open]::backdrop { opacity: 1; }
+    @starting-style {
+        .dnf-dialog[open] { opacity: 0; transform: translateY(0.5rem) scale(0.98); }
+        .dnf-dialog[open]::backdrop { opacity: 0; }
+    }
+    .dnf-dialog--sm { --dnf-dialog-width: 24rem; }
+    .dnf-dialog--md { --dnf-dialog-width: 32rem; }
+    .dnf-dialog--lg { --dnf-dialog-width: 46rem; }
+    .dnf-dialog--xl { --dnf-dialog-width: 64rem; }
+    /* A panel that slides in from the end edge. */
+    .dnf-dialog--drawer {
+        --dnf-dialog-width: 30rem;
+        height: 100vh; max-height: none;
+        margin: 0 0 0 auto;
+        border-radius: 0;
+        border-width: 0 0 0 1px;
+        transform: translateX(1.5rem);
+    }
+    @starting-style { .dnf-dialog--drawer[open] { transform: translateX(1.5rem); } }
+    /* A dialog whose content is a card (the card draws the frame). */
+    .dnf-dialog--bare { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+    .dnf-dialog--bare > .dnf-card { margin: 0; box-shadow: var(--dnf-shadow-lg); }
+
+    .dnf-dialog__header { display: flex; align-items: flex-start; gap: var(--dnf-space-4); padding: var(--dnf-space-6) var(--dnf-space-6) 0; }
+    .dnf-dialog__header > :not(.dnf-dialog__icon, .dnf-dialog__close) { flex: 1 1 auto; min-width: 0; }
+    .dnf-dialog__icon {
+        display: grid; place-items: center; flex: 0 0 auto;
+        width: 2.5rem; height: 2.5rem;
+        border-radius: 50%;
+        background: var(--dnf-primary-soft);
+        color: var(--dnf-primary-text);
+    }
+    .dnf-dialog__icon--danger { background: var(--dnf-danger-soft); color: var(--dnf-danger); }
+    .dnf-dialog__title { margin-bottom: var(--dnf-space-1); font-size: var(--dnf-text-lg); }
+    .dnf-dialog__description { color: var(--dnf-muted-foreground); }
+    .dnf-dialog__close { flex: 0 0 auto; margin: calc(var(--dnf-space-2) * -1) calc(var(--dnf-space-2) * -1) 0 0; }
+    .dnf-dialog__body { display: flex; flex-direction: column; gap: var(--dnf-space-4); padding: var(--dnf-space-4) var(--dnf-space-6); }
+    .dnf-dialog__footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--dnf-space-2); padding: var(--dnf-space-4) var(--dnf-space-6) var(--dnf-space-5); }
+
+    /* ---- Tooltip: [data-tooltip="…"] on a focusable element; dnf.js shows one shared bubble --------------------- */
+    .dnf-tooltip {
+        position: fixed; inset: auto; top: 0; left: 0; z-index: var(--dnf-z-tooltip);
+        max-width: min(20rem, calc(100vw - 1rem));
+        margin: 0;
+        padding: 0.3rem 0.55rem;
+        overflow: visible;
+        border: 0;
+        border-radius: var(--dnf-radius-sm);
+        background: var(--dnf-tooltip-background);
+        color: var(--dnf-tooltip-foreground);
+        box-shadow: var(--dnf-shadow-md);
+        font-size: var(--dnf-text-xs);
+        font-weight: var(--dnf-weight-medium);
+        line-height: 1.35;
+        pointer-events: none;
+        animation: dnf-fade-in var(--dnf-duration) var(--dnf-ease);
+    }
+    .dnf-tooltip::after {
+        content: "";
+        position: absolute; left: var(--dnf-tooltip-arrow-x, 50%);
+        width: 0.5rem; height: 0.5rem;
+        background: inherit;
+        transform: translateX(-50%) rotate(45deg);
+    }
+    .dnf-tooltip[data-placement="top"]::after { top: calc(100% - 0.25rem); }
+    .dnf-tooltip[data-placement="bottom"]::after { bottom: calc(100% - 0.25rem); }
+    @keyframes dnf-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ---- Popover: a non-modal panel next to its button (button[popovertarget] + .dnf-popover[popover]) --------- */
+    .dnf-popover {
+        position: fixed; inset: auto; margin: 0;
+        width: min(24rem, calc(100vw - 2rem));
+        padding: var(--dnf-space-4);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface-raised);
+        color: var(--dnf-foreground);
+        box-shadow: var(--dnf-shadow-md);
+    }
+    /* Content that brings its own frame (an alert). */
+    .dnf-popover--bare { padding: 0; border: 0; background: transparent; }
+    .dnf-popover--bare > * { margin: 0; }
+}

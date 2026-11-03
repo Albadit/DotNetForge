@@ -80,9 +80,18 @@ Field mapping: `Title` trimmed; optional strings trimmed and blank → `null`; d
 `ThemeForChildren` only when the page keeps a `ThemeId` (otherwise `false`). Rule 2 keeps
 over-long input from failing at save time (PostgreSQL enforces column lengths).
 
+### The home page
+
+The page with the slug `/` is the site's root. `PageService` keeps it so everywhere - the page form, the tree, the Move
+dialog and the API: its slug, parent and position can't change, it can't be dragged, and it can't be deleted (the tree
+menu and the editor offer no Delete for it). Nothing goes under it, because
+pages there would have no URL, and nothing goes before it: at the root it has sort order 0 and the others start at 1. The
+title, content, SEO and layout change as on any page. No page has a sort order below 0.
+
 ### `ReorderAsync` - drag-and-drop
 
-Validates the tree **after** all posted moves (current parents overlaid with the posted ones):
+**Move up** / **Move down** in a row's menu post the same reorder without dragging (touch screens, keyboards), and
+`MoveAsync` (**Move…**, the move dialog) is a reorder of one page to the end of its new parent. Validates the tree **after** all posted moves (current parents overlaid with the posted ones):
 
 | # | Rule | Error message |
 | --- | --- | --- |
@@ -93,7 +102,7 @@ Validates the tree **after** all posted moves (current parents overlaid with the
 | 5 | at most one `[...]` page per parent | `A parent would get more than one dynamic route ([…]); only one is allowed per parent.` |
 
 Only pages whose parent or sort order actually changed get a new `UpdatedDate`; an empty list is a no-op.
-`PagesController.Reorder` returns `400 { error }` on failure and `wwwroot/js/forge/pages.js` shows the message in a
+`PagesController.Reorder` returns `400 { error }` on failure and `wwwroot/js/admin/pages.js` shows the message in a
 danger toast, then reloads.
 
 ### `DeleteAsync` - delete

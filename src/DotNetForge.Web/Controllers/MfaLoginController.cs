@@ -92,8 +92,8 @@ public sealed class MfaLoginController : Controller
             if (left is >= 0 and <= 3)
             {
                 TempData["Info"] = left == 0
-                    ? "That was your last recovery code. Make new ones on Profile → Sign-in security."
-                    : $"{left} recovery code{(left == 1 ? "" : "s")} left. Make new ones on Profile → Sign-in security.";
+                    ? "That was your last recovery code. Make new ones on Profile › Sign-in security."
+                    : $"{left} recovery code{(left == 1 ? "" : "s")} left. Make new ones on Profile › Sign-in security.";
             }
 
             return await FinishAsync(pending, how);
@@ -155,7 +155,7 @@ public sealed class MfaLoginController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Passkey([FromBody] System.Text.Json.JsonElement credential)
     {
-        var (pending, user, methods) = await LoadAsync();
+        var (pending, user, _) = await LoadAsync();
         if (pending is null || user is null)
         {
             return Json(new { error = "Start signing in again.", redirect = "/login" });

@@ -5,6 +5,7 @@
 | Project | References | Runs against | Count (Oct 2026) |
 | --- | --- | --- | --- |
 | `tests/DotNetForge.Tests` | `src/` libraries (not the host, not `Api`) | pure code, fakes, temp folders, closed ports; optionally a live S3 bucket | 829 tests: 824 run, 5 live-S3 tests skipped unless `DNF_TEST_S3_*` is set |
+| `tests/DotNetForge.UiTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj`, Microsoft.Playwright, Deque.AxeCore.Playwright; links the integration tests' `DotNetForgeWebFactory` | the real host on Kestrel (a fresh PostgreSQL database) driven by headless Chromium ([UI tests](#ui-tests)) | screenshots, accessibility, behaviour and extension tests of the [UI library](../ui/README.md) |
 | `tests/DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj`; build-only references to the fixture extension `tests/fixtures/extensions/test-kit` and the `markdown-kit`, `contact-form`, `seo-toolkit` samples ([extension fixtures](#extension-fixtures)) | the real host via `WebApplicationFactory<Program>`, a fresh PostgreSQL database per factory ([databases](#databases)) and a temp media folder | 179 tests: 174 run, 5 skipped (tests that need a `DNF_TEST_*` server variable) |
 
 ```bash
@@ -40,6 +41,7 @@ factory sets every other environment variable itself, and nothing is written ins
 | `InstallationServiceTests.cs` | `InstallationServiceTests` (5) | `InstallationService` with a `FakeInstallationStore`: success, mismatch, weak password, invalid email, already installed |
 | `ManifestValidationTests.cs` | `ManifestValidationTests` (31) | `ManifestValidator`: required fields, permissions, type, semver, all nine types, `assembly` must be a `.dll` inside the extension folder (11 cases: `..`, rooted, backslash, hidden segment, non-`.dll`, empty rejected) |
 | `PageBuilder/*.cs` | `GoldenFixtureTests`, `DocumentValidatorTests`, `ValuesTests`, `ContentComponentTests`, `ComponentRegistryTests`, `SecurityRegressionTests`, `SegmentsTests` (with all fixture cases) | the page builder's C# side, ported with the reference project's tests: every golden fixture in `tests/fixtures/page-builder/render` (84, 7 of them content lists) normalizes and renders byte for byte; validator, value, URL and component rules ([page builder → Testing](../features/page-builder.md#testing)) |
+| `ProjectBoundaryTests.cs` | `ProjectBoundaryTests` (3) | the [project boundaries](../architecture/dependencies.md#project-references) from the `.csproj` files: each project references only the projects, NuGet packages and ASP.NET Core its layer allows (default: nothing), extensions only other extensions; a project without an entry, or an entry without a project, fails; the rules notice a forbidden reference ([guardrails](#guardrails)) |
 | `PermissionTests.cs` | `PermissionTests` (13) | `PermissionService` / `PermissionMatrix` defaults and union semantics; checks from stored grants (custom role, edited built-in role, Super Admin, matrix fallback) with a fixed `IRoleGrantStore` |
 | `SecurityPrimitiveTests.cs` | `PasswordHasherTests` (3), `ApiTokenFactoryTests` (2), `WebhookSignerTests` (3) | `Pbkdf2PasswordHasher`, `ApiTokenFactory`, `HmacWebhookSigner` |
 | `ValidationTests.cs` | `PasswordPolicyTests` (7), `EmailValidatorTests` (6) | `PasswordPolicy`, `EmailValidator` (the `SlugHelper` tests were removed with the class; slug rules are tested through `PageService`) |
@@ -91,6 +93,7 @@ variables** before the host builds:
 | `APP_URL` | `http://localhost` (the base of the links in recorded emails) |
 | `SMTP_HOST`, `SMTP_FROM` | `smtp.test.invalid`, `cms@example.com`: email counts as configured (so **Forgot password?** and email confirmation are available); `IEmailSender` is replaced through `ConfigureTestServices` by a recorder - the messages are in `factory.SentEmails`, nothing is sent |
 | `EXTENSIONS_PATH` | the constructor's `extensionsPath` argument, or empty (= the repository's `extensions/`) |
+| `DOTNET_USE_POLLING_FILE_WATCHER` | `true`: file providers poll instead of using inotify. Each host's web root file provider keeps a watcher (for versioned file URLs) after the host is disposed; Linux allows 128 inotify instances per user, so with a host per test CI ran out after a minute (`The configured user limit (128) on the number of inotify instances has been reached`, then 500s). Polling keeps the suite at one or two. The tests never wait for the web root to notice a change; the extension folder's own `FileSystemWatcher` (`ExtensionLoader`) is unaffected |
 
 So each factory gets a fresh, migrated, seeded database and its own media folder; the work directory is deleted on
 dispose (best effort). Because of these process-wide variables, parallelization is disabled (`AssemblyInfo.cs`).
@@ -226,7 +229,7 @@ SQL Server and MySQL when their variable is set (`[DatabaseServerFact]`).
 | | `Page_permissions_seo_and_theme_are_saved_from_the_page_editor` | the page form saves a view grant (Authenticated), `NoIndex`, social image, redirects to `#permissions`; anonymous → sign-in redirect; signed-in page has `noindex` and `og:image`; `permission.changed`; an uninstalled theme is refused |
 | | `Single_users_can_be_allowed_or_blocked_on_a_page` | blocking yourself is refused; an Editor blocked from view and edit gets 404 on the page and is denied the builder and delete; an Author allowed to edit opens the builder; visitors still see the page; clearing a user's rules removes them |
 | | `Users_edit_their_own_profile_and_password` | Profile details saved and shown; wrong current password refused; new password signs in |
-| `PublicSiteTests.cs` ([public content page](../pages/public-page.md), [themes](../features/themes.md#theme-inheritance)) | `The_built_in_header_lists_the_menu_pages_and_shows_admin_only_to_admin_users` | without a theme, `/about` has `nav.site-nav` with the menu pages (`/news`; `/about` with `aria-current="page"`), not the unpublished Contact, and no `/admin` link for a visitor; signed in as the admin the `/admin` link is there |
+| `PublicSiteTests.cs` ([public content page](../pages/public-page.md), [themes](../features/themes.md#theme-inheritance)) | `The_built_in_header_lists_the_menu_pages_and_shows_admin_only_to_admin_users` | without a theme, `/about` has `nav.dnf-site__nav` with the menu pages (`/news`; `/about` with `aria-current="page"`), not the unpublished Contact, and no `/admin` link for a visitor; signed in as the admin the `/admin` link is there |
 | | `A_page_hands_its_theme_down_to_child_pages_without_their_own` | the page form saves About with a theme and **Use this theme for child pages too**; `ThemeResolver.PageThemeIdAsync` gives its child Team that theme, while a child with its own theme keeps it; Team's editor shows "Parent's theme" |
 | | `Theme_inheritance_stops_at_the_next_page_with_a_theme_of_its_own` | `ThemeResolver.InheritedFrom` on an in-memory tree (no host): a grandchild inherits from the root through a page without a theme; a middle page with its own theme ends the walk (site theme) unless it hands its theme down too; no parent → none |
 | `StructuredContentTests.cs` | `A_template_creates_the_type_and_the_types_it_links_to_and_renamed_fields_keep_their_values` | the Blog posts template also creates Categories and Authors; an empty slug is made from the title; renaming a field keeps its values (same field id); a type another type links to can't be deleted |
@@ -255,7 +258,7 @@ SQL Server and MySQL when their variable is set (`[DatabaseServerFact]`).
 | | `The_sidebar_shows_only_screens_the_role_may_open` | Editor: Content Manager and Media links present, Plugins/Users/Settings/API Tokens/Content types absent and still → `/account/denied` by URL; admin on `/admin/api-tokens/create`: **API Tokens** has `aria-current="page"`, breadcrumb ends with "Create API token", the **API & Webhooks** group is open and active (Global Settings and Email are not) |
 | | `Bulk_delete_removes_the_selected_files_the_user_may_delete` | `POST /admin/media/delete-selected`: an Author deletes none of the admin's files; the admin deletes 2 of 3, toast "Deleted 2 items.", two `media.deleted` entries |
 | | `The_dashboard_shows_recent_activity_and_offers_only_permitted_actions` | admin's dashboard shows "Signed in" (recent activity) and **New API token**; an Editor's does not offer **New API token** |
-| | `Every_icon_the_ui_uses_exists_in_the_sprite` | every icon named in host and extension views, `AdminNavigation.Tree`, `AuditPresentation` and `MediaPresentation` is a `<symbol>` in `wwwroot/img/icons.svg` |
+| | `Every_icon_the_ui_uses_exists_in_the_sprite` | every icon named in host and extension views, `AdminNavigation.Tree`, `AuditPresentation` and `MediaPresentation` is a `<symbol>` in `src/DotNetForge.UI/wwwroot/icons.svg` |
 | | `Timestamps_read_relative_to_now` (6 cases), `Old_timestamps_show_the_date` | `TimestampTagHelper.Relative`: "just now", "5 min ago", "3 h ago", "yesterday", "4 days ago", "in 5 min"; older than a week → "3 Oct 2026" |
 | `ReadOnlyDeploymentTests.cs` | `A_full_session_writes_nothing_into_the_checkout` | snapshot (path, length, last write) of the checkout (content root and repository root) - minus `bin`, `obj`, `.git`, `.vs`, `TestResults`, `node_modules` - is identical before and after a Production session: setup POST, sign-in, enabling the sample admin extension, admin screens, public pages, the extension's tab, upload, download, delete |
 | `ExtensionTests.cs` (fixtures, `extensionsPath` = `tests/fixtures/extensions`) | `Plugins_lists_every_extension_disabled_and_explains_what_cannot_run` | fixtures listed, none enabled; the missing DLL explained; enabling it refused ("can't be enabled") |
@@ -292,7 +295,7 @@ SQL Server and MySQL when their variable is set (`[DatabaseServerFact]`).
 
 Not covered: the content of the Audit Logs and API Tokens lists (every admin screen is rendered by
 `AdminUiTests` for structure and CSP only; Plugins also by `ExtensionTests`), `/setup`, `/account/denied` and
-`/error` markup, client-side behaviour in `ui.js`, `pages.js`, `entries.js`, `content-types.js`, `endpoints.js`, Scalar and the builder's editor UI (no browser tests), the weather, S3, Discord and SMS samples (they
+`/error` markup, client-side behaviour in `dnf.js`, `pages.js`, `entries.js`, `content-types.js`, `endpoints.js`, Scalar and the builder's editor UI (no browser tests), the weather, S3, Discord and SMS samples (they
 need network or credentials), Settings saves, API endpoints other than page creation and `/api/entries`, public dynamic
 routes other than content-list detail pages, account lockout, the upload size limit.
 
@@ -314,6 +317,81 @@ await factory.WithDbAsync(async db => Assert.True(await db.Pages.AnyAsync(p => p
 Never write into the repository from a test: use `factory.StoragePath`, the factory's temp directory or
 `Path.GetTempPath()` - `ReadOnlyDeploymentTests` would catch host code that does.
 
+## UI tests
+
+`tests/DotNetForge.UiTests`: browser tests of the [DotNetForge UI library](../ui/README.md). `UiHost` (one per test
+collection) starts the app with `DotNetForgeWebFactory.UseKestrel(0)` - a real port, because the browser needs a
+socket - installs it, launches headless Chromium and signs in once through `/login`; every test opens a page with that
+session in a fixed viewport (1280x900, or 390 wide for phones), colour scheme, `en-US`, UTC and reduced motion. A page
+opened with `touch: true` is a touch device (`hover: none`, `pointer: coarse`, tap events). `MobileHost` is a second host
+with its own database and rows, so the mobile tests' data never reaches the other tests; the assembly runs one host at a
+time.
+
+| File | Covers |
+| --- | --- |
+| `DocsVisualTests.cs` | the live preview of every example on every page of the [UI docs](../pages/ui-docs.md) (`[data-doc-preview]`, from `UiDocsCatalog`) in light and dark, and the table example stacked on a phone, compared with `Baselines/<os>/*.png` |
+| `DocsTests.cs` | every docs page renders (h1, examples, API section), the example tabs show the Razor and HTML without changing the URL, On this page and the navigation search, the Copy menu (the clipboard holds the page / every page as Markdown), the account-menu link |
+| `AccessibilityTests.cs` | axe-core (WCAG 2.0-2.2 A/AA tags) on the showcase, the main admin screens and `/login`, light and dark: no `serious` or `critical` violation |
+| `BehaviourTests.cs` | dnf.js in the browser: dropdown placement and arrow keys, the confirmation dialog and toasts, tabs, a collection (search, count, selection, pager), the theme switch and subtree themes, the three customization levels, no console error or failed request on the main screens |
+| `ExtensionUiTests.cs` | the bundled Audit Dashboard admin extension in its frame: dnf.css applies, tokens follow the theme, the root is `.dnf-scope[data-dnf-extension]` |
+| `MobileTests.cs` | the admin by touch on a small phone (320x568), a phone (390x844) and a tablet in both orientations (820x1180, 1180x820). `Every_screen_works` crawls from the sidebar through two examples of each route shape and opens each screen's tabs, accordions, menus and dialogs: no sideways scrolling, no control off screen, covered or under 24px (plain text links are exempt), no text on text or on a control, no cut-off content, and every control the desktop has. Task tests do the rest with taps: the drawer, table sorting, filtering and paging, creating and deleting a user, bulk selection, reordering entries, pages and content-type fields, moving a page and media through the move dialog, media upload and selection, the public screens and the page builder, and (`MobileTests.Documents.cs`) Word, Excel and PowerPoint files in the media preview, also on the desktop. `MobileTests.Stability.cs` holds `dnf.js` back as a slow network would: no crawled screen may move more than 0.03 while loading, a saved view, page size and the toolbars are in place before the script arrives, and switching views keeps the first item in sight on the screen. `The_audit_notices_what_it_looks_for` plants faults, so a clean run means something. A failing screen's screenshot is in `tests/DotNetForge.UiTests/TestResults/mobile/` (git-ignored). Monaco and the UI docs are not audited; dragging on the page builder's canvas is not tested |
+
+One-time setup per machine (Chromium, about 170 MB, into Playwright's cache - not the repository):
+
+```bash
+dotnet build tests/DotNetForge.UiTests
+pwsh tests/DotNetForge.UiTests/bin/Debug/net10.0/playwright.ps1 install chromium
+dotnet test tests/DotNetForge.UiTests          # needs PostgreSQL like the integration tests
+```
+
+CI doesn't run them (no job; the build job still compiles them with the solution): run them locally before a change
+to the UI library, a screen or `dnf.js` is merged.
+
+Screenshots (`Snapshots.cs`): a baseline per operating system (fonts render differently) in
+`tests/DotNetForge.UiTests/Baselines/<os>/`, which is git-ignored - every machine keeps its own. A missing baseline is
+recorded and the check passes, so the first run on a machine only records; later runs compare against them. `DNF_UI_UPDATE_SNAPSHOTS=1` re-records all of them after an intended visual
+change (look at the new images first). A screenshot matches when at most 0.002 % of its pixels - and never fewer than 12 - differ
+by more than 24 in a colour channel; on a mismatch the actual image and a red diff are written to
+`tests/DotNetForge.UiTests/TestResults/ui-snapshots/` (git-ignored). Spinners and transitions are frozen
+(`ScreenshotAnimations.Disabled`); the docs examples use fixed or relative-to-now dates, so the pixels do not change by day.
+
+`tests/DotNetForge.IntegrationTests/SessionTests.cs` covers the [sessions](../features/authentication.md#sessions): role
+changes on an open session, sign-out with a copied cookie, expiry, disabling, password changes and the cookie's flags;
+`StaticAssetTests.cs` the caching and compression.
+
+## JavaScript
+
+ESLint checks every script of the CMS, the UI library and the extensions, apart from the bundled Monaco
+(`tools/eslint.config.mjs`): in `tools/`, `npm ci` once, then `npm run lint`, or `npm run lint:fix` (the script runs
+ESLint from the repository root, so the patterns are relative to it). It is development tooling, kept in `tools/` out of
+the repository root: Node.js is optional and nothing from npm reaches the app. The page builder has its own [fixtures](../features/page-builder.md).
+
+## Guardrails
+
+The C# counterpart of a lint configuration: rules that run in the IDE as you type and in `dotnet build`
+(`EnforceCodeStyleInBuild`, `Directory.Build.props`), set in `.editorconfig`.
+
+| Rule | What it flags | Severity | Where it is set |
+| --- | --- | --- | --- |
+| Project boundaries | a project referencing a project, NuGet package or ASP.NET Core its layer doesn't allow; a project without a layer | test failure | `ProjectBoundaryTests` (table above), mirrors [dependencies → project references](../architecture/dependencies.md#project-references) |
+| `IDE0059` | a value assigned and never read | warning | `.editorconfig` |
+| `IDE0060` | a parameter nothing reads, on non-public members (a public signature is a contract) | warning | `.editorconfig` |
+| `IDE0051`, `IDE0052` | a private member nothing uses, or one written but never read | warning | `.editorconfig` |
+| `CA1502` | a method with a cyclomatic complexity above 20 | suggestion | `.editorconfig`, the limit in `CodeMetricsConfig.txt` (.NET's own rule) |
+| `DNF1001` | a file with more than 500 lines of code (blank lines and comments don't count) | suggestion | `.editorconfig` `dnf_max_file_lines`; analyzer in `build/DotNetForge.Analyzers` |
+| `DNF1002` | a statement nested more than 4 deep in its method (`if`, `switch`, `try`, `for`, `foreach`, `while`, `do`; an `else if` stays at its `if`'s depth; a local function or lambda starts again) | suggestion | `.editorconfig` `dnf_max_depth`; same analyzer |
+
+A discard (`_ = ...`, a parameter named `_`) marks something deliberately unused. The size rules (`CA1502`, `DNF1001`,
+`DNF1002`) are suggestions: the IDE marks code growing past what is easy to review (in VS Code as hints, and in the
+Problems panel), without failing or cluttering the build on code that already does (at the time they were added: 32
+methods above 20, `EntryData.cs` and `MobileTests.cs` above 500 lines, nothing nested deeper than 4). They have no
+automatic fix, so as warnings plain `dotnet format` - which tries to fix every warning - would report "Unable to fix
+CA1502. No associated code fix found." for each; as suggestions it stays quiet. Raise them to `warning` or `error` in
+`.editorconfig` once that backlog is down. Generated code is
+skipped, and the EF Core migrations (generated by `dotnet ef`, their length follows the schema) lift only `DNF1001` in
+their own `.editorconfig` section. Extensions keep their own build settings (`extensions/Directory.Build.props`), so
+the analyzer doesn't run on them.
+
 ## What to test when you change something
 
 | Change | Add |
@@ -330,6 +408,9 @@ Never write into the repository from a test: use `factory.StoragePath`, the fact
 | Schema change | run the integration suite (PostgreSQL migrations); `dotnet ef migrations has-pending-model-changes --context PostgreSqlDbContext` reports none |
 | Additional-database behaviour (`IDatabaseService`, custom endpoints, export) | `AdditionalDatabaseProviderTests`, on every server you can start (`DNF_TEST_SQLSERVER`, `_MYSQL`, `_MONGODB`) |
 | New database provider | [adding a provider → Tests](../database/adding-a-provider.md#4-tests) |
+| UI library component, token or behaviour (`src/DotNetForge.UI`) | the component's page in the [UI docs](../pages/ui-docs.md) (examples, styling reference, doc comments for its API table); a tag helper case in `UI/DnfTagHelperTests`; a `BehaviourTests` case for new dnf.js behaviour; re-record the affected baselines on purpose |
+| Markup of a screen | `UI/UiSourceTests` stays green (no Forge class, every `dnf-` class defined, no `!important`) |
+| A project reference, NuGet package or new project | its entry in `ProjectBoundaryTests.Rules` and the [project references](../architecture/dependencies.md#project-references) table, together |
 | Bug fix | a regression test that fails without the fix |
 
 ## CI
@@ -339,33 +420,31 @@ Never write into the repository from a test: use `factory.StoragePath`, the fact
 - **build-and-test** on `ubuntu-latest`, `windows-latest`, `macos-latest`: `dotnet tool restore`,
   `dotnet build DotNetForge.slnx --configuration Release`, the **unit** tests in Release (live S3 tests skipped). The
   integration tests need PostgreSQL, so they run in the Linux jobs below.
-- **format** on Ubuntu: `dotnet format <project> --verify-no-changes --severity error` for the host, every `src/*`
-  and every `tests/*` project.
+- **format** on Ubuntu: `dotnet format <project> --verify-no-changes --severity error` for the host, every `src/*`,
+  `tests/*` and `build/*` project.
+- **lint-js** (`JavaScript lint`) on Ubuntu: `npm ci`, `npm run lint` in `tools/` ([JavaScript](#javascript)).
 - **postgres-and-s3** (`Integration tests (PostgreSQL) + S3 storage`) on Ubuntu: a `postgres:17-alpine` service and
   a SeaweedFS container (`chrislusf/seaweedfs server -s3`, bucket `dnf-test`); runs the unit tests **including** the
   live S3 tests (`DNF_TEST_S3_*` set) and the whole integration suite on PostgreSQL (`DNF_TEST_POSTGRES` set).
 - **additional-databases** (`Additional database (<provider>)`): a matrix that starts SQL Server 2022, MySQL 8.4 or
-  MongoDB 8.0 (single-node replica set) with `docker run`, next to a `postgres:17-alpine` service for the CMS database,
+  MongoDB 7.0 (single-node replica set) with `docker run`, next to a `postgres:17-alpine` service for the CMS database,
   and runs `dotnet test tests/DotNetForge.IntegrationTests --filter "FullyQualifiedName~AdditionalDatabase|FullyQualifiedName~DatabaseCredential"`
-  with only that entry's `DNF_TEST_SQLSERVER`, `DNF_TEST_MYSQL` or `DNF_TEST_MONGODB` set. The MongoDB entry runs on
-  `ubuntu-24.04`: MongoDB 8.x exits at startup on Linux kernels 6.19 and newer
-  ([SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912)), which the Ubuntu 26.04 `ubuntu-latest` image has.
+  with only that entry's `DNF_TEST_SQLSERVER`, `DNF_TEST_MYSQL` or `DNF_TEST_MONGODB` set. CI uses MongoDB 7.0, not
+  the 8.0 of `docker/databases/mongodb.yml`: MongoDB 8.x exits at startup on Linux kernels 6.19 to 7.0.13
+  ([SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912)), which every GitHub Ubuntu runner has had since
+  late October 2026 (also `ubuntu-24.04`, which the job used before). Locally, Docker Desktop's kernel is older, so 8.0
+  starts; go back to 8.0 in CI once the runners' kernel is 7.0.14 or newer.
 - **read-only-container** (`Read-only container`) on Ubuntu: `docker compose -f docker/compose.app.yml up -d --build`
   (the production image, read-only root filesystem with a `/tmp` tmpfs, PostgreSQL, RustFS and Mailpit); waits for
   `/health`, requests `/setup`, and fails if `touch /app/probe` succeeds inside the app container
   ([deployment](deployment.md#docker)).
 
-`.github/dependabot.yml` opens weekly NuGet (grouped `Microsoft.*`/`Npgsql.*`) and GitHub Actions updates.
+`.github/dependabot.yml` opens weekly NuGet (grouped `Microsoft.*`/`Npgsql.*`), npm and GitHub Actions updates.
 
-There is no frontend linting (no ESLint config exists).
+### Line endings
 
-### `dotnet format` on Windows
-
-`.editorconfig` sets `end_of_line = lf`. With Git's default `core.autocrlf=true` on Windows, the working copy has
-CRLF line endings, so a local `dotnet format <project> --verify-no-changes` reports `error ENDOFLINE: Fix end of line
-marker` on every line. That is line-ending noise from the checkout, not a style problem - the repository content is
-LF and the CI format job (Ubuntu) passes. To check style locally on Windows, skip the whitespace pass:
-`dotnet format style <project> --verify-no-changes --severity error` (and `dotnet format analyzers ...`).
+`.gitattributes` keeps text files LF in the repository and on every machine, as `.editorconfig` asks, so
+`dotnet format <project> --verify-no-changes --severity error` gives the same answer on Windows as in CI.
 
 ## Planned (not implemented)
 
@@ -458,7 +537,7 @@ Structure, execution and quality:
   folder).
 - [ ] An ESLint configuration is present and runnable wherever JavaScript or TypeScript is used.
 - [x] Automated formatting rules exist and are verified in CI (`.editorconfig`, `ci.yml` format job with
-  `dotnet format --verify-no-changes`).
+  `dotnet format --verify-no-changes --severity error`).
 - [ ] Naming conventions are documented and consistently applied (documented in the
   [development guide](development.md#conventions) only partly; not enforced).
 - [x] Dependencies are managed deliberately with no unnecessary packages (`Directory.Packages.props`, Dependabot).

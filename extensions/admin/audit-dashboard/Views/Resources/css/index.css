@@ -1,6 +1,7 @@
-/* Audit Dashboard extension: only what is specific to this page. Colours, type and components come from the host's
-   Forge design system (linked in Views/Shared/_Layout.cshtml), so the tab matches the admin in light and dark. */
-body { background: var(--color-surface); }
-.ext-page { padding: var(--space-6); }
-.ext-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
-@media (max-width: 40rem) { .ext-stats { grid-template-columns: 1fr; } }
+/* Audit Dashboard extension: only what is specific to this page. Colours, type and components come from the
+   DotNetForge UI library (dnf.css, linked in Views/Shared/_Layout.cshtml), so the tab matches the admin in light and
+   dark. Written without a cascade layer, so these rules win over the library's components; --dnf-* tokens only. */
+body { background: var(--dnf-surface); }
+.audit-dashboard { padding: var(--dnf-space-6); }
+.audit-dashboard__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--dnf-space-4); }
+@media (max-width: 40rem) { .audit-dashboard__stats { grid-template-columns: minmax(0, 1fr); } }

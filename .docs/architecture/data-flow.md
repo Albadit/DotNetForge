@@ -228,15 +228,17 @@ sequenceDiagram
     end
     V->>M: get dnf:session:{userId}
     alt not cached
-        V->>AS: IsActiveAsync(userId) - exists and Status = Enabled
+        V->>AS: UserSessionService.RolesAsync - one query: enabled user, roles, open sessions
         V->>M: set result for 30 s
     end
-    alt inactive
+    alt session ended or expired, user disabled or deleted
         V->>C: RejectPrincipal + SignOutAsync (request continues anonymous)
+    else roles differ from the cookie
+        V->>C: ReplacePrincipal with the current roles
     end
 ```
 
-A disabled or deleted user therefore loses access within 30 seconds; their role claims are not re-read.
+A change made on this instance drops the cached entry, so it counts from the next request ([sessions](../features/authentication.md#sessions)).
 
 ## Authorization flow (admin screen)
 
@@ -467,7 +469,7 @@ See [configuration](../features/configuration.md) and
 | Situation | Where detected | What the user gets |
 | --- | --- | --- |
 | Invalid `.env`, or a relative/missing path outside Development | `EnvConfigurationLoader` at startup | Process exits with code 1; message on stderr |
-| Form validation failure (incl. length limits) | `PageService`, `MediaService`, `InstallationService`, controller checks (Settings, API Tokens) | Same screen re-rendered with the errors in `<form-errors />` |
+| Form validation failure (incl. length limits) | `PageService`, `MediaService`, `InstallationService`, controller checks (Settings, API Tokens) | Same screen re-rendered with the errors in `<dnf-validation-summary />` |
 | Permission denied by `Can`/`CanModify` | `PagesController`, `ContentController`, `MediaController` → `Forbid()` | 302 to `/account/denied` (renders with status 403) |
 | Content delete would make children clash | `PageService.DeleteAsync` | Pages re-rendered with the error |
 | Entry invalid, not unique, or saved by someone else meanwhile | `ContentEntryService.SaveAsync` | entry form re-rendered with the errors (a conflict offers an overwrite) |

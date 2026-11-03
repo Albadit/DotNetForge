@@ -340,7 +340,7 @@ class CanvasController {
     const store = s.store;
     const doc = store.doc;
     const sel = store.selection[0];
-    let parent = null;
+    let parent;
     let index;
     const type = spec.nodes?.[0]?.type ?? spec.type;
     const accepts = (id2) => {

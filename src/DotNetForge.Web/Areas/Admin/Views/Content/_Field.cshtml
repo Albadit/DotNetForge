@@ -22,13 +22,13 @@
 
 @if (f.Type == FieldTypes.Group)
 {
-    <fieldset class="field-group span-2" data-field-path="@Model.Path">
-        <legend>@f.Label</legend>
+    <fieldset class="dnf-fieldset dnf-fieldset--framed dnf-form-grid__full" data-field-path="@Model.Path">
+        <legend class="dnf-fieldset__legend">@f.Label</legend>
         @if (f.Help is not null)
         {
-            <p class="field-hint">@f.Help</p>
+            <p class="dnf-field__description">@f.Help</p>
         }
-        <div class="form-grid">
+        <div class="dnf-form-grid">
             @foreach (var child in f.Fields)
             {
                 <partial name="_Field" model="new EntryFieldView(child, (v as JObject)?[child.Key], Model.Path + '.' + child.Key, form)" />
@@ -43,35 +43,35 @@
     var rows = (v as JArray)?.OfType<JObject>().ToList() ?? new List<JObject>();
     // The new-row template's paths hold a placeholder that entries.js replaces with the row's index.
     var templatePrefix = Model.Path + ".__index__.";
-    <div class="repeater span-2" data-repeater data-next-index="@rows.Count" data-max="@f.MaxRows" data-field-path="@Model.Path">
-        <div class="repeater-head">
-            <span class="field-label" id="@Model.Id-label">@f.Label@if (f.Required) { <span class="field-required" aria-hidden="true">*</span> }</span>
+    <div class="dnf-repeater dnf-form-grid__full" data-repeater data-next-index="@rows.Count" data-max="@f.MaxRows" data-field-path="@Model.Path">
+        <div class="dnf-repeater__head">
+            <span class="dnf-field__label" id="@Model.Id-label">@f.Label@if (f.Required) { <span class="dnf-field__required" aria-hidden="true">*</span> }</span>
             @if (Model.Error is not null)
             {
-                <span class="field-error" id="@errorId">@Model.Error</span>
+                <span class="dnf-field__error" id="@errorId">@Model.Error</span>
             }
         </div>
         @if (f.Help is not null)
         {
-            <p class="field-hint" id="@hintId">@f.Help</p>
+            <p class="dnf-field__description" id="@hintId">@f.Help</p>
         }
         <input type="hidden" name="@(Model.Name + "." + EntryForm.RowsMarker)" value="1" />
-        <ol class="repeater-rows" data-repeater-rows aria-labelledby="@Model.Id-label">
+        <ol class="dnf-repeater__rows" data-repeater-rows aria-labelledby="@Model.Id-label">
             @for (var i = 0; i < rows.Count; i++)
             {
-                <li class="repeater-row" data-repeater-row>
-                    <div class="repeater-row-head">
-                        <span class="repeater-row-title" data-repeater-title>@f.Label #@(i + 1)</span>
+                <li class="dnf-repeater__row" data-repeater-row>
+                    <div class="dnf-repeater__row-head">
+                        <span class="dnf-repeater__row-title" data-repeater-title>@f.Label #@(i + 1)</span>
                         @if (!readOnly)
                         {
-                            <span class="repeater-tools" data-js-only hidden>
-                                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-repeater-up aria-label="Move up" data-tooltip="Move up"><icon name="arrow-up" size="sm" /></button>
-                                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-repeater-down aria-label="Move down" data-tooltip="Move down"><icon name="arrow-down" size="sm" /></button>
-                                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-repeater-remove aria-label="Remove row" data-tooltip="Remove"><icon name="trash" size="sm" /></button>
+                            <span class="dnf-repeater__tools" data-js-only hidden>
+                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-up aria-label="Move up" data-tooltip="Move up"><dnf-icon name="chevron-up" size="Sm" /></button>
+                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-down aria-label="Move down" data-tooltip="Move down"><dnf-icon name="chevron-down" size="Sm" /></button>
+                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-remove aria-label="Remove row" data-tooltip="Remove"><dnf-icon name="trash" size="Sm" /></button>
                             </span>
                         }
                     </div>
-                    <div class="form-grid">
+                    <div class="dnf-form-grid">
                         @foreach (var child in f.Fields)
                         {
                             <partial name="_Field" model="new EntryFieldView(child, rows[i][child.Key], Model.Path + '.' + i + '.' + child.Key, form)" />
@@ -83,16 +83,16 @@
         @if (!readOnly)
         {
             <template data-repeater-template>
-                <li class="repeater-row" data-repeater-row>
-                    <div class="repeater-row-head">
-                        <span class="repeater-row-title" data-repeater-title>@f.Label</span>
-                        <span class="repeater-tools">
-                            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-repeater-up aria-label="Move up"><icon name="arrow-up" size="sm" /></button>
-                            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-repeater-down aria-label="Move down"><icon name="arrow-down" size="sm" /></button>
-                            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-repeater-remove aria-label="Remove row"><icon name="trash" size="sm" /></button>
+                <li class="dnf-repeater__row" data-repeater-row>
+                    <div class="dnf-repeater__row-head">
+                        <span class="dnf-repeater__row-title" data-repeater-title>@f.Label</span>
+                        <span class="dnf-repeater__tools">
+                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-up aria-label="Move up"><dnf-icon name="chevron-up" size="Sm" /></button>
+                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-down aria-label="Move down"><dnf-icon name="chevron-down" size="Sm" /></button>
+                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-remove aria-label="Remove row"><dnf-icon name="trash" size="Sm" /></button>
                         </span>
                     </div>
-                    <div class="form-grid">
+                    <div class="dnf-form-grid">
                         @foreach (var child in f.Fields)
                         {
                             <partial name="_Field" model="new EntryFieldView(child, child.Default, templatePrefix + child.Key, form)" />
@@ -100,44 +100,44 @@
                     </div>
                 </li>
             </template>
-            <button type="button" class="btn btn-secondary btn-sm" data-repeater-add data-js-only hidden><icon name="plus" size="sm" /> Add @f.Label.ToLowerInvariant() row</button>
-            <noscript><p class="field-hint">Adding and removing rows needs JavaScript.</p></noscript>
+            <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" data-repeater-add data-js-only hidden><dnf-icon name="plus" size="Sm" /> Add @f.Label.ToLowerInvariant() row</button>
+            <noscript><p class="dnf-field__description">Adding and removing rows needs JavaScript.</p></noscript>
         }
     </div>
     return;
 }
 
-<div class="field@(wide ? " span-2" : "")@(Model.Error is not null ? " has-error" : "")" data-field-path="@Model.Path">
+<div class="dnf-field@(wide ? " dnf-form-grid__full" : "")" data-invalid="@(Model.Error is not null ? "true" : null)" data-field-path="@Model.Path">
     @if (f.Type == FieldTypes.Boolean)
     {
-        <label class="switch-row">
-            <span class="check-text">
+        <label class="dnf-switch-row">
+            <span class="dnf-check__text">
                 <span>@Label()</span>
                 @if (f.Help is not null)
                 {
-                    <span class="check-hint" id="@hintId">@f.Help</span>
+                    <span class="dnf-check__description" id="@hintId">@f.Help</span>
                 }
             </span>
             @* The checkbox first: the form reader looks for its "true". *@
-            <input id="@Model.Id" type="checkbox" class="switch" role="switch" name="@Model.Name" value="true"
+            <input id="@Model.Id" type="checkbox" class="dnf-switch" role="switch" name="@Model.Name" value="true"
                    checked="@(v is JValue { Type: JTokenType.Boolean } b && (bool)b ? "checked" : null)" disabled="@(readOnly ? "disabled" : null)" />
             <input type="hidden" name="@Model.Name" value="false" />
         </label>
     }
     else
     {
-        <label class="field-label" for="@Model.Id" id="@Model.Id-label">
+        <label class="dnf-field__label" for="@Model.Id" id="@Model.Id-label">
             @Label()
             @if (f.Required)
             {
-                <span class="field-required" aria-hidden="true">*</span>
+                <span class="dnf-field__required" aria-hidden="true">*</span>
             }
         </label>
 
         switch (f.Type)
         {
             case FieldTypes.Textarea:
-                <textarea id="@Model.Id" name="@Model.Name" rows="4" placeholder="@f.Placeholder" maxlength="@(f.MaxLength ?? ContentSchema.MaxText)"
+                <textarea id="@Model.Id" name="@Model.Name" class="dnf-textarea" rows="4" placeholder="@f.Placeholder" maxlength="@(f.MaxLength ?? ContentSchema.MaxText)"
                           aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" readonly="@(readOnly ? "readonly" : null)">@text</textarea>
                 break;
 
@@ -145,15 +145,15 @@
                 {
                     var blocks = EntryData.RichBlocks(v);
                     var plain = string.Join("\n\n", blocks.Select(b => b.IsList ? string.Join("\n", b.Items.Select(RichText.RunsText)) : RichText.RunsText(b.Runs)));
-                    <div class="rte" data-rte data-readonly="@(readOnly ? "true" : "false")" data-rte-value="@RichText.ToJson(blocks).ToString(Formatting.None)">
-                        <textarea id="@Model.Id" name="@Model.Name" rows="6" data-rte-source aria-describedby="@(describedBy.Length > 0 ? describedBy : null)"
+                    <div class="dnf-rte" data-rte data-readonly="@(readOnly ? "true" : "false")" data-rte-value="@RichText.ToJson(blocks).ToString(Formatting.None)">
+                        <textarea id="@Model.Id" name="@Model.Name" class="dnf-textarea" rows="6" data-rte-source aria-describedby="@(describedBy.Length > 0 ? describedBy : null)"
                                   readonly="@(readOnly ? "readonly" : null)">@plain</textarea>
                     </div>
                     break;
                 }
 
             case FieldTypes.Number:
-                <input id="@Model.Id" name="@Model.Name" type="number" value="@text" step="@(f.Integer ? "1" : "any")" min="@f.Min" max="@f.Max"
+                <input id="@Model.Id" name="@Model.Name" class="dnf-input" type="number" value="@text" step="@(f.Integer ? "1" : "any")" min="@f.Min" max="@f.Max"
                        placeholder="@f.Placeholder" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" readonly="@(readOnly ? "readonly" : null)" />
                 break;
 
@@ -164,26 +164,26 @@
                     {
                         shown = date.ToString(f.WithTime ? "yyyy-MM-dd'T'HH:mm" : "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                     }
-                    <input id="@Model.Id" name="@Model.Name" type="@(f.WithTime ? "datetime-local" : "date")" value="@shown"
+                    <input id="@Model.Id" name="@Model.Name" class="dnf-input" type="@(f.WithTime ? "datetime-local" : "date")" value="@shown"
                            aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" readonly="@(readOnly ? "readonly" : null)" />
                     break;
                 }
 
             case FieldTypes.Select when f.Multiple:
                 <input type="hidden" name="@(Model.Name + "." + EntryForm.RowsMarker)" value="1" />
-                <div class="choice-list" role="group" aria-labelledby="@Model.Id-label">
+                <div class="flex flex-col" role="group" aria-labelledby="@Model.Id-label">
                     @foreach (var choice in f.Choices)
                     {
-                        <label class="check">
-                            <input type="checkbox" name="@Model.Name" value="@choice.Value" checked="@(values.Contains(choice.Value) ? "checked" : null)" disabled="@(readOnly ? "disabled" : null)" />
-                            <span class="check-text">@choice.Label</span>
+                        <label class="dnf-check">
+                            <input type="checkbox" class="dnf-checkbox" name="@Model.Name" value="@choice.Value" checked="@(values.Contains(choice.Value) ? "checked" : null)" disabled="@(readOnly ? "disabled" : null)" />
+                            <span class="dnf-check__text">@choice.Label</span>
                         </label>
                     }
                 </div>
                 break;
 
             case FieldTypes.Select:
-                <select id="@Model.Id" name="@Model.Name" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" disabled="@(readOnly ? "disabled" : null)">
+                <select id="@Model.Id" name="@Model.Name" class="dnf-select" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" disabled="@(readOnly ? "disabled" : null)">
                     <option value="">Choose…</option>
                     @foreach (var choice in f.Choices)
                     {
@@ -201,7 +201,7 @@
                     {
                         <input type="hidden" name="@(Model.Name + "." + EntryForm.RowsMarker)" value="1" />
                     }
-                    <select id="@Model.Id" name="@Model.Name" multiple="@(f.Multiple ? "multiple" : null)" data-media-picker data-kind="@(images ? "image" : "file")"
+                    <select id="@Model.Id" name="@Model.Name" class="dnf-select" multiple="@(f.Multiple ? "multiple" : null)" data-media-picker data-kind="@(images ? "image" : "file")"
                             data-can-upload="@(form.CanUpload ? "true" : "false")" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)"
                             disabled="@(readOnly ? "disabled" : null)">
                         @if (!f.Multiple)
@@ -224,7 +224,7 @@
                     {
                         <input type="hidden" name="@(Model.Name + "." + EntryForm.RowsMarker)" value="1" />
                     }
-                    <select id="@Model.Id" name="@Model.Name" multiple="@(f.Multiple ? "multiple" : null)" data-relation-picker data-type-id="@f.RelationTo"
+                    <select id="@Model.Id" name="@Model.Name" class="dnf-select" multiple="@(f.Multiple ? "multiple" : null)" data-relation-picker data-type-id="@f.RelationTo"
                             data-type-name="@typeName" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" disabled="@(readOnly ? "disabled" : null)">
                         @if (!f.Multiple)
                         {
@@ -239,9 +239,9 @@
                 }
 
             case FieldTypes.Array:
-                <textarea id="@Model.Id" name="@Model.Name" rows="3" placeholder="One per line" aria-describedby="@Model.Id-lines @(describedBy)"
+                <textarea id="@Model.Id" name="@Model.Name" class="dnf-textarea" rows="3" placeholder="One per line" aria-describedby="@Model.Id-lines @(describedBy)"
                           readonly="@(readOnly ? "readonly" : null)">@string.Join("\n", values)</textarea>
-                <span class="field-hint" id="@Model.Id-lines">One @(f.ItemType == FieldTypes.Number ? "number" : "value") per line.</span>
+                <span class="dnf-field__description" id="@Model.Id-lines">One @(f.ItemType == FieldTypes.Number ? "number" : "value") per line.</span>
                 break;
 
             default:
@@ -249,7 +249,7 @@
                     var inputType = f.Type switch { FieldTypes.Email => "email", FieldTypes.Url => "text", _ => "text" };
                     <input id="@Model.Id" name="@Model.Name" type="@inputType" value="@text" placeholder="@f.Placeholder"
                            maxlength="@(f.MaxLength ?? (f.Type == FieldTypes.Url ? 2000 : EntryData.DefaultTextMax))"
-                           class="@(f.Type == FieldTypes.Slug ? "text-mono" : null)"
+                           class="@(f.Type == FieldTypes.Slug ? "dnf-input dnf-input--mono" : "dnf-input")"
                            data-slug-from="@(f.Type == FieldTypes.Slug && f.SlugFrom is not null ? "f." + prefix + f.SlugFrom : null)"
                            aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" readonly="@(readOnly ? "readonly" : null)" />
                     break;
@@ -258,11 +258,11 @@
 
         if (f.Help is not null)
         {
-            <span class="field-hint" id="@hintId">@f.Help</span>
+            <span class="dnf-field__description" id="@hintId">@f.Help</span>
         }
     }
     @if (Model.Error is not null)
     {
-        <span class="field-error" id="@errorId">@Model.Error</span>
+        <span class="dnf-field__error" id="@errorId">@Model.Error</span>
     }
 </div>

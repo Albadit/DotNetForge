@@ -9,8 +9,6 @@ namespace DotNetForge.Core.Installation;
 /// </summary>
 public interface IInstallationService
 {
-    Task<bool> IsInstalledAsync(CancellationToken cancellationToken = default);
-
     /// <summary>Validates the setup submission and, on success, creates the first Super Admin.</summary>
     Task<Result> InstallAsync(SetupRequest request, CancellationToken cancellationToken = default);
 }

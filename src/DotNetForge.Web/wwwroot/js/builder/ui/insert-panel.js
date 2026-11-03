@@ -15,7 +15,7 @@ const CATEGORIES = [
     { id: 'media', label: 'Media' },
 ];
 export function InsertPanel() {
-    const { session, canvas } = useEditor();
+    const { canvas } = useEditor();
     const [query, setQuery] = useState('');
     const [, force] = useReducer((n) => n + 1, 0);
     useEffect(() => onRegistryChange(() => force(0)), []);

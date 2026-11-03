@@ -66,6 +66,9 @@ public sealed class SecurityTests
         public Task<string?> ReorderAsync(IReadOnlyList<PagePosition> positions, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Simulated failure.");
 
+        public Task<string?> MoveAsync(Guid pageId, Guid? parentPageId, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Simulated failure.");
+
         public Task<string?> DeleteAsync(Page page, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Simulated failure.");
     }

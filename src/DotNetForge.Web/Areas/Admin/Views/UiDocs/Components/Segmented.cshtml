@@ -1,0 +1,138 @@
+@* Segmented (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/navigation.css</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A small group of exclusive options on a muted track: a status filter, a view switch. Items are buttons with
+    <code>aria-pressed</code> (or links with <code>aria-current</code>); the pressed one is drawn raised. Name the group.</p>
+
+<ui-doc-example id="basic">
+    <div class="dnf-segmented" role="group" aria-label="Period">
+        <button type="button" class="dnf-segmented__item" aria-pressed="false">Day</button>
+        <button type="button" class="dnf-segmented__item" aria-pressed="true">Week</button>
+        <button type="button" class="dnf-segmented__item" aria-pressed="false">Month</button>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="filter" title="Collection filter" description="Buttons with data-collection-filter and data-value filter the items of a data-collection; dnf.js moves aria-pressed. An empty data-value adds no filter, so All shows everything." layout="block">
+    <div class="dnf-card" data-collection>
+        <div class="dnf-card__header">
+            <div class="dnf-segmented" role="group" aria-label="Status">
+                <button type="button" class="dnf-segmented__item" data-collection-filter="status" data-value="" aria-pressed="true">All</button>
+                <button type="button" class="dnf-segmented__item" data-collection-filter="status" data-value="published" aria-pressed="false">Published</button>
+                <button type="button" class="dnf-segmented__item" data-collection-filter="status" data-value="draft" aria-pressed="false">Draft</button>
+            </div>
+            <span class="text-sm text-muted" data-collection-count></span>
+        </div>
+        <ul class="dnf-list">
+            <li class="dnf-list__item" data-item data-status="published">Home <dnf-badge tone="Success">Published</dnf-badge></li>
+            <li class="dnf-list__item" data-item data-status="published">About us <dnf-badge tone="Success">Published</dnf-badge></li>
+            <li class="dnf-list__item" data-item data-status="draft">Spring campaign <dnf-badge>Draft</dnf-badge></li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="icons" title="Icon items" description="dnf-segmented__item--icon makes a square, icon-only item; it needs an aria-label and a tooltip in the same words.">
+    <div class="dnf-segmented" role="group" aria-label="View">
+        <button type="button" class="dnf-segmented__item dnf-segmented__item--icon" aria-pressed="true" aria-label="Grid" data-tooltip="Grid"><dnf-icon name="grid" size="Sm" /></button>
+        <button type="button" class="dnf-segmented__item dnf-segmented__item--icon" aria-pressed="false" aria-label="List" data-tooltip="List"><dnf-icon name="list" size="Sm" /></button>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="with-icons" title="Icons and text" description="An item lays out an icon and its text with a small gap.">
+    <div class="dnf-segmented" role="group" aria-label="Theme">
+        <button type="button" class="dnf-segmented__item" aria-pressed="false"><dnf-icon name="sun" size="Sm" /> Light</button>
+        <button type="button" class="dnf-segmented__item" aria-pressed="false"><dnf-icon name="moon" size="Sm" /> Dark</button>
+        <button type="button" class="dnf-segmented__item" aria-pressed="true"><dnf-icon name="monitor" size="Sm" /> System</button>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="links" title="Links" description="Links work as items too; the current one carries aria-current. Use them for views of one list that have their own URL.">
+    <nav class="dnf-segmented" aria-label="Deliveries">
+        <a class="dnf-segmented__item" href="/admin/webhooks" aria-current="page">All</a>
+        <a class="dnf-segmented__item" href="/admin/webhooks">Failed</a>
+    </nav>
+</ui-doc-example>
+
+<ui-doc-code id="view-switch" lang="html">
+<div class="dnf-segmented" data-view-switch="media" data-view-target="#items" data-default="grid" hidden data-js-only>
+    <button type="button" class="dnf-segmented__item dnf-segmented__item--icon" data-view-button="grid" aria-label="Grid" data-tooltip="Grid">…</button>
+    <button type="button" class="dnf-segmented__item dnf-segmented__item--icon" data-view-button="list" aria-label="List" data-tooltip="List">…</button>
+</div>
+</ui-doc-code>
+<p>The view switch (<a href="@UiDocsCatalog.Root/behaviours">behaviours</a>) is a segmented control too: <code>dnf.js</code> sets
+    <code>data-view-mode</code> on the target and <code>aria-pressed</code> on the buttons, and remembers the choice.</p>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="w-full stretches the track; flex-1 on the items shares the width between them." layout="block">
+    <div class="dnf-segmented w-full" role="group" aria-label="Audience">
+        <button type="button" class="dnf-segmented__item flex-1" aria-pressed="true">Everyone</button>
+        <button type="button" class="dnf-segmented__item flex-1" aria-pressed="false">Members</button>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS restyles the control in a scope - here a pill-shaped track and items.">
+    <div class="dnf-docs-demo-segmented">
+        <div class="dnf-segmented" role="group" aria-label="Sort">
+            <button type="button" class="dnf-segmented__item" aria-pressed="true">Newest</button>
+            <button type="button" class="dnf-segmented__item" aria-pressed="false">Oldest</button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-segmented :is(.dnf-segmented, .dnf-segmented__item) {
+    border-radius: var(--dnf-radius-full);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-segmented</code></td><td>block</td><td>an inline row on a muted track; scrolls horizontally when too wide</td></tr>
+        <tr><td><code>dnf-segmented__item</code></td><td>element</td><td>muted semibold <code>text-sm</code>, a little lower than <code>--dnf-control-sm</code></td></tr>
+        <tr><td><code>dnf-segmented__item--icon</code></td><td>modifier</td><td>square, icon only (needs an accessible name)</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>selected</td><td><code>[aria-pressed="true"]</code>, <code>[aria-current="true"]</code>, <code>[aria-current="page"]</code>, <code>[aria-checked="true"]</code></td><td>surface background, foreground text, small shadow</td></tr>
+        <tr><td>hover</td><td><code>:hover</code></td><td>foreground text</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes are the API. <code>dnf.js</code> drives it through these hooks:</p>
+<table>
+    <thead><tr><th>Hook</th><th>Meaning</th></tr></thead>
+    <tbody>
+        <tr><td><code>button[data-collection-filter="key"][data-value]</code></td><td>inside a <code>[data-collection]</code>: exclusive filter buttons; an item matches when <code>data-value</code> is a token of its <code>data-&lt;key&gt;</code>; empty value = no filter</td></tr>
+        <tr><td><code>[data-view-switch]</code> + <code>[data-view-button]</code></td><td>a view switch: <code>data-view-mode</code> on <code>data-view-target</code>, remembered in <code>localStorage</code></td></tr>
+    </tbody>
+</table>
+<p>Other buttons don't toggle by themselves: set <code>aria-pressed</code> from the server or your script.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Buttons with <code>aria-pressed</code> (toggle semantics) or links with <code>aria-current</code>; name the group with
+        <code>role="group"</code> and <code>aria-label</code>.</li>
+    <li>Icon items need an <code>aria-label</code> and a <code>data-tooltip</code> with the same words.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do keep it to 2-5 short options.</li>
+    <li>Don't use it for navigation between screens - use <a href="@UiDocsCatalog.Root/components/tabs">tabs</a>.</li>
+    <li>Don't use it for a choice that is part of a form - that is a <a href="@UiDocsCatalog.Root/components/radio">radio</a> group.</li>
+</ul>

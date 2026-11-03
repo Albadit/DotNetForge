@@ -49,8 +49,8 @@ is code (`src/DotNetForge.Core/Email/EmailTemplateCatalog.cs`); a customized sub
   body, plain in the subject. A template is saved, previewed or sent only when valid - an unresolved placeholder never
   reaches a recipient.
 - Every email is framed by `EmailLayout` (`src/DotNetForge.Core/Email/EmailLayout.cs`): the site name with the
-  forge-orange mark, the body in a white card with the orange accent bar, a footer with the site URL - the Forge
-  colours as inline styles in tables (what email clients render; no SVG logo). The frame isn't editable; the default
+  forge-orange mark, the body in a white card with the orange accent bar, a footer with the site URL - the brand
+  colours (`--dnf-*` token values) as inline styles in tables (what email clients render; no SVG logo). The frame isn't editable; the default
   bodies use its helpers for the heading, the orange button and the plain-link fallback.
 - Nothing is sent without SMTP; welcome and account-locked emails are skipped then, and email codes count as off
   ([MFA](mfa.md#email-codes)). A failed send is logged with the

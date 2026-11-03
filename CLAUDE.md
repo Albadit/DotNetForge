@@ -8,7 +8,9 @@ app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker fi
   only in each doc's `## Planned (not implemented)` section - check `.docs/implementation-status.md` before assuming a
   feature exists.
 - **Rules for changes:** `.docs/architecture/codebase.md#architectural-rules-for-changes` and
-  `.docs/architecture/dependencies.md#dependencies-that-must-not-be-bypassed`.
+  `.docs/architecture/dependencies.md#dependencies-that-must-not-be-bypassed`. A new project reference or package
+  needs its entry in `ProjectBoundaryTests`; keep the build free of new warnings (unused code) and don't add to the
+  size suggestions (complexity, file length, nesting: `.docs/guides/testing.md#guardrails`).
 - **Terminology:** `.docs/glossary.md` ("screen" = UI view, "content page"/`Page` = entity, "live" ≠ `Published`).
 - **Skills:** `admin-page`, `api-endpoint`, `database-change`, `admin-extension`, `verify`, `documentation`,
   `software-engineering`, `release-notes` (in `.claude/skills/`).
@@ -18,10 +20,11 @@ app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker fi
 ```bash
 cp .env.example .env                              # once (or .env.developer: local RustFS/Ceph S3 + Mailpit SMTP)
 docker compose -f docker/databases/postgres.yml up -d   # PostgreSQL on localhost:5432 (set DATABASE_CONNECTION_STRING)
-dotnet build                                      # whole solution, incl. extensions
+dotnet build                                      # whole solution, incl. extensions (1st build downloads the Tailwind CLI)
 dotnet run --project src/DotNetForge.Web          # start; http://localhost:5000 → /setup on a fresh DB
 dotnet test                                       # unit + integration tests (integration needs PostgreSQL)
 python .claude/skills/verify/check_links.py       # docs link check
+cd tools && npm ci && npm run lint                # JavaScript lint (optional Node.js; nothing from npm reaches the app)
 ```
 
 ## Must know
@@ -41,10 +44,13 @@ python .claude/skills/verify/check_links.py       # docs link check
 - Every admin POST: `[ValidateAntiForgeryToken]` + `AuditService.LogAsync(AuditActions.X, ...)`.
 - The deployment directory is read-only: never write runtime files under the content root - use `IFileStorage`
   (media) or the database; `ReadOnlyDeploymentTests` fails otherwise. No inline script/style in views (CSP).
-- UI = the Forge design system (`.docs/architecture/design-system.md`): tokens/components in
-  `src/DotNetForge.Web/wwwroot/css/forge/`, behaviours in `wwwroot/js/forge/ui.js`, tag helpers in
-  `src/DotNetForge.Web/Ui/`, sidebar only in `AdminNavigation.Tree` (hidden per role, never the gate); feedback via
-  `TempData` toasts + `data-confirm`; `<form-errors />`, never `asp-validation-summary`. `AdminUiTests` checks it.
+- UI = the DotNetForge UI library (`.docs/ui/`, CMS use in `.docs/architecture/design-system.md`): `dnf-*` BEM
+  components + `--dnf-*` tokens in `src/DotNetForge.UI/Styles` (Tailwind v4, compiled on build), behaviours in
+  `src/DotNetForge.UI/wwwroot/dnf.js`, tag helpers in `src/DotNetForge.UI/Components`; CMS screen CSS in
+  `src/DotNetForge.Web/wwwroot/css/`. Component reference = the in-app UI docs (`/admin/docs/ui`, a page per component in
+  `Areas/Admin/Views/UiDocs/`, listed in `UiDocsCatalog`) - a new or changed component updates its page. Sidebar only in `AdminNavigation.Tree` (hidden per role, never the gate); feedback
+  via `TempData` toasts + `data-confirm`; `<dnf-validation-summary />`, never `asp-validation-summary`. `AdminUiTests`
+  checks it.
 - Content/media actions check permissions with `Can`/`CanModify` (`AdminControllerBase`); inject `IAuditService` and
   `IPageService` (interfaces in `src/DotNetForge.Shared`), not the concrete classes.
 - The CMS database is **PostgreSQL only** (no provider setting; `DATABASE_CONNECTION_STRING` is required in every

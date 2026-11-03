@@ -48,9 +48,9 @@ tokens with any keys, which are not limited by its own role ([API permission key
 and custom endpoints run SQL that can read and change the whole database
 ([custom endpoints](custom-endpoints.md#security)) - give the role accordingly.
 
-A user's roles are read at sign-in into role claims, so a changed **role assignment** reaches a signed-in user at
-their next sign-in. Changed **grants** apply on the next request (see below); disabling or deleting a user ends their
-session within 30 seconds ([session re-validation](authentication.md#session-re-validation)).
+A user's roles come from their [session](authentication.md#sessions) on every request, not from the cookie, so a changed
+**role assignment** reaches a signed-in user on their next request. Changed **grants** apply on the next request too (see
+below), and disabling or deleting a user ends their sessions.
 
 ## How permissions are evaluated
 
@@ -359,9 +359,8 @@ The user and role rules are built ([safety rules](#safety-rules-for-users-and-ro
 - **Concurrent edits** of the same role or the same user's roles: optimistic concurrency - the second save is rejected
   with a conflict notice and a reload, so invariants (last Super Admin) are re-evaluated against current state. No
   concurrency token exists on `Role` or `User` today.
-- **Role or status change of a signed-in user** must take effect on the next request. Status ✔ within 30 s
-  (disabled or deleted users are signed out - [session re-validation](authentication.md#session-re-validation));
-  role claims stay fixed until the next sign-in (grant changes ✔ apply on the next request).
+- **Role or status change of a signed-in user** must take effect on the next request ✔
+  ([sessions](authentication.md#sessions)).
 - Screen-specific cases (deleting a role with users, self-disable, conflicting roles, lowering own permissions):
   [Users](../pages/users.md#edge-cases), [Roles](../pages/roles.md#edge-cases).
 

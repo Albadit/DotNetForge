@@ -1,0 +1,150 @@
+@* Page header (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/navigation.css</code></li>
+    <li>CMS admin layout <code>src/DotNetForge.Web/Areas/Admin/Views/Shared/_AdminLayout.cshtml</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>The top of a screen: the title, one sentence of description and the screen's actions. In the CMS admin you don't write
+    it - the layout renders it from <code>ViewData["Title"]</code>, <code>ViewData["Description"]</code> and an
+    <code>Actions</code> section. Write the classes yourself in your own layouts and extensions. On a real screen the title is
+    the page's <code>&lt;h1&gt;</code>; the examples here use <code>&lt;h2&gt;</code> because this page has its own.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <header class="dnf-page-header">
+        <div class="dnf-page-header__row">
+            <h2 class="dnf-page-header__title">Pages <span class="dnf-badge">12</span></h2>
+            <div class="dnf-page-header__actions">
+                <dnf-button icon="download">Import</dnf-button>
+                <dnf-button variant="Primary" icon="plus">New page</dnf-button>
+            </div>
+        </div>
+        <p class="dnf-page-header__description">The site's page tree: URLs, menus and SEO.</p>
+    </header>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="title-only" title="Title only" description="A row with just the title; the description and the actions are optional." layout="block">
+    <header class="dnf-page-header">
+        <div class="dnf-page-header__row">
+            <h2 class="dnf-page-header__title">Audit logs</h2>
+        </div>
+    </header>
+</ui-doc-example>
+
+<ui-doc-example id="description-beside" title="Description under the title, actions beside both" description="The CMS admin layout's form: title and description stacked in the row, the actions at the end of the same row." layout="block">
+    <div class="dnf-page-header">
+        <div class="dnf-page-header__row">
+            <div class="dnf-stack dnf-stack--sm">
+                <h2 class="dnf-page-header__title">Webhooks</h2>
+                <p class="dnf-page-header__description">Notify other systems when entries or media change.</p>
+            </div>
+            <div class="dnf-page-header__actions">
+                <dnf-button variant="Primary" icon="plus">New webhook</dnf-button>
+            </div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="with-breadcrumbs" title="With breadcrumbs" description="Breadcrumbs come before the title; a status badge can sit in the title." layout="block">
+    <header class="dnf-page-header">
+        <nav class="dnf-breadcrumbs" aria-label="Breadcrumb">
+            <ol class="dnf-breadcrumbs__list">
+                <li class="dnf-breadcrumbs__item"><a href="/admin/content">Content</a></li>
+                <li class="dnf-breadcrumbs__item"><a href="/admin/content">Articles</a></li>
+                <li class="dnf-breadcrumbs__item"><span aria-current="page">Spring release notes</span></li>
+            </ol>
+        </nav>
+        <div class="dnf-page-header__row">
+            <h2 class="dnf-page-header__title">Spring release notes <dnf-badge tone="Success" dot="true">Published</dnf-badge></h2>
+            <div class="dnf-page-header__actions">
+                <dnf-button icon-end="external-link">View</dnf-button>
+                <dnf-button variant="Primary" icon="save">Save</dnf-button>
+            </div>
+        </div>
+    </header>
+</ui-doc-example>
+
+<ui-doc-example id="wrapping" title="Wrapping" description="When the row is too narrow the actions wrap below the title; the description stops at 48rem." layout="block">
+    <header class="dnf-page-header">
+        <div class="dnf-page-header__row">
+            <h2 class="dnf-page-header__title">Content types</h2>
+            <div class="dnf-page-header__actions">
+                <dnf-button icon="download">Export schema</dnf-button>
+                <dnf-button icon="upload">Import schema</dnf-button>
+                <dnf-button variant="Primary" icon="plus">New content type</dnf-button>
+            </div>
+        </div>
+        <p class="dnf-page-header__description">Content types define the fields of entries: text, numbers, dates, media, relations and repeatable groups. Entries are edited in the Content Manager and listed on pages with content lists.</p>
+    </header>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A margin utility beats the component's space below; a border separates the header from the content." layout="block">
+    <header class="dnf-page-header mb-3 border-b border-border pb-3">
+        <div class="dnf-page-header__row">
+            <h2 class="dnf-page-header__title">Settings</h2>
+        </div>
+    </header>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS restyles the parts in a scope - here a larger title." layout="block">
+    <div class="dnf-docs-demo-page-header">
+        <header class="dnf-page-header">
+            <div class="dnf-page-header__row">
+                <h2 class="dnf-page-header__title">Reports</h2>
+            </div>
+            <p class="dnf-page-header__description">Traffic and content figures of the last 30 days.</p>
+        </header>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-page-header .dnf-page-header__title {
+    font-size: var(--dnf-text-3xl);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-page-header</code></td><td>block</td><td>a column, gap <code>--dnf-space-2</code>, <code>--dnf-space-6</code> below</td></tr>
+        <tr><td><code>dnf-page-header__row</code></td><td>element</td><td>title and actions, wrapping, space between</td></tr>
+        <tr><td><code>dnf-page-header__title</code></td><td>element</td><td>the heading as a row, with room for a badge or icon</td></tr>
+        <tr><td><code>dnf-page-header__description</code></td><td>element</td><td>muted, at most 48rem wide</td></tr>
+        <tr><td><code>dnf-page-header__actions</code></td><td>element</td><td>a wrapping row of buttons</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes are the API. In CMS admin screens the layout writes them; a screen sets:</p>
+<ui-doc-code id="admin-view" lang="razor">
+@@{
+    ViewData["Title"] = "Pages";
+    ViewData["Description"] = "The site's page tree: URLs, menus and SEO.";
+}
+@@section Actions {
+    <dnf-button variant="Primary" icon="plus" href="/admin/pages/create">New page</dnf-button>
+}
+</ui-doc-code>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The title is the page's only <code>&lt;h1&gt;</code>.</li>
+    <li>Breadcrumbs, when shown, come before it.</li>
+    <li>Use <code>&lt;header&gt;</code> for the block when it is the page's own header; the admin layout uses a <code>&lt;div&gt;</code>
+        inside <code>&lt;main&gt;</code>.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do put the primary action last in <code>dnf-page-header__actions</code>.</li>
+    <li>Do keep the description to one sentence about what the screen is for.</li>
+    <li>Don't repeat the page header's actions inside the content.</li>
+</ul>

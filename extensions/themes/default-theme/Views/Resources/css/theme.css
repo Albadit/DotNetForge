@@ -58,4 +58,4 @@ h1 { font-size: 36px; line-height: 1.2; margin: 0 0 12px; }
 .site-footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
 .site-footer .wrap { padding: 24px; }
 
-.ext-error { color: var(--muted); font-style: italic; }
+.dnf-ext-error { color: var(--muted); font-style: italic; }

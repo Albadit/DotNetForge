@@ -5,21 +5,21 @@
     var areas = Model.Select(e => e.Action.Split('.')[0]).Distinct().Order().ToList();
 }
 
-<section class="card" aria-labelledby="audit-title" data-collection data-page-size="25">
-    <div class="card-header">
+<section class="dnf-card" aria-labelledby="audit-title" data-collection data-page-size="25">
+    <div class="dnf-card__header">
         <div>
-            <h2 class="card-title" id="audit-title">Activity</h2>
-            <p class="card-description" data-collection-count>@Model.Count total</p>
+            <h2 class="dnf-card__title" id="audit-title">Activity</h2>
+            <p class="dnf-card__description" data-collection-count>@Model.Count total</p>
         </div>
     </div>
-    <div class="toolbar" data-js-only hidden>
-        <div class="toolbar-search input-icon">
-            <icon name="search" size="sm" />
+    <div class="dnf-toolbar" data-js-only hidden>
+        <div class="dnf-toolbar__search dnf-input-group">
+            <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
             <label class="sr-only" for="audit-search">Search activity</label>
-            <input id="audit-search" type="search" class="input-sm" placeholder="Search user, action, entity or IP" data-collection-search />
+            <input id="audit-search" type="search" class="dnf-input dnf-input--sm" placeholder="Search user, action, entity or IP" data-collection-search />
         </div>
         <label class="sr-only" for="audit-area">Area</label>
-        <select id="audit-area" class="input-sm" data-collection-filter="area">
+        <select id="audit-area" class="dnf-select dnf-select--sm" data-collection-filter="area">
             <option value="">All areas</option>
             @foreach (var area in areas)
             {
@@ -27,14 +27,14 @@
             }
         </select>
         <label class="sr-only" for="audit-result">Result</label>
-        <select id="audit-result" class="input-sm" data-collection-filter="result">
+        <select id="audit-result" class="dnf-select dnf-select--sm" data-collection-filter="result">
             <option value="">Any result</option>
             <option value="ok">Succeeded</option>
             <option value="fail">Failed</option>
         </select>
     </div>
-    <div class="table-wrap">
-        <table class="table table-stack">
+    <div class="dnf-table dnf-table--stack">
+        <table class="dnf-table__table">
             <thead>
                 <tr>
                     <th scope="col" data-sort="date">When</th>
@@ -49,10 +49,10 @@
                 @foreach (var entry in Model)
                 {
                     <tr data-item data-area="@entry.Action.Split('.')[0]" data-result="@(entry.Success ? "ok" : "fail")">
-                        <td data-label="When" data-sort-value="@entry.Timestamp.ToString("O")" class="text-nowrap"><timestamp value="@entry.Timestamp" /></td>
+                        <td data-label="When" data-sort-value="@entry.Timestamp.ToString("O")" class="text-nowrap"><dnf-timestamp value="@entry.Timestamp" /></td>
                         <td data-label="Action">
-                            <span class="cell-primary">@AuditPresentation.Label(entry.Action)</span>
-                            <code class="cell-sub">@entry.Action</code>
+                            <span class="dnf-table__primary">@AuditPresentation.Label(entry.Action)</span>
+                            <code class="dnf-table__secondary">@entry.Action</code>
                         </td>
                         <td data-label="User">@(entry.UserDisplaySnapshot ?? "System")</td>
                         <td data-label="Entity">
@@ -68,23 +68,23 @@
                         <td data-label="Result">
                             @if (entry.Success)
                             {
-                                <badge tone="Success" dot="true">Succeeded</badge>
+                                <dnf-badge tone="Success" dot="true">Succeeded</dnf-badge>
                             }
                             else
                             {
-                                <badge tone="Danger" dot="true">Failed</badge>
+                                <dnf-badge tone="Danger" dot="true">Failed</dnf-badge>
                             }
                         </td>
-                        <td data-label="IP address" class="text-muted text-mono text-sm">@entry.IpAddress</td>
+                        <td data-label="IP address" class="text-muted font-mono text-sm">@entry.IpAddress</td>
                     </tr>
                 }
-                <tr class="table-empty" data-collection-empty hidden><td colspan="6">No entry matches the search or filters.</td></tr>
+                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="6">No entry matches the search or filters.</td></tr>
                 @if (Model.Count == 0)
                 {
-                    <tr class="table-empty"><td colspan="6">No audit entries yet.</td></tr>
+                    <tr class="dnf-table__empty"><td colspan="6">No audit entries yet.</td></tr>
                 }
             </tbody>
         </table>
     </div>
-    <div class="pagination" data-collection-pagination hidden></div>
+    <div class="dnf-pagination" data-collection-pagination hidden></div>
 </section>

@@ -28,16 +28,13 @@ public sealed class RolesController : AdminControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        // Separate single-table queries, combined in memory: they run on every provider, including MongoDB, which
-        // can't count across collections in one query (.docs/database/mongodb.md#query-rules).
+        // The roles with how many users hold each, then their grants: only those in the catalog count, which is code.
         var roles = await _db.Roles
             .AsNoTracking()
             .OrderByDescending(r => r.IsBuiltIn).ThenBy(r => r.Name)
-            .Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn })
+            .Select(r => new { r.Id, r.Name, r.Description, r.IsBuiltIn, Users = _db.UserRoles.Count(ur => ur.RoleId == r.Id) })
             .ToListAsync();
         var roleIds = roles.Select(r => r.Id).ToList();
-        var users = (await _db.UserRoles.AsNoTracking().Where(ur => roleIds.Contains(ur.RoleId)).Select(ur => ur.RoleId).ToListAsync())
-            .CountBy(id => id).ToDictionary();
         var permissions = (await _db.RolePermissions.AsNoTracking().Where(p => roleIds.Contains(p.RoleId)).Select(p => new { p.RoleId, p.Area, p.Action }).ToListAsync())
             .Where(p => PermissionCatalog.IsKnown(p.Area, p.Action))
             .CountBy(p => p.RoleId).ToDictionary();
@@ -45,7 +42,7 @@ public sealed class RolesController : AdminControllerBase
         ViewData["CanCreate"] = Can(PermissionAreas.Roles, PermissionActions.Create);
         ViewData["CanDelete"] = Can(PermissionAreas.Roles, PermissionActions.Delete);
         return View(roles.Select(r => new RoleListItem(
-            r.Id, r.Name, r.Description, r.IsBuiltIn, users.GetValueOrDefault(r.Id),
+            r.Id, r.Name, r.Description, r.IsBuiltIn, r.Users,
             IsSuperAdmin(r.Name, r.IsBuiltIn) ? CatalogSize : permissions.GetValueOrDefault(r.Id))).ToList());
     }
 

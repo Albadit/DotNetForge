@@ -24,14 +24,14 @@ src/DotNetForge.Web/Areas/Admin/Controllers/MediaController.cs     list, upload 
 src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs          MediaIndexViewModel (CanUpload, Limits, folder rights, Current, Breadcrumbs, Folders, AllFolders, Files), MediaFolderLink, MediaFolderRowViewModel, MediaRowViewModel (+ Url, CanDelete, OriginalSizeBytes, Optimization)
 src/DotNetForge.Web/Areas/Admin/Views/Media/Index.cshtml           Upload card (dropzone), Library card (toolbar, bulk bar, media cards, per-file menu), preview dialog
 src/DotNetForge.Web/Ui/MediaPresentation.cs                        Classify (filter kind + icon), Size ("3.4 KB")
-src/DotNetForge.Web/Ui/UiTagHelpers.cs                             <icon>, <badge>, <timestamp>, <empty-state>, <form-errors>
+src/DotNetForge.UI/Components/BasicTagHelpers.cs                   <dnf-icon>, <dnf-badge>, <dnf-timestamp>, <dnf-empty-state>, <dnf-validation-summary> (+ DropdownTagHelpers.cs: <dnf-dropdown>)
 src/DotNetForge.Web/Services/MediaService.cs                       upload/delete rules, allowed types, per-kind limits, duplicates, image optimization, keys, audit
 src/DotNetForge.Web/Services/MediaSettings.cs                      the Media Library settings (upload limits, optimization) - edited on Settings → Media Library
 src/DotNetForge.Web/Services/MediaFolderService.cs                 folders: create, rename, move, delete (empty only), paths, moving files, audit
 src/DotNetForge.Web/Controllers/MediaFilesController.cs            the /media/{id} links and thumbnails
-src/DotNetForge.Web/wwwroot/js/forge/media.js                      Upload dialog (preview, per-kind size check), folder and file dialogs, preview dialog (previewDialog), drag and drop of files and folders onto folders and breadcrumbs
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                         collection (search/filter/paging), selection + bulk bar, view switch, dropzone, copy, confirm dialog
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                    .media-items / .media-card grid and list layouts, .media-preview (the preview dialog, end of the file)
+src/DotNetForge.Web/wwwroot/js/admin/media.js                      Upload dialog (preview, per-kind size check), folder and file dialogs, preview dialog (previewDialog), drag and drop of files and folders onto folders and breadcrumbs
+src/DotNetForge.UI/wwwroot/dnf.js                                  collection (search/filter/paging), selection + bulk bar, view switch, file upload drop area, copy, confirm dialog
+src/DotNetForge.Web/wwwroot/css/admin/media.css                    .dnf-media-grid / .dnf-media-card grid and list layouts, folder breadcrumbs, upload previews, .dnf-media-preview (the preview dialog)
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                  toasts (TempData) + confirm dialog, rendered by _AdminLayout
 ```
 
@@ -40,24 +40,24 @@ src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                  toasts (TempD
 ```text
 Media (_AdminLayout; header "Media" + description "Images, documents and other files for your pages. ...")
 ├── header actions [New folder] · [Upload] (CanUpload) - open the New folder dialog / the Upload dialog (media.js)
-├── <dialog class="upload-dialog"> > card "Upload" (id upload)   only when CanUpload; never part of the page until opened: by [Upload], a file drag onto the page or #upload, and again after a failed upload; closed by [×] (clears the files), Esc or a click on the backdrop
+├── <dialog class="dnf-dialog dnf-dialog--lg dnf-dialog--bare"> > card "Upload" (id upload)   only when CanUpload; never part of the page until opened: by [Upload], a file drag onto the page or #upload, and again after a failed upload; closed by [×] (clears the files), Esc or a click on the backdrop
 │   └── form (POST /admin/media/upload, multipart, antiforgery, hidden folderId = the folder shown)
-│       ├── <form-errors />                     one line per rejected file / problem
+│       ├── <dnf-validation-summary />          one line per rejected file / problem
 │       ├── description "Up to 10 files into <folder>: images up to N MB, videos and audio up to N MB, other files up to N MB." (+ "Images are optimized[ and stored as WebP].")
-│       ├── .dropzone "Drop files here or click to choose"   allowed extensions; input type=file multiple required accept=…
+│       ├── .dnf-file-upload "Drop files here or click to choose"   allowed extensions; input type=file multiple required accept=…
 │       ├── preview (JS): one tile per chosen file - image thumbnail or file icon, name, size, "Too large (max …)" / "Type not allowed", [×] remove
 │       └── ☑ Public "Anyone with the link can open it. Private files need an admin sign-in."  (checked) · [Upload]
 ├── <dialog #new-folder-dialog> "New folder" / "In Library/…"   only when CanUpload: form#folder-create (POST /admin/media/folders, hidden parentId) Name · footer [Cancel] [Create folder]
 └── card "Library" [data-collection, 48 per page]   title = breadcrumbs "Library / Photos / 2026" (links); "N total" / "x of N"
     ├── header: grid / list switch (JS only, remembered)
-    ├── .collection-bar
+    ├── .dnf-collection-bar
     │   ├── toolbar (JS only): ☐ select all · search "Search files" · "All types" ▾ · "Public and private" ▾
-    │   └── form#bulkForm .bulk-bar (overlays the toolbar while items are selected): ☐ · "N selected" · [Clear] ·
+    │   └── form#bulkForm .dnf-bulk-bar (overlays the toolbar while items are selected, replaces it at 64rem and below; Move… opens the move dialog): ☐ · "N selected" · [Clear] ·
     │       Move to ▾ [Move] (when a file or folder may be moved) · [Delete selected] (when a file or folder may be deleted; confirm)
-    ├── .media-items (data-view-mode grid|list): the subfolders first (folder tiles), then one article.media-card per file
+    ├── .dnf-media-grid (data-view-mode grid|list): the subfolders first (folder tiles), then one article.dnf-media-card per file
     │   ├── folder tile: ☐ select (Media update or delete) · folder icon · name (opens it) · "n folders · n files" · ⋯ Open · Edit… (Media update; dialog) · Delete (Media delete)
     │   ├── file: ☐ select (CanDelete or CanEdit) · thumbnail or type icon → opens the preview
-    │   │   name (opens the preview) · size · <timestamp> · badge Public / Private (lock) · badge "Optimizing…" (video queued) - type and savings only in Info
+    │   │   name (opens the preview) · size · <dnf-timestamp> · badge Public / Private (lock) · badge "Optimizing…" (video queued) - type and savings only in Info
     │   └── file ⋯ menu: Preview (JS) · Open in new tab · Copy link · Info · Rename… (CanEdit) · Make private / Make public (CanEdit) · Delete (CanDelete)
     ├── empty state "No matching files"         [data-collection-empty]
     └── pagination                              JS, more than 10 matching items: Rows per page (10, 25, 48 default, 50, 100)
@@ -70,7 +70,7 @@ Media (_AdminLayout; header "Media" + description "Images, documents and other f
 
 ## Components
 
-Component mechanics (cards, dropzone, collection, bulk bar, menu, toasts, confirm dialog) are in the
+Component mechanics (cards, file upload drop area, collection, bulk bar, menu, toasts, confirm dialog) are in the
 [design system](../architecture/design-system.md#components); this table lists what this screen feeds them.
 
 | Component | Inputs | Behaviour |
@@ -101,11 +101,12 @@ change when it moves. Folders nest without limit (the materialized path is at mo
 - **Delete a folder** - only when it is empty (`Media/delete`): **Delete** in the tile's menu, or select it and
   **Delete selected** ([below](#delete-selected-files-and-folders)); a folder with files or folders is refused with
   what is in it. Audit `media.folder.deleted`.
-- **Move files and folders** - select files and/or folders, choose **Move to** in the bulk bar (Top level or any
-  folder) and **Move** (`MediaController.MoveSelected`). Each file needs `Media/update` (or `update.own` for own
+- **Move files and folders** - select files and/or folders and use **Move…** in the bulk bar, or **Move…** in one file's
+  or folder's ⋯ menu. Both open the [move dialog](#move-dialog): choose Root or any folder, then **Move here**
+  (`MediaController.MoveSelected`; from a menu through the form `#item-move`, so a selection stays out of it). Each file needs `Media/update` (or `update.own` for own
   uploads); folders need `Media/update` and move with `MediaFolderService.MoveAsync` (paths below them rewritten). A
   folder selected as its own target is skipped; one that would land in one of its own folders, or next to a folder of
-  the same name, is refused. Toast "Moved N items to /Photos." ("Moved 1 item to the top level."); refused items are
+  the same name, is refused. Toast "Moved N items to /Photos." ("Moved 1 item to Root."); refused items are
   reported in an error toast ("N items not moved: your role may not change them." and the first folder problem, with
   "(and N more)"). At most 100 items at a time. Audit `media.moved` per file ("To /Photos"), `media.folder.updated`
   per folder ("Moved from …").
@@ -113,7 +114,7 @@ change when it moves. Folders nest without limit (the materialized path is at mo
 - **Edit… in a folder's ⋯ menu** (`Media/update`, JavaScript) opens the **Edit folder** dialog: **Name** [Rename] and
   **Move into** [Move] (the folder itself and its own folders can't be chosen).
   **Delete** in the menu is offered with `Media/delete`; a folder with content is refused with what is in it.
-- **Drag and drop** (`wwwroot/js/forge/media.js`, JavaScript and a mouse): drag a file - or, when it is selected, every
+- **Drag and drop** (`wwwroot/js/admin/media.js`, JavaScript and a mouse): drag a file - or, when it is selected, every
   selected file - or a folder onto a folder tile, or onto a breadcrumb to move it up. The target is outlined while
   dragging; dropping posts the same forms as the Move buttons (hidden `#dragMove` with the antiforgery token), so the
   same permissions, rules and audit entries apply. Files are draggable when the user may move them, folders with
@@ -141,7 +142,7 @@ change when it moves. Folders nest without limit (the materialized path is at mo
    `MediaFile` row (an MP4 is queued for background compression when that is on), audit `media.uploaded`
    ([upload flow](../features/media-storage.md#upload-flow), [optimization](../features/media-storage.md#optimization)).
 4. **Result:** all stored → redirect with the toast "Uploaded N files." ("Uploaded 1 file."); any rejected → the same
-   screen with one message per rejected file in `<form-errors />` (accepted files are stored and listed).
+   screen with one message per rejected file in `<dnf-validation-summary />` (accepted files are stored and listed).
 
 ### Delete a file
 
@@ -172,7 +173,7 @@ change when it moves. Folders nest without limit (the materialized path is at mo
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant V as Media screen (ui.js)
+    participant V as Media screen (dnf.js)
     participant C as MediaController.DeleteSelected
     participant M as MediaService
     participant F as MediaFolderService
@@ -205,7 +206,7 @@ absolute URL (`scheme://host/media/...`).
 ### Preview
 
 Clicking a file's thumbnail or name, or **Preview** in its ⋯ menu, opens the preview dialog (`#media-preview`,
-`previewDialog` in `wwwroot/js/forge/media.js`, styles `.media-preview*` at the end of `admin.css`). The dialog is
+`previewDialog` in `wwwroot/js/admin/media.js`, styles `.dnf-media-preview*` in `wwwroot/css/admin/media.css`). The dialog is
 rendered only when the folder shown has files; without JavaScript (or the `<dialog>` API) the links open the file in a
 new tab instead. The head shows the file name and "size · content type · Public/Private".
 
@@ -213,9 +214,11 @@ new tab instead. The head shows the file name and "size · content type · Publi
 | --- | --- |
 | Images (`image/*`) | `<img>` from `/media/{id}/{name}` |
 | Video, audio (`video/*`, `audio/*`) | `<video>` / `<audio>` with controls from `/media/{id}/{name}` (`preload="metadata"`) |
-| PDF, text and CSV (`application/pdf`, `text/*`) | an `<iframe>` of `GET /admin/media/{id}/inline` - from this site, because the CSP's `frame-src` allows only this site (and two video hosts), not object storage; text is sent as `text/plain; charset=utf-8` so CSV shows instead of downloading |
+| PDF and text (`application/pdf`, `text/*`) | an `<iframe>` of `GET /admin/media/{id}/inline` - from this site, because the CSP's `frame-src` allows only this site (and two video hosts), not object storage; text is sent as `text/plain; charset=utf-8` so CSV shows instead of downloading |
 | `.zip` (`application/zip`) | the list of entries from `GET /admin/media/{id}/zip` (`{ entries: [{ name, size, folder }], total }`): the first 500 entries with sizes, "N items, the first 500 listed" when there are more. An archive over `MediaController.MaxZipListBytes` (64 MB) is not read ("Too large to list here (over 64 MB). Download it instead."); a damaged one shows "This .zip file is damaged or not a .zip file." |
-| Anything else (`.docx`, `.xlsx`, `.pptx`, ...) | a "No preview" panel: the file name and "No preview for this kind of file. Download it, or open it in a new tab." |
+| Word (`.docx`) | a page from `GET /admin/media/{id}/document`: headings, bold, italic, underline, lists, tables and images, in their order. Text and structure, not the page layout: fonts, colours, headers, footers and page breaks are not reproduced |
+| Excel (`.xlsx`), CSV (`text/csv`) | one tab per visible sheet with column letters and row numbers: the values a person sees, so dates and percentages are formatted and a formula shows its last result. Other number formats (currency, thousands) show the plain number. CSV finds its separator (comma, semicolon or tab) |
+| PowerPoint (`.pptx`) | the slides one below the other at their own shape, with text, pictures, tables, filled shapes and backgrounds where the slide, its layout and its master put them; hidden slides are skipped. Animations, SmartArt and shape outlines are not drawn; a chart or diagram keeps its place with "Chart not shown" |
 
 The footer has **Copy link** (the absolute `/media/...` URL), **Open in new tab** (`/media/{id}/{name}`) and
 **Download** (`/admin/media/{id}/inline?download=true`: `Content-Disposition: attachment` with the file name and the
@@ -224,12 +227,40 @@ has focus) step through the files currently shown - search, filters and the curr
 skipped - and are disabled at either end. The dialog closes with ×, Esc or a click on the backdrop; closing empties
 it, which stops video and audio.
 
-Both endpoints are covered by the controller's `[RequirePermission(Media, read)]` - private files included, as on the
+Every file type the library accepts has a preview, so the "No preview" panel only remains for a type added later.
+**Download** always has the original.
+
+The three endpoints are covered by the controller's `[RequirePermission(Media, read)]` - private files included, as on the
 screen - read the stored object through `IFileStorage.OpenReadAsync` and answer 404 for an unknown id or a missing
 object (`/zip` also for a file that is not a .zip). `/inline` sends `Cache-Control: private, no-store` and supports
 range requests when the storage stream can seek (local storage). `/zip` reads the archive into memory to list it
 (storage streams can't seek), hence the size cap. Covered by
 `MediaTests.The_preview_serves_text_and_pdf_from_this_site_and_lists_zip_archives`.
+
+`/document` answers data for `DocumentPreviewReader` (`src/DotNetForge.Core/Media/`), which `documentPreview` in
+`media.js` draws. The file is read on this server with .NET's own ZIP and XML classes, with no new dependency, because
+the online viewers need a public link and would hand private files to a third party. A file is untrusted, so:
+
+- the page gets data, not markup: text reaches the DOM through `textContent`, so nothing in a file can run;
+- XML is read with DTDs prohibited and no resolver, each part up to 32 million characters (a zip bomb stops there);
+- images come only from inside the file and only as PNG, JPEG, GIF, WebP or BMP `data:` URIs, at most 4 MB each and
+  16 MB per preview: an external link is never fetched, and SVG is left out because it can carry script;
+- the output is capped (5,000 Word blocks; 30 sheets of 2,000 rows and 100 columns; 200 slides of 500 shapes; the first
+  4 million characters of a CSV), and anything left out sets `partial`, which shows "Part of this file isn't shown here";
+- files over 64 MB, and damaged or password-protected ones, answer `{ error }`, shown in the dialog with the Download
+  button still there. Answers are `Cache-Control: private, no-store`.
+
+Covered by `DocumentPreviewReaderTests` (samples from other software in `tests/fixtures/documents/`, hostile files built
+in the test), `MediaTests.The_preview_reads_documents_on_the_server_and_only_for_people_who_may_read_the_library` and
+`MobileTests.Documents.cs` (each format by mouse and by touch).
+
+### Move dialog
+
+`Shared/_MoveDialog.cshtml` with `wwwroot/js/admin/move-dialog.js`, shared by Media (`#media-move-dialog`) and
+[Pages](pages.md) (`#page-move-dialog`): a tree of places with **Root** first, and a search box from eight places on.
+The screen's script opens it with what is moving. The place it already is shows "Already here", and the moved items and
+everything inside them show "Can't go inside itself"; neither can be chosen, and **Move here** waits for a choice. The
+radios and the button belong to the screen's form, so the choice posts with it. The server checks all of this again.
 
 ### File info
 
@@ -282,7 +313,7 @@ uploader); the user's role claims for `CanUpload`/`CanDelete`; `MediaService` co
 | --- | --- | --- |
 | Result messages | `TempData["Success"]` / `["Error"]` → toasts | after a delete, bulk delete or move, or a successful upload |
 | Upload errors | `ModelState` | failed upload (same request, no redirect) |
-| Search, filters, page, selection | DOM only (`ui.js`) | lost on reload or after any POST |
+| Search, filters, page, selection | DOM only (`dnf.js`) | lost on reload or after any POST |
 | Items per page | `localStorage` `dnf-page-size:/admin/media:0` (any folder: the path has no query) | the **Rows per page** select |
 | Grid / list view | `localStorage` `dnf-view:media` | the view switch |
 | Files | `MediaFiles` rows + stored objects | upload, delete; a queued video's object, size and badge when the background compression finishes |
@@ -339,7 +370,7 @@ by the server before model binding (error page).
 
 | Failure | User sees | Recovery |
 | --- | --- | --- |
-| Upload validation | messages in `<form-errors />` in the Upload card | fix and resubmit |
+| Upload validation | messages in `<dnf-validation-summary />` in the Upload card | fix and resubmit |
 | Storage outage on upload | per-file message; details in the server log | retry later |
 | Missing permission (upload, single delete) | Access denied screen | - |
 | Bulk delete or move includes items the user may not change | those are skipped; error toast with their count; the rest are deleted or moved | ask someone with `Media/delete` / `Media/update` |
@@ -407,7 +438,7 @@ flowchart TD
 - Storage keys never contain the uploaded file name; the name is only metadata (sanitized, ≤ 200 characters).
 - Public/private is chosen at upload time and can be switched per file afterwards (one file at a time; no bulk toggle).
 - Large uploads are buffered in the OS temp directory during the request ([deployment](../guides/deployment.md#read-only-deployment-requirements)).
-- Grid and list are the same DOM (`data-view-mode` on `.media-items`), so each file has one checkbox in both layouts.
+- Grid and list are the same DOM (`data-view-mode` on `.dnf-media-grid`), so each file has one checkbox in both layouts.
 - **Select all** ticks only the items (files and folders) currently shown (current page and filter); items ticked
   earlier stay ticked when a filter hides them and are posted with the rest. Dragging a selected file drags only the
   selected files (`input[name=ids]`), not the selected folders.

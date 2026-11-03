@@ -1,0 +1,213 @@
+@* Dropdown (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/overlay.css</code></li>
+    <li>Tag helpers <code>&lt;dnf-dropdown&gt;</code> and its items in <code>src/DotNetForge.UI/Components/DropdownTagHelpers.cs</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (placement, keyboard)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A button that opens a menu of actions: row and card actions, the account menu, the theme menu. The menu is a native
+    popover, so it opens in the browser's top layer - no table scroll area, card or stacking order clips or covers it - and
+    the browser closes it on Escape and on a click outside. Use <code>&lt;dnf-dropdown&gt;</code> with its item tag helpers.</p>
+
+<ui-doc-example id="text-trigger">
+    <dnf-dropdown label="Options" text="Options" variant="Secondary" size="Md" placement="bottom-start">
+        <dnf-dropdown-label>Theme</dnf-dropdown-label>
+        <dnf-dropdown-button role="menuitemradio" aria-checked="true">System</dnf-dropdown-button>
+        <dnf-dropdown-button role="menuitemradio" aria-checked="false">Light</dnf-dropdown-button>
+        <dnf-dropdown-separator />
+        <dnf-dropdown-link href="#text-trigger" icon="external-link" new-tab="true">Open site</dnf-dropdown-link>
+    </dnf-dropdown>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="row-actions" title="Row actions" description="Without text the trigger is an icon-only Ghost Sm button (the more icon); label names it and the menu. Destructive items go last, after a separator.">
+    <dnf-dropdown label="Actions for Home">
+        <dnf-dropdown-link href="/admin/pages" icon="pencil">Edit</dnf-dropdown-link>
+        <dnf-dropdown-button icon="link" data-copy-text="https://example.com/">Copy link</dnf-dropdown-button>
+        <dnf-dropdown-link href="/" icon="external-link" new-tab="true">View on site</dnf-dropdown-link>
+        <dnf-dropdown-separator />
+        <dnf-dropdown-button icon="trash" danger="true" data-docs-toast="Delete would ask first - nothing was deleted." data-docs-toast-tone="info">Delete</dnf-dropdown-button>
+    </dnf-dropdown>
+</ui-doc-example>
+
+<ui-doc-example id="variants" title="Trigger variants and sizes" description="variant and size style the trigger like a button - Secondary on cards and images, Ghost in tables.">
+    <dnf-dropdown label="Actions for report.pdf" variant="Secondary">
+        <dnf-dropdown-link href="/admin/media" icon="download">Download</dnf-dropdown-link>
+        <dnf-dropdown-button icon="copy">Duplicate</dnf-dropdown-button>
+    </dnf-dropdown>
+    <dnf-dropdown label="Export" text="Export" variant="Outline" size="Sm">
+        <dnf-dropdown-button>As JSON</dnf-dropdown-button>
+        <dnf-dropdown-button>As CSV</dnf-dropdown-button>
+    </dnf-dropdown>
+    <dnf-dropdown label="Create" text="New" variant="Primary" size="Lg" placement="bottom-start">
+        <dnf-dropdown-link href="/admin/pages" icon="pages">Page</dnf-dropdown-link>
+        <dnf-dropdown-link href="/admin/content" icon="file">Entry</dnf-dropdown-link>
+    </dnf-dropdown>
+</ui-doc-example>
+
+<ui-doc-example id="placement" title="Placement" description="placement picks the corner the menu opens from: bottom-end (the default), bottom-start, top-end or top-start. It flips when there is no room.">
+    <dnf-dropdown label="Opens above, aligned to the start" text="Top start" placement="top-start">
+        <dnf-dropdown-button>First item</dnf-dropdown-button>
+        <dnf-dropdown-button>Second item</dnf-dropdown-button>
+    </dnf-dropdown>
+    <dnf-dropdown label="Opens above, aligned to the end" text="Top end" placement="top-end">
+        <dnf-dropdown-button>First item</dnf-dropdown-button>
+        <dnf-dropdown-button>Second item</dnf-dropdown-button>
+    </dnf-dropdown>
+</ui-doc-example>
+
+<ui-doc-example id="labels-notes" title="Groups, notes and disabled items" description="Labels head groups of items; a note explains why an action is missing; a disabled item is dimmed and ignores the pointer.">
+    <dnf-dropdown label="Actions for Editor" text="Editor role" variant="Secondary" size="Md">
+        <dnf-dropdown-label>Role</dnf-dropdown-label>
+        <dnf-dropdown-link href="/admin/roles" icon="pencil">Edit permissions</dnf-dropdown-link>
+        <dnf-dropdown-button icon="copy">Duplicate</dnf-dropdown-button>
+        <dnf-dropdown-separator />
+        <dnf-dropdown-button icon="trash" danger="true" disabled>Delete</dnf-dropdown-button>
+        <dnf-dropdown-note>Built-in roles can't be deleted.</dnf-dropdown-note>
+    </dnf-dropdown>
+</ui-doc-example>
+
+<ui-doc-example id="menu-class" title="Menu width" description="menu-class adds classes to the menu panel - a width utility for long labels.">
+    <dnf-dropdown label="Webhook events" text="Events" variant="Secondary" size="Md" menu-class="w-72">
+        <dnf-dropdown-button role="menuitemcheckbox" aria-checked="true">Entry published</dnf-dropdown-button>
+        <dnf-dropdown-button role="menuitemcheckbox" aria-checked="true">Entry unpublished or deleted</dnf-dropdown-button>
+        <dnf-dropdown-button role="menuitemcheckbox" aria-checked="false">Media uploaded</dnf-dropdown-button>
+    </dnf-dropdown>
+</ui-doc-example>
+
+<ui-doc-example id="plain-classes" title="Plain classes" description="The same structure written by hand: a button with popovertarget and a dnf-dropdown__menu with popover and the menu role. The ids must match and be unique.">
+    <div class="dnf-dropdown">
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only" popovertarget="docs-menu-plain"
+                aria-haspopup="menu" aria-expanded="false" aria-label="Actions for hero.jpg"><dnf-icon name="more" size="Sm" /></button>
+        <div class="dnf-dropdown__menu" id="docs-menu-plain" popover role="menu" aria-label="Actions for hero.jpg" data-placement="bottom-end">
+            <div class="dnf-dropdown__label" role="presentation">Image</div>
+            <a class="dnf-dropdown__item" role="menuitem" href="/admin/media"><dnf-icon name="eye" /> Preview</a>
+            <button type="button" class="dnf-dropdown__item" role="menuitem"><dnf-icon name="pencil" /> Rename</button>
+            <div class="dnf-dropdown__separator" role="separator"></div>
+            <button type="button" class="dnf-dropdown__item dnf-dropdown__item--danger" role="menuitem"><dnf-icon name="trash" /> Delete</button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h3 id="posting">Items that post</h3>
+<p><code>&lt;dnf-dropdown-post&gt;</code> renders a <code>&lt;form method="post"&gt;</code> with the antiforgery token, a hidden input
+    per <code>field-*</code> attribute and a submit item; <code>confirm*</code> attributes become the form's
+    <code>data-confirm*</code>, so the <a href="@UiDocsCatalog.Root/components/dialog">confirmation dialog</a> asks first. (Not
+    live here: this page posts nowhere.)</p>
+<ui-doc-code id="posting-code" lang="razor">
+<dnf-dropdown label="Actions for @@role.Name">
+    <dnf-dropdown-link href="/admin/roles/@@role.Id" icon="pencil">Edit</dnf-dropdown-link>
+    <dnf-dropdown-post action="/admin/roles/@@role.Id/duplicate" icon="copy">Duplicate</dnf-dropdown-post>
+    <dnf-dropdown-separator />
+    <dnf-dropdown-post action="/admin/roles/@@role.Id/delete" icon="trash" danger="true" field-returnTo="list"
+                       confirm="Delete the role?" confirm-title="Delete role" confirm-action="Delete role">Delete</dnf-dropdown-post>
+</dnf-dropdown>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="class on the dropdown, on items and menu-class on the panel are appended after the component's own.">
+    <dnf-dropdown label="Account" text="Ada Lovelace" variant="Ghost" size="Md" menu-class="w-64">
+        <dnf-dropdown-link href="/admin" icon="user" class="font-semibold">Profile</dnf-dropdown-link>
+        <dnf-dropdown-link href="/admin" icon="log-out">Sign out</dnf-dropdown-link>
+    </dnf-dropdown>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS restyles the menus in a scope - here a wider minimum and roomier items.">
+    <div class="dnf-docs-demo-dropdown">
+        <dnf-dropdown label="Sort entries" text="Sort" variant="Secondary" size="Md">
+            <dnf-dropdown-button role="menuitemradio" aria-checked="true">Newest first</dnf-dropdown-button>
+            <dnf-dropdown-button role="menuitemradio" aria-checked="false">Oldest first</dnf-dropdown-button>
+        </dnf-dropdown>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-dropdown .dnf-dropdown__menu { min-width: 16rem; }
+.dnf-docs-demo-dropdown .dnf-dropdown__item { padding-block: var(--dnf-space-3); }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-dropdown</code></td><td>block</td><td>the wrapper (<code>inline-block</code>, relative)</td></tr>
+        <tr><td><code>dnf-dropdown__menu</code></td><td>element</td><td>the popover panel: fixed, at least 12rem wide, scrolls when taller than the window, raised surface, <code>--dnf-radius-lg</code>, medium shadow; forms inside have no margin</td></tr>
+        <tr><td><code>dnf-dropdown__item</code></td><td>element</td><td>a full-width row (link or button) with icon and text</td></tr>
+        <tr><td><code>dnf-dropdown__item--danger</code></td><td>modifier</td><td>danger text</td></tr>
+        <tr><td><code>dnf-dropdown__label</code></td><td>element</td><td>a small subtle heading over a group</td></tr>
+        <tr><td><code>dnf-dropdown__separator</code></td><td>element</td><td>a 1px line</td></tr>
+        <tr><td><code>dnf-dropdown__chevron</code></td><td>element</td><td>a text trigger's <code>chevron-down</code> icon; turns up while its button is <code>aria-expanded="true"</code></td></tr>
+        <tr><td><code>dnf-dropdown__note</code></td><td>element</td><td>a short wrapped explanation in <code>text-xs</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover / keyboard focus</td><td><code>.dnf-dropdown__item:is(:hover, :focus-visible)</code></td><td>surface-hover background</td></tr>
+        <tr><td>disabled</td><td><code>:disabled</code>, <code>[aria-disabled="true"]</code></td><td>55% opacity, no pointer events</td></tr>
+        <tr><td>checked</td><td><code>[aria-checked="true"]</code></td><td>a check mark at the end (radio and checkbox items)</td></tr>
+        <tr><td>open</td><td><code>:popover-open</code>; <code>dnf.js</code> adds <code>data-open</code> to the menu and <code>aria-expanded="true"</code> to the button</td><td>fades and scales in, fades out on close; instant without browser support or with reduced motion</td></tr>
+        <tr><td>trigger open</td><td><code>[aria-expanded="true"] &gt; .dnf-dropdown__chevron</code></td><td>the chevron turns up (animated)</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<h3 id="api-dropdown"><code>&lt;dnf-dropdown&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfDropdownTagHelper)" />
+<p>Renders the wrapper, the button (<code>popovertarget</code>, <code>aria-haspopup="menu"</code>, <code>aria-expanded="false"</code>;
+    with <code>text</code> a label and a chevron, else the icon and <code>aria-label</code>) and the menu (<code>popover</code>,
+    <code>role="menu"</code>, <code>aria-label</code>, <code>data-placement</code>) with a generated id. <code>Xl</code> renders the
+    large size. <code>class</code> is appended to the wrapper.</p>
+
+<h3 id="api-dropdown-link"><code>&lt;dnf-dropdown-link&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfDropdownLinkTagHelper)" />
+<p>An <code>&lt;a class="dnf-dropdown__item" role="menuitem"&gt;</code>; <code>href</code> and other attributes pass through,
+    <code>class</code> is appended.</p>
+
+<h3 id="api-dropdown-button"><code>&lt;dnf-dropdown-button&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfDropdownButtonTagHelper)" />
+<p>A <code>&lt;button type="button" class="dnf-dropdown__item" role="menuitem"&gt;</code> for client-side actions. <code>role</code>
+    (<code>menuitemradio</code>, <code>menuitemcheckbox</code> with <code>aria-checked</code>), <code>type</code>, <code>disabled</code>
+    and <code>data-*</code> pass through; <code>class</code> is appended.</p>
+
+<h3 id="api-dropdown-post"><code>&lt;dnf-dropdown-post&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfDropdownPostTagHelper)" />
+<p><code>field-name="value"</code> adds <code>&lt;input type="hidden" name="name" value="value"&gt;</code> (one per attribute). The
+    child content is the item's text.</p>
+
+<h3 id="api-dropdown-label"><code>&lt;dnf-dropdown-label&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfDropdownLabelTagHelper)" />
+<p>A <code>&lt;div class="dnf-dropdown__label" role="presentation"&gt;</code>.</p>
+
+<h3 id="api-dropdown-separator"><code>&lt;dnf-dropdown-separator&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfDropdownSeparatorTagHelper)" />
+<p>A <code>&lt;div class="dnf-dropdown__separator" role="separator"&gt;</code>; self-closing.</p>
+
+<h3 id="api-dropdown-note"><code>&lt;dnf-dropdown-note&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfDropdownNoteTagHelper)" />
+<p>A <code>&lt;span class="dnf-dropdown__note"&gt;</code>. On the label, separator and note, too, <code>class</code> is appended.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The button has <code>aria-haspopup="menu"</code> and <code>aria-expanded</code>; an icon-only one is named by <code>label</code>.</li>
+    <li>Opened from the keyboard, focus moves to the first item; ArrowDown and ArrowUp (wrapping), Home and End move between
+        items; Escape closes the menu (the browser) and focus returns to the button. A click on an item closes it.</li>
+    <li>Items are <code>role="menuitem"</code>, or <code>menuitemradio</code> / <code>menuitemcheckbox</code> with
+        <code>aria-checked</code>.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use the tag helpers for row and card menus - never hand-build a POST item without the antiforgery token.</li>
+    <li>Do keep destructive items last, after a separator, with <code>danger="true"</code> and <code>confirm</code>.</li>
+    <li>Don't put form fields in a menu - use a <a href="@UiDocsCatalog.Root/components/popover">popover</a> or a
+        <a href="@UiDocsCatalog.Root/components/dialog">dialog</a>.</li>
+</ul>

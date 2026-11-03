@@ -60,11 +60,33 @@ jobs:
         shell: bash
         run: |
           set -e
-          for proj in src/*/*.csproj tests/*/*.csproj; do
+          for proj in src/*/*.csproj tests/*/*.csproj build/*/*.csproj; do
             echo "::group::dotnet format $proj"
             dotnet format "$proj" --verify-no-changes --severity error
             echo "::endgroup::"
           done
+
+  lint-js:
+    name: JavaScript lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/package-lock.json
+
+      - name: Install ESLint
+        run: npm ci
+        working-directory: tools
+
+      - name: Lint
+        run: npm run lint
+        working-directory: tools
 
   postgres-and-s3:
     # The integration tests on the CMS database (PostgreSQL, a fresh database per test) plus the live S3 contract
@@ -133,9 +155,11 @@ jobs:
             variable: DNF_TEST_MYSQL
             connection: Server=localhost;Port=3306;Uid=root;Pwd=dotnetforge
           - provider: mongodb
-            # MongoDB 8.x refuses to start on Linux kernels 6.19+ (SERVER-121912), which ubuntu-latest (26.04) has.
-            runner: ubuntu-24.04
-            start: docker run -d --name db -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+            # MongoDB 7.0, not 8: 8.x exits at startup on Linux kernels 6.19 to 7.0.13 (SERVER-121912, its tcmalloc and
+            # the kernel's rseq), which every GitHub Ubuntu runner now has - since late October 2026 also ubuntu-24.04.
+            # 7.0 uses the older allocator. Back to mongo:8.0 once the runners' kernel is 7.0.14 or newer.
+            runner: ubuntu-latest
+            start: docker run -d --name db -p 27017:27017 mongo:7.0 --replSet rs0 --bind_ip_all
             ready: >-
               docker exec db mongosh --quiet --eval
               'try { rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]}).ok }'

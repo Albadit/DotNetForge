@@ -1,0 +1,149 @@
+/*
+  Data display (.docs/ui/components/table.md, toolbar.md, pagination.md):
+  DnfTable, DnfToolbar, DnfBulkBar, DnfCollectionBar, DnfPagination.
+  Anatomy: .dnf-table (scroll wrapper) > table.dnf-table__table > thead/tbody > th/td
+           cells: .dnf-table__cell--check | --actions | --lead | --center ; text: .dnf-table__primary, .dnf-table__secondary
+           no rows: tr.dnf-table__empty ; sortable header button: .dnf-table__sort (dnf.js)
+  Modifiers on .dnf-table: --stack (phones: each row becomes a card of "label: value" lines, needs td[data-label]),
+           --compact (denser rows). Row states: tr[data-selected="true"], tr[data-dragging="true"].
+*/
+
+@layer components {
+    .dnf-table {
+        --dnf-table-cell-y: var(--dnf-space-3);
+        --dnf-table-cell-x: var(--dnf-space-4);
+        overflow-x: auto;
+    }
+    .dnf-table--compact { --dnf-table-cell-y: var(--dnf-space-2); --dnf-table-cell-x: var(--dnf-space-3); }
+    .dnf-table__table { width: 100%; border-collapse: collapse; font-size: var(--dnf-text-base); }
+    .dnf-table__table :is(th, td) {
+        padding: var(--dnf-table-cell-y) var(--dnf-table-cell-x);
+        border-bottom: 1px solid var(--dnf-border);
+        text-align: start;
+        vertical-align: middle;
+    }
+    .dnf-table__table thead th {
+        position: sticky; top: 0;
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-xs);
+        font-weight: var(--dnf-weight-semibold);
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .dnf-table__table tbody th[scope="row"] { font-weight: var(--dnf-weight-semibold); }
+    .dnf-table__table tbody tr:last-child > :is(td, th) { border-bottom: 0; }
+    .dnf-table__table tbody tr[data-selected="true"] { background: var(--dnf-primary-soft); }
+    .dnf-table__table tbody tr[data-dragging="true"] { opacity: 0.5; }
+    .dnf-table__table code { white-space: nowrap; overflow-wrap: normal; }
+
+    .dnf-table__cell--check { width: 2.75rem; padding-inline-end: 0; }
+    .dnf-table__cell--actions { width: 1%; text-align: end; white-space: nowrap; }
+    .dnf-table__cell--center { text-align: center; }
+    .dnf-table__primary { font-weight: var(--dnf-weight-semibold); color: var(--dnf-foreground); }
+    .dnf-table__secondary { display: block; font-size: var(--dnf-text-xs); font-weight: var(--dnf-weight-regular); color: var(--dnf-muted-foreground); }
+    .dnf-table__empty > td { padding: var(--dnf-space-10) var(--dnf-space-4); text-align: center; color: var(--dnf-muted-foreground); }
+    .dnf-table__grip { color: var(--dnf-subtle-foreground); cursor: grab; }
+
+    /* Sortable headers: dnf.js turns <th data-sort> into this button and keeps aria-sort in sync. */
+    .dnf-table__sort {
+        display: inline-flex; align-items: center; gap: 0.25rem;
+        padding: 0; border: 0; background: none;
+        color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit;
+    }
+    @media (pointer: coarse) {
+        .dnf-table__sort { min-height: 1.5rem; }
+        /* As tall from the start: the button arrives with dnf.js, and the rows mustn't move then. */
+        html.dnf-js .dnf-table__table th[data-sort] { height: calc(1.5rem + 2 * var(--dnf-table-cell-y)); }
+    }
+    .dnf-table__sort > .dnf-icon { opacity: 0.4; }
+    th:is([aria-sort="ascending"], [aria-sort="descending"]) .dnf-table__sort > .dnf-icon { opacity: 1; color: var(--dnf-primary-text); }
+    th[aria-sort="descending"] .dnf-table__sort > .dnf-icon { transform: rotate(180deg); }
+
+    @media (max-width: 40rem) {
+        .dnf-table--stack thead { display: none; }
+        .dnf-table--stack :is(.dnf-table__table, tbody, tr, td) { display: block; width: 100%; }
+        /* Sorting and select-all stay: those headers become a strip above the rows, the others go. */
+        .dnf-table--stack thead:has(.dnf-table__sort, [data-select-all]) { display: block; }
+        .dnf-table--stack .dnf-table__table thead tr {
+            display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-1) var(--dnf-space-4);
+            padding: var(--dnf-space-2) var(--dnf-space-4);
+            background: var(--dnf-surface-muted);
+        }
+        .dnf-table--stack .dnf-table__table thead th { display: none; position: static; padding: 0; border: 0; background: none; }
+        .dnf-table--stack .dnf-table__table thead th:has(.dnf-table__sort, [data-select-all]) { display: block; }
+        /* A sortable header takes its place at once: dnf.js makes it a button later, and the rows mustn't move then. */
+        html.dnf-js .dnf-table--stack thead:has([data-sort]) { display: block; }
+        html.dnf-js .dnf-table--stack .dnf-table__table thead th[data-sort] { display: block; height: auto; }
+        @media (pointer: coarse) { html.dnf-js .dnf-table--stack .dnf-table__table thead th[data-sort] { min-height: 1.5rem; } }
+        .dnf-table--stack tr { padding: var(--dnf-space-3) 0; border-bottom: 1px solid var(--dnf-border); }
+        .dnf-table--stack tbody tr:last-child { border-bottom: 0; }
+        .dnf-table--stack .dnf-table__table td {
+            display: flex; align-items: center; justify-content: space-between; gap: var(--dnf-space-3);
+            padding: var(--dnf-space-1) var(--dnf-space-4);
+            border: 0;
+            text-align: end;
+        }
+        .dnf-table--stack td[data-label]::before {
+            content: attr(data-label);
+            flex: 0 0 auto;
+            color: var(--dnf-muted-foreground);
+            font-family: var(--dnf-font-sans);
+            font-size: var(--dnf-text-xs);
+            font-weight: var(--dnf-weight-semibold);
+            text-align: start;
+        }
+        .dnf-table--stack .dnf-table__table td.dnf-table__cell--lead { display: block; text-align: start; }
+        .dnf-table--stack .dnf-table__table td.dnf-table__cell--actions { width: 100%; justify-content: flex-end; }
+        .dnf-table--stack .dnf-table__table .dnf-table__empty > td { display: block; text-align: center; }
+        .dnf-table--stack tr[hidden] { display: none; }
+    }
+
+    /* ---- Toolbar: search, filters and actions above a collection ----------------------------------------------- */
+    .dnf-toolbar {
+        display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-3) var(--dnf-space-4);
+        border-bottom: 1px solid var(--dnf-border);
+    }
+    .dnf-toolbar__search { flex: 1 1 14rem; max-width: 22rem; }
+    .dnf-toolbar__spacer { flex: 1 1 auto; }
+    /* Toolbar selects are as tall as the search field. */
+    .dnf-toolbar .dnf-select { width: auto; min-width: 9rem; }
+
+    /* The bulk bar overlays the toolbar while items are selected, so nothing below moves. */
+    .dnf-collection-bar { position: relative; }
+    .dnf-collection-bar > .dnf-bulk-bar { position: absolute; inset: 0; z-index: 1; }
+    .dnf-bulk-bar {
+        display: flex; align-items: center; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-2) var(--dnf-space-4);
+        /* Opaque: it covers the toolbar, and the dark theme's primary-soft is translucent. */
+        background: linear-gradient(var(--dnf-primary-soft), var(--dnf-primary-soft)), var(--dnf-surface);
+        border-bottom: 1px solid var(--dnf-primary-soft-border);
+        font-weight: var(--dnf-weight-medium);
+    }
+    .dnf-bulk-bar__count { white-space: nowrap; }
+    .dnf-bulk-bar .dnf-select { width: auto; max-width: min(16rem, 100%); }
+    /* Below that its actions may not fit one line, so it wraps and takes the toolbar's place instead of covering it. */
+    @media (max-width: 64rem) {
+        .dnf-bulk-bar { flex-wrap: wrap; }
+        .dnf-collection-bar > .dnf-bulk-bar { position: static; }
+        .dnf-collection-bar:has(> .dnf-bulk-bar:not([hidden])) > .dnf-toolbar { display: none; }
+    }
+
+    /* ---- Pagination (rendered by dnf.js for [data-collection-pagination]) --------------------------------------- */
+    .dnf-pagination {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-3) var(--dnf-space-4);
+        border-top: 1px solid var(--dnf-border);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+    }
+    .dnf-pagination__info { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-4); }
+    .dnf-pagination__summary { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .dnf-pagination__size { display: inline-flex; align-items: center; gap: var(--dnf-space-2); white-space: nowrap; }
+    .dnf-pagination__size .dnf-select { width: auto; min-width: 4.5rem; }
+    .dnf-pagination__pages { display: flex; align-items: center; gap: var(--dnf-space-1); }
+    .dnf-pagination__pages > .dnf-button { min-width: var(--dnf-control-sm); }
+    .dnf-pagination__gap { padding: 0 var(--dnf-space-1); }
+}

@@ -28,12 +28,6 @@ public static class PermissionAreas
     public const string AuditLogs = "Audit logs";
     public const string Updates = "Updates";
 
-    public static readonly IReadOnlyList<string> Canonical = new[]
-    {
-        CollectionTypes, SingleTypes, Plugins, Settings, Extensions,
-        Media, Users, Roles, Api, Webhooks,
-    };
-
     public static readonly IReadOnlyList<string> All = new[]
     {
         CollectionTypes, SingleTypes, Plugins, Settings, Extensions,

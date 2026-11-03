@@ -15,25 +15,25 @@
 @section Actions {
     @if (canCreate)
     {
-        <a class="btn btn-primary" href="/admin/users/create"><icon name="plus" /> Create user</a>
+        <a class="dnf-button dnf-button--primary" href="/admin/users/create"><dnf-icon name="plus" /> Create user</a>
     }
 }
 
-<section class="card" aria-labelledby="users-title" data-collection data-page-size="25">
-    <div class="card-header">
+<section class="dnf-card" aria-labelledby="users-title" data-collection data-page-size="25">
+    <div class="dnf-card__header">
         <div>
-            <h2 class="card-title" id="users-title">All users</h2>
-            <p class="card-description" data-collection-count>@Model.Count total</p>
+            <h2 class="dnf-card__title" id="users-title">All users</h2>
+            <p class="dnf-card__description" data-collection-count>@Model.Count total</p>
         </div>
     </div>
-    <div class="toolbar" data-js-only hidden>
-        <div class="toolbar-search input-icon">
-            <icon name="search" size="sm" />
+    <div class="dnf-toolbar" data-js-only hidden>
+        <div class="dnf-toolbar__search dnf-input-group">
+            <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
             <label class="sr-only" for="user-search">Search users</label>
-            <input id="user-search" type="search" class="input-sm" placeholder="Search by name or email" data-collection-search />
+            <input id="user-search" type="search" class="dnf-input dnf-input--sm" placeholder="Search by name or email" data-collection-search />
         </div>
         <label class="sr-only" for="user-role">Role</label>
-        <select id="user-role" class="input-sm" data-collection-filter="roles">
+        <select id="user-role" class="dnf-select dnf-select--sm" data-collection-filter="roles">
             <option value="">All roles</option>
             @foreach (var role in roles)
             {
@@ -41,21 +41,21 @@
             }
         </select>
         <label class="sr-only" for="user-status">Status</label>
-        <select id="user-status" class="input-sm" data-collection-filter="status">
+        <select id="user-status" class="dnf-select dnf-select--sm" data-collection-filter="status">
             <option value="">Any status</option>
             <option value="enabled">Enabled</option>
             <option value="disabled">Disabled</option>
         </select>
     </div>
-    <div class="table-wrap">
-        <table class="table table-stack">
+    <div class="dnf-table dnf-table--stack">
+        <table class="dnf-table__table">
             <thead>
                 <tr>
                     <th scope="col" data-sort="text">User</th>
                     <th scope="col">Roles</th>
                     <th scope="col" data-sort="text">Status</th>
                     <th scope="col" data-sort="date">Last sign-in</th>
-                    <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -64,27 +64,27 @@
                     var enabled = user.Status == "Enabled";
                     <tr data-item data-status="@user.Status.ToLowerInvariant()" data-roles="@string.Join(' ', user.Roles.Select(r => r.Replace(' ', '-')))"
                         data-search="@user.Name @user.Email">
-                        <td class="cell-lead" data-sort-value="@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)">
-                            <div class="cluster">
-                                <span class="avatar" aria-hidden="true">@Initials(user.Name, user.Email)</span>
+                        <td class="dnf-table__cell--lead" data-sort-value="@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)">
+                            <div class="dnf-cluster">
+                                <span class="dnf-avatar" aria-hidden="true">@Initials(user.Name, user.Email)</span>
                                 <span>
-                                    <a class="cell-primary" href="/admin/users/@user.Id">@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</a>
+                                    <a class="dnf-table__primary" href="/admin/users/@user.Id">@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</a>
                                     @if (user.IsSelf)
                                     {
-                                        <badge tone="Neutral">You</badge>
+                                        <dnf-badge tone="Neutral">You</dnf-badge>
                                     }
                                     @if (!string.IsNullOrWhiteSpace(user.Name))
                                     {
-                                        <span class="cell-sub">@user.Email</span>
+                                        <span class="dnf-table__secondary">@user.Email</span>
                                     }
                                 </span>
                             </div>
                         </td>
                         <td data-label="Roles">
-                            <div class="cluster">
+                            <div class="dnf-cluster">
                                 @foreach (var role in user.Roles)
                                 {
-                                    <badge tone="@(role.Contains("Admin") ? Tone.Accent : Tone.Neutral)">@role</badge>
+                                    <dnf-badge tone="@(role.Contains("Admin") ? DnfTone.Primary : DnfTone.Neutral)">@role</dnf-badge>
                                 }
                                 @if (user.Roles.Count == 0)
                                 {
@@ -92,32 +92,32 @@
                                 }
                             </div>
                         </td>
-                        <td data-label="Status"><badge tone="@(enabled ? Tone.Success : Tone.Danger)" dot="true">@user.Status</badge></td>
-                        <td data-label="Last sign-in" data-sort-value="@(user.LastLogin?.ToString("O") ?? "")"><timestamp value="@user.LastLogin" empty="Never" /></td>
-                        <td class="col-actions">
-                            <action-menu label="Actions for @user.Email">
-                                <menu-link href="/admin/users/@user.Id" icon="@(canUpdate ? "pencil" : "eye")">@(canUpdate ? "Edit" : "View")</menu-link>
+                        <td data-label="Status"><dnf-badge tone="@(enabled ? DnfTone.Success : DnfTone.Danger)" dot="true">@user.Status</dnf-badge></td>
+                        <td data-label="Last sign-in" data-sort-value="@(user.LastLogin?.ToString("O") ?? "")"><dnf-timestamp value="@user.LastLogin" empty="Never" /></td>
+                        <td class="dnf-table__cell--actions">
+                            <dnf-dropdown label="Actions for @user.Email">
+                                <dnf-dropdown-link href="/admin/users/@user.Id" icon="@(canUpdate ? "pencil" : "eye")">@(canUpdate ? "Edit" : "View")</dnf-dropdown-link>
                                 @if (canUpdate && !user.IsSelf)
                                 {
-                                    <menu-post action="/admin/users/@user.Id/@(enabled ? "disable" : "enable")" icon="power" field-returnTo="list">@(enabled ? "Disable" : "Enable")</menu-post>
+                                    <dnf-dropdown-post action="/admin/users/@user.Id/@(enabled ? "disable" : "enable")" icon="power" field-returnTo="list">@(enabled ? "Disable" : "Enable")</dnf-dropdown-post>
                                 }
                                 @if (canDelete && !user.IsSelf)
                                 {
-                                    <menu-separator />
-                                    <menu-post action="/admin/users/@user.Id/delete" icon="trash" danger="true" field-returnTo="list"
-                                               confirm="Delete @user.Email? They can't sign in any more. This can't be undone." confirm-title="Delete user" confirm-action="Delete user">Delete</menu-post>
+                                    <dnf-dropdown-separator />
+                                    <dnf-dropdown-post action="/admin/users/@user.Id/delete" icon="trash" danger="true" field-returnTo="list"
+                                               confirm="Delete @user.Email? They can't sign in any more. This can't be undone." confirm-title="Delete user" confirm-action="Delete user">Delete</dnf-dropdown-post>
                                 }
-                            </action-menu>
+                            </dnf-dropdown>
                         </td>
                     </tr>
                 }
-                <tr class="table-empty" data-collection-empty hidden><td colspan="5">No user matches the search or filters.</td></tr>
+                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="5">No user matches the search or filters.</td></tr>
                 @if (Model.Count == 0)
                 {
-                    <tr class="table-empty"><td colspan="5">No users yet.</td></tr>
+                    <tr class="dnf-table__empty"><td colspan="5">No users yet.</td></tr>
                 }
             </tbody>
         </table>
     </div>
-    <div class="pagination" data-collection-pagination hidden></div>
+    <div class="dnf-pagination" data-collection-pagination hidden></div>
 </section>

@@ -19,6 +19,7 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<Page> Pages => Set<Page>();
     public DbSet<PagePermission> PagePermissions => Set<PagePermission>();
     public DbSet<PageUserPermission> PageUserPermissions => Set<PageUserPermission>();
@@ -328,6 +329,13 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.HasOne<User>().WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(m => m.UserId);
             e.HasIndex(m => m.CredentialId);
+        });
+
+        b.Entity<UserSession>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.HasIndex(s => s.UserId);
+            e.HasIndex(s => s.ExpiresDate);
         });
 
         b.Entity<UserRecoveryCode>(e =>

@@ -21,8 +21,8 @@ setting or overwrite its value. No application code reads these settings yet; th
 src/DotNetForge.Web/Areas/Admin/Controllers/SettingsController.cs   Index, Save, BuildAsync, MaxKeyLength / MaxValueLength
 src/DotNetForge.Web/Areas/Admin/Models/AdminViewModels.cs           SettingsIndexViewModel (AppName, Settings)
 src/DotNetForge.Web/Areas/Admin/Views/Settings/Index.cshtml         "All settings" table card + "Add or update" form card
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                          data-collection (search, sort, paging), data-fill (Edit → form)
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                     .settings-layout (two columns, one below 64rem)
+src/DotNetForge.UI/wwwroot/dnf.js                                   data-collection (search, sort, paging), data-fill (Edit → form)
+src/DotNetForge.UI/Styles/components/layout.css                    .dnf-split.dnf-split--wide-aside (two columns, one below 64rem)
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                   success toast after a save (rendered by _AdminLayout)
 src/DotNetForge.Shared/Entities/SystemState.cs                      Setting entity (same file)
 src/DotNetForge.Web/Services/AuditService.cs                        settings.changed (via IAuditService)
@@ -33,16 +33,16 @@ src/DotNetForge.Web/Services/AuditService.cs                        settings.cha
 ```text
 Settings (_AdminLayout; header "Settings" + description "Key/value settings for <APP_NAME>. Saving creates a key
 │         or updates its value.")
-└── .settings-layout
+└── .dnf-split.dnf-split--wide-aside
     ├── card "All settings" [data-collection, 25 per page]   "N total" / "x of N"
     │   ├── toolbar (JS only): search "Search keys and values"
-    │   ├── table.table.table-stack: Key (sortable, <code>) · Value ("(empty)" when blank) · [Edit] (JS only)
+    │   ├── div.dnf-table.dnf-table--stack > table: Key (sortable, <code>) · Value ("(empty)" when blank) · [Edit] (JS only)
     │   │   └── row "No setting matches the search."   [data-collection-empty]
     │   └── pagination                                  JS, more than 10 matching rows (Rows per page, default 25)
     │   (no settings → empty state "No settings yet" instead of toolbar and table)
     └── card "Add or update" - "An existing key is overwritten."
         └── form#settingForm (POST /admin/settings/save, antiforgery)
-            ├── <form-errors />
+            ├── <dnf-validation-summary />
             ├── Key * (placeholder "site.tagline", monospace) · Value (optional, textarea)
             └── [Clear] (reset) · [Save setting]
 ```
@@ -70,7 +70,7 @@ Component mechanics: [design system → components](../architecture/design-syste
    sets `Value` (untrimmed, may be empty/null); `SaveChangesAsync`; audit `settings.changed` (entity `Setting`, id and
    display = key - the value is not recorded).
 5. **Result:** redirect to `/admin/settings`, success toast `Saved '<key>'.`.
-6. **Errors:** blank or too-long key/value → same screen with the message in `<form-errors />` (the form fields are
+6. **Errors:** blank or too-long key/value → same screen with the message in `<dnf-validation-summary />` (the form fields are
    not re-filled).
 
 There is no delete.
@@ -90,7 +90,7 @@ All `Settings` rows (`Key`, `Value`, ordered by key); `AppEnvironment.AppName` (
 | --- | --- | --- |
 | Result message | `TempData["Success"]` → toast | after a save |
 | Errors | `ModelState` | failed save (same request) |
-| Search, sort, page, filled form | DOM only (`ui.js`) | lost on reload |
+| Search, sort, page, filled form | DOM only (`dnf.js`) | lost on reload |
 | Rows per page | `localStorage` `dnf-page-size:/admin/settings:0` | the **Rows per page** select |
 | Settings | `Setting` rows | save |
 
@@ -118,8 +118,8 @@ SMTP/Twilio checks). SMTP is not a setting here: it comes from
 
 | Failure | User sees |
 | --- | --- |
-| Blank key | "Key is required." in `<form-errors />` |
-| Key > 200 or value > 4000 characters | "Keys are limited to 200 characters and values to 4000." in `<form-errors />` |
+| Blank key | "Key is required." in `<dnf-validation-summary />` |
+| Key > 200 or value > 4000 characters | "Keys are limited to 200 characters and values to 4000." in `<dnf-validation-summary />` |
 | Editor / Author opens or posts | redirect to `/account/denied` (403) |
 | Other DB failure | global [error page](error.md) |
 
@@ -162,7 +162,7 @@ flowchart TD
 ## Related pages
 
 [Dashboard](dashboard.md); API `GET /api/settings` ([headless API](../features/headless-api.md)). The other
-"Global Settings" sidebar items are separate screens ([Plugins](plugins.md), [Data Management](data-management.md)) or
+"Global Settings" sidebar items are separate screens ([Media Library](media-settings.md), [Plugins](plugins.md)) or
 [placeholders](module-placeholders.md).
 
 ## Important implementation details
@@ -223,12 +223,12 @@ override; public [themes](../features/themes.md) never affect it.
 | Internationalization | Global Settings | [internationalization](../features/internationalization.md) |
 | File Manager (sidebar: **Media Library**) | Global Settings | [Media Library settings](media-settings.md) |
 | Plugins | Global Settings | [Plugins](plugins.md) |
-| Transfer (sidebar: **Data Management**) | Global Settings | [Data Management](data-management.md) |
 | API Tokens, API Endpoints, API Docs | API & Webhooks | [API Tokens](api-tokens.md), [API Endpoints](api-endpoints.md), [API Docs](api-docs.md) |
 | Webhooks | API & Webhooks | [Webhooks](webhooks.md) |
 | Roles, Users, Audit Logs | Administration Panel | [Roles](roles.md), [Users](users.md), [Audit Logs](audit-logs.md) |
+| Transfer (sidebar: **Data Management**) | Administration Panel | [Data Management](data-management.md) |
 | Configuration, Templates | Email | [email](../features/email.md) |
-| Roles, Providers, Two-factor (MFA), Advanced Settings | Users & Permissions Plugin | [Roles](roles.md), [Providers](providers.md), [Two-factor authentication](mfa.md), [Advanced Settings](advanced-settings.md) |
+| Providers, Two-factor (MFA), Advanced Settings | Authentication | [Providers](providers.md), [Two-factor authentication](mfa.md), [Advanced Settings](advanced-settings.md) |
 
 Marketplace is not part of the hub; it lives in the sidebar's **Main** group ✔
 ([extensions](../features/extensions.md)). A hub link is shown only to users holding the target screen's permission
@@ -296,7 +296,7 @@ settings.
 - [ ] Logo uploads with a disallowed type or over the size limit are rejected with a clear message.
 - [ ] Server-side validation rejects unsafe uploads even when client validation is bypassed.
 - [ ] The hub table links to every settings screen (API Tokens, Content History, Internationalization, File Manager,
-  Plugins, Transfer (Data Management), Webhooks, Email, Administration Panel, Users & Permissions Plugin).
+  Plugins, Transfer (Data Management), Webhooks, Email, Administration Panel, Authentication).
 - [x] Marketplace is reachable from the admin **Main** menu - `AdminNavigation.Tree` → `/admin/marketplace`
   (`ModulesController.Marketplace`, placeholder screen; "Soon" badge in the sidebar).
 - [ ] **Check for updates** reports an available version (with link) or "Up to date", and an error state when the

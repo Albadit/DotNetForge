@@ -1,0 +1,16 @@
+# LF in the repository and on every machine, as .editorconfig says. Without this, Git on Windows writes CRLF and a
+# local `dotnet format` reports every line (.docs/guides/testing.md#ci).
+* text=auto eol=lf
+
+*.docx binary
+*.gif binary
+*.ico binary
+*.jpg binary
+*.pdf binary
+*.png binary
+*.pptx binary
+*.ttf binary
+*.webp binary
+*.woff2 binary
+*.xlsx binary
+*.zip binary

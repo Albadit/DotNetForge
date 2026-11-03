@@ -1,0 +1,97 @@
+<Project>
+
+  <!--
+    Compiles Styles/dnf.css into wwwroot/dnf.css with the Tailwind CSS standalone CLI (.docs/ui/styling.md#build) -
+    no Node. The CLI is pinned (version + SHA-256 per platform below), downloaded once into tools/tailwind/<version>/
+    at the repository root (git-ignored) and verified before it runs. Offline or locked-down machines: set
+    DNF_TAILWIND_PATH to a tailwindcss binary of the same version. Release builds are minified.
+  -->
+
+  <PropertyGroup>
+    <TailwindVersion>4.3.3</TailwindVersion>
+    <TailwindRepoRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..'))</TailwindRepoRoot>
+    <TailwindArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant())</TailwindArch>
+    <TailwindPlatform Condition="'$(TailwindPlatform)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">windows-x64.exe</TailwindPlatform>
+    <TailwindPlatform Condition="'$(TailwindPlatform)' == '' And $([MSBuild]::IsOSPlatform('OSX')) And '$(TailwindArch)' == 'arm64'">macos-arm64</TailwindPlatform>
+    <TailwindPlatform Condition="'$(TailwindPlatform)' == '' And $([MSBuild]::IsOSPlatform('OSX'))">macos-x64</TailwindPlatform>
+    <TailwindPlatform Condition="'$(TailwindPlatform)' == '' And '$(TailwindArch)' == 'arm64' And Exists('/etc/alpine-release')">linux-arm64-musl</TailwindPlatform>
+    <TailwindPlatform Condition="'$(TailwindPlatform)' == '' And '$(TailwindArch)' == 'arm64'">linux-arm64</TailwindPlatform>
+    <TailwindPlatform Condition="'$(TailwindPlatform)' == '' And Exists('/etc/alpine-release')">linux-x64-musl</TailwindPlatform>
+    <TailwindPlatform Condition="'$(TailwindPlatform)' == ''">linux-x64</TailwindPlatform>
+    <TailwindDir>$(TailwindRepoRoot)tools/tailwind/$(TailwindVersion)/</TailwindDir>
+    <TailwindExe Condition="'$(DNF_TAILWIND_PATH)' != ''">$(DNF_TAILWIND_PATH)</TailwindExe>
+    <TailwindExe Condition="'$(TailwindExe)' == ''">$(TailwindDir)tailwindcss-$(TailwindPlatform)</TailwindExe>
+    <TailwindInput>$(MSBuildProjectDirectory)/Styles/dnf.css</TailwindInput>
+    <TailwindOutput>$(MSBuildProjectDirectory)/wwwroot/dnf.css</TailwindOutput>
+    <TailwindMinify Condition="'$(Configuration)' == 'Release'">--minify</TailwindMinify>
+    <TailwindMinify Condition="'$(Configuration)' != 'Release'">--map</TailwindMinify>
+    <TailwindBuiltFor>$(MSBuildProjectExtensionsPath)tailwind.configuration</TailwindBuiltFor>
+  </PropertyGroup>
+
+  <!-- From the release's sha256sums.txt (github.com/tailwindlabs/tailwindcss/releases/tag/v4.3.3). -->
+  <ItemGroup>
+    <TailwindChecksum Include="linux-arm64" Sha256="55fd0b241214eff3de1e8ee4f22796662f2d2e7a49bcfca7477cfd0bac398195" />
+    <TailwindChecksum Include="linux-arm64-musl" Sha256="71ea4be79c9de9827545682df3e040053fb535d37c71ed2cfdedf9385a0868e0" />
+    <TailwindChecksum Include="linux-x64" Sha256="dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a" />
+    <TailwindChecksum Include="linux-x64-musl" Sha256="a04d34ceacc8f52cbe8920ad846cdeb61d3d0021dba32db0d1f77c9d9fad7a6c" />
+    <TailwindChecksum Include="macos-arm64" Sha256="cdf646702987a743464dff4d9c60fd4480d1c1e73dd819a9a67f1078815dce9d" />
+    <TailwindChecksum Include="macos-x64" Sha256="7922e0953f2110c05976e3bf58f14e643d90427575e766b7d433f5f80cbee7e1" />
+    <TailwindChecksum Include="windows-x64.exe" Sha256="e0e260ce048014e9268f6237ff18f8ccf02cef521cbd0ae04e82c2cdf7aa3955" />
+  </ItemGroup>
+
+  <!-- Everything the stylesheet depends on: its sources, and the markup Tailwind scans for utility classes. -->
+  <ItemGroup>
+    <TailwindInputs Include="$(MSBuildProjectDirectory)/Styles/**/*.css" />
+    <TailwindInputs Include="$(MSBuildProjectDirectory)/**/*.cs;$(MSBuildProjectDirectory)/wwwroot/*.js" Exclude="$(MSBuildProjectDirectory)/obj/**;$(MSBuildProjectDirectory)/bin/**" />
+    <TailwindInputs Include="$(TailwindRepoRoot)src/DotNetForge.Web/**/*.cshtml;$(TailwindRepoRoot)src/DotNetForge.Web/**/*.cs;$(TailwindRepoRoot)src/DotNetForge.Web/wwwroot/js/**/*.js"
+                    Exclude="$(TailwindRepoRoot)src/DotNetForge.Web/obj/**;$(TailwindRepoRoot)src/DotNetForge.Web/bin/**" />
+    <TailwindInputs Include="$(TailwindRepoRoot)extensions/**/*.cshtml;$(TailwindRepoRoot)extensions/**/*.cs;$(TailwindRepoRoot)extensions/**/*.js" Exclude="$(TailwindRepoRoot)extensions/**/bin/**;$(TailwindRepoRoot)extensions/**/obj/**" />
+  </ItemGroup>
+
+  <!-- DnfSkipTailwind=true: compile only (parallel builds of one checkout must not all write wwwroot/dnf.css). -->
+  <Target Name="DnfTailwindDownload" Condition="'$(DNF_TAILWIND_PATH)' == '' And !Exists('$(TailwindExe)')">
+    <PropertyGroup>
+      <_TailwindExpected>@(TailwindChecksum->WithMetadataValue('Identity', '$(TailwindPlatform)')->'%(Sha256)')</_TailwindExpected>
+      <_TailwindName>tailwindcss-$(TailwindPlatform)</_TailwindName>
+    </PropertyGroup>
+    <Error Condition="'$(_TailwindExpected)' == ''" Text="No Tailwind CSS $(TailwindVersion) binary is known for '$(TailwindPlatform)'. Set DNF_TAILWIND_PATH to a tailwindcss binary." />
+    <Message Importance="high" Text="Downloading Tailwind CSS $(TailwindVersion) ($(_TailwindName)) - once, into tools/tailwind/." />
+    <DownloadFile SourceUrl="https://github.com/tailwindlabs/tailwindcss/releases/download/v$(TailwindVersion)/$(_TailwindName)"
+                  DestinationFolder="$(TailwindDir)" DestinationFileName="$(_TailwindName).download" Retries="2" />
+    <GetFileHash Files="$(TailwindDir)$(_TailwindName).download" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_TailwindActual" />
+    </GetFileHash>
+    <Delete Files="$(TailwindDir)$(_TailwindName).download" Condition="'$(_TailwindActual.ToLowerInvariant())' != '$(_TailwindExpected)'" />
+    <Error Condition="'$(_TailwindActual.ToLowerInvariant())' != '$(_TailwindExpected)'"
+           Text="The downloaded Tailwind CSS binary does not match its SHA-256 ($(_TailwindActual)); it was deleted. Expected $(_TailwindExpected)." />
+    <Move SourceFiles="$(TailwindDir)$(_TailwindName).download" DestinationFiles="$(TailwindExe)" />
+    <Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))" Command="chmod +x &quot;$(TailwindExe)&quot;" />
+  </Target>
+
+  <ItemGroup>
+    <Content Remove="wwwroot\dnf.css" />
+  </ItemGroup>
+
+  <!-- dnf.css is one file for every configuration, and up to date by its sources alone: a Release build right after a
+       Debug one would ship the readable stylesheet. So switching configuration builds it again. -->
+  <Target Name="DnfTailwindConfiguration" BeforeTargets="DnfTailwindBuild" Condition="'$(DnfSkipTailwind)' != 'true'">
+    <PropertyGroup>
+      <_TailwindLastBuiltFor Condition="Exists('$(TailwindBuiltFor)')">$([System.IO.File]::ReadAllText('$(TailwindBuiltFor)').Trim())</_TailwindLastBuiltFor>
+    </PropertyGroup>
+    <Delete Files="$(TailwindOutput)" Condition="'$(_TailwindLastBuiltFor)' != '$(Configuration)'" />
+    <WriteLinesToFile File="$(TailwindBuiltFor)" Lines="$(Configuration)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <!-- Before the static web assets are collected, so a clean build already serves the fresh dnf.css. -->
+  <Target Name="DnfTailwindBuild" Condition="'$(DnfSkipTailwind)' != 'true' Or !Exists('$(TailwindOutput)')" BeforeTargets="BeforeBuild;ResolveProjectStaticWebAssets" DependsOnTargets="DnfTailwindDownload"
+          Inputs="@(TailwindInputs);$(MSBuildThisFileFullPath)" Outputs="$(TailwindOutput)">
+    <Exec Command="&quot;$(TailwindExe)&quot; --input &quot;$(TailwindInput)&quot; --output &quot;$(TailwindOutput)&quot; $(TailwindMinify)"
+          WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" StandardOutputImportance="low" />
+    <!-- The default Content glob skips the compiled file (above): it is added here, after it was written, so even a
+         clean build serves it. -->
+    <ItemGroup>
+      <Content Include="wwwroot/dnf.css" />
+    </ItemGroup>
+  </Target>
+
+</Project>

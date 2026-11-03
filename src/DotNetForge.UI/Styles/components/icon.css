@@ -1,0 +1,42 @@
+/*
+  DnfIcon, DnfSpinner (.docs/ui/components/icon.md, spinner.md).
+  .dnf-icon: an <svg><use href=".../icons.svg#name"/></svg> from the sprite; stroke icons that follow currentColor.
+  .dnf-spinner: an indeterminate loading indicator (role="status" + an accessible label on the element).
+*/
+
+@layer components {
+    .dnf-icon {
+        --dnf-icon-size: 1.125rem;
+        display: inline-block;
+        width: var(--dnf-icon-size);
+        height: var(--dnf-icon-size);
+        flex: 0 0 auto;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        vertical-align: middle;
+    }
+    .dnf-icon--sm { --dnf-icon-size: 0.875rem; }
+    .dnf-icon--lg { --dnf-icon-size: 1.375rem; }
+    .dnf-icon--xl { --dnf-icon-size: 1.75rem; }
+
+    .dnf-spinner {
+        --dnf-spinner-size: 1.25rem;
+        display: inline-block;
+        width: var(--dnf-spinner-size);
+        height: var(--dnf-spinner-size);
+        flex: 0 0 auto;
+        border: 2px solid var(--dnf-border-strong);
+        border-top-color: var(--dnf-primary);
+        border-radius: 50%;
+        animation: dnf-spin 0.7s linear infinite;
+    }
+    .dnf-spinner--sm { --dnf-spinner-size: 0.875rem; }
+    .dnf-spinner--lg { --dnf-spinner-size: 2rem; border-width: 3px; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .dnf-spinner { animation-duration: 1.6s; }
+    }
+}

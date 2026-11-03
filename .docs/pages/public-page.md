@@ -26,9 +26,9 @@ src/DotNetForge.Web/Services/ThemeResolver.cs       the active theme; PageThemeI
 src/DotNetForge.Web/Components/ExtensionModulesViewComponent.cs   modules placed on the page
 src/DotNetForge.Web/Views/Home/Page.cshtml          built-in view: article + modules + info alert; sets Title / MetaDescription / CanonicalUrl ViewData
 src/DotNetForge.Web/Views/_ViewStart.cshtml         Layout = "_Layout"
-src/DotNetForge.Web/Views/Shared/_Layout.cshtml     public fallback layout: <title>, description + canonical meta, header (menu, Admin for admin users), footer; theme.js + public.css (no ui.js, no _Feedback)
-src/DotNetForge.Web/Ui/UiTagHelpers.cs              <alert>, <icon>
-src/DotNetForge.Web/wwwroot/css/forge/public.css    .site-article, .site-header, .site-nav, .site-main, .site-footer
+src/DotNetForge.Web/Views/Shared/_Layout.cshtml     public fallback layout: <title>, description + canonical meta, header (menu, Admin for admin users), footer; dnf-theme.js + dnf.css + site.css (no dnf.js, no _Feedback)
+src/DotNetForge.UI/Components/BasicTagHelpers.cs    <dnf-alert>, <dnf-icon>
+src/DotNetForge.Web/wwwroot/css/site.css            .dnf-site__article, __header, __nav, __main, __footer
 src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs   CSP and other security headers on every response
 ```
 
@@ -40,20 +40,20 @@ _Layout
 ├── <meta name="description">        only when MetaDescription is set (ViewData["MetaDescription"])
 ├── <link rel="canonical">           only when CanonicalUrl is set (ViewData["CanonicalUrl"])
 ├── "Skip to content" link
-├── header.site-header: logo mark + <APP_NAME> (→ /)
-│   ├── nav.site-nav "Site": a link per Menu page    only when ViewData["Menu"] has pages; the current one aria-current="page"
+├── header.dnf-site__header: logo mark + <APP_NAME> (→ /)
+│   ├── nav.dnf-site__nav "Site": a link per Menu page    only when ViewData["Menu"] has pages; the current one aria-current="page"
 │   └── [Admin →] (/admin)                           only for signed-in users who may enter the admin (Roles.CanEnterAdmin)
-├── main#main.site-main
-│   └── article.site-article
+├── main#main.dnf-site__main
+│   └── article.dnf-site__article
 │       ├── header
 │       │   ├── h1 Title
 │       │   ├── /<slug>                                   (monospace)
 │       │   └── "Dynamic route: name = value, ..."        only when a [param] segment matched
 │       ├── modules (ExtensionModules view component)     only when an active module lists this path
-│       └── <alert tone="Info" title="No content yet">
+│       └── <dnf-alert tone="Info" title="No content yet">
 │           "This page is published but has no layout yet. Design it in Pages (Layout tab), or enable a theme
 │            to style the site."
-└── footer.site-footer "Powered by DotNetForge CMS"
+└── footer.dnf-site__footer "Powered by DotNetForge CMS"
 
 With an active theme that has Views/Page.cshtml, the theme's view (and its layout) replaces all of the above.
 ```
@@ -69,12 +69,12 @@ The built-in view renders inside the public `_Layout` (via `_ViewStart`). Inputs
 layout: `ViewData["Title"]` (`MetaTitle`, else `Title`), `ViewData["MetaDescription"]` and `ViewData["CanonicalUrl"]`.
 A theme view also gets `Extension`, `Settings`, `ResourceBase` (`/ext/{id}/resources`) ([themes](../features/themes.md)).
 
-The header (`_Layout`) shows `nav.site-nav` (`aria-label="Site"`) with one link per `Menu` page when there is one;
+The header (`_Layout`) shows `nav.dnf-site__nav` (`aria-label="Site"`) with one link per `Menu` page when there is one;
 the link whose path equals the request path (trailing slash trimmed, case-insensitive) gets `aria-current="page"`
 (bold). **Admin →** is rendered only for a signed-in user with a role that may enter the admin
 (`Roles.CanEnterAdmin`: any role except the site-only ones); anonymous visitors and site-only users don't see it.
 
-The **No content yet** `<alert>` (Info tone, `role="status"`) is always shown in the built-in view; its text links the
+The **No content yet** `<dnf-alert>` (Info tone, `role="status"`) is always shown in the built-in view; its text links the
 [Pages](pages.md) (`/admin/pages`).
 
 `ExtensionModules` (`@await Component.InvokeAsync("ExtensionModules", new { page = Model })`, also callable from
@@ -139,7 +139,7 @@ Not applicable (a page always has a title).
 ## User interactions
 
 Links only: brand (`/`), the menu pages, **Admin** (`/admin`, admin users only), the "Pages" link in the alert (`/admin/pages?selected={id}#layout`) and the
-"Skip to content" link. No scripts beyond `theme.js` (no `ui.js`).
+"Skip to content" link. No scripts beyond `dnf-theme.js` (no `dnf.js`).
 
 ## Dependencies
 
@@ -174,13 +174,13 @@ flowchart TD
   and `/robots.txt`) - even while that extension is disabled, when the gate answers `404` instead of falling back.
 - Matching is case-insensitive; slugs are stored lower-case.
 - A dynamic page matches **any** value; the value is displayed, not validated or looked up.
-- The built-in view uses the shared public `_Layout` (`public.css`); it has no document or stylesheet of its own. It
+- The built-in view uses the shared public `_Layout` (`dnf.css` + `site.css`); it has no document or stylesheet of its own. It
   carries no inline `<style>` or script; nor may theme or module views (CSP). `AdminUiTests` checks `/about` (a seeded
   live page) for no inline script/style, exactly one `<h1>`, `lang` and the skip link - a module view that adds its
   own `<h1>` would break that rule.
-- The built-in `_Layout` renders no toasts or confirm dialog (`_Feedback` is not included) and does not load `ui.js`,
+- The built-in `_Layout` renders no toasts or confirm dialog (`_Feedback` is not included) and does not load `dnf.js`,
   so module views cannot rely on the [design system's behaviours](../architecture/design-system.md#behaviours); they
-  can use its CSS classes (`components.css` is loaded).
+  can use its CSS classes (`dnf.css` is loaded).
 - `PublicSiteTests` checks the built-in header (menu links, `aria-current`, no unpublished page, **Admin** only after
   sign-in) and theme inheritance.
 - Security headers on every response (`SecurityHeadersMiddleware`): `Content-Security-Policy` with

@@ -27,9 +27,9 @@ src/DotNetForge.Web/Services/ThemeResolver.cs         the active theme
 src/DotNetForge.Web/Views/Home/Page.cshtml            used when a root page is live (variant A, inside _Layout)
 src/DotNetForge.Web/Views/Home/Index.cshtml           fallback list (variant B, inside _Layout)
 src/DotNetForge.Web/Views/_ViewStart.cshtml           Layout = "_Layout" for both
-src/DotNetForge.Web/Views/Shared/_Layout.cshtml       public fallback layout: skip link, header (brand, page menu, Admin for admin users), main, footer; SEO meta from ViewData; theme.js + public.css (no ui.js, no _Feedback, no theme menu)
-src/DotNetForge.Web/Ui/UiTagHelpers.cs                <empty-state>, <icon>
-src/DotNetForge.Web/wwwroot/css/forge/public.css      .site-header, .site-nav, .site-hero, .site-lead, .site-page-list, .site-footer
+src/DotNetForge.Web/Views/Shared/_Layout.cshtml       public fallback layout: skip link, header (brand, page menu, Admin for admin users), main, footer; SEO meta from ViewData; dnf-theme.js + dnf.css + site.css (no dnf.js, no _Feedback, no theme menu)
+src/DotNetForge.UI/Components/BasicTagHelpers.cs      <dnf-empty-state>, <dnf-icon>
+src/DotNetForge.Web/wwwroot/css/site.css              .dnf-site__header, __nav, __hero, __lead, __page-list, __footer
 src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs   CSP and other security headers on every response
 ```
 
@@ -44,18 +44,18 @@ same model):
 ```text
 <APP_NAME> (_Layout; ViewData["Title"] = null, so the <title> is just <APP_NAME>)
 ├── "Skip to content" link
-├── header.site-header: logo mark + <APP_NAME> (→ /)
-│   ├── nav.site-nav "Site": a link per Menu page    only when ViewData["Menu"] has pages; the current one aria-current="page"
+├── header.dnf-site__header: logo mark + <APP_NAME> (→ /)
+│   ├── nav.dnf-site__nav "Site": a link per Menu page    only when ViewData["Menu"] has pages; the current one aria-current="page"
 │   └── [Admin →] (/admin)                           only for signed-in users who may enter the admin (Roles.CanEnterAdmin)
-├── main#main.site-main
-│   ├── section.site-hero
+├── main#main.dnf-site__main
+│   ├── section.dnf-site__hero
 │   │   ├── h1 <APP_NAME>
 │   │   ├── "A modular, secure, hybrid CMS built on ASP.NET Core MVC."
 │   │   └── "The CMS is installed and running. This is the built-in public site - enable a theme on the Plugins screen to give it your own look."  (Plugins → /admin/plugins)
 │   └── section "Published pages" (h2)
-│       ├── ul.card.site-page-list: <Title> → (/<slug>) · /<slug>     ordered by SortOrder
-│       └── or card > <empty-state> (see Empty states)
-└── footer.site-footer "Powered by DotNetForge CMS"
+│       ├── ul.dnf-card.dnf-site__page-list: <Title> → (/<slug>) · /<slug>     ordered by SortOrder
+│       └── or dnf-card > <dnf-empty-state> (see Empty states)
+└── footer.dnf-site__footer "Powered by DotNetForge CMS"
 ```
 
 Layout: [design system → public fallback](../architecture/design-system.md#public-fallback).
@@ -65,9 +65,9 @@ Layout: [design system → public fallback](../architecture/design-system.md#pub
 | Component | Inputs | Appears |
 | --- | --- | --- |
 | Header / footer (`_Layout`) | `ViewData["AppName"]`, `ViewData["Menu"]` (top-level live pages marked "display in menu", `IPublishedPages`), the signed-in user's roles (**Admin →**) | both variants |
-| Hero (`section.site-hero`, the page's only `<h1>`) | `ViewData["AppName"]` | variant B |
-| Published pages list (`ul.card.site-page-list`) | model `List<(string Title, string Slug)>`, `ViewData["PublishedCount"]` | variant B, when count > 0 |
-| `<empty-state icon="pages">` with **Open Pages** | - | variant B, when no live pages |
+| Hero (`section.dnf-site__hero`, the page's only `<h1>`) | `ViewData["AppName"]` | variant B |
+| Published pages list (`ul.dnf-card.dnf-site__page-list`) | model `List<(string Title, string Slug)>`, `ViewData["PublishedCount"]` | variant B, when count > 0 |
+| `<dnf-empty-state icon="pages">` with **Open Pages** | - | variant B, when no live pages |
 
 ## Functionality
 
@@ -90,7 +90,7 @@ No other actions.
 
 ## State
 
-None beyond the request. `theme.js` applies a light/dark choice saved in `localStorage` (`dnf-theme`) on the admin
+None beyond the request. `dnf-theme.js` applies a light/dark choice saved in `localStorage` (`dnf-theme`) on the admin
 or auth screens; the public layout has no theme menu of its own.
 
 ## Permissions
@@ -118,14 +118,14 @@ Variant B with zero live pages shows, in a card under **Published pages**:
 | --- | --- |
 | Title | "Nothing published yet" |
 | Text | "Create and publish a page in Pages." |
-| Action | **Open Pages** (`/admin/pages`, `.btn-primary`) |
+| Action | **Open Pages** (`/admin/pages`, `.dnf-button--primary`) |
 
 On a fresh install the seeded `Home` page (slug `/`, published) is live, so variant A is shown.
 
 ## User interactions
 
 Links only (brand, menu pages, **Admin** for admin users, page links, **Plugins**, **Open Pages**) and the "Skip to content" link.
-No scripts beyond `theme.js`.
+No scripts beyond `dnf-theme.js`.
 
 ## Dependencies
 
@@ -163,7 +163,7 @@ flowchart TD
   style-src 'self'`, report-only in Development) means neither variant may use inline script or style - see
   [security](../features/security.md). `AdminUiTests.Every_screen_renders_without_inline_script_or_style` checks `/`
   (variant A on the seeded install) for that, exactly one `<h1>`, `lang` and the skip link.
-- The built-in `_Layout` does not render `_Feedback` (no toasts, no confirm dialog) and does not load `ui.js`, so
+- The built-in `_Layout` does not render `_Feedback` (no toasts, no confirm dialog) and does not load `dnf.js`, so
   `data-*` behaviours from the [design system](../architecture/design-system.md#behaviours) do not work in public
   views.
 - The **Admin** header link is rendered only for signed-in users who may enter the admin (`Roles.CanEnterAdmin`;

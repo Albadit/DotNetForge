@@ -1,0 +1,418 @@
+@* Table (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines.
+   The "collection" example is used by the browser tests (BehaviourTests, DocsVisualTests): keep its markup and rows. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/table.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (collections: search, filters, sorting, paging, selection)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A table is a plain <code>&lt;table class="dnf-table__table"&gt;</code> inside a <code>dnf-table</code> wrapper that scrolls
+    sideways when the columns don't fit. Put it straight into a <a href="@UiDocsCatalog.Root/components/card">card</a>, below
+    the card header - the cells bring their own padding.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-card">
+        <div class="dnf-card__header">
+            <h3 class="dnf-card__title">Pages</h3>
+        </div>
+        <div class="dnf-table">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Path</th>
+                        <th scope="col">Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Home</td><td><code>/</code></td><td>3 Oct 2026</td></tr>
+                    <tr><td>About us</td><td><code>/about-us</code></td><td>28 Sep 2026</td></tr>
+                    <tr><td>Pricing</td><td><code>/pricing</code></td><td>12 Sep 2026</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="cells" title="Cells" description="A lead cell with the row's name and a muted second line, a status badge, a centred cell and an actions column as narrow as its menu." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-table">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="dnf-table__cell--center">Blocks</th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="dnf-table__cell--lead">
+                            <span class="dnf-table__primary">Home</span>
+                            <span class="dnf-table__secondary">/</span>
+                        </td>
+                        <td><dnf-badge tone="Success" dot="true">Published</dnf-badge></td>
+                        <td class="dnf-table__cell--center">14</td>
+                        <td class="dnf-table__cell--actions">
+                            <dnf-dropdown label="Actions for Home">
+                                <dnf-dropdown-link href="#cells" icon="pencil">Edit</dnf-dropdown-link>
+                                <dnf-dropdown-link href="#cells" icon="external-link">View on site</dnf-dropdown-link>
+                            </dnf-dropdown>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="dnf-table__cell--lead">
+                            <span class="dnf-table__primary">Pricing</span>
+                            <span class="dnf-table__secondary">/pricing</span>
+                        </td>
+                        <td><dnf-badge dot="true">Draft</dnf-badge></td>
+                        <td class="dnf-table__cell--center">6</td>
+                        <td class="dnf-table__cell--actions">
+                            <dnf-dropdown label="Actions for Pricing">
+                                <dnf-dropdown-link href="#cells" icon="pencil">Edit</dnf-dropdown-link>
+                                <dnf-dropdown-note>Drafts are not on the site yet.</dnf-dropdown-note>
+                            </dnf-dropdown>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="row-headers" title="Row headers" description="A th with scope row in the body names its row and is drawn semibold - for matrices such as role permissions." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-table">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">Role</th>
+                        <th scope="col" class="dnf-table__cell--center">Pages</th>
+                        <th scope="col" class="dnf-table__cell--center">Media</th>
+                        <th scope="col" class="dnf-table__cell--center">Users</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">Administrator</th>
+                        <td class="dnf-table__cell--center"><dnf-icon name="check" label="Allowed" class="text-success" /></td>
+                        <td class="dnf-table__cell--center"><dnf-icon name="check" label="Allowed" class="text-success" /></td>
+                        <td class="dnf-table__cell--center"><dnf-icon name="check" label="Allowed" class="text-success" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Editor</th>
+                        <td class="dnf-table__cell--center"><dnf-icon name="check" label="Allowed" class="text-success" /></td>
+                        <td class="dnf-table__cell--center"><dnf-icon name="check" label="Allowed" class="text-success" /></td>
+                        <td class="dnf-table__cell--center"><dnf-icon name="x" label="Not allowed" class="text-subtle" /></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="compact" title="Compact" description="dnf-table--compact makes the cells denser, for logs and long technical lists. Code in a cell never wraps." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-table dnf-table--compact">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">Event</th>
+                        <th scope="col">Response</th>
+                        <th scope="col">Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>entry.published</code></td><td><span class="dnf-badge dnf-badge--success dnf-badge--mono">200</span></td><td>142 ms</td></tr>
+                    <tr><td><code>media.uploaded</code></td><td><span class="dnf-badge dnf-badge--success dnf-badge--mono">204</span></td><td>98 ms</td></tr>
+                    <tr><td><code>entry.deleted</code></td><td><span class="dnf-badge dnf-badge--danger dnf-badge--mono">500</span></td><td>2.0 s</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="stacked" title="Stacked on phones" description="Below 40rem, dnf-table--stack turns every row into a block of label and value lines; each cell's data-label is its label. Of the header only sortable columns and select-all stay, as a strip above the rows. Narrow the window to see it." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Role</th>
+                        <th scope="col">Last sign-in</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="dnf-table__cell--lead">
+                            <span class="dnf-table__primary">Ada Lovelace</span>
+                            <span class="dnf-table__secondary">ada@@example.com</span>
+                        </td>
+                        <td data-label="Role">Administrator</td>
+                        <td data-label="Last sign-in">3 Oct 2026</td>
+                    </tr>
+                    <tr>
+                        <td class="dnf-table__cell--lead">
+                            <span class="dnf-table__primary">Grace Hopper</span>
+                            <span class="dnf-table__secondary">grace@@example.com</span>
+                        </td>
+                        <td data-label="Role">Editor</td>
+                        <td data-label="Last sign-in">27 Sep 2026</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="row-states" title="Selected rows and drag handles" description="data-selected on a row tints it (collections set it for checked rows); dnf-table__grip marks the drag handle. While your drag script moves a row it sets data-dragging, which fades it (see States)." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-table">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="dnf-table__cell--check"><span class="sr-only">Order</span></th>
+                        <th scope="col">Menu item</th>
+                        <th scope="col">Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="dnf-table__cell--check"><dnf-icon name="grip" class="dnf-table__grip" /></td>
+                        <td>Home</td>
+                        <td><code>/</code></td>
+                    </tr>
+                    <tr data-selected="true">
+                        <td class="dnf-table__cell--check"><dnf-icon name="grip" class="dnf-table__grip" /></td>
+                        <td>Blog</td>
+                        <td><code>/blog</code></td>
+                    </tr>
+                    <tr>
+                        <td class="dnf-table__cell--check"><dnf-icon name="grip" class="dnf-table__grip" /></td>
+                        <td>Contact</td>
+                        <td><code>/contact</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="empty" title="Empty row" description="A dnf-table__empty row spanning every column: a padded, centred, muted message." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-table">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">URL</th>
+                        <th scope="col">Events</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="dnf-table__empty"><td colspan="3">No webhooks yet.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="collection" title="Collection" description="With data-collection on the card, dnf.js adds search, a select and a segmented filter, sortable headers, row selection with the bulk bar, the count and the pager - over the rows already in the page." layout="block">
+    <div class="dnf-card" data-collection data-page-size="10">
+        <div class="dnf-card__header">
+            <h3 class="dnf-card__title">Pages</h3>
+            <span class="text-sm text-muted" data-collection-count></span>
+        </div>
+        <div class="dnf-collection-bar">
+            <div class="dnf-toolbar">
+                <div class="dnf-input-group dnf-toolbar__search">
+                    <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                    <input class="dnf-input" type="search" aria-label="Search" data-collection-search />
+                </div>
+                <select class="dnf-select" aria-label="Status" data-collection-filter="status">
+                    <option value="">All statuses</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                </select>
+                <span class="dnf-toolbar__spacer"></span>
+                <div class="dnf-segmented" role="group" aria-label="Quick filter">
+                    <button type="button" class="dnf-segmented__item" data-collection-filter="status" data-value="" aria-pressed="true">All</button>
+                    <button type="button" class="dnf-segmented__item" data-collection-filter="status" data-value="published" aria-pressed="false">Published</button>
+                </div>
+            </div>
+            <div class="dnf-bulk-bar" data-bulk-bar hidden>
+                <span class="dnf-bulk-bar__count" data-bulk-count></span>
+                <button type="button" class="dnf-button dnf-button--danger-soft dnf-button--sm"
+                        data-docs-confirm="Delete the selected pages? This can't be undone." data-docs-confirm-title="Delete pages" data-docs-confirm-action="Delete">Delete</button>
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" data-bulk-clear>Clear</button>
+            </div>
+        </div>
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th class="dnf-table__cell--check"><input type="checkbox" class="dnf-checkbox" data-select-all aria-label="Select all" /></th>
+                        <th scope="col" data-sort="text">Title</th>
+                        <th scope="col" data-sort="text">Status</th>
+                        <th scope="col" data-sort="number">Views</th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (title, status, views) in new[]
+                    {
+                        ("Home", "published", 1204), ("About us", "published", 312), ("Pricing", "draft", 0),
+                        ("Blog", "published", 845), ("Careers", "draft", 12), ("Contact", "published", 220),
+                        ("Imprint", "published", 31), ("Privacy", "published", 58), ("Terms", "published", 44),
+                        ("Docs", "draft", 3), ("Changelog", "published", 77), ("Status", "published", 19),
+                    })
+                    {
+                        var slug = title == "Home" ? "/" : "/" + title.ToLowerInvariant().Replace(' ', '-');
+                        <tr data-item data-status="@status">
+                            <td class="dnf-table__cell--check"><input type="checkbox" class="dnf-checkbox" data-select-item aria-label="Select @title" /></td>
+                            <td class="dnf-table__cell--lead">
+                                <span class="dnf-table__primary">@title</span>
+                                <span class="dnf-table__secondary">@slug</span>
+                            </td>
+                            <td data-label="Status"><dnf-badge tone="@(status == "published" ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(status == "published" ? "Published" : "Draft")</dnf-badge></td>
+                            <td data-label="Views" data-sort-value="@views">@views</td>
+                            <td class="dnf-table__cell--actions">
+                                <dnf-dropdown label="Actions for @title">
+                                    <dnf-dropdown-link href="#collection" icon="pencil">Edit</dnf-dropdown-link>
+                                    <dnf-dropdown-note>A demo: nothing is saved.</dnf-dropdown-note>
+                                </dnf-dropdown>
+                            </td>
+                        </tr>
+                    }
+                    <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="5">No pages match.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities on a cell beat the table's own styles: end-align a figure column, fix a column's width." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-table">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">File</th>
+                        <th scope="col" class="w-32 text-end">Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>hero.jpg</td><td class="text-end tabular-nums">1.2 MB</td></tr>
+                    <tr><td>brochure.pdf</td><td class="text-end tabular-nums">840 KB</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="The cell padding is two tokens on dnf-table; set them in your own (unlayered) CSS to space a table in a scope." layout="block">
+    <div class="dnf-docs-demo-table">
+        <div class="dnf-card">
+            <div class="dnf-table">
+                <table class="dnf-table__table">
+                    <thead>
+                        <tr><th scope="col">Report</th><th scope="col">Generated</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Monthly traffic</td><td>1 Oct 2026</td></tr>
+                        <tr><td>Broken links</td><td>28 Sep 2026</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-table .dnf-table {
+    --dnf-table-cell-y: var(--dnf-space-4);
+    --dnf-table-cell-x: var(--dnf-space-6);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-table</code></td><td>block</td><td>the wrapper: <code>overflow-x: auto</code></td></tr>
+        <tr><td><code>dnf-table__table</code></td><td>element</td><td>the <code>&lt;table&gt;</code>: full width, collapsed borders, a line under each row (none under the last)</td></tr>
+        <tr><td><code>thead th</code></td><td>-</td><td>sticky, muted surface, <code>text-xs</code> uppercase semibold, no wrap</td></tr>
+        <tr><td><code>tbody th[scope="row"]</code></td><td>-</td><td>semibold row headers</td></tr>
+        <tr><td><code>dnf-table__cell--check</code></td><td>cell modifier</td><td>a 2.75rem checkbox column</td></tr>
+        <tr><td><code>dnf-table__cell--actions</code></td><td>cell modifier</td><td>as narrow as its content, end-aligned, no wrap</td></tr>
+        <tr><td><code>dnf-table__cell--center</code></td><td>cell modifier</td><td>centred</td></tr>
+        <tr><td><code>dnf-table__cell--lead</code></td><td>cell modifier</td><td>the first cell of a stacked row: shown as the block's heading on phones</td></tr>
+        <tr><td><code>dnf-table__primary</code></td><td>element</td><td>semibold foreground text (the row's name)</td></tr>
+        <tr><td><code>dnf-table__secondary</code></td><td>element</td><td>a block line below, <code>text-xs</code>, muted</td></tr>
+        <tr><td><code>dnf-table__empty</code></td><td>element (on <code>tr</code>)</td><td>a padded, centred, muted message row</td></tr>
+        <tr><td><code>dnf-table__grip</code></td><td>element</td><td>a drag handle: subtle colour, <code>cursor: grab</code></td></tr>
+        <tr><td><code>dnf-table__sort</code></td><td>element</td><td>the sort button <code>dnf.js</code> puts into a <code>th[data-sort]</code></td></tr>
+        <tr><td><code>dnf-table--compact</code></td><td>modifier</td><td>denser cells</td></tr>
+        <tr><td><code>dnf-table--stack</code></td><td>modifier</td><td>below 40rem: no header, each row a block of "label: value" lines (<code>td[data-label]</code>), actions end-aligned</td></tr>
+    </tbody>
+</table>
+<p><code>&lt;code&gt;</code> in a table cell does not wrap.</p>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>selected row</td><td><code>tbody tr[data-selected="true"]</code></td><td><code>--dnf-primary-soft</code> background (set by the collection's selection)</td></tr>
+        <tr><td>dragged row</td><td><code>tbody tr[data-dragging="true"]</code></td><td>50% opacity (set by your drag script)</td></tr>
+        <tr><td>sorted column</td><td><code>th[aria-sort="ascending"]</code>, <code>th[aria-sort="descending"]</code></td><td>the sort icon in full primary colour; turned over when descending</td></tr>
+        <tr><td>hidden row</td><td><code>tr[hidden]</code></td><td>hidden, also in the stacked layout</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-table-cell-y</code> and <code>--dnf-table-cell-x</code>: the cell padding (<code>--dnf-space-3</code> /
+    <code>--dnf-space-4</code>; <code>--compact</code> sets <code>--dnf-space-2</code> / <code>--dnf-space-3</code>).</p>
+
+<h2 id="api">API</h2>
+<p>The table has no tag helper: the classes above are its API. Rows become interactive with the collection hooks of
+    <code>dnf.js</code> (<a href="@UiDocsCatalog.Root/behaviours">Behaviours</a>); the
+    <a href="@UiDocsCatalog.Root/components/toolbar">toolbar</a> and the
+    <a href="@UiDocsCatalog.Root/components/pagination">pagination</a> pages cover the bars around the table.</p>
+<table>
+    <thead><tr><th>Hook</th><th>On</th><th>Behaviour</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-collection</code></td><td>the card (the scope)</td><td>every <code>[data-item]</code> inside is an item; <code>data-page-size="N"</code> turns on paging</td></tr>
+        <tr><td><code>data-item</code></td><td><code>tr</code></td><td>an item; <code>data-search</code> replaces its text for the search, <code>data-&lt;key&gt;</code> holds its filter values</td></tr>
+        <tr><td><code>data-sort="text|number|date"</code></td><td><code>th</code></td><td>becomes a <code>dnf-table__sort</code> button; a click sorts the first <code>tbody</code> by the column (the cell's <code>data-sort-value</code>, else its text) and sets <code>aria-sort</code></td></tr>
+        <tr><td><code>data-select-all</code></td><td>header checkbox</td><td>checks every visible item; shows checked or indeterminate</td></tr>
+        <tr><td><code>data-select-item</code></td><td>row checkbox</td><td>its row gets <code>data-selected="true"</code>; shows the bulk bar</td></tr>
+        <tr><td><code>data-collection-empty</code></td><td>a <code>dnf-table__empty</code> row</td><td>shown when nothing matches the search and filters</td></tr>
+    </tbody>
+</table>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>A real <code>&lt;table&gt;</code> with <code>&lt;th&gt;</code> headers (<code>scope="row"</code> for row headers); a caption or the card's heading names it.</li>
+    <li>With <code>--stack</code>, give every cell but the lead one a <code>data-label</code> - it replaces the hidden header on phones.</li>
+    <li>Checkboxes and icon-only buttons in rows need names that include the row: "Select Home", "Actions for Home".</li>
+    <li>A column without a visible header (actions, checkboxes) still gets one for screen readers: <code>&lt;span class="sr-only"&gt;Actions&lt;/span&gt;</code>.</li>
+    <li>Sortable headers become buttons; <code>aria-sort</code> tells the current order.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do put the table straight into a card, with a <a href="@UiDocsCatalog.Root/components/toolbar">toolbar</a> above and a <a href="@UiDocsCatalog.Root/components/pagination">pagination</a> below.</li>
+    <li>Do show "nothing yet" with an <a href="@UiDocsCatalog.Root/components/empty-state">empty state</a> and "no match" with a <code>data-collection-empty</code> row.</li>
+    <li>Do keep the row's actions in one dropdown in the last column.</li>
+    <li>Don't use a table for layout, or for a single record's details - use a <a href="@UiDocsCatalog.Root/components/description-list">description list</a>.</li>
+</ul>

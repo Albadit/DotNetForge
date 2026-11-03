@@ -34,14 +34,21 @@ public sealed class UsersController : AdminControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        // Single-table queries combined in memory, so the list works on every provider (including MongoDB).
+        // One query: the users with their role names.
         var users = await _db.Users
             .AsNoTracking()
             .OrderBy(u => u.Email)
-            .Select(u => new { u.Id, u.Email, u.FirstName, u.LastName, u.Status, u.LastLoginDate })
+            .Select(u => new
+            {
+                u.Id,
+                u.Email,
+                u.FirstName,
+                u.LastName,
+                u.Status,
+                u.LastLoginDate,
+                Roles = _db.UserRoles.Where(ur => ur.UserId == u.Id).Join(_db.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r.Name).ToList(),
+            })
             .ToListAsync();
-        var links = await RoleLinksAsync(users.Select(u => u.Id).ToList());
-        var roleNames = await RoleNamesAsync();
 
         ViewData["CanCreate"] = Can(PermissionAreas.Users, PermissionActions.Create);
         ViewData["CanUpdate"] = Can(PermissionAreas.Users, PermissionActions.Update);
@@ -52,7 +59,7 @@ public sealed class UsersController : AdminControllerBase
             $"{u.FirstName} {u.LastName}".Trim(),
             u.Status.ToString(),
             u.LastLoginDate,
-            links.Where(l => l.UserId == u.Id && roleNames.ContainsKey(l.RoleId)).Select(l => roleNames[l.RoleId]).Order().ToList(),
+            u.Roles.Order().ToList(),
             u.Id == CurrentUserId)).ToList());
     }
 
@@ -143,7 +150,7 @@ public sealed class UsersController : AdminControllerBase
 
         if (id == CurrentUserId)
         {
-            TempData["Error"] = "Change your own methods on Profile → Sign-in security.";
+            TempData["Error"] = "Change your own methods on Profile › Sign-in security.";
             return RedirectToAction(nameof(Edit), new { id });
         }
 
@@ -240,11 +247,6 @@ public sealed class UsersController : AdminControllerBase
             .ToListAsync())
         .Select(l => (l.UserId, l.RoleId))
         .ToList();
-
-    private async Task<Dictionary<Guid, string>> RoleNamesAsync() =>
-        await _db.Roles.AsNoTracking()
-            .Select(r => new { r.Id, r.Name })
-            .ToDictionaryAsync(r => r.Id, r => r.Name);
 
     private async Task<string> EmailOfAsync(Guid id) =>
         await _db.Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Email).FirstOrDefaultAsync() ?? "the user";

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    DotNetForge.UI - the Dnf component library (.docs/ui/README.md): Dnf* tag helpers, the BEM + Tailwind stylesheet
+    (wwwroot/dnf.css, compiled from Styles/ by build/Tailwind.targets), the dnfUI behaviours (wwwroot/dnf.js) and the
+    icon sprite. Served as static web assets under /_content/DotNetForge.UI/. Used by the CMS and by extensions (the SDK
+    references it); it knows nothing about CMS data.
+  -->
+
+  <PropertyGroup>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <RootNamespace>DotNetForge.UI</RootNamespace>
+    <!-- The tag helpers' doc comments are the descriptions of the API tables in the UI docs (/admin/docs/ui). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sources of the stylesheet, not content to serve. -->
+    <None Include="Styles\**" />
+  </ItemGroup>
+
+  <Import Project="build\Tailwind.targets" />
+
+</Project>

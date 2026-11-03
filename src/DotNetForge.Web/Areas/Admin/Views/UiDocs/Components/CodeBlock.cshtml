@@ -1,0 +1,118 @@
+@* Code block (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/content.css</code></li>
+    <li>Behaviour <code>src/DotNetForge.UI/wwwroot/dnf.js</code> (copy: <code>data-copy-text</code>, <code>data-copy-target</code>)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A code block shows read-only code, a token or a URL in a monospaced block that wraps long lines. Add a copy button
+    in its corner with <code>dnf-code-block__copy</code>; <code>dnf.js</code> copies on click and confirms with a toast.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <pre class="dnf-code-block">dnf_1a2b3c4d_9f8e7d6c5b4a39281706f5e4d3c2b1a0<dnf-button size="Sm" icon="copy" class="dnf-code-block__copy" data-copy-text="dnf_1a2b3c4d_9f8e7d6c5b4a39281706f5e4d3c2b1a0">Copy</dnf-button></pre>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="plain" title="Without a copy button" description="Just the block: code background and colour, monospace text, wrapped lines." layout="block">
+    <pre class="dnf-code-block">curl -H "Authorization: Bearer $TOKEN" https://www.example.com/api/entries/articles</pre>
+</ui-doc-example>
+
+<ui-doc-example id="copy-target" title="Copy a part" description="data-copy-target copies the text of another element - here the code element inside the block, so the button's own label is left out." layout="block">
+    <pre class="dnf-code-block"><code id="code-block-env">DATABASE_CONNECTION_STRING=Host=localhost;Port=5432;Username=postgres
+SMTP_HOST=smtp.example.com</code><dnf-button size="Sm" icon="copy" class="dnf-code-block__copy" data-copy-target="#code-block-env">Copy</dnf-button></pre>
+</ui-doc-example>
+
+<ui-doc-example id="inline" title="Inline" description="dnf-code-block--inline is a small borderless block on a code element that wraps like text - an API path under a heading." layout="block">
+    <code class="dnf-code-block dnf-code-block--inline">GET /api/entries/articles?sort=-createdAt&amp;limit=20</code>
+</ui-doc-example>
+
+<ui-doc-example id="scroll" title="Scrolling" description="dnf-code-block--scroll caps the block at 18rem and scrolls; it breaks lines only where it must." layout="block">
+    <pre class="dnf-code-block dnf-code-block--scroll" tabindex="0" role="region" aria-label="Response">{
+  "data": [
+    { "id": 1, "title": "Why we built a CMS", "status": "published", "updatedAt": "2026-10-03T14:05:00Z" },
+    { "id": 2, "title": "Hosting on Docker", "status": "published", "updatedAt": "2026-09-28T09:12:00Z" },
+    { "id": 3, "title": "Content types explained", "status": "draft", "updatedAt": "2026-09-21T16:40:00Z" },
+    { "id": 4, "title": "Webhooks in practice", "status": "published", "updatedAt": "2026-09-14T11:03:00Z" },
+    { "id": 5, "title": "Custom endpoints", "status": "published", "updatedAt": "2026-09-02T08:55:00Z" },
+    { "id": 6, "title": "Two-factor sign-in", "status": "draft", "updatedAt": "2026-08-30T13:20:00Z" },
+    { "id": 7, "title": "Theming the admin", "status": "published", "updatedAt": "2026-08-19T10:00:00Z" },
+    { "id": 8, "title": "Backups and restore", "status": "published", "updatedAt": "2026-08-11T15:45:00Z" }
+  ],
+  "meta": { "page": 1, "pageSize": 8, "total": 42 }
+}</pre>
+</ui-doc-example>
+
+<ui-doc-example id="invalid" title="Invalid" description="data-invalid colours the text in the danger colour - for a template that failed to render." layout="block">
+    <pre class="dnf-code-block" data-invalid="true">Template error at line 3: the placeholder user.firstName is not defined.</pre>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities beat the block's styles - smaller text, a lower maximum height." layout="block">
+    <pre class="dnf-code-block dnf-code-block--scroll text-xs max-h-24" tabindex="0" role="region" aria-label="Query">SELECT id, title, status
+FROM entries
+WHERE content_type = 'articles'
+ORDER BY updated_at DESC
+LIMIT 20;</pre>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="The code block has no component tokens (its colours are the global code tokens); restyle it in a scope with your own (unlayered) CSS - here on the muted surface." layout="block">
+    <div class="dnf-docs-demo-code">
+        <pre class="dnf-code-block">dotnet run --project src/DotNetForge.Web</pre>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-code .dnf-code-block {
+    background: var(--dnf-surface-muted);
+    color: var(--dnf-foreground);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-code-block</code></td><td>block</td><td><code>--dnf-code-background</code> and <code>--dnf-code-foreground</code>, monospace <code>text-sm</code>, line height 1.6, wraps (<code>pre-wrap</code>, breaks anywhere), scrolls sideways if it must</td></tr>
+        <tr><td><code>dnf-code-block__copy</code></td><td>element</td><td>a button in the top-end corner; the block keeps 6rem free for it</td></tr>
+        <tr><td><code>dnf-code-block--inline</code></td><td>modifier</td><td>a small borderless block that wraps like normal text</td></tr>
+        <tr><td><code>dnf-code-block--scroll</code></td><td>modifier</td><td>at most 18rem high, scrolls; breaks lines only where it must</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>invalid</td><td><code>[data-invalid="true"]</code></td><td>the text in <code>--dnf-danger</code></td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>The code block has no tag helper: the classes above are its API. Copying is a <code>dnf.js</code> behaviour of any
+    button (<a href="@UiDocsCatalog.Root/behaviours">Behaviours</a>):</p>
+<table>
+    <thead><tr><th>Hook</th><th>On</th><th>Behaviour</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-copy-text="value"</code></td><td>a button</td><td>copies the value (trimmed) and shows "Copied to clipboard." or an error toast</td></tr>
+        <tr><td><code>data-copy-target="#id"</code></td><td>a button</td><td>copies the target's value if it is an input, else its text</td></tr>
+    </tbody>
+</table>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The copy button needs a name - its text, or an <code>aria-label</code> when it shows only the <code>copy</code> icon.</li>
+    <li>Success and failure of a copy are announced by the toast.</li>
+    <li>A block that scrolls (<code>--scroll</code>) needs <code>tabindex="0"</code>, <code>role="region"</code> and an <code>aria-label</code>, so keyboard users can focus and scroll it.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use <code>data-copy-text</code>, or a <code>data-copy-target</code> on an inner element, for a block that holds its copy button - copying the whole block would include the button's label.</li>
+    <li>Do show a secret once, in a code block with a copy button, and say that it won't be shown again.</li>
+    <li>Don't put editable code here - use a <a href="@UiDocsCatalog.Root/components/textarea">textarea</a> with <code>dnf-textarea--code</code>.</li>
+</ul>

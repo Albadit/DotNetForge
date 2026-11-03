@@ -1,0 +1,32 @@
+@model IAccountFields
+@* The fields of a new account, for Register and the setup wizard; the form and its button stay with them. *@
+<div class="dnf-form-grid">
+    <div class="dnf-field">
+        <label class="dnf-field__label" asp-for="FirstName">First name<span class="dnf-field__optional">optional</span></label>
+        <input class="dnf-input" asp-for="FirstName" autocomplete="given-name" />
+    </div>
+    <div class="dnf-field">
+        <label class="dnf-field__label" asp-for="LastName">Last name<span class="dnf-field__optional">optional</span></label>
+        <input class="dnf-input" asp-for="LastName" autocomplete="family-name" />
+    </div>
+</div>
+<div class="dnf-field">
+    <label class="dnf-field__label" asp-for="Email">Email<span class="dnf-field__required" aria-hidden="true">*</span></label>
+    <input class="dnf-input" asp-for="Email" type="email" required autocomplete="username" />
+</div>
+<div class="dnf-field">
+    <label class="dnf-field__label" asp-for="Password">Password<span class="dnf-field__required" aria-hidden="true">*</span></label>
+    <div class="dnf-input-group">
+        <input class="dnf-input" asp-for="Password" type="password" required autocomplete="new-password" aria-describedby="password-hint" />
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-input-group__action" data-reveal="#Password" aria-pressed="false"
+                aria-label="Show password" data-js-only hidden>
+            <dnf-icon name="eye" data-reveal-icon="show" />
+            <dnf-icon name="eye-off" data-reveal-icon="hide" hidden />
+        </button>
+    </div>
+    <span class="dnf-field__description" id="password-hint">At least 8 characters, including a letter and a number.</span>
+</div>
+<div class="dnf-field">
+    <label class="dnf-field__label" asp-for="ConfirmPassword">Confirm password<span class="dnf-field__required" aria-hidden="true">*</span></label>
+    <input class="dnf-input" asp-for="ConfirmPassword" type="password" required autocomplete="new-password" />
+</div>

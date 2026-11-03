@@ -4,8 +4,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using DotNetForge.Abstractions.Database;
 using DotNetForge.Data.Database;
-using DotNetForge.Shared.Configuration;
-using DotNetForge.Shared.Entities;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

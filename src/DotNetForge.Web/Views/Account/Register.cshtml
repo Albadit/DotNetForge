@@ -4,45 +4,16 @@
     Layout = "_AuthLayout";
 }
 
-<div class="auth-heading">
+<div class="dnf-auth__heading">
     <h1>Create an account</h1>
     <p class="text-muted">Sign up with your email address and a password.</p>
 </div>
 
-<form method="post" action="/register" class="form">
+<form method="post" action="/register" class="dnf-form">
     @Html.AntiForgeryToken()
-    <form-errors />
-    <div class="form-grid">
-        <div class="field">
-            <label class="field-label" asp-for="FirstName">First name<span class="field-optional">optional</span></label>
-            <input asp-for="FirstName" autocomplete="given-name" />
-        </div>
-        <div class="field">
-            <label class="field-label" asp-for="LastName">Last name<span class="field-optional">optional</span></label>
-            <input asp-for="LastName" autocomplete="family-name" />
-        </div>
-    </div>
-    <div class="field">
-        <label class="field-label" asp-for="Email">Email<span class="field-required" aria-hidden="true">*</span></label>
-        <input asp-for="Email" type="email" required autocomplete="username" />
-    </div>
-    <div class="field">
-        <label class="field-label" asp-for="Password">Password<span class="field-required" aria-hidden="true">*</span></label>
-        <div class="input-affix">
-            <input asp-for="Password" type="password" required autocomplete="new-password" aria-describedby="password-hint" />
-            <button type="button" class="btn btn-ghost btn-icon btn-sm" data-reveal="#Password" aria-pressed="false"
-                    aria-label="Show password" data-js-only hidden>
-                <icon name="eye" data-reveal-icon="show" />
-                <icon name="eye-off" data-reveal-icon="hide" hidden />
-            </button>
-        </div>
-        <span class="field-hint" id="password-hint">At least 8 characters, including a letter and a number.</span>
-    </div>
-    <div class="field">
-        <label class="field-label" asp-for="ConfirmPassword">Confirm password<span class="field-required" aria-hidden="true">*</span></label>
-        <input asp-for="ConfirmPassword" type="password" required autocomplete="new-password" />
-    </div>
-    <button type="submit" class="btn btn-primary btn-lg btn-block">Create account</button>
+    <dnf-validation-summary />
+    <partial name="_AccountFields" model="Model" />
+    <button type="submit" class="dnf-button dnf-button--primary dnf-button--lg dnf-button--full-width">Create account</button>
 </form>
 
-<p class="auth-switch">Already have an account? <a href="/login">Sign in</a></p>
+<p class="dnf-auth__switch">Already have an account? <a href="/login">Sign in</a></p>

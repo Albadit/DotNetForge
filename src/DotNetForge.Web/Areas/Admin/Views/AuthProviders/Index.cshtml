@@ -4,57 +4,57 @@
     ViewData["Description"] = "How people sign in: with their email and password, or with an account they already have elsewhere.";
 }
 
-<div class="stack-lg">
-    <section class="card" aria-labelledby="providers-title">
-        <div class="card-header">
+<div class="dnf-stack dnf-stack--lg">
+    <section class="dnf-card" aria-labelledby="providers-title">
+        <div class="dnf-card__header">
             <div>
-                <h2 class="card-title" id="providers-title">Sign-in providers</h2>
-                <p class="card-description">An enabled provider adds "Sign in with ..." to the sign-in page. Only verified email addresses are accepted; with Enable sign-ups on (Advanced Settings), a new email gets a new account.</p>
+                <h2 class="dnf-card__title" id="providers-title">Sign-in providers</h2>
+                <p class="dnf-card__description">An enabled provider adds "Sign in with ..." to the sign-in page. Only verified email addresses are accepted; with Enable sign-ups on (Advanced Settings), a new email gets a new account.</p>
             </div>
         </div>
-        <div class="table-wrap">
-            <table class="table table-stack">
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
                 <thead>
                     <tr>
                         <th scope="col">Provider</th>
                         <th scope="col">Status</th>
                         <th scope="col">Callback URL</th>
-                        <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="cell-lead">
-                            <span class="cell-primary">Email</span>
-                            <span class="cell-sub">Email address and password - built in</span>
+                        <td class="dnf-table__cell--lead">
+                            <span class="dnf-table__primary">Email</span>
+                            <span class="dnf-table__secondary">Email address and password - built in</span>
                         </td>
-                        <td data-label="Status"><badge tone="Success" dot="true">Enabled</badge></td>
+                        <td data-label="Status"><dnf-badge tone="Success" dot="true">Enabled</dnf-badge></td>
                         <td data-label="Callback URL"><span class="text-subtle">-</span></td>
-                        <td class="col-actions"><a class="btn btn-ghost btn-sm" href="/admin/advanced-settings">Settings</a></td>
+                        <td class="dnf-table__cell--actions"><a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/advanced-settings">Settings</a></td>
                     </tr>
                     @foreach (var row in Model.Providers)
                     {
                         <tr>
-                            <td class="cell-lead">
-                                <a class="cell-primary" href="/admin/providers/@row.Provider.Key">@row.Provider.Name</a>
-                                <span class="cell-sub">@row.Provider.Key</span>
+                            <td class="dnf-table__cell--lead">
+                                <a class="dnf-table__primary" href="/admin/providers/@row.Provider.Key">@row.Provider.Name</a>
+                                <span class="dnf-table__secondary">@row.Provider.Key</span>
                             </td>
                             <td data-label="Status">
                                 @switch (row.State)
                                 {
                                     case AuthProvidersController.ProviderState.Enabled:
-                                        <badge tone="Success" dot="true">Enabled</badge>
+                                        <dnf-badge tone="Success" dot="true">Enabled</dnf-badge>
                                         break;
                                     case AuthProvidersController.ProviderState.Disabled:
-                                        <badge dot="true">Disabled</badge>
+                                        <dnf-badge dot="true">Disabled</dnf-badge>
                                         break;
                                     default:
-                                        <badge tone="@(row.Unreadable ? Tone.Warning : Tone.Neutral)">@(row.Unreadable ? "Secret unreadable" : "Not set up")</badge>
+                                        <dnf-badge tone="@(row.Unreadable ? DnfTone.Warning : DnfTone.Neutral)">@(row.Unreadable ? "Secret unreadable" : "Not set up")</dnf-badge>
                                         break;
                                 }
                             </td>
                             <td data-label="Callback URL"><code class="text-xs">@Model.AppUrl@row.Provider.CallbackPath</code></td>
-                            <td class="col-actions"><a class="btn btn-secondary btn-sm" href="/admin/providers/@row.Provider.Key"><icon name="pencil" size="sm" /> Edit</a></td>
+                            <td class="dnf-table__cell--actions"><a class="dnf-button dnf-button--secondary dnf-button--sm" href="/admin/providers/@row.Provider.Key"><dnf-icon name="pencil" size="Sm" /> Edit</a></td>
                         </tr>
                     }
                 </tbody>
@@ -62,29 +62,29 @@
         </div>
     </section>
 
-    <section class="card" aria-labelledby="extensions-title">
-        <div class="card-header">
+    <section class="dnf-card" aria-labelledby="extensions-title">
+        <div class="dnf-card__header">
             <div>
-                <h2 class="card-title" id="extensions-title">From extensions</h2>
-                <p class="card-description">Providers added by authentication extensions. They are configured in <code>.env</code> and turned on or off on Plugins.</p>
+                <h2 class="dnf-card__title" id="extensions-title">From extensions</h2>
+                <p class="dnf-card__description">Providers added by authentication extensions. They are configured in <code>.env</code> and turned on or off on Plugins.</p>
             </div>
         </div>
         @if (Model.Extensions.Count == 0)
         {
-            <empty-state icon="puzzle" title="No provider extensions" text="Authentication extensions in extensions/ can add more providers." compact="true" />
+            <dnf-empty-state icon="puzzle" title="No provider extensions" description="Authentication extensions in extensions/ can add more providers." compact="true" />
         }
         else
         {
-            <ul class="list">
+            <ul class="dnf-list">
                 @foreach (var extension in Model.Extensions)
                 {
-                    <li>
-                        <span class="grow stack-sm mfa-text">
+                    <li class="dnf-list__item">
+                        <span class="dnf-list__content">
                             <strong>@extension.Name</strong>
                             <span class="text-xs text-muted">Extension @extension.ExtensionId · scheme <code>@extension.Scheme</code></span>
                         </span>
-                        <badge tone="@(extension.Active ? Tone.Success : Tone.Neutral)" dot="true">@(extension.Active ? "Enabled" : "Disabled")</badge>
-                        <a class="btn btn-ghost btn-sm" href="/admin/plugins">Plugins</a>
+                        <dnf-badge tone="@(extension.Active ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(extension.Active ? "Enabled" : "Disabled")</dnf-badge>
+                        <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/plugins">Plugins</a>
                     </li>
                 }
             </ul>

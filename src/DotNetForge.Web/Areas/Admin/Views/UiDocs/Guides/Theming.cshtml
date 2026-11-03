@@ -1,0 +1,316 @@
+@* Theming (UI docs): light and dark, the theme switch, re-theming a subtree, and every design token. *@
+
+<p>Every colour, size and effect of the components is a <code>--dnf-*</code> custom property in
+    <code>src/DotNetForge.UI/Styles/tokens.css</code>. Components use the semantic tokens only, never literal values, so
+    re-theming is overriding tokens - for the whole page or for any part of it. Tailwind utilities read the same tokens
+    (<a href="@UiDocsCatalog.Root/customization#level-2">Customization</a>), so they follow too.</p>
+
+<h2 id="light-and-dark">Light and dark</h2>
+<ul>
+    <li><code>:root</code> declares <code>color-scheme: light dark</code>, and every colour token is
+        <code>light-dark(light, dark)</code>: the browser picks the value from the element's <strong>effective</strong>
+        colour scheme. Components never test the theme.</li>
+    <li>Without a choice, the system preference (<code>prefers-color-scheme</code>) applies.</li>
+    <li><code>data-theme="light"</code> or <code>data-theme="dark"</code> sets <code>color-scheme</code> on its element - on
+        <code>&lt;html&gt;</code> for the whole page, or <strong>on any subtree</strong> to force one theme there.</li>
+    <li>Tailwind's <code>dark:</code> variant agrees: it applies inside <code>data-theme="dark"</code> and, with a dark
+        system preference, everywhere except inside <code>data-theme="light"</code>. A logo pair uses it:
+        <code>&lt;img class="block dark:hidden"&gt;</code> plus <code>&lt;img class="hidden dark:block"&gt;</code>.</li>
+</ul>
+
+<ui-doc-example id="subtree-themes" title="Themes on a subtree" description="The first card is always light and the second always dark, whatever the page's theme. The third follows the page and re-themes itself: it is a dnf-scope that overrides the primary colour." layout="block">
+    <div class="dnf-grid dnf-grid--cols-3">
+        <div class="dnf-card" data-theme="light">
+            <div class="dnf-card__body dnf-stack">
+                <p class="text-sm font-semibold">Always light</p>
+                <div class="dnf-cluster">
+                    <button type="button" class="dnf-button dnf-button--primary">Publish</button>
+                    <button type="button" class="dnf-button dnf-button--secondary">Preview</button>
+                </div>
+                <input class="dnf-input" aria-label="Page title, light card" value="About us" />
+                <label class="dnf-switch-row"><span class="dnf-check__text">Show in menu</span><input type="checkbox" role="switch" class="dnf-switch" checked /></label>
+            </div>
+        </div>
+        <div class="dnf-card" data-theme="dark">
+            <div class="dnf-card__body dnf-stack">
+                <p class="text-sm font-semibold">Always dark</p>
+                <div class="dnf-cluster">
+                    <button type="button" class="dnf-button dnf-button--primary">Publish</button>
+                    <button type="button" class="dnf-button dnf-button--secondary">Preview</button>
+                </div>
+                <input class="dnf-input" aria-label="Page title, dark card" value="About us" />
+                <label class="dnf-switch-row"><span class="dnf-check__text">Show in menu</span><input type="checkbox" role="switch" class="dnf-switch" checked /></label>
+            </div>
+        </div>
+        <div class="dnf-card dnf-scope dnf-docs-demo-brand">
+            <div class="dnf-card__body dnf-stack">
+                <p class="text-sm font-semibold">Re-themed scope</p>
+                <div class="dnf-cluster">
+                    <button type="button" class="dnf-button dnf-button--primary">Publish</button>
+                    <button type="button" class="dnf-button dnf-button--secondary">Preview</button>
+                </div>
+                <input class="dnf-input" aria-label="Page title, re-themed card" value="About us" />
+                <label class="dnf-switch-row"><span class="dnf-check__text">Show in menu</span><input type="checkbox" role="switch" class="dnf-switch" checked /></label>
+            </div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<p>The third card's rule, in the docs' own stylesheet (unlayered):</p>
+
+<ui-doc-code id="subtree-brand-css" lang="css">
+.dnf-docs-demo-brand {
+    --dnf-primary: #7c3aed;
+    --dnf-primary-foreground: #ffffff;
+    --dnf-primary-text: light-dark(#6d28d9, #c4b5fd);
+}
+</ui-doc-code>
+
+<h2 id="switching">Switching the theme</h2>
+<p>The user's choice is stored in <code>localStorage</code> under <code>dnf-theme</code> (<code>light</code> or
+    <code>dark</code>; no entry means the system preference). Two scripts share it:</p>
+<ul>
+    <li><strong><code>dnf-theme.js</code></strong> - loaded synchronously in <code>&lt;head&gt;</code>, before the stylesheet.
+        It sets <code>&lt;html data-theme&gt;</code> from <code>dnf-theme</code> before the first paint (no flash) and adds
+        the class <code>dnf-js</code> to <code>&lt;html&gt;</code>, so <code>dnf-js-only</code> elements such as the theme
+        menu show from the first paint. Blocked storage falls back to the system preference.</li>
+    <li><strong><code>dnf.js</code></strong> - any element with <code>data-theme-set="light|dark|system"</code> switches on
+        click: it sets or removes <code>data-theme</code> on <code>&lt;html&gt;</code>, stores or clears
+        <code>dnf-theme</code>, and sets <code>aria-checked="true"</code> on the matching <code>[data-theme-set]</code>
+        elements (<code>"false"</code> on the others).</li>
+</ul>
+<p>Every page that loads <code>dnf-theme.js</code> shares the choice: the admin, the sign-in screens, these docs and the
+    admin tabs of extensions.</p>
+
+<ui-doc-example id="theme-switch" title="A theme switch" description="Menu items with data-theme-set switch this whole page; the checked one shows a check mark.">
+    <dnf-dropdown text="Theme" label="Colour theme" variant="Secondary" size="Md" placement="bottom-start">
+        <dnf-dropdown-button icon="sun" role="menuitemradio" aria-checked="false" data-theme-set="light">Light</dnf-dropdown-button>
+        <dnf-dropdown-button icon="moon" role="menuitemradio" aria-checked="false" data-theme-set="dark">Dark</dnf-dropdown-button>
+        <dnf-dropdown-button icon="monitor" role="menuitemradio" aria-checked="false" data-theme-set="system">System</dnf-dropdown-button>
+    </dnf-dropdown>
+</ui-doc-example>
+
+<p>The CMS's theme menu (<code>Views/Shared/_ThemeMenu.cshtml</code>, in the admin top bar and the header of these
+    docs) is an icon button whose sun or moon follows the effective theme through <code>dark:</code>. It is
+    <code>dnf-js-only</code>, because without JavaScript there is nothing to switch:</p>
+
+<ui-doc-code id="theme-menu-markup" lang="razor">
+<div class="dnf-dropdown dnf-js-only">
+    <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only" popovertarget="theme-menu" aria-haspopup="menu"
+            aria-expanded="false" aria-label="Colour theme">
+        <dnf-icon name="sun" class="inline dark:hidden" />
+        <dnf-icon name="moon" class="hidden dark:inline" />
+    </button>
+    <div class="dnf-dropdown__menu" id="theme-menu" popover role="menu" aria-label="Colour theme" data-placement="bottom-end">
+        <dnf-dropdown-label>Theme</dnf-dropdown-label>
+        <dnf-dropdown-button icon="sun" role="menuitemradio" aria-checked="false" data-theme-set="light">Light</dnf-dropdown-button>
+        <dnf-dropdown-button icon="moon" role="menuitemradio" aria-checked="false" data-theme-set="dark">Dark</dnf-dropdown-button>
+        <dnf-dropdown-button icon="monitor" role="menuitemradio" aria-checked="false" data-theme-set="system">System</dnf-dropdown-button>
+    </div>
+</div>
+</ui-doc-code>
+
+<h2 id="subtrees">Re-theming a subtree</h2>
+<p>Override <strong>leaf</strong> tokens on an element, in your own unlayered CSS. Mark the element
+    <code>dnf-scope</code> when you override a colour that has derived tokens, so its hover and soft shades follow:</p>
+
+<ui-doc-code id="subtree-css" lang="css">
+.reports.dnf-scope {
+    --dnf-primary: #2563eb;            /* hover, soft and soft-border follow (derived) */
+    --dnf-primary-foreground: #ffffff;
+    --dnf-primary-text: light-dark(#1d4ed8, #93c5fd);
+    --dnf-radius-md: 2px;
+}
+</ui-doc-code>
+
+<p>Everything inside follows - components and Tailwind utilities (<code>bg-primary</code>, <code>rounded-md</code>) alike,
+    because both read the tokens through <code>var()</code>. Keep a light and a dark value with <code>light-dark()</code>.
+    An extension's root element is a scope (<a href="@UiDocsCatalog.Root/extensions#isolation">Extensions</a>).</p>
+
+<h3 id="derived">Derived tokens</h3>
+<p>Computed from the leaves with <code>color-mix()</code>, on <code>:root</code> <strong>and on every
+    <code>.dnf-scope</code></strong>. A custom property is computed where it is declared, so a derived token declared
+    only on <code>:root</code> would keep the root's primary colour inside an element that overrides it; declaring it
+    again on <code>.dnf-scope</code> fixes that.</p>
+<table>
+    <thead><tr><th>Token</th><th>Swatch</th><th>From</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-primary-hover</code></td><td>-</td><td><code>--dnf-primary</code> mixed with 8% black</td></tr>
+        <tr><td><code>--dnf-primary-soft</code>, <code>--dnf-primary-soft-border</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-primary-soft" aria-hidden="true"></span></td><td><code>--dnf-primary</code> tinted (light) or translucent (dark)</td></tr>
+        <tr><td><code>--dnf-success-soft</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-success-soft" aria-hidden="true"></span></td><td><code>--dnf-success</code>, tinted or translucent</td></tr>
+        <tr><td><code>--dnf-warning-soft</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-warning-soft" aria-hidden="true"></span></td><td><code>--dnf-warning</code>, tinted or translucent</td></tr>
+        <tr><td><code>--dnf-danger-soft</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-danger-soft" aria-hidden="true"></span></td><td><code>--dnf-danger</code>, tinted or translucent</td></tr>
+        <tr><td><code>--dnf-info-soft</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-info-soft" aria-hidden="true"></span></td><td><code>--dnf-info</code>, tinted or translucent</td></tr>
+        <tr><td><code>--dnf-danger-hover</code></td><td>-</td><td><code>--dnf-danger</code> 12% darker (light) or lighter (dark)</td></tr>
+        <tr><td><code>--dnf-focus-ring</code></td><td>-</td><td><code>0 0 0 2px var(--dnf-surface), 0 0 0 4px var(--dnf-focus)</code> - a <code>box-shadow</code></td></tr>
+    </tbody>
+</table>
+
+<h2 id="tokens">Tokens</h2>
+
+<h3 id="palette">Palette</h3>
+<p>The brand comes from the logo: charcoal <code>#14171c</code> (<code>--dnf-gray-950</code>) and forge orange
+    <code>#f76707</code> (<code>--dnf-forge-500</code>). The palette is raw material for the semantic tokens; components
+    don't use it directly.</p>
+<table>
+    <thead><tr><th>Token</th><th>Value</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-forge-50</code></td><td><code>#fff4ec</code></td></tr>
+        <tr><td><code>--dnf-forge-100</code></td><td><code>#ffe3cf</code></td></tr>
+        <tr><td><code>--dnf-forge-200</code></td><td><code>#ffc49c</code></td></tr>
+        <tr><td><code>--dnf-forge-300</code></td><td><code>#ff9a4d</code></td></tr>
+        <tr><td><code>--dnf-forge-400</code></td><td><code>#ff8124</code></td></tr>
+        <tr><td><code>--dnf-forge-500</code></td><td><code>#f76707</code> - the brand orange</td></tr>
+        <tr><td><code>--dnf-forge-600</code></td><td><code>#e8590c</code></td></tr>
+        <tr><td><code>--dnf-forge-700</code></td><td><code>#c2410c</code></td></tr>
+        <tr><td><code>--dnf-forge-800</code></td><td><code>#9a3412</code></td></tr>
+        <tr><td><code>--dnf-gray-0</code> / <code>-50</code> / <code>-100</code> / <code>-200</code></td><td><code>#ffffff</code> / <code>#f7f8f9</code> / <code>#eef0f2</code> / <code>#e1e4e8</code></td></tr>
+        <tr><td><code>--dnf-gray-300</code> / <code>-400</code> / <code>-500</code> / <code>-600</code></td><td><code>#c9ced5</code> / <code>#9aa1ab</code> / <code>#6c727d</code> / <code>#4d535c</code></td></tr>
+        <tr><td><code>--dnf-gray-700</code> / <code>-800</code> / <code>-850</code> / <code>-900</code></td><td><code>#363b42</code> / <code>#23272d</code> / <code>#1d2127</code> / <code>#16191e</code></td></tr>
+        <tr><td><code>--dnf-gray-950</code> / <code>-1000</code></td><td><code>#14171c</code> (the brand charcoal) / <code>#0d0f12</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="semantic-colours">Semantic colours</h3>
+<p>Every colour is <code>light-dark(light, dark)</code>; gray and forge names are the palette above. The swatch shows the
+    value in the current theme - switch the theme to compare.</p>
+<table>
+    <thead><tr><th>Token</th><th>Swatch</th><th>Light</th><th>Dark</th><th>Use</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-background</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-background" aria-hidden="true"></span></td><td>gray-50</td><td>gray-1000</td><td>the page</td></tr>
+        <tr><td><code>--dnf-foreground</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-foreground" aria-hidden="true"></span></td><td>gray-950</td><td>gray-100</td><td>text</td></tr>
+        <tr><td><code>--dnf-muted-foreground</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-muted" aria-hidden="true"></span></td><td>gray-600</td><td><code>#a6adb8</code></td><td>secondary text</td></tr>
+        <tr><td><code>--dnf-subtle-foreground</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-subtle" aria-hidden="true"></span></td><td>gray-500</td><td><code>#8a919c</code></td><td>hints, placeholders</td></tr>
+        <tr><td><code>--dnf-inverse-foreground</code></td><td>-</td><td>gray-0</td><td>gray-950</td><td>text on an inverted surface</td></tr>
+        <tr><td><code>--dnf-surface</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-surface" aria-hidden="true"></span></td><td>gray-0</td><td>gray-900</td><td>cards, controls</td></tr>
+        <tr><td><code>--dnf-surface-foreground</code></td><td>-</td><td colspan="2">= <code>--dnf-foreground</code></td><td>text on a surface</td></tr>
+        <tr><td><code>--dnf-surface-raised</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-surface-raised" aria-hidden="true"></span></td><td>gray-0</td><td>gray-850</td><td>menus, dialogs, toasts</td></tr>
+        <tr><td><code>--dnf-surface-muted</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-surface-muted" aria-hidden="true"></span></td><td>gray-100</td><td>gray-850</td><td>table heads, card footers, inline code</td></tr>
+        <tr><td><code>--dnf-surface-hover</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-surface-hover" aria-hidden="true"></span></td><td>gray-100</td><td>gray-800</td><td>hovered rows and items</td></tr>
+        <tr><td><code>--dnf-border</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-border" aria-hidden="true"></span></td><td>gray-200</td><td><code>#2a2f37</code></td><td>dividers</td></tr>
+        <tr><td><code>--dnf-border-strong</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-border-strong" aria-hidden="true"></span></td><td>gray-300</td><td><code>#3a4049</code></td><td>control borders</td></tr>
+        <tr><td><code>--dnf-primary</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-primary" aria-hidden="true"></span></td><td>forge-500</td><td>forge-500</td><td>fills: primary buttons, indicators, focus</td></tr>
+        <tr><td><code>--dnf-primary-foreground</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-primary-foreground" aria-hidden="true"></span></td><td>gray-0 (white)</td><td>gray-0 (white)</td><td>text on <code>--dnf-primary</code></td></tr>
+        <tr><td><code>--dnf-primary-text</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-primary-text" aria-hidden="true"></span></td><td>forge-700</td><td>forge-300</td><td>orange text and links</td></tr>
+        <tr><td><code>--dnf-secondary</code>, <code>-foreground</code></td><td>-</td><td colspan="2">= <code>--dnf-surface</code>, <code>--dnf-foreground</code></td><td>the default button</td></tr>
+        <tr><td><code>--dnf-success</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-success" aria-hidden="true"></span></td><td><code>#15703f</code></td><td><code>#4cc38a</code></td><td>success text, icons, fills</td></tr>
+        <tr><td><code>--dnf-warning</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-warning" aria-hidden="true"></span></td><td><code>#9a5200</code></td><td><code>#f5b041</code></td><td>warning text, icons, fills</td></tr>
+        <tr><td><code>--dnf-danger</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-danger" aria-hidden="true"></span></td><td><code>#c92a2a</code></td><td><code>#ff6b6b</code></td><td>danger text, icons, fills</td></tr>
+        <tr><td><code>--dnf-danger-foreground</code></td><td>-</td><td>gray-0</td><td>gray-950</td><td>text on <code>--dnf-danger</code></td></tr>
+        <tr><td><code>--dnf-info</code></td><td><span class="inline-block size-4 rounded-sm border border-border-strong align-middle bg-info" aria-hidden="true"></span></td><td><code>#1c64c8</code></td><td><code>#74a7ff</code></td><td>info text, icons, fills</td></tr>
+        <tr><td><code>--dnf-focus</code></td><td>-</td><td colspan="2">= <code>--dnf-primary</code></td><td>the focus outline</td></tr>
+        <tr><td><code>--dnf-nav-background</code>, <code>-surface</code>, <code>-hover</code>, <code>-border</code>, <code>-foreground</code>, <code>-muted-foreground</code>, <code>-strong-foreground</code></td><td>-</td><td>white, grays</td><td><code>#0a0c0f</code> …</td><td>navigation (the CMS sidebar)</td></tr>
+        <tr><td><code>--dnf-brand-background</code>, <code>-surface</code>, <code>-hover</code>, <code>-border</code>, <code>-foreground</code>, <code>-strong-foreground</code></td><td>-</td><td>white, grays</td><td><code>#0a0c0f</code> …</td><td>brand chrome (the dashboard band, the sign-in panel)</td></tr>
+        <tr><td><code>--dnf-code-background</code>, <code>-foreground</code></td><td>-</td><td>gray-100, gray-950</td><td><code>#0a0c0f</code>, forge-100</td><td>code blocks</td></tr>
+        <tr><td><code>--dnf-tooltip-background</code>, <code>-foreground</code></td><td>-</td><td>gray-950, gray-0</td><td>gray-100, gray-950</td><td>the tooltip, contrasting with the page</td></tr>
+        <tr><td><code>--dnf-shadow-xs</code> … <code>-lg</code></td><td>-</td><td>charcoal at 4-28%</td><td>black at 20-70%</td><td>elevation</td></tr>
+        <tr><td><code>--dnf-backdrop</code></td><td>-</td><td><code>rgb(13 15 18 / 0.55)</code></td><td><code>rgb(0 0 0 / 0.65)</code></td><td>the backdrop of dialogs</td></tr>
+        <tr><td><code>--dnf-selection</code></td><td>-</td><td>forge-200</td><td>forge-200</td><td>selected text (on gray-950 text)</td></tr>
+    </tbody>
+</table>
+
+<h3 id="typography">Typography</h3>
+<table>
+    <thead><tr><th>Token</th><th>Value</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-font-sans</code></td><td>"Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif - system fonts, no web font</td></tr>
+        <tr><td><code>--dnf-font-mono</code></td><td>ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace</td></tr>
+        <tr><td><code>--dnf-text-xs</code> / <code>-sm</code> / <code>-base</code></td><td>12 / 13 / 14px (14px is the admin's body text)</td></tr>
+        <tr><td><code>--dnf-text-md</code> / <code>-lg</code> / <code>-xl</code></td><td>15 / 16 / 18px</td></tr>
+        <tr><td><code>--dnf-text-2xl</code> / <code>-3xl</code> / <code>-4xl</code></td><td>22 (page titles) / 28 / 36px - all in rem</td></tr>
+        <tr><td><code>--dnf-leading-tight</code>, <code>--dnf-leading</code></td><td>1.25, 1.5</td></tr>
+        <tr><td><code>--dnf-weight-regular</code> / <code>-medium</code> / <code>-semibold</code> / <code>-bold</code></td><td>400 / 500 / 600 / 700</td></tr>
+    </tbody>
+</table>
+
+<h3 id="space">Space, controls and radius</h3>
+<table>
+    <thead><tr><th>Token</th><th>Value</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-space-1</code> … <code>-6</code></td><td>a 4px grid: 0.25, 0.5, 0.75, 1, 1.25, 1.5rem</td></tr>
+        <tr><td><code>--dnf-space-8</code>, <code>-10</code>, <code>-12</code>, <code>-16</code></td><td>2, 2.5, 3, 4rem</td></tr>
+        <tr><td><code>--dnf-control-sm</code> / <code>-md</code> / <code>-lg</code></td><td>30 / 36 / 44px - the heights of buttons, inputs and selects; 44px is also the minimum touch target</td></tr>
+        <tr><td><code>--dnf-radius-sm</code> / <code>-md</code> / <code>-lg</code> / <code>-xl</code> / <code>-full</code></td><td>4 / 6 / 10 / 14 / 999px</td></tr>
+        <tr><td><code>--dnf-forge-cut</code></td><td><code>polygon(0 0, 100% 0, calc(100% - 0.5rem) 100%, 0 100%)</code> - the logo's diagonal cut, for <code>clip-path</code> brand accents</td></tr>
+    </tbody>
+</table>
+
+<ui-doc-example id="control-heights" title="Control heights" description="The three control heights, shared by buttons, inputs and selects.">
+    <dnf-button size="Sm">30px</dnf-button>
+    <dnf-button>36px</dnf-button>
+    <dnf-button size="Lg">44px</dnf-button>
+    <input class="dnf-input dnf-input--sm w-32" aria-label="Small input" value="30px" />
+    <input class="dnf-input w-32" aria-label="Medium input" value="36px" />
+    <input class="dnf-input dnf-input--lg w-32" aria-label="Large input" value="44px" />
+</ui-doc-example>
+
+<ui-doc-example id="radius-scale" title="Radius" description="The radius tokens, drawn with the Tailwind utilities that map to them.">
+    <div class="dnf-stack dnf-stack--sm items-center">
+        <div class="size-12 rounded-sm border border-border-strong bg-primary-soft"></div>
+        <span class="text-xs text-muted">sm 4px</span>
+    </div>
+    <div class="dnf-stack dnf-stack--sm items-center">
+        <div class="size-12 rounded-md border border-border-strong bg-primary-soft"></div>
+        <span class="text-xs text-muted">md 6px</span>
+    </div>
+    <div class="dnf-stack dnf-stack--sm items-center">
+        <div class="size-12 rounded-lg border border-border-strong bg-primary-soft"></div>
+        <span class="text-xs text-muted">lg 10px</span>
+    </div>
+    <div class="dnf-stack dnf-stack--sm items-center">
+        <div class="size-12 rounded-xl border border-border-strong bg-primary-soft"></div>
+        <span class="text-xs text-muted">xl 14px</span>
+    </div>
+    <div class="dnf-stack dnf-stack--sm items-center">
+        <div class="size-12 rounded-[var(--dnf-radius-full)] border border-border-strong bg-primary-soft"></div>
+        <span class="text-xs text-muted">full</span>
+    </div>
+</ui-doc-example>
+
+<h3 id="layout">Layout</h3>
+<table>
+    <thead><tr><th>Token</th><th>Value</th><th>Used by</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-sidebar-width</code></td><td>16rem</td><td>the CMS admin shell</td></tr>
+        <tr><td><code>--dnf-topbar-height</code></td><td>3.5rem</td><td>the CMS admin shell; the sticky offset of <code>dnf-split__aside</code></td></tr>
+        <tr><td><code>--dnf-content-max</code></td><td>96rem</td><td><code>dnf-container</code></td></tr>
+        <tr><td><code>--dnf-form-max</code></td><td>44rem</td><td><code>dnf-form--narrow</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="motion">Motion</h3>
+<table>
+    <thead><tr><th>Token</th><th>Value</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-duration-fast</code></td><td>100ms</td></tr>
+        <tr><td><code>--dnf-duration</code></td><td>160ms</td></tr>
+        <tr><td><code>--dnf-ease</code></td><td><code>cubic-bezier(0.2, 0, 0, 1)</code></td></tr>
+    </tbody>
+</table>
+<p>Under <code>prefers-reduced-motion: reduce</code> both durations are <code>0ms</code>.</p>
+
+<h3 id="stacking">Stacking</h3>
+<table>
+    <thead><tr><th>Token</th><th>Value</th><th>Used by</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-z-sticky</code></td><td>10</td><td>the CMS admin shell</td></tr>
+        <tr><td><code>--dnf-z-drawer</code></td><td>40</td><td>the CMS admin shell</td></tr>
+        <tr><td><code>--dnf-z-dialog</code></td><td>50</td><td>nothing in the library - dialogs use the top layer</td></tr>
+        <tr><td><code>--dnf-z-toast</code></td><td>60</td><td><code>dnf-toast-region</code>, <code>dnf-skip-link</code></td></tr>
+        <tr><td><code>--dnf-z-tooltip</code></td><td>70</td><td><code>dnf-tooltip</code></td></tr>
+    </tbody>
+</table>
+<p>Dropdowns, popovers, dialogs and the tooltip open in the browser's top layer, where <code>z-index</code> does not
+    apply (<a href="@UiDocsCatalog.Root/extensions#overlays">overlays</a>).</p>
+
+<h2 id="contrast">Contrast</h2>
+<ul>
+    <li>Every other text token meets WCAG 2.2 AA (at least 4.5:1) on <code>--dnf-surface</code> and
+        <code>--dnf-background</code> in both themes.</li>
+    <li>Orange is a <strong>fill</strong> colour with <strong>white</strong> on top (<code>--dnf-primary-foreground</code>,
+        3.0:1) - the brand's choice, below AA for small text. For a fill that passes with white, override
+        <code>--dnf-primary</code> (for example <code>#cc4a0a</code>, 4.6:1). Orange <strong>text</strong> uses
+        <code>--dnf-primary-text</code> (5.2:1 light, 8.4:1 dark).</li>
+    <li>Never use <code>--dnf-forge-500</code> for text, and check contrast again when you
+        add or override a colour token.</li>
+</ul>

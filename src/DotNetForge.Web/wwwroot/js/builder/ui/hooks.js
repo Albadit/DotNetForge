@@ -82,11 +82,6 @@ export function useStructure() {
     }), [rev, session]);
     return n + rev * 100000;
 }
-export function useLatest(value) {
-    const ref = useRef(value);
-    ref.current = value;
-    return ref;
-}
 /** Local draft state for an input that commits on blur/Enter but follows external changes. */
 export function useDraft(value) {
     const [draft, setDraft] = useState(value);

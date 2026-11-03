@@ -11,7 +11,8 @@ COPY . .
 # Extensions with code are compiled into their own bin/ folders first; the publish below copies extensions/ as files
 # (.docs/features/extensions.md#deployment).
 RUN set -e; for project in $(find extensions -name '*.csproj'); do dotnet build "$project" --configuration Release; done
-RUN dotnet publish src/DotNetForge.Web/DotNetForge.Web.csproj --configuration Release --output /app /p:UseAppHost=false
+# Only this platform's native libraries, not those of every operating system.
+RUN dotnet publish src/DotNetForge.Web/DotNetForge.Web.csproj --configuration Release --output /app --use-current-runtime --self-contained false /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 # Optional ffmpeg for video compression (.docs/features/media-storage.md#optimization), about 200 MB more:

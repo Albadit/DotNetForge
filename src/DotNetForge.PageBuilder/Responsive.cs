@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace DotNetForge.PageBuilder
@@ -43,11 +41,6 @@ namespace DotNetForge.PageBuilder
     /// </summary>
     public static class Responsive
     {
-        internal static string Key(Breakpoint bp)
-        {
-            return bp == Breakpoint.Base ? "base" : bp == Breakpoint.Tablet ? "tablet" : "mobile";
-        }
-
         /// <summary>The values that apply at a breakpoint: base, then tablet, then mobile spread over each other.</summary>
         public static JObject Merged(JObject value, Breakpoint bp)
         {

@@ -13,6 +13,19 @@
     <!-- ICU culture data on: SQL Server's client (Microsoft.Data.SqlClient) refuses to run in invariant mode, and
          localized formatting needs it anyway. The aspnet:10.0 runtime image ships ICU (.docs/database/providers.md). -->
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- The code rules of .editorconfig (unused code, the guardrails) also run in `dotnet build`, not only in the IDE
+         (.docs/guides/testing.md#guardrails). -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
+
+  <!-- The guardrails: CA1502's complexity limit, and the file-length and nesting analyzer (build/DotNetForge.Analyzers),
+       compiler-only - nothing of it reaches a build output. -->
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)CodeMetricsConfig.txt" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'DotNetForge.Analyzers'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)build/DotNetForge.Analyzers/DotNetForge.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
 
 </Project>

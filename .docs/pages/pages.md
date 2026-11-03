@@ -17,7 +17,7 @@ what each role may change differs (see [Permissions](#permissions)). Rules for c
 | --- | --- |
 | Route | `GET /admin/pages` |
 | Query parameter | `selected` (`Guid`, optional) - the content page shown in the editor |
-| Mutations | `POST /admin/pages/create?parent={guid?}`, `POST /admin/pages/update/{id:guid}`, `POST /admin/pages/duplicate/{id:guid}`, `POST /admin/pages/delete/{id:guid}`, `POST /admin/pages/reorder` (JSON) |
+| Mutations | `POST /admin/pages/create?parent={guid?}`, `POST /admin/pages/update/{id:guid}`, `POST /admin/pages/duplicate/{id:guid}`, `POST /admin/pages/delete/{id:guid}`, `POST /admin/pages/reorder` (JSON), `POST /admin/pages/move/{id:guid}` (`parentId`, empty = Root) |
 | Navigation entry | Sidebar → **Main** → **Pages** (`AdminNavigation.Tree`; active for any `/admin/pages...` path) |
 | Breadcrumbs | **Main** › **Pages** |
 | Old addresses | `GET /admin/content?selected={id}` and `GET /admin/content/{id}/builder` answer **301** to `/admin/pages?selected={id}` and `/admin/pages/{id}/builder` (`ContentController.Index` / `LegacyBuilder`): `/admin/content` is now the [Content Manager](content-manager.md) of structured content |
@@ -39,10 +39,10 @@ src/DotNetForge.Shared/Authorization/PermissionMatrix.cs   role defaults for the
 src/DotNetForge.Web/Areas/Admin/Views/Pages/Index.cshtml           header action form#treeActions, tree card (filter, empty state), editor column
 src/DotNetForge.Web/Areas/Admin/Views/Pages/_TreeNodes.cshtml      recursive tree partial (open/close toggle, status dot, add-child and delete buttons, draggable when allowed)
 src/DotNetForge.Web/Areas/Admin/Views/Pages/_PageForm.cshtml       document editor (General, SEO, Publishing, Delete page) + hidden form#deletePageForm
-src/DotNetForge.Web/wwwroot/js/forge/pages.js                      conditional fields, publishing options with Published, tree filter, drag-and-drop reorder
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                           confirm dialog (data-confirm), toasts, data-js-only (loaded by _AdminLayout)
+src/DotNetForge.Web/wwwroot/js/admin/pages.js                      conditional fields, publishing options with Published, tree filter, drag-and-drop reorder
+src/DotNetForge.UI/wwwroot/dnf.js                                   confirm dialog (data-confirm), toasts, tabs, data-js-only (loaded by _AdminLayout)
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                    toast region (TempData["Success"]) + confirm <dialog>
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                      .content-manager, .tree-card, .page-tree, .tree-row, .tree-action, .tree-toggle, .editor, .editor-aside
+src/DotNetForge.Web/wwwroot/css/admin/content.css                     .dnf-content-manager (+ __tree, __search), .dnf-tree (+ __item, __row, __link, __toggle, __action), .dnf-search-preview, .dnf-layout-status
 src/DotNetForge.Shared/Entities/Content.cs       Page entity
 ```
 
@@ -55,39 +55,42 @@ Components, toasts and the confirm dialog: [design system](../architecture/desig
 Pages (_AdminLayout, h1 "Pages")
 ├── Description "Build the site's page tree, then edit each page's URL, SEO, publishing and layout. Structured content lives in the Content Manager."
 ├── Header action: [New page] (primary)                 form#treeActions (POST, antiforgery)
-└── .content-manager (tree 16-20rem | editor; one column below 64rem)
-    ├── aside.card.tree-card (sticky)
+└── .dnf-content-manager (tree 16-20rem | editor; one column below 64rem)
+    ├── aside.dnf-card.dnf-content-manager__tree (sticky)
     │   ├── header "Pages" + [Close all / Open all] (JS only, when a page has children) + badge <page count>
     │   ├── filter "Filter pages" (search input, JS only, when pages exist)
     │   └── body: page tree (_TreeNodes, recursive)  or empty state "No pages yet" [New page]
-    │       └── li.tree-item (draggable only with "update")
+    │       └── li.dnf-tree__item (draggable only with "update", and never the home page)
     │           ├── status dot (Published / Disabled) + title + /slug   link to ?selected={id}
     │           ├── [›/⌄] open/close (only with child pages, JS only; closed pages remembered in localStorage
     │           │         `dnf-tree-collapsed`; the selected page's parents always open; filtering shows every match)
-    │           ├── [⋯] row actions (<action-menu>, shown on hover/focus):
+    │           ├── [⋯] row actions (<dnf-dropdown>, shown on hover/focus):
     │           │     ├── View on site - the page's public URL in a new tab (`PageTreeNode.ViewUrl`, built like the
     │           │     │     site resolves URLs); a page not on the site (disabled, a disabled parent, a dynamic
     │           │     │     `[param]` URL, under the home page) shows the reason (menu note) instead
     │           │     ├── Add child page                  POST /admin/pages/create?parent={id}
     │           │     ├── Duplicate                       POST /admin/pages/duplicate/{id} (see below)
+    │           │     ├── Move… (with "update", JS only; not on Home): the [move dialog](media.md#move-dialog), a tree of pages with Root first;
+    │           │     │     the page goes last under its new parent (`PageService.MoveAsync`: no cycle, no slug clash), audit `content.reordered`
+    │           │     ├── Move up / Move down (with "update", not on Home, not above Home, not at that end of its siblings; the reorder without dragging, pages.js)
     │           │     └── Delete (danger; when the user may delete it: `Pages` / `delete`, or `delete.own` on their
     │           │           own pages) → confirmation dialog → POST /admin/pages/delete/{id}
     │           └── children (nested _TreeNodes)
     │       └── "No page matches the filter." (hidden note)
     └── section "Page editor"
         ├── (nothing selected) card with empty state "Select a page to edit"
-        └── _PageForm: form#pageForm.editor (novalidate)
-            ├── .editor-main
-            │   ├── <form-errors />                     also shows a refused delete
+        └── _PageForm: form#pageForm.dnf-split (novalidate)
+            ├── .dnf-split__main
+            │   ├── <dnf-validation-summary />                     also shows a refused delete
             │   ├── card <Title> + status badge (Published / Disabled)
             │   │   └── Title*, Slug* (+ hint), Page type ▾, Parent page ▾,
             │   │       Target URL (URL redirect) / File reference (File), Sort order (+ hint)
             │   └── card "SEO": Meta title, Meta description, Keywords, Canonical URL (all optional)
-            └── aside.editor-aside (sticky; below the main column under 80rem)
+            └── aside.dnf-split__aside (sticky; below the main column under 80rem)
                 ├── card "Publishing": switch Published (off = disabled),
                 │   #publishOpts: switch Show in menu, Publish at (UTC), Unpublish at (UTC), hint
                 │   └── footer [Save changes]
-                └── card.card-danger "Delete page" - "Its child pages move up a level; they are not deleted."
+                └── card.dnf-card--danger "Delete page" - "Its child pages move up a level; they are not deleted." (not for the home page)
                     └── [Delete page]                   submits form#deletePageForm, data-confirm
 ```
 
@@ -102,8 +105,8 @@ page**; the server decides on submit (see [Permissions](#permissions)). Only dra
 - **Inputs:** `ContentIndexViewModel.Tree` (`IReadOnlyList<PageTreeNode>`), `ViewData["SelectedId"]`,
   `ViewData["CanReorder"]` (`Can("Collection types", "update")`, set in `PagesController.OnActionExecuted`).
 - **Rendering:** nodes ordered by `SortOrder` then `Title` (order of the query; children keep that order). The
-  header badge counts all pages. The selected row gets `.active` and its link `aria-current="page"`. The status dot is
-  `dot-success` "Published" when `Published`, else `dot-danger` "Disabled" (with an `sr-only` label; a page
+  header badge counts all pages. The selected row gets `data-active="true"` and its link `aria-current="page"`. The status dot is
+  `dnf-status-dot--success` "Published" when `Published`, else `dnf-status-dot--danger` "Disabled" (with an `sr-only` label; a page
   still carrying the legacy `Disabled` flag counts as not published) - stored flags only, so a published page with a future schedule shows Published
   even though it isn't live. `draggable` is `true` only with `CanReorder`: then the whole row drags (grab cursor; no separate handle - the title
   link is `draggable="false"` so dragging it moves the row, not the link).
@@ -121,7 +124,7 @@ When nothing matches, `[data-tree-empty]` shows "No page matches the filter.". C
 
 One shared POST form with an antiforgery token in the page header (`@section Actions`). Its button posts to
 `/admin/pages/create`; the empty state's **New page** uses `form="treeActions"` and its own `formaction`. The row
-menu's items are `<menu-post>` forms with their own antiforgery token, so every create, duplicate and delete stays
+menu's items are `<dnf-dropdown-post>` forms with their own antiforgery token, so every create, duplicate and delete stays
 POST + antiforgery.
 
 **Duplicate** (`PagesController.Duplicate`, needs `create`; a user blocked from editing the page can't copy it):
@@ -133,7 +136,7 @@ selected.
 
 ### Page editor
 
-`_PageForm.cshtml`, `form#pageForm`: one form in five tabs (`data-tabs`, `ui.js`). The tab is kept in the URL hash and
+`_PageForm.cshtml`, `form#pageForm`: one form in five tabs (`data-tabs`, `dnf.js`). The tab is kept in the URL hash and
 in a hidden `tab` field, so saving returns to the same tab (`/admin/pages?selected={id}#seo`). Without JavaScript the
 five panels are shown one below the other.
 
@@ -169,7 +172,7 @@ every tab; **Save changes** saves all tabs at once.
 The **Delete page** button sits inside the editor but submits a separate, hidden POST form (`form="deletePageForm"`,
 `/admin/pages/delete/{id}`, own antiforgery token), so deleting never posts the edited fields. The button carries
 `data-confirm="Delete this page? Its child pages move up a level."`, `data-confirm-title="Delete page"` and
-`data-confirm-action="Delete page"`: `ui.js` opens the shared confirm dialog (title **Delete page**, buttons **Cancel**
+`data-confirm-action="Delete page"`: `dnf.js` opens the shared confirm dialog (title **Delete page**, buttons **Cancel**
 / **Delete page**) and submits only on confirm; without the dialog API it falls back to `window.confirm`, without JS the
 form submits directly ([feedback](../architecture/design-system.md#feedback)). No inline `onsubmit` (CSP).
 
@@ -218,7 +221,7 @@ sequenceDiagram
     else permitted
         C->>P: ApplyAsync(page, form)
         alt error message
-            C-->>U: Index view re-rendered, error in <form-errors />, unsaved input kept
+            C-->>U: Index view re-rendered, error in <dnf-validation-summary />, unsaved input kept
         else ok
             C->>DB: UpdatedDate = UtcNow, SaveChanges
             C->>A: content.updated
@@ -238,12 +241,12 @@ sequenceDiagram
 5. **Data:** every `PageInput` field; slug normalized by `Slugify`; schedule dates treated as UTC.
 6. **Backend:** `UpdatedDate` set, one save; audit entry in a second save.
 7. **Result:** redirect with `TempData["Success"]` = `Saved '<title>'.`, shown as a success toast by the layout.
-8. **Errors:** validation or missing publish permission → same screen with the message in `<form-errors />` and the
+8. **Errors:** validation or missing publish permission → same screen with the message in `<dnf-validation-summary />` and the
    posted input; missing page → 404; no edit permission → `/account/denied`; DB exceptions → global error page.
 
 ### Delete a page
 
-1. **Trigger:** **Delete page** → confirm dialog (`data-confirm` on the button, `ui.js`) → submits
+1. **Trigger:** **Delete page** → confirm dialog (`data-confirm` on the button, `dnf.js`) → submits
    `form#deletePageForm`.
 2. **Validation:** page must exist (else 404); `delete`, or `delete.own` on an own page (else
    `Forbid()` → `/account/denied`); `IPageService.DeleteAsync` refuses when re-parenting the children would put two
@@ -253,16 +256,16 @@ sequenceDiagram
    is removed; one save; audit `content.deleted`.
 5. **Result:** redirect to `/admin/pages` (nothing selected), success toast `Deleted '<title>'.`.
 6. **Errors:** a clash re-renders the screen (status 200) with the page still selected and
-   `Can't delete: its child pages would move up a level and clash. <conflict>` in the editor's `<form-errors />`;
+   `Can't delete: its child pages would move up a level and clash. <conflict>` in the editor's `<dnf-validation-summary />`;
    nothing is deleted. Rules: [`DeleteAsync`](../features/content-pages-and-routing.md#deleteasync---delete).
 
 ### Reorder / re-parent by drag and drop
 
 ```mermaid
 flowchart LR
-    D["dragstart on li.tree-item[draggable=true]"] --> O["dragover: highlight .tree-row (not inside dragged)"]
+    D["dragstart on li.dnf-tree__item[draggable=true]"] --> O["dragover: highlight .dnf-tree__row (not inside dragged)"]
     O --> Drop["drop on a row: insert dragged li BEFORE target li (same list as target)"]
-    Drop --> W["persist(): walk every .tree-card ul.page-tree → {id, parentPageId, sortOrder=index}"]
+    Drop --> W["persist(): walk every .dnf-content-manager__tree ul.dnf-tree → {id, parentPageId, sortOrder=index}"]
     W --> F["fetch POST /admin/pages/reorder<br/>JSON {items}, header X-CSRF-TOKEN"]
     F --> C["PagesController.Reorder: needs 'update'<br/>IPageService.ReorderAsync validates the tree"]
     C -- "ok: SaveChanges + audit content.reordered" --> R["200 {ok: true} → window.location.reload()"]
@@ -281,7 +284,7 @@ flowchart LR
   only pages whose parent or sort order changed get a new `UpdatedDate`.
 - Success writes one audit entry `content.reordered` (entity type `Page`, display `<n> page(s)` = number of posted
   positions) and reloads without a toast.
-- On failure `pages.js` calls `window.Forge.toast(message, "danger")` with the server's `error` text (e.g.
+- On failure `pages.js` calls `window.dnfUI.toast(message, "danger")` with the server's `error` text (e.g.
   `That move would create a cycle in the page tree.`) or `Could not save the new order.`, then reloads after 1.5 s,
   so the tree returns to its stored order. The reload keeps the URL, so the selected page stays open.
 
@@ -305,9 +308,9 @@ flowchart LR
 | Unsaved form input | DOM; posted model on validation failure | typing; failed save re-renders it |
 | Conditional field visibility | DOM (`pages.js`) | changing Page type / Published |
 | Tree filter | DOM (`hidden` on items), not persisted | typing in **Filter pages**; reset on reload |
-| Drag state | JS variable `dragged`, CSS `.dragging`, `.drop-target` | during a drag |
-| Toast | `TempData["Success"]` (layout) or `Forge.toast` (reorder failure) | after save/delete; on a failed reorder |
-| Error state | `ModelState` → `<form-errors />` | failed save, refused delete |
+| Drag state | JS variable `dragged`, `data-dragging` on the item, `data-drop-target` on the row | during a drag |
+| Toast | `TempData["Success"]` (layout) or `dnfUI.toast` (reorder failure) | after save/delete; on a failed reorder |
+| Error state | `ModelState` → `<dnf-validation-summary />` | failed save, refused delete |
 | Persisted tree | database | create, save, delete, reorder; scheduler |
 
 No global client state.
@@ -351,10 +354,10 @@ See [authorization](../features/authorization.md).
 
 | Failure | Detection | User sees | Recovery |
 | --- | --- | --- | --- |
-| Rule violation on save | `ApplyAsync` returns message | message in `<form-errors />` (danger alert), input preserved | fix and save again |
-| Publishing change without `publish` | `ChangesPublishing` + `Can(..., "publish")` | `You don't have permission to publish, unpublish or schedule pages.` in `<form-errors />` | leave Published and the schedule unchanged, or ask an Editor |
+| Rule violation on save | `ApplyAsync` returns message | message in `<dnf-validation-summary />` (danger alert), input preserved | fix and save again |
+| Publishing change without `publish` | `ChangesPublishing` + `Can(..., "publish")` | `You don't have permission to publish, unpublish or schedule pages.` in `<dnf-validation-summary />` | leave Published and the schedule unchanged, or ask an Editor |
 | No permission for the action | `Can` / `CanModify` false | `302 /account/denied` ([Access denied](access-denied.md), 403) | go back |
-| Delete would clash slugs | `DeleteAsync` returns message | `Can't delete: its child pages would move up a level and clash. ...` in `<form-errors />` | rename or move the children first |
+| Delete would clash slugs | `DeleteAsync` returns message | `Can't delete: its child pages would move up a level and clash. ...` in `<dnf-validation-summary />` | rename or move the children first |
 | Unknown page or parent id | `FirstOrDefaultAsync` / `AnyAsync` | empty 404 | go back |
 | Reorder rule violation | `ReorderAsync` returns message → `400 { error }` | danger toast with the server message, reload after 1.5 s | drop elsewhere, or use the Parent page dropdown |
 | Reorder forbidden (or another non-JSON failure) | `fetch` not ok, body not JSON | danger toast `Could not save the new order.`, reload | - |
@@ -402,8 +405,8 @@ PagesController
 │   ├── DotNetForgeDbContext
 │   └── IHttpContextAccessor
 └── AdminControllerBase (CurrentUserId, AdminArea policy, Can/CanModify → IPermissionService.IsGranted → stored role grants)
-pages.js (no server dependency besides /admin/pages/reorder; window.Forge.toast from ui.js)
-ui.js (confirm dialog for data-confirm, toasts, data-js-only)
+pages.js (no server dependency besides /admin/pages/reorder; window.dnfUI.toast from dnf.js)
+dnf.js (confirm dialog for data-confirm, toasts, tabs, data-js-only)
 ```
 
 ## Page flow
@@ -423,7 +426,7 @@ flowchart TD
     F -- "Save changes" --> I{"may edit this page?"}
     I -- no --> Z
     I -- yes --> J{"publish allowed and ApplyAsync ok?"}
-    J -- no --> E2["Editor with form-errors"] --> F
+    J -- no --> E2["Editor with dnf-validation-summary"] --> F
     J -- yes --> K["302 ?selected=id + toast"] --> A
     F -- "Delete page + confirm dialog" --> L{"may delete, DeleteAsync ok?"}
     L -- "no permission" --> Z
@@ -464,7 +467,7 @@ flowchart TD
   forms are invalid HTML, and the delete must not carry the edited fields.
 - `ViewData["CanReorder"]` is set in `OnActionExecuted`, so it is present for every view the controller returns
   (also the re-rendered Index after a failed save or delete).
-- The screen carries no inline script or style; behaviour comes from `pages.js` (`@section Scripts`) and `ui.js`
+- The screen carries no inline script or style; behaviour comes from `pages.js` (`@section Scripts`) and `dnf.js`
   (CSP `script-src 'self'`, see [security](../features/security.md)). `AdminUiTests` renders the screen with and
   without `?selected=` and checks for inline script/style.
 
@@ -573,7 +576,7 @@ Tracked once in [content pages and routing → Acceptance criteria](../features/
 ## Extension points
 
 - New field: follow the checklist in [content pages and routing → Where to change things](../features/content-pages-and-routing.md#where-to-change-things);
-  put it in the matching editor card as a `.field` ([components](../architecture/design-system.md#components)).
+  put it in the matching editor card as a `.dnf-field` ([components](../architecture/design-system.md#components)).
 - New rule: add it to `PageService` (`ApplyAsync`, `ReorderAsync` or `DeleteAsync`), never to the controller or the
   view.
 - New tree action (e.g. duplicate page): add a POST action to `PagesController` with a `Can` / `CanModify` check
@@ -582,5 +585,5 @@ Tracked once in [content pages and routing → Acceptance criteria](../features/
 - Hide actions the user cannot perform: compute flags with `Can` / `CanModify` (as `ViewData["CanReorder"]` does
   here, or `MediaIndexViewModel.CanUpload` / `MediaRowViewModel.CanDelete` on [Media](media.md)) and keep the server
   checks.
-- Client behaviour: `src/DotNetForge.Web/wwwroot/js/forge/pages.js` (keep the screen working without JS; no inline
-  script or style; report failures with `window.Forge.toast`, confirmations with `data-confirm`).
+- Client behaviour: `src/DotNetForge.Web/wwwroot/js/admin/pages.js` (keep the screen working without JS; no inline
+  script or style; report failures with `window.dnfUI.toast`, confirmations with `data-confirm`).

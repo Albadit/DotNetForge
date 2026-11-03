@@ -14,7 +14,18 @@ namespace DotNetForge.Web.Services;
 /// </summary>
 public sealed partial class PageService : IPageService
 {
+    /// <summary>The home page's slug: the site's root, reserved for one page at the top of the tree.</summary>
+    public const string HomeSlug = "/";
+
+    public const string HomeIsFixed = "The home page is the site's root: its slug, parent and position stay as they are.";
+    public const string HomeCantBeDeleted = "The home page is the site's root and can't be deleted.";
+    public const string NothingUnderHome = "Pages can't go under the home page: they would have no URL.";
+    public const string NothingBeforeHome = "The home page stays first: nothing can go before it.";
+    public const string SortOrderTooLow = "Sort order can't be below 0.";
+
     private readonly DotNetForgeDbContext _db;
+
+    public static bool IsHome(string? slug) => slug == HomeSlug;
 
     public PageService(DotNetForgeDbContext db)
     {
@@ -45,6 +56,21 @@ public sealed partial class PageService : IPageService
             return "Invalid page type.";
         }
 
+        if (input.SortOrder < 0)
+        {
+            return SortOrderTooLow;
+        }
+
+        if (IsHome(page.Slug) && (!IsHome(slug) || input.ParentPageId is not null || (input.SortOrder != 0 && input.SortOrder != page.SortOrder)))
+        {
+            return HomeIsFixed;
+        }
+
+        if (IsHome(slug) && input.ParentPageId is not null)
+        {
+            return HomeIsFixed;
+        }
+
         var tree = await LoadTreeAsync(ct);
 
         if (input.ParentPageId is Guid parentId)
@@ -52,6 +78,11 @@ public sealed partial class PageService : IPageService
             if (!tree.ContainsKey(parentId))
             {
                 return "Parent page not found.";
+            }
+
+            if (IsHome(tree[parentId].Slug) && parentId != page.ParentPageId)
+            {
+                return NothingUnderHome;
             }
 
             if (CreatesCycle(page.Id, parentId, id => tree.TryGetValue(id, out var n) ? n.ParentPageId : null))
@@ -109,7 +140,9 @@ public sealed partial class PageService : IPageService
         page.Disabled = false; // Published is the only switch; clears the legacy flag.
         page.DisplayInMenu = input.DisplayInMenu;
         page.ParentPageId = input.ParentPageId;
-        page.SortOrder = input.SortOrder;
+        // At the root 0 is the home page's: others start at 1, or a tie by title could put one above it.
+        var homeExists = tree.Values.Any(p => IsHome(p.Slug) && p.ParentPageId is null && p.Id != page.Id);
+        page.SortOrder = IsHome(slug) ? 0 : input.ParentPageId is null && homeExists ? Math.Max(input.SortOrder, 1) : input.SortOrder;
         page.PageType = pageType;
         page.TargetUrl = Trimmed(input.TargetUrl);
         page.FileReference = Trimmed(input.FileReference);
@@ -144,9 +177,10 @@ public sealed partial class PageService : IPageService
 
         // The tree after the move: current parents overlaid with the posted ones.
         var parentOf = pages.ToDictionary(p => p.Id, p => p.ParentPageId);
+        var homeExists = pages.Any(p => IsHome(p.Slug) && p.ParentPageId is null);
         foreach (var position in positions)
         {
-            if (!byId.ContainsKey(position.Id))
+            if (!byId.TryGetValue(position.Id, out var moved))
             {
                 return "One of the moved pages does not exist.";
             }
@@ -154,6 +188,27 @@ public sealed partial class PageService : IPageService
             if (position.ParentPageId is Guid parent && !byId.ContainsKey(parent))
             {
                 return "One of the target parents does not exist.";
+            }
+
+            if (position.SortOrder < 0)
+            {
+                return SortOrderTooLow;
+            }
+
+            if (IsHome(moved.Slug))
+            {
+                if (position.ParentPageId != moved.ParentPageId || (moved.ParentPageId is null && position.SortOrder != 0))
+                {
+                    return HomeIsFixed;
+                }
+            }
+            else if (position.ParentPageId is Guid under && under != moved.ParentPageId && IsHome(byId[under].Slug))
+            {
+                return NothingUnderHome;
+            }
+            else if (position.ParentPageId is null && position.SortOrder == 0 && homeExists)
+            {
+                return NothingBeforeHome;
             }
 
             parentOf[position.Id] = position.ParentPageId;
@@ -188,8 +243,19 @@ public sealed partial class PageService : IPageService
         return null;
     }
 
+    public async Task<string?> MoveAsync(Guid pageId, Guid? parentPageId, CancellationToken ct = default)
+    {
+        var last = await _db.Pages.Where(p => p.ParentPageId == parentPageId && p.Id != pageId).MaxAsync(p => (int?)p.SortOrder, ct);
+        return await ReorderAsync(new[] { new PagePosition(pageId, parentPageId, (last ?? -1) + 1) }, ct);
+    }
+
     public async Task<string?> DeleteAsync(Page page, CancellationToken ct = default)
     {
+        if (IsHome(page.Slug))
+        {
+            return HomeCantBeDeleted;
+        }
+
         var pages = await _db.Pages.Where(p => p.Id != page.Id).ToListAsync(ct);
         var children = pages.Where(p => p.ParentPageId == page.Id).ToList();
 
@@ -233,9 +299,9 @@ public sealed partial class PageService : IPageService
         }
 
         // "/" is the reserved slug for the site root (home) page.
-        if (input.Trim() == "/")
+        if (input.Trim() == HomeSlug)
         {
-            return "/";
+            return HomeSlug;
         }
 
         var sb = new System.Text.StringBuilder(input.Length);

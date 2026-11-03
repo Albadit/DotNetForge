@@ -29,7 +29,7 @@
   </PropertyGroup>
 
   <!--
-    The extension SDK. The host provides it (and ASP.NET Core) at runtime, so it is referenced but never copied into
+    The extension SDK and the UI library. The host provides them (and ASP.NET Core) at runtime, so it is referenced but never copied into
     bin/ - one copy of every contract type, the host's.
   -->
   <ItemGroup Condition="Exists('$(DotNetForgeSource)DotNetForge.Sdk/DotNetForge.Sdk.csproj')">
@@ -37,6 +37,7 @@
     <ProjectReference Include="$(DotNetForgeSource)DotNetForge.Sdk/DotNetForge.Sdk.csproj" Private="false" />
     <ProjectReference Include="$(DotNetForgeSource)DotNetForge.Abstractions/DotNetForge.Abstractions.csproj" Private="false" />
     <ProjectReference Include="$(DotNetForgeSource)DotNetForge.Shared/DotNetForge.Shared.csproj" Private="false" />
+    <ProjectReference Include="$(DotNetForgeSource)DotNetForge.UI/DotNetForge.UI.csproj" Private="false" />
   </ItemGroup>
   <ItemGroup Condition="!Exists('$(DotNetForgeSource)DotNetForge.Sdk/DotNetForge.Sdk.csproj')">
     <!-- A published app (no src/): the SDK assemblies sit next to it, one level above extensions/. -->
@@ -44,6 +45,7 @@
     <Reference Include="$(MSBuildThisFileDirectory)../DotNetForge.Sdk.dll" Private="false" />
     <Reference Include="$(MSBuildThisFileDirectory)../DotNetForge.Abstractions.dll" Private="false" />
     <Reference Include="$(MSBuildThisFileDirectory)../DotNetForge.Shared.dll" Private="false" />
+    <Reference Include="$(MSBuildThisFileDirectory)../DotNetForge.UI.dll" Private="false" />
   </ItemGroup>
 
 </Project>

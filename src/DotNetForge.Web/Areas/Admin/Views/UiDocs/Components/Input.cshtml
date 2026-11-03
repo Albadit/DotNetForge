@@ -1,0 +1,184 @@
+@* Input (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+@* The MVC tag helpers are off on this page: the asp-for snippet is shown as text, not compiled against the docs
+   page's own model. *@
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/form.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>Write <code>dnf-input</code> on any single-line <code>&lt;input&gt;</code> - text, email, password, number, url, search, tel,
+    date. Every input carries the class: Tailwind's reset leaves a bare <code>&lt;input&gt;</code> unstyled. Wrap it in a
+    <a href="@UiDocsCatalog.Root/components/field">field</a> for its label, help and error.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="input-email">Email</label>
+        <input class="dnf-input" id="input-email" type="email" placeholder="ada@@example.com" autocomplete="email" />
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="sizes" title="Sizes" description="dnf-input--sm (30px, small text), the default (36px) and dnf-input--lg (44px, larger text)." layout="stack">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="input-sm">Small</label>
+        <input class="dnf-input dnf-input--sm" id="input-sm" value="Filter by tag" />
+    </div>
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="input-md">Medium</label>
+        <input class="dnf-input" id="input-md" value="Spring sale" />
+    </div>
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="input-lg">Large</label>
+        <input class="dnf-input dnf-input--lg" id="input-lg" value="Welcome to DotNetForge" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="types" title="Types" description="The class works on every text-like type; pick the type and autocomplete that match the value." layout="block">
+    <div class="dnf-form-grid">
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="input-url">Website</label>
+            <input class="dnf-input" id="input-url" type="url" value="https://example.com" autocomplete="url" />
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="input-number">Items per page</label>
+            <input class="dnf-input" id="input-number" type="number" min="1" max="100" value="25" />
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="input-date">Publish on</label>
+            <input class="dnf-input" id="input-date" type="date" value="2026-01-15" />
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="input-password">Password</label>
+            <input class="dnf-input" id="input-password" type="password" value="correct horse" autocomplete="new-password" />
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="invalid" title="Invalid" description="aria-invalid draws the danger border; link the error text with aria-describedby." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="input-invalid">Email</label>
+        <input class="dnf-input" id="input-invalid" type="email" value="ada@@example" aria-invalid="true" aria-describedby="input-invalid-error" />
+        <span class="dnf-field__error" id="input-invalid-error">Enter an email address like name@@example.com.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="disabled" title="Disabled" description="A muted surface and text, no shadow; a disabled input is not sent with the form." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="input-disabled">Database</label>
+        <input class="dnf-input" id="input-disabled" value="PostgreSQL" disabled />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="read-only" title="Read-only" description="A muted surface; the value can be selected and copied, and is sent with the form." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="input-readonly">Webhook secret</label>
+        <input class="dnf-input dnf-input--mono" id="input-readonly" value="whsec_4f9b2c7e1a" readonly />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="code" title="One-time code" description="dnf-input--code: large, spaced, centred monospace digits for an authenticator code." layout="block">
+    <div class="dnf-field max-w-xs">
+        <label class="dnf-field__label" for="input-code">Authentication code</label>
+        <input class="dnf-input dnf-input--code" id="input-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="mono" title="Monospace" description="dnf-input--mono for keys, paths and other values read character by character." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="input-mono">API key name</label>
+        <input class="dnf-input dnf-input--mono" id="input-mono" value="build-server_2026" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="no-label" title="Without a visible label" description="A search box in a toolbar names itself with aria-label." layout="block">
+    <input class="dnf-input max-w-xs" type="search" placeholder="Search media" aria-label="Search media" />
+</ui-doc-example>
+
+<h3 id="asp-for">With asp-for</h3>
+<p>Write the class next to <code>asp-for</code> as usual. With a model error ASP.NET adds <code>input-validation-error</code>,
+    which the library draws like <code>aria-invalid="true"</code>.</p>
+
+<ui-doc-code id="asp-for-code" lang="razor">
+<div class="dnf-field">
+    <label class="dnf-field__label" asp-for="Email">Email</label>
+    <input class="dnf-input" asp-for="Email" type="email" autocomplete="email" />
+    <span class="dnf-field__error" asp-validation-for="Email"></span>
+</div>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. Level 1
+    is the modifiers <code>--sm</code>, <code>--lg</code>, <code>--code</code> and <code>--mono</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities beat the component style: a capped width, end-aligned numbers." layout="stack">
+    <input class="dnf-input max-w-xs" aria-label="Menu label" value="Main navigation" />
+    <input class="dnf-input max-w-40 text-end" type="number" aria-label="Price" value="49.00" />
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="Each control defines --dnf-control-height, --dnf-control-padding-x and --dnf-control-font-size on itself, so set them on the control, not on a wrapper." layout="block">
+    <div class="dnf-docs-demo-controls dnf-field max-w-md">
+        <label class="dnf-field__label" for="tokens-input">Search the site</label>
+        <input class="dnf-input" id="tokens-input" type="search" placeholder="Pages, entries, media" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-controls :is(.dnf-input, .dnf-select, .dnf-textarea) {
+    --dnf-control-height: var(--dnf-control-lg);
+    --dnf-control-padding-x: var(--dnf-space-4);
+    --dnf-control-font-size: var(--dnf-text-md);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-input</code></td><td>block</td><td>full width, at least <code>--dnf-control-height</code> (36px) high, <code>--dnf-border-strong</code> border, <code>--dnf-radius-md</code>, <code>--dnf-surface</code> background, a small shadow</td></tr>
+        <tr><td><code>dnf-input--sm</code> / <code>--lg</code></td><td>size</td><td>30 / 44px high, <code>text-sm</code> / <code>text-md</code></td></tr>
+        <tr><td><code>dnf-input--code</code></td><td>modifier</td><td>a one-time code: monospace, <code>text-xl</code>, spaced letters, centred</td></tr>
+        <tr><td><code>dnf-input--mono</code></td><td>modifier</td><td>monospace</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>:hover</code>, <code>[data-hovered="true"]</code></td><td>darker border</td></tr>
+        <tr><td>keyboard focus</td><td><code>:focus-visible</code></td><td><code>--dnf-primary</code> border and the focus ring</td></tr>
+        <tr><td>disabled</td><td><code>:disabled</code>, <code>[aria-disabled="true"]</code></td><td>muted surface and text, no shadow</td></tr>
+        <tr><td>read-only</td><td><code>:read-only</code> (not disabled)</td><td>muted surface</td></tr>
+        <tr><td>invalid</td><td><code>[aria-invalid="true"]</code>, <code>[data-invalid="true"]</code>, <code>.input-validation-error</code>, inside <code>.dnf-field[data-invalid="true"]</code></td><td><code>--dnf-danger</code> border</td></tr>
+        <tr><td>placeholder</td><td><code>::placeholder</code></td><td><code>--dnf-subtle-foreground</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-control-height</code>, <code>--dnf-control-padding-x</code>, <code>--dnf-control-font-size</code> - shared with
+    <a href="@UiDocsCatalog.Root/components/select">select</a> and <a href="@UiDocsCatalog.Root/components/textarea">textarea</a>, and
+    defined on each control (the size modifiers only change them).</p>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes above are the API. The native attributes do the rest - <code>type</code>,
+    <code>autocomplete</code>, <code>required</code>, <code>disabled</code>, <code>readonly</code> - plus <code>aria-invalid</code>
+    and <code>aria-describedby</code> for errors and help (<a href="@UiDocsCatalog.Root/components/field#api">field</a>).</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>A label for every input (<a href="@UiDocsCatalog.Root/components/field">field</a>); without a visible one, <code>aria-label</code>.</li>
+    <li>A <code>type</code> and <code>autocomplete</code> that match the value, so browsers and password managers can fill it.</li>
+    <li><code>aria-invalid</code> and <code>aria-describedby</code> for an error, not only the red border.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use an <a href="@UiDocsCatalog.Root/components/input-group">input group</a> for a leading icon, a prefix or a trailing button.</li>
+    <li>Do use read-only, not disabled, for a value the user should still be able to copy.</li>
+    <li>Don't style focus yourself - the focus ring is part of the component.</li>
+</ul>

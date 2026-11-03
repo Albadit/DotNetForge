@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Users &amp; Permissions Plugin → Providers (.docs/pages/providers.md): the sign-in providers - Email (password
+/// Authentication → Providers (.docs/pages/providers.md): the sign-in providers - Email (password
 /// sign-in, built in), the ten built-in OAuth providers of <see cref="OAuthProviderCatalog"/> with their settings, and
 /// the providers of authentication extensions (read-only; configured in <c>.env</c>, turned on on Plugins). Reading
 /// needs Settings read, saving Settings update; the rules live in <see cref="AuthProviderService"/>.

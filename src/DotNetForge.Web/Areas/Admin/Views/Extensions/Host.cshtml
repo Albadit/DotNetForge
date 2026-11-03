@@ -3,13 +3,13 @@
     var extId = ViewData["ExtensionId"] as string ?? "";
 }
 @* The extension ships its own full HTML document, so it is isolated in an iframe; the admin shell around it comes from
-   _AdminLayout. A skeleton shows until the frame has loaded (ui.js). *@
-<div class="card ext-frame-card">
-    <div class="ext-frame-loading" aria-hidden="true" data-js-only hidden>
-        <div class="skeleton skeleton-title"></div>
-        <div class="skeleton skeleton-line"></div>
-        <div class="skeleton skeleton-line medium"></div>
-        <div class="skeleton skeleton-line short"></div>
+   _AdminLayout. A skeleton shows until the frame has loaded (dnf.js marks [data-frame-host] with data-loaded). *@
+<div class="dnf-card dnf-ext-frame" data-frame-host>
+    <div class="dnf-ext-frame__loading" aria-hidden="true" data-js-only hidden>
+        <div class="dnf-skeleton dnf-skeleton--title"></div>
+        <div class="dnf-skeleton dnf-skeleton--line"></div>
+        <div class="dnf-skeleton dnf-skeleton--line w-2/3"></div>
+        <div class="dnf-skeleton dnf-skeleton--line w-2/5"></div>
     </div>
-    <iframe class="ext-frame" src="/admin/ext/@extId/raw" title="@ViewData["Title"]" data-frame></iframe>
+    <iframe class="dnf-ext-frame__frame" src="/admin/ext/@extId/raw" title="@ViewData["Title"]" data-frame></iframe>
 </div>

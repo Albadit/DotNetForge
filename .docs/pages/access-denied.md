@@ -18,8 +18,8 @@ Tells them so and offers a way back or to sign in as someone else.
 ```text
 src/DotNetForge.Web/Controllers/AccountController.cs     Denied(): ViewData["AppName"], status 403
 src/DotNetForge.Web/Views/Account/Denied.cshtml          lock icon, message, dashboard link, sign-out form (Layout = "_AuthLayout")
-src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml      brand panel + form column, theme menu, _Feedback; loads theme.js, ui.js, auth.css
-src/DotNetForge.Web/wwwroot/css/forge/auth.css           .auth-heading.auth-state (centred)
+src/DotNetForge.Web/Views/Shared/_AuthLayout.cshtml      brand panel + form column, theme menu, _Feedback; loads dnf-theme.js, dnf.css, auth.css, dnf.js
+src/DotNetForge.Web/wwwroot/css/auth.css                 .dnf-auth__heading--state (centred)
 src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs   AdminNavigationService: hides sidebar links the user cannot open
 ```
 
@@ -27,17 +27,17 @@ src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs   AdminNavigationS
 
 ```text
 Access denied (_AuthLayout, title "Access denied · <APP_NAME>")
-├── aside.auth-panel (brand panel - white in light, charcoal in dark; hidden below 56rem)
-└── main.auth-main
-    ├── .auth-top: <APP_NAME> mark (→ /, only below 56rem) · theme menu (JS only)
-    ├── .auth-card
-    │   ├── .auth-heading.auth-state (centred)
-    │   │   ├── lock icon (span.dialog-icon.danger, aria-hidden)
+├── aside.dnf-auth__panel (brand panel - white in light, charcoal in dark; hidden below 56rem)
+└── main.dnf-auth__main
+    ├── .dnf-auth__top: <APP_NAME> mark (→ /, only below 56rem) · theme menu (JS only)
+    ├── .dnf-auth__card
+    │   ├── .dnf-auth__heading.dnf-auth__heading--state (centred)
+    │   │   ├── lock icon (span.dnf-dialog__icon.dnf-dialog__icon--danger, aria-hidden)
     │   │   ├── h1 **Access denied**
     │   │   └── "Your account doesn't have permission to open this page. Ask an administrator if you need access."
-    │   └── .stack-sm
-    │       ├── [**Back to the dashboard**] (a.btn.btn-primary → /admin)
-    │       └── form (POST /account/logout, antiforgery) → [**Sign in as someone else**] (button.btn)
+    │   └── .dnf-stack.dnf-stack--sm
+    │       ├── [**Back to the dashboard**] (a.dnf-button.dnf-button--primary → /admin)
+    │       └── form (POST /account/logout, antiforgery) → [**Sign in as someone else**] (button.dnf-button.dnf-button--secondary)
     └── footer line "<APP_NAME> · Powered by DotNetForge"
 ```
 

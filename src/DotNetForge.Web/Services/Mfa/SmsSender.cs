@@ -7,8 +7,6 @@ namespace DotNetForge.Web.Services.Mfa;
 /// <summary>Sends a text message (.docs/features/mfa.md#sms).</summary>
 public interface ISmsSender
 {
-    bool IsConfigured { get; }
-
     /// <summary>Sends <paramref name="text"/> to <paramref name="phoneNumber"/> (E.164); throws when the service refuses.</summary>
     Task SendAsync(string phoneNumber, string text, CancellationToken ct = default);
 }
@@ -28,11 +26,9 @@ public sealed class TwilioSmsSender : ISmsSender
         _settings = env.Sms;
     }
 
-    public bool IsConfigured => _settings.IsConfigured;
-
     public async Task SendAsync(string phoneNumber, string text, CancellationToken ct = default)
     {
-        if (!IsConfigured)
+        if (!_settings.IsConfigured)
         {
             throw new InvalidOperationException("SMS is not configured (TWILIO_* in .env).");
         }

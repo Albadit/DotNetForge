@@ -1,0 +1,519 @@
+@* Behaviours (UI docs): dnf.js - progressive enhancement, the dnfUI API and every data-* hook, live where practical. *@
+
+<ul class="dnf-docs-source">
+    <li>Script <code>src/DotNetForge.UI/wwwroot/dnf.js</code></li>
+    <li>Served at <code>/_content/DotNetForge.UI/dnf.js</code></li>
+</ul>
+
+<p><code>dnf.js</code> is one small, dependency-free script, loaded with <code>defer</code> after the stylesheet
+    (<a href="@UiDocsCatalog.Root/installation#assets">Using the library</a>). It wires <code>data-*</code> hooks in the
+    markup and exposes <code>window.dnfUI</code>. Whatever state it changes is written as attributes -
+    <code>aria-expanded</code>, <code>data-open</code>, <code>data-selected</code> … - which the CSS styles
+    (<a href="@UiDocsCatalog.Root/customization#states">States</a>).</p>
+
+<h2 id="progressive">Progressive enhancement</h2>
+<p>Every screen must work without JavaScript: forms post, links navigate, <code>&lt;details&gt;</code> opens, tabs show
+    all their panels stacked, and a form with a confirmation submits directly. The script only adds convenience -
+    client-side search, filters, sorting, paging, the theme switch and bulk selection need it, so every bulk action
+    should also exist per item. Two ways to hide controls that only work with JavaScript:</p>
+<table>
+    <thead><tr><th>Mechanism</th><th>Shown</th><th>Use for</th></tr></thead>
+    <tbody>
+        <tr><td><code>hidden data-js-only</code></td><td>when <code>dnf.js</code> runs (deferred - after the first paint)</td><td>search boxes, view switches, copy buttons</td></tr>
+        <tr><td><code>class="dnf-js-only"</code></td><td>from the first paint (<code>dnf-theme.js</code> marks <code>&lt;html class="dnf-js"&gt;</code> in <code>&lt;head&gt;</code>)</td><td>controls that must not pop in late, like the theme menu</td></tr>
+    </tbody>
+</table>
+
+<h2 id="csp">Content Security Policy</h2>
+<p>Nothing needs <code>unsafe-inline</code>: no inline script, no <code>style</code> attribute in markup, no event-handler
+    attributes. Configuration travels in <code>data-*</code> attributes, and the text of dialogs and toasts is set with
+    <code>textContent</code>. The script positions floating panels (<code>style.top</code>, <code>style.left</code>) and
+    the tooltip's arrow (a custom property) through the CSSOM, which <code>style-src 'self'</code> allows.</p>
+
+<h2 id="api">The dnfUI API</h2>
+<table>
+    <thead><tr><th>Member</th><th>Does</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnfUI.toast(message, tone)</code></td><td>shows a toast. <code>tone</code>: <code>"success"</code>, <code>"info"</code> (also for anything unknown), <code>"warning"</code> or <code>"danger"</code>. A danger toast stays until dismissed (<code>role="alert"</code>); the others hide after 6 seconds (<code>role="status"</code>). Needs the <a href="#toasts">toast region and template</a>.</td></tr>
+        <tr><td><code>dnfUI.confirm({ title, text, action, tone })</code></td><td>opens the <a href="#confirm">confirmation dialog</a> and returns a <code>Promise&lt;boolean&gt;</code>. <code>tone: "primary"</code> for a non-destructive question (danger otherwise). Without the dialog or <code>showModal</code> it falls back to <code>window.confirm(text)</code>.</td></tr>
+        <tr><td><code>dnfUI.init(root)</code></td><td>wires the per-element behaviours - tabs, collections, view switches, file uploads, frames, <code>data-js-only</code>, check groups, theme buttons, server toasts - inside markup added after load. Each behaviour runs once per element.</td></tr>
+        <tr><td><code>dnfUI.icon(name, size, className)</code></td><td>the markup of a decorative sprite icon. <code>size</code>: <code>"sm"</code>, <code>"lg"</code>, <code>"xl"</code> or omitted; <code>className</code>: extra classes. Nothing is encoded - pass known icon ids and class names only.</td></tr>
+    </tbody>
+</table>
+
+<ui-doc-code id="api-js" lang="js">
+// A toast: "success", "info" (the default), "warning" or "danger".
+dnfUI.toast("Page published.", "success");
+
+// A question: resolves to true when the user confirms.
+const confirmed = await dnfUI.confirm({
+    title: "Delete webhook",
+    text: "Deliveries to this URL stop immediately.",
+    action: "Delete",
+    tone: "danger"
+});
+
+// Markup added after load: wire its per-element behaviours.
+panel.innerHTML = html;
+dnfUI.init(panel);
+
+// The markup of a sprite icon: name, size, extra classes.
+button.innerHTML = dnfUI.icon("trash", "sm", "dnf-button__icon") + "Delete";
+</ui-doc-code>
+
+<p>The delegated behaviours - dropdowns, tooltips, dialogs, confirm, pending, copy, reveal, fill, the drawer and the theme
+    switch - listen on the document, so they work for added markup without <code>init</code>.</p>
+
+<h2 id="dropdowns">Dropdowns and popovers</h2>
+<p>Menus and popovers are native popovers: a <code>&lt;button popovertarget="id"&gt;</code> and a panel with
+    <code>popover</code>. The browser opens the panel in the top layer and closes it on Escape and on outside clicks.
+    For <code>.dnf-dropdown__menu[popover]</code> and <code>.dnf-popover[popover]</code>, <code>dnf.js</code> adds:</p>
+<ul>
+    <li>placement next to the opener from <code>data-placement</code> - <code>bottom-end</code> (default),
+        <code>bottom-start</code>, <code>top-end</code>, <code>top-start</code> - flipped when there is no room, kept 8px
+        inside the window and placed again on scroll and resize;</li>
+    <li><code>aria-expanded</code> on the opener and <code>data-open</code> on the panel while it is open;</li>
+    <li>for a menu opened from the keyboard: focus on the first item, ArrowDown and ArrowUp (wrapping), Home and End; a
+        click on an item closes the menu.</li>
+</ul>
+
+<ui-doc-example id="dropdown-demo" title="A menu and a popover" description="The tag helper renders the menu markup; a popover is a plain panel with popover and data-placement.">
+    <dnf-dropdown label="Actions for report.pdf" variant="Secondary" size="Md">
+        <dnf-dropdown-label>report.pdf</dnf-dropdown-label>
+        <dnf-dropdown-button icon="pencil" data-docs-toast="Rename - a demo, nothing changed.">Rename</dnf-dropdown-button>
+        <dnf-dropdown-button icon="link" data-copy-text="https://example.com/media/report.pdf">Copy link</dnf-dropdown-button>
+        <dnf-dropdown-separator />
+        <dnf-dropdown-button icon="trash" danger="true" data-docs-confirm="report.pdf is removed from the media library." data-docs-confirm-title="Delete file" data-docs-confirm-action="Delete">Delete</dnf-dropdown-button>
+    </dnf-dropdown>
+    <button type="button" class="dnf-button dnf-button--outline" popovertarget="docs-publish-popover" aria-expanded="false">Why can't I publish?</button>
+    <div class="dnf-popover" id="docs-publish-popover" popover data-placement="bottom-start">
+        <p class="text-sm">Publishing needs a role with the publish permission. Ask an administrator to change your role.</p>
+    </div>
+</ui-doc-example>
+
+<p>Prefer <code>&lt;dnf-dropdown&gt;</code> (<a href="@UiDocsCatalog.Root/components/dropdown">Dropdown</a>) for menus;
+    popover panels: <a href="@UiDocsCatalog.Root/components/popover">Popover</a>.</p>
+
+<h2 id="tooltips">Tooltips</h2>
+<p><code>data-tooltip="Text"</code> on a focusable element. One shared <code>.dnf-tooltip</code> (<code>role="tooltip"</code>,
+    a manual popover) shows on hover and on keyboard focus, above the element or below it when there is no room, centred
+    and kept inside the window. It hides on mouse-out, blur, scroll, pointer down and Escape. Give the element the same
+    text as its accessible name - without JavaScript that is all there is.</p>
+
+<ui-doc-example id="tooltip-demo" title="Tooltips" description="Hover or tab to a button. Each one's aria-label names it; the tooltip shows the same words.">
+    <button type="button" class="dnf-button dnf-button--secondary dnf-button--icon-only" aria-label="Duplicate" data-tooltip="Duplicate"><dnf-icon name="copy" class="dnf-button__icon" /></button>
+    <button type="button" class="dnf-button dnf-button--secondary dnf-button--icon-only" aria-label="Download" data-tooltip="Download"><dnf-icon name="download" class="dnf-button__icon" /></button>
+    <button type="button" class="dnf-button dnf-button--secondary dnf-button--icon-only" aria-label="Settings" data-tooltip="Settings"><dnf-icon name="settings" class="dnf-button__icon" /></button>
+</ui-doc-example>
+
+<h2 id="tabs">Tabs</h2>
+<p>A <code>[data-tabs]</code> root with <code>button[role=tab][data-tab]</code> tabs and <code>[data-tab-panel]</code>
+    panels. The root gets <code>data-tabbed="true"</code> and one panel shows at a time; tabs get
+    <code>aria-selected</code> and a roving <code>tabindex</code>; ArrowLeft and ArrowRight (wrapping), Home and End move
+    between them.</p>
+<ul>
+    <li>The open tab is written to the URL hash (<code>#seo</code>), so a reload or a redirect to <code>…#seo</code>
+        reopens it. The first tab shown: the hash, else <code>data-initial-tab</code>, else the first tab, already at the
+        first paint.</li>
+    <li><code>data-tab-hash="false"</code> on the root neither reads nor writes the hash - for many small tab groups on one
+        page, like the example below and the example frames of these docs.</li>
+    <li>Inside a form, a field with <code>data-tab-field</code> receives the open tab's name, and a field that fails
+        native validation on a hidden tab opens its tab.</li>
+    <li>A root manages only its own tabs and panels: a panel may hold another tab group.</li>
+</ul>
+
+<ui-doc-example id="tabs-demo" title="Tabs" description="Without JavaScript the three panels show one below the other, each with its title." layout="block">
+    <div data-tabs data-tab-hash="false" data-initial-tab="general">
+        <div class="dnf-tabs" role="tablist" aria-label="Page settings">
+            <button type="button" class="dnf-tabs__tab" role="tab" id="docs-tab-general" aria-controls="docs-panel-general" data-tab="general">General</button>
+            <button type="button" class="dnf-tabs__tab" role="tab" id="docs-tab-seo" aria-controls="docs-panel-seo" data-tab="seo">SEO</button>
+            <button type="button" class="dnf-tabs__tab" role="tab" id="docs-tab-access" aria-controls="docs-panel-access" data-tab="access">Access</button>
+        </div>
+        <section class="dnf-tab-panel pt-4" role="tabpanel" id="docs-panel-general" aria-labelledby="docs-tab-general" data-tab-panel="general">
+            <h4 class="dnf-tab-panel__title">General</h4>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="docs-tabs-title">Title</label>
+                <input class="dnf-input" id="docs-tabs-title" value="About us" />
+            </div>
+        </section>
+        <section class="dnf-tab-panel pt-4" role="tabpanel" id="docs-panel-seo" aria-labelledby="docs-tab-seo" data-tab-panel="seo">
+            <h4 class="dnf-tab-panel__title">SEO</h4>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="docs-tabs-meta">Meta description</label>
+                <textarea class="dnf-textarea" id="docs-tabs-meta" rows="2">Who we are and what we build.</textarea>
+            </div>
+        </section>
+        <section class="dnf-tab-panel pt-4" role="tabpanel" id="docs-panel-access" aria-labelledby="docs-tab-access" data-tab-panel="access">
+            <h4 class="dnf-tab-panel__title">Access</h4>
+            <label class="dnf-switch-row"><span class="dnf-check__text">Visible to signed-in members only</span><input type="checkbox" role="switch" class="dnf-switch" /></label>
+        </section>
+    </div>
+</ui-doc-example>
+
+<h2 id="dialogs">Dialogs</h2>
+<p><code>data-dialog-open="&lt;selector&gt;"</code> opens that <code>&lt;dialog&gt;</code> with <code>showModal()</code>: focus
+    moves in, Escape closes it and the page behind is inert. <code>data-dialog-close</code> closes the dialog it is in (so
+    does a button of a <code>&lt;form method="dialog"&gt;</code>, which also sets <code>returnValue</code>);
+    <code>data-dialog-light-dismiss</code> on the dialog closes it on a click on the backdrop.</p>
+
+<ui-doc-example id="dialog-demo" title="A dialog" description="Open it, then close it with Cancel, the close button, Escape or a click on the backdrop.">
+    <button type="button" class="dnf-button dnf-button--secondary" data-dialog-open="#docs-new-folder"><dnf-icon name="folder" class="dnf-button__icon" /> New folder</button>
+    <dialog class="dnf-dialog dnf-dialog--sm" id="docs-new-folder" aria-labelledby="docs-new-folder-title" aria-describedby="docs-new-folder-text" data-dialog-light-dismiss>
+        <div class="dnf-dialog__header">
+            <span class="dnf-dialog__icon"><dnf-icon name="folder" /></span>
+            <div>
+                <h2 class="dnf-dialog__title" id="docs-new-folder-title">New folder</h2>
+                <p class="dnf-dialog__description" id="docs-new-folder-text">Folders group media; files keep their URLs.</p>
+            </div>
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only dnf-dialog__close" aria-label="Close" data-dialog-close><dnf-icon name="x" size="Sm" /></button>
+        </div>
+        <div class="dnf-dialog__body">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="docs-folder-name">Name</label>
+                <input class="dnf-input" id="docs-folder-name" value="Brochures" />
+            </div>
+        </div>
+        <div class="dnf-dialog__footer">
+            <button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Cancel</button>
+            <button type="button" class="dnf-button dnf-button--primary" data-dialog-close data-docs-toast="Folder created - a demo, nothing was saved." data-docs-toast-tone="success">Create</button>
+        </div>
+    </dialog>
+</ui-doc-example>
+
+<h2 id="drawer">Drawer navigation</h2>
+<p><code>[data-drawer-open]</code> sets <code>data-nav-open="true"</code> on the first <code>[data-shell]</code> of the page,
+    shows every <code>[data-drawer-backdrop]</code>, sets <code>aria-expanded</code> and focuses the panel's
+    <code>a[aria-current]</code> (else its first link). <code>[data-drawer-close]</code>, Escape and a window at least
+    <code>64.0625rem</code> wide close it and return focus to the open button. The library has no drawer CSS: the layout
+    styles <code>[data-nav-open="true"]</code> - the admin shell does, and so does the navigation of these docs on a narrow
+    window.</p>
+
+<ui-doc-code id="drawer-markup" lang="html">
+<div data-shell>
+    <nav data-drawer-panel>
+        …
+        <button type="button" data-drawer-close aria-label="Close navigation">…</button>
+    </nav>
+    <div data-drawer-backdrop data-drawer-close hidden></div>
+    <button type="button" data-drawer-open aria-expanded="false" aria-label="Open navigation">…</button>
+</div>
+</ui-doc-code>
+
+<h2 id="scroll">Scroll position after a POST</h2>
+<p>When a <code>method="post"</code> form is submitted (and not cancelled), the URL and the scroll position are kept in
+    <code>sessionStorage</code>. If the next page has the same path and query within 30 seconds, it scrolls back once
+    every deferred script has run - so a screen that posts and redirects back to itself stays where it was. Links,
+    reloads and Back are untouched. Nothing to add to the markup.</p>
+
+<h2 id="toasts">Toasts</h2>
+<p><code>dnfUI.toast</code> clones the template's first element, adds <code>dnf-toast--&lt;tone&gt;</code>, sets the role,
+    the message and the icon (<code>circle-check</code>, <code>circle-x</code>, <code>info</code> or
+    <code>triangle-alert</code>), and appends it to <code>[data-toasts]</code>. Toasts the server rendered into the region
+    are inserted again on load, so screen readers announce them. <code>data-autohide="true"</code> removes a toast after
+    6 seconds unless it is hovered or focused; <code>[data-toast-close]</code> dismisses it.</p>
+
+<ui-doc-example id="toast-demo" title="Toasts" description="One button per tone. These buttons call dnfUI.toast through a demo hook of the docs.">
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="Page published." data-docs-toast-tone="success">Success</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="Import started - you can leave this screen." data-docs-toast-tone="info">Info</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="The webhook took 8 seconds to answer." data-docs-toast-tone="warning">Warning</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="The upload failed: the file is larger than 20 MB." data-docs-toast-tone="danger">Danger</button>
+</ui-doc-example>
+
+<p>The region and the template, once per layout (CMS layouts render them with <code>&lt;partial name="_Feedback" /&gt;</code>):</p>
+
+<ui-doc-code id="toast-markup" lang="html">
+<div class="dnf-toast-region" data-toasts aria-live="polite">
+    <!-- toasts rendered by the server: data-toast (+ data-autohide="true") -->
+</div>
+<template id="dnf-toast-template">
+    <div class="dnf-toast" role="status" data-toast>
+        <svg class="dnf-icon dnf-toast__icon" aria-hidden="true"><use href="/_content/DotNetForge.UI/icons.svg#info"></use></svg>
+        <p class="dnf-toast__message"></p>
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only" data-toast-close
+                aria-label="Dismiss">…</button>
+    </div>
+</template>
+</ui-doc-code>
+
+<h2 id="confirm">Confirmation dialog</h2>
+<p>On submit of a form with <code>data-confirm</code> - or through a submit button that carries the
+    <code>data-confirm*</code> attributes itself - the submit is cancelled, the dialog asks, and Yes submits again with
+    the same submitter. Without JavaScript the form submits directly.</p>
+<table>
+    <thead><tr><th>Attribute</th><th>Meaning</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-confirm</code></td><td>the question</td></tr>
+        <tr><td><code>data-confirm-title</code></td><td>the dialog's title; default "Are you sure?"</td></tr>
+        <tr><td><code>data-confirm-action</code></td><td>the OK button's text; default "Confirm"</td></tr>
+        <tr><td><code>data-confirm-tone</code></td><td><code>primary</code> for a non-destructive question; anything else is danger</td></tr>
+    </tbody>
+</table>
+
+<ui-doc-example id="confirm-demo" title="Confirmations" description="A destructive and a non-destructive question. Nothing is deleted or published - the docs show the answer as a toast.">
+    <button type="button" class="dnf-button dnf-button--danger-soft" data-docs-confirm="The page and its child pages are deleted." data-docs-confirm-title="Delete page" data-docs-confirm-action="Delete">Delete page</button>
+    <button type="button" class="dnf-button dnf-button--secondary" data-docs-confirm="Visitors see the new version right away." data-docs-confirm-title="Publish now?" data-docs-confirm-action="Publish" data-docs-confirm-tone="primary">Publish</button>
+</ui-doc-example>
+
+<p>On a real form:</p>
+
+<ui-doc-code id="confirm-form" lang="razor">
+<form method="post" asp-action="Delete" asp-route-id="@@Model.Id" data-confirm="The page and its child pages are deleted."
+      data-confirm-title="Delete page" data-confirm-action="Delete">
+    <button type="submit" class="dnf-button dnf-button--danger-soft">Delete page</button>
+</form>
+</ui-doc-code>
+
+<p>The dialog, once per layout (part of <code>_Feedback</code> in the CMS). The script replaces the OK button's and the
+    icon's <code>className</code> on every call, so don't put other classes on them; the answer is
+    <code>returnValue === "confirm"</code>.</p>
+
+<ui-doc-code id="confirm-dialog-markup" lang="html">
+<dialog class="dnf-dialog" id="dnf-confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+    <form method="dialog">
+        <div class="dnf-dialog__header">
+            <span class="dnf-dialog__icon dnf-dialog__icon--danger" data-confirm-icon>…</span>
+            <div>
+                <h2 class="dnf-dialog__title" id="confirm-title" data-confirm-title>Are you sure?</h2>
+                <p class="dnf-dialog__description" id="confirm-text" data-confirm-text></p>
+            </div>
+        </div>
+        <div class="dnf-dialog__footer">
+            <button type="submit" value="cancel" class="dnf-button dnf-button--secondary">Cancel</button>
+            <button type="submit" value="confirm" class="dnf-button dnf-button--danger" data-confirm-ok>Confirm</button>
+        </div>
+    </form>
+</dialog>
+</ui-doc-code>
+
+<h2 id="pending">Pending on submit</h2>
+<p><code>&lt;form data-pending-on-submit&gt;</code>: on a submit that was not cancelled, the submitter (else the first
+    <code>[type=submit]</code>) gets <code>data-pending="true"</code> and <code>aria-busy="true"</code> - a
+    <a href="@UiDocsCatalog.Root/components/button#pending">button</a> shows its spinner and ignores further clicks until
+    the next page loads.</p>
+
+<ui-doc-code id="pending-form" lang="razor">
+<form method="post" asp-action="Save" data-pending-on-submit>
+    …
+    <dnf-button variant="Primary" type="submit" icon="save">Save</dnf-button>
+</form>
+</ui-doc-code>
+
+<h2 id="collections">Collections</h2>
+<p>Client-side search, filters, sorting, paging and selection over the items already in the page - a table or a grid of
+    cards. Try it: search, filter by type, sort a column, select rows.</p>
+
+<ui-doc-example id="collection-demo" title="A collection" description="Search, a filter, sortable columns, the item count, selection with a bulk bar, and an empty state when nothing matches." layout="block">
+    <div class="dnf-card" data-collection data-page-size="10">
+        <div class="dnf-collection-bar">
+            <div class="dnf-toolbar">
+                <div class="dnf-input-group dnf-toolbar__search" hidden data-js-only>
+                    <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                    <input class="dnf-input" type="search" placeholder="Search files" aria-label="Search files" data-collection-search />
+                </div>
+                <select class="dnf-select" data-collection-filter="type" aria-label="Type">
+                    <option value="">All types</option>
+                    <option value="image">Images</option>
+                    <option value="document">Documents</option>
+                </select>
+                <span class="dnf-toolbar__spacer"></span>
+                <span class="text-sm text-muted" data-collection-count></span>
+            </div>
+            <div class="dnf-bulk-bar" data-bulk-bar hidden>
+                <span class="dnf-bulk-bar__count" data-bulk-count></span>
+                <button type="button" class="dnf-button dnf-button--danger dnf-button--sm" data-docs-confirm="The selected files are removed from the media library." data-docs-confirm-title="Delete files" data-docs-confirm-action="Delete">Delete</button>
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" data-bulk-clear>Clear</button>
+            </div>
+        </div>
+        <div class="dnf-table">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th class="dnf-table__cell--check"><input type="checkbox" class="dnf-checkbox" data-select-all aria-label="Select all files" /></th>
+                        <th scope="col" data-sort="text">Name</th>
+                        <th scope="col" data-sort="number">Size</th>
+                        <th scope="col" data-sort="date">Uploaded</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-item data-type="image">
+                        <td class="dnf-table__cell--check"><input type="checkbox" class="dnf-checkbox" data-select-item aria-label="Select hero.jpg" /></td>
+                        <td>hero.jpg</td>
+                        <td data-sort-value="482000">482 KB</td>
+                        <td data-sort-value="2026-10-03">3 Oct 2026</td>
+                    </tr>
+                    <tr data-item data-type="document">
+                        <td class="dnf-table__cell--check"><input type="checkbox" class="dnf-checkbox" data-select-item aria-label="Select annual-report.pdf" /></td>
+                        <td>annual-report.pdf</td>
+                        <td data-sort-value="2400000">2.4 MB</td>
+                        <td data-sort-value="2026-09-18">18 Sep 2026</td>
+                    </tr>
+                    <tr data-item data-type="image">
+                        <td class="dnf-table__cell--check"><input type="checkbox" class="dnf-checkbox" data-select-item aria-label="Select team-photo.png" /></td>
+                        <td>team-photo.png</td>
+                        <td data-sort-value="1100000">1.1 MB</td>
+                        <td data-sort-value="2026-08-27">27 Aug 2026</td>
+                    </tr>
+                    <tr data-item data-type="document">
+                        <td class="dnf-table__cell--check"><input type="checkbox" class="dnf-checkbox" data-select-item aria-label="Select price-list.docx" /></td>
+                        <td>price-list.docx</td>
+                        <td data-sort-value="64000">64 KB</td>
+                        <td data-sort-value="2026-10-12">12 Oct 2026</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="dnf-empty-state dnf-empty-state--compact" data-collection-empty hidden>No file matches.</p>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
+    </div>
+</ui-doc-example>
+
+<table>
+    <thead><tr><th>Hook</th><th>Behaviour</th></tr></thead>
+    <tbody>
+        <tr><td><code>[data-collection]</code></td><td>the scope; the <code>[data-item]</code> elements inside are the items</td></tr>
+        <tr><td><code>[data-collection-search]</code></td><td>an input: an item matches when its <code>data-search</code> (else its text) contains the query, ignoring case</td></tr>
+        <tr><td><code>select[data-collection-filter="key"]</code></td><td>an item matches when the select's value is one of the space-separated words of its <code>data-&lt;key&gt;</code>; an empty value is no filter</td></tr>
+        <tr><td><code>button[data-collection-filter="key"][data-value]</code></td><td>the same as exclusive toggle buttons: the clicked one gets <code>aria-pressed="true"</code>, the others with that key <code>"false"</code> - put them in a <a href="@UiDocsCatalog.Root/components/segmented">segmented control</a></td></tr>
+        <tr><td><code>th[data-sort="text|number|date"]</code></td><td>becomes a <code>dnf-table__sort</code> button; a click sorts the rows of the first <code>tbody</code> by that column's <code>data-sort-value</code> (else its text) and toggles <code>aria-sort</code></td></tr>
+        <tr><td><code>data-page-size="N"</code> + <code>[data-collection-pagination]</code></td><td>paging; the pager is rendered into the element and shows once there are more than 10 items (<a href="@UiDocsCatalog.Root/components/pagination">Pagination</a>). Without <code>data-page-size</code> (or <code>0</code>) everything shows</td></tr>
+        <tr><td><code>[data-collection-count]</code></td><td>"N total" or "X of N"</td></tr>
+        <tr><td><code>[data-collection-empty]</code></td><td>shown when there are items and none matches</td></tr>
+        <tr><td><code>[data-select-all]</code></td><td>checks every visible <code>[data-select-item]</code>; shows checked or indeterminate</td></tr>
+        <tr><td><code>[data-select-item]</code></td><td>a selected item's <code>[data-item]</code> gets <code>data-selected="true"</code></td></tr>
+        <tr><td><code>[data-bulk-bar]</code>, <code>[data-bulk-count]</code>, <code>[data-bulk-clear]</code></td><td>the bar shows while something is selected ("N selected"); clear unchecks everything</td></tr>
+    </tbody>
+</table>
+<p>Search, filter and page-size changes go back to page 1. Item checkboxes post with <code>form="…"</code>, so they can
+    live in the table while the bulk form is elsewhere on the page.</p>
+
+<h2 id="view-switch">View switch</h2>
+<p><code>[data-view-switch="name"]</code> with <code>[data-view-button]</code> buttons sets <code>data-view-mode</code> on
+    the element named by <code>data-view-target</code> and <code>aria-pressed</code> on the buttons. The choice is
+    remembered per switch in <code>localStorage</code>. The library has no <code>data-view-mode</code> CSS: the screen lays
+    out the same items for each mode - here with a Tailwind <code>data-[view-mode=list]:</code> variant.</p>
+
+<ui-doc-example id="view-switch-demo" title="Grid or list" description="One set of items, two layouts. Without JavaScript the switch stays hidden (hidden data-js-only)." layout="stack">
+    <div class="dnf-segmented self-start" role="group" aria-label="View" data-view-switch="docs-media" data-view-target="#docs-view-items" data-default="grid" hidden data-js-only>
+        <button type="button" class="dnf-segmented__item dnf-segmented__item--icon" data-view-button="grid" aria-label="Grid" data-tooltip="Grid"><dnf-icon name="grid" size="Sm" /></button>
+        <button type="button" class="dnf-segmented__item dnf-segmented__item--icon" data-view-button="list" aria-label="List" data-tooltip="List"><dnf-icon name="list" size="Sm" /></button>
+    </div>
+    <div id="docs-view-items" class="grid grid-cols-3 gap-3 data-[view-mode=list]:grid-cols-1">
+        <div class="dnf-card flex items-center gap-2 p-3 text-sm"><dnf-icon name="image" /> hero.jpg</div>
+        <div class="dnf-card flex items-center gap-2 p-3 text-sm"><dnf-icon name="file" /> annual-report.pdf</div>
+        <div class="dnf-card flex items-center gap-2 p-3 text-sm"><dnf-icon name="film" /> product-tour.mp4</div>
+    </div>
+</ui-doc-example>
+
+<h2 id="check-groups">Check-all groups</h2>
+<p><code>&lt;input type="checkbox" data-check-group="name"&gt;</code> checks or clears every
+    <code>[data-check-member="name"]</code>, and shows checked when all members are and indeterminate when some are - also
+    on load.</p>
+
+<ui-doc-example id="check-group-demo" title="A check-all group" description="Two of three members are checked, so the group starts indeterminate." layout="stack">
+    <div class="dnf-check-list">
+        <label class="dnf-check">
+            <input type="checkbox" class="dnf-checkbox" data-check-group="docs-content" />
+            <span class="dnf-check__text font-semibold">Content - every permission</span>
+        </label>
+        <div class="dnf-check-list ps-6">
+            <label class="dnf-check"><input type="checkbox" class="dnf-checkbox" data-check-member="docs-content" checked /><span class="dnf-check__text">Read entries</span></label>
+            <label class="dnf-check"><input type="checkbox" class="dnf-checkbox" data-check-member="docs-content" checked /><span class="dnf-check__text">Create and edit entries</span></label>
+            <label class="dnf-check"><input type="checkbox" class="dnf-checkbox" data-check-member="docs-content" /><span class="dnf-check__text">Delete entries</span></label>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="copy">Copy</h2>
+<p><code>data-copy-text="value"</code>, or <code>data-copy-target="#id"</code> (an input's value, else the element's
+    text), copies to the clipboard - trimmed - and shows a toast: "Copied to clipboard." or an error.</p>
+
+<ui-doc-example id="copy-demo" title="Copy buttons" description="A copy action inside an input, and a button with its own text to copy.">
+    <div class="dnf-input-group w-80">
+        <input class="dnf-input" id="docs-copy-url" readonly value="https://example.com/api/content/articles" aria-label="Endpoint URL" />
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only dnf-input-group__action" data-copy-target="#docs-copy-url" aria-label="Copy URL" data-tooltip="Copy URL"><dnf-icon name="copy" size="Sm" /></button>
+    </div>
+    <button type="button" class="dnf-button dnf-button--secondary" data-copy-text="about-us"><dnf-icon name="copy" class="dnf-button__icon" /> Copy slug</button>
+</ui-doc-example>
+
+<h2 id="reveal">Password reveal</h2>
+<p><code>data-reveal="#id"</code> toggles the input between <code>password</code> and <code>text</code>, and toggles
+    <code>aria-pressed</code>, the label ("Show password" or "Hide password") and which <code>[data-reveal-icon]</code> is
+    hidden. Put the button in an <a href="@UiDocsCatalog.Root/components/input-group">input group</a> as its action.</p>
+
+<ui-doc-example id="reveal-demo" title="Show the password" description="The eye button reveals the value; its label and icon follow.">
+    <div class="dnf-field w-72">
+        <label class="dnf-field__label" for="docs-reveal-password">Password</label>
+        <div class="dnf-input-group">
+            <input class="dnf-input" type="password" id="docs-reveal-password" value="correct horse battery" autocomplete="off" />
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only dnf-input-group__action" data-reveal="#docs-reveal-password" aria-pressed="false" aria-label="Show password">
+                <dnf-icon name="eye" size="Sm" data-reveal-icon="show" />
+                <dnf-icon name="eye-off" size="Sm" data-reveal-icon="hide" hidden />
+            </button>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="file-upload">File upload</h2>
+<p>On every <code>.dnf-file-upload</code> (wired by <code>init</code>): <code>data-dragging="true"</code> while files are
+    dragged over it, and after a choice the file names are listed as primary badges in
+    <code>[data-file-upload-files]</code> (<a href="@UiDocsCatalog.Root/components/file-upload">File upload</a>).</p>
+
+<ui-doc-example id="file-upload-demo" title="Chosen files" description="Choose or drop files: their names appear below. Nothing is uploaded." layout="block">
+    <div class="dnf-file-upload">
+        <input type="file" class="dnf-file-upload__input" multiple aria-label="Files to upload" aria-describedby="docs-upload-help" />
+        <dnf-icon name="upload" size="Lg" />
+        <p class="dnf-file-upload__title">Drop files here or click to choose</p>
+        <p class="text-sm" id="docs-upload-help">Images, video, PDF - up to 20 MB each.</p>
+        <div class="dnf-file-upload__files" data-file-upload-files></div>
+    </div>
+</ui-doc-example>
+
+<h2 id="fill">Fill a form</h2>
+<p><code>data-fill="#form"</code> sets each named field of that form from the matching <code>data-fill-&lt;name&gt;</code>
+    attribute, then focuses the form's first control - an "Edit" button on a row that loads the row into the form. HTML
+    lower-cases attribute names, so it suits lower-case field names.</p>
+
+<ui-doc-example id="fill-demo" title="Edit a row in a form" description="Each button fills the form with its row's values." layout="stack">
+    <div class="dnf-cluster">
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" data-fill="#docs-fill-form" data-fill-key="site.name" data-fill-value="DotNetForge">Edit site.name</button>
+        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" data-fill="#docs-fill-form" data-fill-key="site.tagline" data-fill-value="Content, forged.">Edit site.tagline</button>
+    </div>
+    <form id="docs-fill-form" class="dnf-form-grid" action="#fill">
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="docs-fill-key">Key</label>
+            <input class="dnf-input dnf-input--mono" id="docs-fill-key" name="key" />
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="docs-fill-value">Value</label>
+            <input class="dnf-input" id="docs-fill-value" name="value" />
+        </div>
+    </form>
+</ui-doc-example>
+
+<h2 id="frames">Frames</h2>
+<p>An <code>&lt;iframe data-frame&gt;</code> inside a <code>[data-frame-host]</code>: the host gets
+    <code>data-loaded="true"</code> once the frame has loaded (also when it already had). The host's own CSS decides what
+    that changes - the CMS hides the skeleton of an extension's admin tab.</p>
+
+<ui-doc-code id="frame-markup" lang="html">
+<div data-frame-host>
+    <div class="dnf-skeleton">…</div>
+    <iframe data-frame src="…" title="Reports"></iframe>
+</div>
+</ui-doc-code>
+
+<h2 id="theme">Theme switch</h2>
+<p><code>[data-theme-set="light|dark|system"]</code> switches the theme on click and marks the checked choice -
+    <a href="@UiDocsCatalog.Root/theming#switching">Theming</a>.</p>
+
+<h2 id="storage">Storage keys</h2>
+<table>
+    <thead><tr><th>Key</th><th>Storage</th><th>Holds</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-theme</code></td><td><code>localStorage</code></td><td><code>light</code> or <code>dark</code>; absent means the system preference</td></tr>
+        <tr><td><code>dnf-page-size:&lt;path&gt;:&lt;index&gt;</code></td><td><code>localStorage</code></td><td>rows per page of the collection at that position of the screen</td></tr>
+        <tr><td><code>dnf-view:&lt;name&gt;</code></td><td><code>localStorage</code></td><td>the view of a <code>data-view-switch</code></td></tr>
+        <tr><td><code>dnf-scroll</code></td><td><code>sessionStorage</code></td><td>the scroll position of the last POST</td></tr>
+    </tbody>
+</table>
+<p>Blocked storage (a private window) is caught everywhere; the behaviour then falls back to its default.</p>

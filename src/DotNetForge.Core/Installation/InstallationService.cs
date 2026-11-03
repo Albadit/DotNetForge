@@ -29,9 +29,6 @@ public sealed class InstallationService : IInstallationService
         _passwordHasher = passwordHasher;
     }
 
-    public Task<bool> IsInstalledAsync(CancellationToken cancellationToken = default) =>
-        _store.IsInstalledAsync(cancellationToken);
-
     public async Task<Result> InstallAsync(SetupRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);

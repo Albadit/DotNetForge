@@ -11,7 +11,7 @@ evaluation: [authorization](../features/authorization.md).
 | Item | Value |
 | --- | --- |
 | Routes | `GET /admin/roles` (list) · `GET /admin/roles/create` · `POST /admin/roles/create` · `GET /admin/roles/{id}` (editor) · `POST /admin/roles/{id}` (save) · `POST /admin/roles/{id}/duplicate` · `POST /admin/roles/{id}/delete` |
-| Sidebar entry | **Settings → Administration Panel → Roles** (`AdminNavigation.Tree`). The spec tree also lists Roles under **Users & Permissions Plugin**; it is shown once ([pages → sidebar](../architecture/pages.md#canonical-sidebar-tree-vs-the-sidebar)). |
+| Sidebar entry | **Settings → Administration Panel → Roles** (`AdminNavigation.Tree`). The spec tree also lists Roles under **Users & Permissions Plugin** (the sidebar's **Authentication** group); it is shown once ([pages → sidebar](../architecture/pages.md#canonical-sidebar-tree-vs-the-sidebar)). |
 | Breadcrumbs | Settings › Administration Panel › Roles › *Create role* / *role name* |
 | Linked from | the sidebar; **Manage roles** on the [Users](users.md) form; member links on the editor go to [Users](users.md) |
 
@@ -31,24 +31,24 @@ src/DotNetForge.Shared/Entities/Role.cs                          Role, RolePermi
 
 ```text
 List - Roles (h1) · [Create role]
-└── section.card[data-collection]
-    ├── card-header: **All roles** · "N total" · .segmented (JS only): All | Built-in | Custom
+└── section.dnf-card[data-collection]
+    ├── dnf-card__header: **All roles** · "N total" · .dnf-segmented (JS only): All | Built-in | Custom
     └── table: **Role** ⇅ (link to the editor) · **Type** · **Users** ⇅ · **Permissions** ⇅ · row menu ⋯ (Edit, Duplicate, Delete)
 
 Editor - <role name> or "Create role" (h1) · [Duplicate]
-├── form.editor-main
+├── form.dnf-split__main
 │   ├── card **Details**: Name* (read-only for built-in roles) · Description
 │   └── card **Permissions**: one fieldset per catalog area (label, description, "All" toggle, action checkboxes)
 │       └── footer: Cancel · [Save changes] / [Create role]
-└── aside.editor-aside (existing roles)
+└── aside.dnf-split__aside (existing roles)
     ├── card **Users with this role**: linked names / emails
-    └── card.card-danger **Delete role** (custom roles; a hint instead of the button while users hold it)
+    └── dnf-card.dnf-card--danger **Delete role** (custom roles; a hint instead of the button while users hold it)
 ```
 
 ## Components
 
 List rows (`RoleListItem(Id, Name, Description, IsBuiltIn, Users, Permissions)`, built-in first, then by name). The
-seven built-in roles (`Roles.BuiltIn`: `Super Admin`, `Admin`, `Developer`, `Editor`, `Author`, `Authenticated`,
+seven built-in roles (`Super Admin`, `Admin`, `Developer`, `Editor`, `Author`, `Authenticated`,
 `Public`) are seeded by `DataSeeder` with the `PermissionMatrix` defaults - also into an existing database that lacks
 one, on the next start. `Developer` holds only the `API` area (the [API Tokens](api-tokens.md) screen); the
 [API Docs](api-docs.md) and [API Endpoints](api-endpoints.md) screens are opened by the role name (`Super Admin` or
@@ -62,7 +62,7 @@ one, on the next start. `Developer` holds only the `API` area (the [API Tokens](
 | **Permissions** | number of catalog grants the role holds; Super Admin shows the catalog size (it has everything) |
 | Row menu (⋯) | **Edit**; **Duplicate** (with the `Roles` / `create` grant); **Delete** for custom roles (with `Roles` / `delete`, confirmation dialog, back to the list) - replaced by "In use by N users - can't be deleted" while users hold the role |
 
-Permission grid: one `fieldset.permission-group` per `PermissionCatalog.Areas` entry, checkboxes
+Permission grid: one `fieldset.dnf-permission-group` per `PermissionCatalog.Areas` entry, checkboxes
 `name="Grants" value="{area}|{action}"`, labelled by `PermissionCatalog.ActionLabel` ("Update own"). The **All**
 checkbox (`data-check-group`, JS only) ticks a whole area.
 
@@ -108,7 +108,7 @@ that hold regardless of grants ([authorization → safety rules](../features/aut
 
 ## Validation / error handling / loading
 
-Errors are shown in `<form-errors />` above the form with the input kept; list and delete errors are toasts.
+Errors are shown in `<dnf-validation-summary />` above the form with the input kept; list and delete errors are toasts.
 
 | Rule | Message |
 | --- | --- |

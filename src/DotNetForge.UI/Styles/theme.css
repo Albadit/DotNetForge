@@ -1,0 +1,78 @@
+/*
+  Tailwind theme for DotNetForge (.docs/ui/styling.md#tailwind): Tailwind's design scale points at the --dnf-* tokens,
+  so utilities follow the CMS theme and any token override - bg-primary, text-muted, border-border, rounded-md,
+  shadow-sm, text-sm (13px, the admin scale). `inline` keeps the var() references, so a scope that overrides a token
+  changes the utilities inside it too. Extensions import this file in their own Tailwind build
+  (.docs/ui/extensions.md#tailwind-in-an-extension).
+*/
+
+@theme inline {
+    --font-sans: var(--dnf-font-sans);
+    --font-mono: var(--dnf-font-mono);
+
+    --text-xs: var(--dnf-text-xs);
+    --text-xs--line-height: 1.4;
+    --text-sm: var(--dnf-text-sm);
+    --text-sm--line-height: 1.45;
+    --text-base: var(--dnf-text-base);
+    --text-base--line-height: var(--dnf-leading);
+    --text-md: var(--dnf-text-md);
+    --text-md--line-height: var(--dnf-leading);
+    --text-lg: var(--dnf-text-lg);
+    --text-lg--line-height: 1.4;
+    --text-xl: var(--dnf-text-xl);
+    --text-xl--line-height: 1.35;
+    --text-2xl: var(--dnf-text-2xl);
+    --text-2xl--line-height: var(--dnf-leading-tight);
+    --text-3xl: var(--dnf-text-3xl);
+    --text-3xl--line-height: var(--dnf-leading-tight);
+    --text-4xl: var(--dnf-text-4xl);
+    --text-4xl--line-height: 1.15;
+
+    --radius-sm: var(--dnf-radius-sm);
+    --radius-md: var(--dnf-radius-md);
+    --radius-lg: var(--dnf-radius-lg);
+    --radius-xl: var(--dnf-radius-xl);
+
+    --shadow-xs: var(--dnf-shadow-xs);
+    --shadow-sm: var(--dnf-shadow-sm);
+    --shadow-md: var(--dnf-shadow-md);
+    --shadow-lg: var(--dnf-shadow-lg);
+
+    --color-background: var(--dnf-background);
+    --color-foreground: var(--dnf-foreground);
+    --color-muted: var(--dnf-muted-foreground);
+    --color-subtle: var(--dnf-subtle-foreground);
+    --color-surface: var(--dnf-surface);
+    --color-surface-raised: var(--dnf-surface-raised);
+    --color-surface-muted: var(--dnf-surface-muted);
+    --color-surface-hover: var(--dnf-surface-hover);
+    --color-border: var(--dnf-border);
+    --color-border-strong: var(--dnf-border-strong);
+    --color-primary: var(--dnf-primary);
+    --color-primary-foreground: var(--dnf-primary-foreground);
+    --color-primary-text: var(--dnf-primary-text);
+    --color-primary-soft: var(--dnf-primary-soft);
+    --color-success: var(--dnf-success);
+    --color-success-soft: var(--dnf-success-soft);
+    --color-warning: var(--dnf-warning);
+    --color-warning-soft: var(--dnf-warning-soft);
+    --color-danger: var(--dnf-danger);
+    --color-danger-soft: var(--dnf-danger-soft);
+    --color-info: var(--dnf-info);
+    --color-info-soft: var(--dnf-info-soft);
+}
+
+/* dark: follows the effective theme like the tokens do - inside data-theme="dark", or with a dark system preference
+   unless the element is inside data-theme="light" (on <html> or any subtree). */
+@custom-variant dark {
+    &:where([data-theme="dark"], [data-theme="dark"] *) {
+        @slot;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        &:not(:where([data-theme="light"], [data-theme="light"] *)) {
+            @slot;
+        }
+    }
+}

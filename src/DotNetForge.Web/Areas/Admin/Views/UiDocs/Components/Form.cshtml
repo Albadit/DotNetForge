@@ -1,0 +1,231 @@
+@* Form (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+@* The MVC tag helpers are off on this page: the ui-doc-code snippets show asp-for and a post form as text, and with
+   them on, asp-for would be compiled against the docs page's own model. *@
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/form.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A form is a column of <a href="@UiDocsCatalog.Root/components/field">fields</a>, optionally laid out in a grid, and a row of
+    actions at the end. Put <code>dnf-form</code> on the <code>&lt;form&gt;</code>, <code>dnf-form-grid</code> around fields that sit
+    side by side and <code>dnf-form-actions</code> around the buttons.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <form class="dnf-form dnf-form--narrow" action="#basic">
+        <div class="dnf-form-grid">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="form-title">Title<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                <input class="dnf-input" id="form-title" value="About us" required />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="form-slug">Slug</label>
+                <input class="dnf-input" id="form-slug" value="about-us" />
+            </div>
+            <div class="dnf-field dnf-form-grid__full">
+                <label class="dnf-field__label" for="form-summary">Summary<span class="dnf-field__optional">optional</span></label>
+                <textarea class="dnf-textarea" id="form-summary" rows="3" aria-describedby="form-summary-help"></textarea>
+                <span class="dnf-field__description" id="form-summary-help">Shown in search results and link previews.</span>
+            </div>
+        </div>
+        <div class="dnf-form-actions dnf-form-actions--end">
+            <button type="button" class="dnf-button dnf-button--secondary">Cancel</button>
+            <button type="button" class="dnf-button dnf-button--primary" data-docs-toast="Page saved." data-docs-toast-tone="success">Save</button>
+        </div>
+    </form>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="stacked" title="Stacked" description="Without a grid the fields stack with the form's own rhythm; dnf-form--narrow caps the width at 44rem." layout="block">
+    <form class="dnf-form dnf-form--narrow" action="#stacked">
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="stacked-name">Site name</label>
+            <input class="dnf-input" id="stacked-name" value="DotNetForge" />
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="stacked-email">Contact email</label>
+            <input class="dnf-input" id="stacked-email" type="email" value="hello@@example.com" autocomplete="email" />
+        </div>
+        <div class="dnf-form-actions">
+            <button type="button" class="dnf-button dnf-button--primary" data-docs-toast="Settings saved." data-docs-toast-tone="success">Save settings</button>
+        </div>
+    </form>
+</ui-doc-example>
+
+<ui-doc-example id="three-columns" title="Three columns" description="dnf-form-grid--3 for short values; every grid falls back to one column below 40rem." layout="block">
+    <form class="dnf-form" action="#three-columns">
+        <div class="dnf-form-grid dnf-form-grid--3">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="cols-width">Max width</label>
+                <input class="dnf-input" id="cols-width" type="number" value="1920" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="cols-height">Max height</label>
+                <input class="dnf-input" id="cols-height" type="number" value="1080" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="cols-quality">Quality</label>
+                <input class="dnf-input" id="cols-quality" type="number" value="82" />
+            </div>
+        </div>
+    </form>
+</ui-doc-example>
+
+<ui-doc-example id="full-row" title="A field across the grid" description="dnf-form-grid__full on a field spans every column of its grid." layout="block">
+    <form class="dnf-form" action="#full-row">
+        <div class="dnf-form-grid">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="row-first">First name</label>
+                <input class="dnf-input" id="row-first" value="Ada" autocomplete="given-name" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="row-last">Last name</label>
+                <input class="dnf-input" id="row-last" value="Lovelace" autocomplete="family-name" />
+            </div>
+            <div class="dnf-field dnf-form-grid__full">
+                <label class="dnf-field__label" for="row-bio">Biography</label>
+                <textarea class="dnf-textarea" id="row-bio" rows="3"></textarea>
+            </div>
+        </div>
+    </form>
+</ui-doc-example>
+
+<ui-doc-example id="actions" title="Action row" description="Secondary actions first, the primary one last; dnf-form-actions--end moves the row to the end." layout="stack">
+    <div class="dnf-form-actions">
+        <button type="button" class="dnf-button dnf-button--primary" data-docs-toast="Webhook saved." data-docs-toast-tone="success">Save webhook</button>
+        <button type="button" class="dnf-button dnf-button--secondary" data-docs-toast="Test delivery sent." data-docs-toast-tone="info">Send test</button>
+    </div>
+    <div class="dnf-form-actions dnf-form-actions--end">
+        <button type="button" class="dnf-button dnf-button--ghost">Cancel</button>
+        <button type="button" class="dnf-button dnf-button--primary" data-docs-toast="User created." data-docs-toast-tone="success">Create user</button>
+    </div>
+</ui-doc-example>
+
+<h3 id="server-form">A server form</h3>
+<p>A real admin form posts with the antiforgery token, lists the server's errors at the top with
+    <a href="@UiDocsCatalog.Root/components/alert">the validation summary</a> and marks its submit button pending while the
+    request runs (<code>data-pending-on-submit</code>, see <a href="@UiDocsCatalog.Root/behaviours">behaviours</a>). Destructive
+    forms also carry <code>data-confirm</code>.</p>
+
+<ui-doc-code id="server-form-code" lang="razor">
+<form method="post" class="dnf-form dnf-form--narrow" data-pending-on-submit>
+    @@Html.AntiForgeryToken()
+    <dnf-validation-summary />
+    <div class="dnf-form-grid">
+        <div class="dnf-field">
+            <label class="dnf-field__label" asp-for="Title">Title<span class="dnf-field__required" aria-hidden="true">*</span></label>
+            <input class="dnf-input" asp-for="Title" required />
+            <span class="dnf-field__error" asp-validation-for="Title"></span>
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" asp-for="Slug">Slug</label>
+            <input class="dnf-input" asp-for="Slug" />
+            <span class="dnf-field__error" asp-validation-for="Slug"></span>
+        </div>
+    </div>
+    <div class="dnf-form-actions dnf-form-actions--end">
+        <a class="dnf-button dnf-button--secondary" href="/admin/pages">Cancel</a>
+        <button type="submit" class="dnf-button dnf-button--primary">Save</button>
+    </div>
+</form>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. The form
+    classes have no component tokens; Level 1 is the modifiers <code>--narrow</code>, <code>--3</code>, <code>__full</code> and
+    <code>--end</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities you add beat the component styles: a four-column grid on large screens, a wider gap." layout="block">
+    <form class="dnf-form gap-8" action="#custom-tailwind">
+        <div class="dnf-form-grid lg:grid-cols-4">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="tw-from">From</label>
+                <input class="dnf-input" id="tw-from" type="date" value="2026-01-01" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="tw-to">To</label>
+                <input class="dnf-input" id="tw-to" type="date" value="2026-01-31" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="tw-user">User</label>
+                <input class="dnf-input" id="tw-user" value="ada" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="tw-action">Action</label>
+                <select class="dnf-select" id="tw-action">
+                    <option>Any</option>
+                    <option>Page published</option>
+                    <option>User signed in</option>
+                </select>
+            </div>
+        </div>
+    </form>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS beats every component style - here an uneven grid from 40rem up." layout="block">
+    <form class="dnf-form dnf-docs-demo-form" action="#custom-css">
+        <div class="dnf-form-grid">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="css-url">Endpoint URL</label>
+                <input class="dnf-input" id="css-url" type="url" value="https://hooks.example.com/cms" />
+            </div>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="css-timeout">Timeout (s)</label>
+                <input class="dnf-input" id="css-timeout" type="number" value="10" />
+            </div>
+        </div>
+    </form>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+@@media (min-width: 40rem) {
+    .dnf-docs-demo-form .dnf-form-grid { grid-template-columns: 2fr 1fr; }
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-form</code></td><td>block</td><td>a flex column with gap <code>--dnf-space-5</code></td></tr>
+        <tr><td><code>dnf-form--narrow</code></td><td>modifier</td><td><code>max-width: var(--dnf-form-max)</code> (44rem)</td></tr>
+        <tr><td><code>dnf-form-grid</code></td><td>block</td><td>two equal columns, gap <code>--dnf-space-4</code> / <code>--dnf-space-5</code>, fields aligned to the top; one column below 40rem</td></tr>
+        <tr><td><code>dnf-form-grid--3</code></td><td>modifier</td><td>three columns; one below 40rem</td></tr>
+        <tr><td><code>dnf-form-grid__full</code></td><td>element</td><td>a field spanning every column</td></tr>
+        <tr><td><code>dnf-form-actions</code></td><td>block</td><td>a wrapping row of buttons, gap <code>--dnf-space-2</code></td></tr>
+        <tr><td><code>dnf-form-actions--end</code></td><td>modifier</td><td>the row aligned to the end</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<p>The form itself has none. Its fields' states (invalid, disabled, read-only) are on the
+    <a href="@UiDocsCatalog.Root/components/field#states">field</a> and <a href="@UiDocsCatalog.Root/components/input#states">input</a> pages.</p>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes above are the API. The form takes two behaviour hooks from <code>dnf.js</code>:</p>
+<table>
+    <thead><tr><th>Attribute</th><th>On</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-pending-on-submit</code></td><td><code>&lt;form&gt;</code></td><td>on a submit that was not cancelled, the submitter (else the first submit button) gets <code>data-pending="true"</code> and <code>aria-busy="true"</code> - the button shows its spinner until the next page loads</td></tr>
+        <tr><td><code>data-confirm</code></td><td><code>&lt;form&gt;</code> or a submit button</td><td>asks in the confirmation dialog before the form is sent, with <code>data-confirm-title</code>, <code>data-confirm-action</code> and <code>data-confirm-tone</code> (<a href="@UiDocsCatalog.Root/behaviours">behaviours</a>)</td></tr>
+    </tbody>
+</table>
+<p>Server errors go in <code>&lt;dnf-validation-summary /&gt;</code> at the top of the form (<a href="@UiDocsCatalog.Root/components/alert">alert</a>).</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Every control has a visible <code>&lt;label&gt;</code> tied with <code>for</code> (or a visually hidden one, <code>sr-only</code>).</li>
+    <li>Errors are linked to their control (<a href="@UiDocsCatalog.Root/components/field#accessibility">field</a>); the validation summary announces itself with <code>role="alert"</code>.</li>
+    <li>Group related radios and checkboxes in a <a href="@UiDocsCatalog.Root/components/fieldset">fieldset</a> with a legend.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do post and redirect (PRG); give destructive forms <code>data-confirm</code>.</li>
+    <li>Do order the actions secondary first, primary last, and keep one primary button per form.</li>
+    <li>Don't use <code>asp-validation-summary</code> - its empty state renders an inline style the Content Security Policy blocks; use <code>&lt;dnf-validation-summary /&gt;</code>.</li>
+</ul>

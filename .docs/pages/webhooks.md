@@ -38,8 +38,8 @@ src/DotNetForge.Web/Areas/Admin/Views/Webhooks/Index.cshtml         list card, a
 src/DotNetForge.Web/Areas/Admin/Views/Webhooks/Edit.cshtml          Receiver / Events / Headers cards; Webhook, Signing secret, Delete webhook side cards
 src/DotNetForge.Web/Areas/Admin/Views/Webhooks/Secret.cshtml        the one-time secret, copy button, how to check a signature
 src/DotNetForge.Web/Areas/Admin/Views/Webhooks/Deliveries.cshtml    attempts as <details>, paging
-src/DotNetForge.Web/wwwroot/js/forge/webhooks.js                     header rows: add, remove, renumber
-src/DotNetForge.Web/wwwroot/css/forge/admin.css                      .webhook-url, .webhook-header-row, .delivery-* (end of the file)
+src/DotNetForge.Web/wwwroot/js/admin/webhooks.js                     header rows: add, remove, renumber
+src/DotNetForge.Web/wwwroot/css/admin/people.css                     .dnf-webhook-header-row, .dnf-delivery__summary / __body
 src/DotNetForge.Web/Services/Webhooks/WebhookService.cs             validation, create/update/enable/disable/delete, rotate, test, audit
 src/DotNetForge.Web/Services/Webhooks/WebhookSender.cs              the test delivery's request
 src/DotNetForge.Web/Services/Webhooks/WebhookDispatcher.cs          MaxAttempts (shown on the form); the real deliveries
@@ -51,17 +51,17 @@ tests/DotNetForge.IntegrationTests/WebhookTests.cs                  validation, 
 
 ```text
 Webhooks (h1) - "Notify other systems - a search index, a cache, a build - with a signed POST when entries or media change."   [+ Create webhook] (create)
-└── section.card **Webhooks** - "N total · M enabled"
-    ├── <empty-state> when there are none (see Empty states)
-    └── table.table.table-stack: **Name** · **Events** · **Status** · **Last delivery** · actions
+└── section.dnf-card **Webhooks** - "N total · M enabled"
+    ├── <dnf-empty-state> when there are none (see Empty states)
+    └── div.dnf-table.dnf-table--stack > table: **Name** · **Events** · **Status** · **Last delivery** · actions
         └── row: name (link to the editor) / URL (truncated) · one badge per event key · Enabled | Disabled ·
-                 status-code badge (or "failed") + <timestamp> + "N failed attempt(s) in 24 h" - or "Never" ·
+                 status-code badge (or "failed") + <dnf-timestamp> + "N failed attempt(s) in 24 h" - or "Never" ·
                  action menu: Edit (View without update) · Delivery log · Send test delivery · Disable|Enable (update) ·
                  ── · Delete (delete, confirm)
 
 Create webhook / <name> (h1, medium width)   header: [Delivery log] [Send test delivery] (editor only; test with update)
-├── .editor-main: form (POST /admin/webhooks/create or /admin/webhooks/{id}, antiforgery)
-│   ├── <form-errors />
+├── .dnf-split__main: form (POST /admin/webhooks/create or /admin/webhooks/{id}, antiforgery)
+│   ├── <dnf-validation-summary />
 │   └── fieldset (disabled without update)
 │       ├── card **Receiver**: Name* (placeholder "Search index") · URL* (type url, placeholder "https://example.com/hooks/cms",
 │       │   hint "An https address. Each event is a POST with a JSON body, signed in the X-DotNetForge-Signature header.") ·
@@ -72,26 +72,26 @@ Create webhook / <name> (h1, medium width)   header: [Delivery log] [Send test d
 │       └── card **Headers** - "Sent with every request, e.g. an Authorization token the receiver expects. The value may be empty."
 │           ├── rows: Name ("Name, e.g. Authorization") · Value · [×] (JS only)
 │           ├── [+ Add header] (JS only, disabled at 20 rows)
-│           └── card-footer (update): [Cancel] [Create webhook | Save]
-└── .editor-aside (editor only)
-    ├── card **Webhook**: Created <timestamp> · Last delivery <timestamp> ("Never")
+│           └── dnf-card__footer (update): [Cancel] [Create webhook | Save]
+└── .dnf-split__aside (editor only)
+    ├── card **Webhook**: Created <dnf-timestamp> · Last delivery <dnf-timestamp> ("Never")
     ├── card **Signing secret** (update): "Shown once, after it was made. …" · [Rotate secret] (confirm)
-    └── card.card-danger **Delete webhook** (delete): "Removes the webhook and its delivery log." · [Delete webhook] (confirm)
+    └── dnf-card.dnf-card--danger **Delete webhook** (delete): "Removes the webhook and its delivery log." · [Delete webhook] (confirm)
 
 Webhook created | New signing secret (h1, medium width) - "'<name>' signs every delivery with this secret."
-├── <alert tone="Warning" title="Copy the secret now"> (after a rotation also "The old secret stopped working: …")
-└── card.card-accent **Signing secret**
-    ├── pre.code-block: the 64-character secret + [Copy] (JS only)
+├── <dnf-alert tone="Warning" title="Copy the secret now"> (after a rotation also "The old secret stopped working: …")
+└── dnf-card.dnf-card--accent **Signing secret**
+    ├── pre.dnf-code-block: the 64-character secret + [Copy] (JS only)
     ├── **Check a delivery on the receiver**: how the signature and X-DotNetForge-Delivery work + a Node.js example
-    └── card-footer: [Edit webhook] [Done] → list
+    └── dnf-card__footer: [Edit webhook] [Done] → list
 
 Delivery log (h1) - "Every attempt of '<name>' in the last 30 days, newest first."   [Edit webhook] [Send test delivery] (update)
-└── section.card **Attempts** - "N total · to <url>" · Enabled|Disabled badge
-    ├── <empty-state> when there are none
-    ├── ul.list: one <details> per attempt
-    │   ├── summary: status badge (code, "OK", "Failed" or "Waiting") · event key · "attempt n" · "<ms> ms" · absolute <timestamp>
+└── section.dnf-card **Attempts** - "N total · to <url>" · Enabled|Disabled badge
+    ├── <dnf-empty-state> when there are none
+    ├── ul.dnf-list: one <details> per attempt
+    │   ├── summary: status badge (code, "OK", "Failed" or "Waiting") · event key · "attempt n" · "<ms> ms" · absolute <dnf-timestamp>
     │   └── body: detail (red for a failure) · Event id · Target · **Request body** (indented JSON) · **Response (start)**
-    └── card-footer (more than one page): "Page x of y" · [Newer] [Older]
+    └── dnf-card__footer (more than one page): "Page x of y" · [Newer] [Older]
 ```
 
 ## Components
@@ -99,11 +99,11 @@ Delivery log (h1) - "Every attempt of '<name>' in the last 30 days, newest first
 | Component | Inputs | Behaviour |
 | --- | --- | --- |
 | Webhook table | `WebhooksViewModel.Rows` (`WebhookRow(Webhook, Last, Failures24h)`), ordered by name | **Last delivery** = the newest finished (not `Pending`) attempt of any age: `Success` badge with its status code, else a `Danger` badge with the code or "failed"; **N failed attempt(s) in 24 h** counts `Failure` rows of the last day (test deliveries, cancelled and skipped attempts included) |
-| Action menu | `CanUpdate`, `CanDelete` | `<action-menu>` with `<menu-link>` and `<menu-post>` items (each post is a form with the antiforgery token); Delete carries the confirm dialog |
+| Action menu | `CanUpdate`, `CanDelete` | `<dnf-dropdown>` with `<dnf-dropdown-link>` and `<dnf-dropdown-post>` items (each post is a form with the antiforgery token); Delete carries the confirm dialog |
 | Editor form | `WebhookEditViewModel(Id, Input, Created, LastDelivery, CanSave, CanDelete)` | binds `WebhookInput` (`Name`, `Url`, `Enabled`, `Events[]`, `Headers[i].Key/Value`); `Enabled` is a checkbox followed by a hidden `false` (the first posted value wins). Shows the saved headers plus one empty row, at most 20 |
 | Header rows | `webhooks.js` + `<template id="webhook-header-template">` | **Add header** appends a row, × removes one (the last row is only emptied), then the inputs are renumbered `Headers[0..n]` so they bind in order. Without JS the empty row is the way to add one header per save |
 | Signing secret card | editor, `update` | **Rotate secret** posts with `data-confirm` ("Make a new secret? Deliveries are signed with it from now on; the receiver must use it to check them.") |
-| Secret screen | `SecretViewModel(Id, Name, Secret, Created)` from TempData | **Copy** copies the hidden `#secret-text` (`data-copy-target`, `ui.js`) |
+| Secret screen | `SecretViewModel(Id, Name, Secret, Created)` from TempData | **Copy** copies the hidden `#secret-text` (`data-copy-target`, `dnf.js`) |
 | Delivery list | `DeliveriesViewModel(Webhook, Deliveries, Total, CanUpdate)`, `ViewData["Page"]`/`["Pages"]` | 50 rows per page, ordered by `RequestTimestamp` then `AttemptNumber`, newest first - a scheduled retry ("Waiting") has a future time and so comes first. Bodies are pretty-printed for reading; what was sent and signed is the compact original |
 
 ## Functionality
@@ -117,7 +117,7 @@ Delivery log (h1) - "Every attempt of '<name>' in the last 30 days, newest first
    audit `webhook.created` (details `<url>; events: <keys>`).
 4. **UI:** the secret goes into `TempData["dnf.webhook-secret"]` (`<id>|created|<secret>`) and the browser is redirected
    to `/admin/webhooks/{id}/secret`, which shows it once; reloading that page redirects to the editor.
-5. **Errors:** the form is shown again with `<form-errors />` and the posted values.
+5. **Errors:** the form is shown again with `<dnf-validation-summary />` and the posted values.
 
 ```mermaid
 sequenceDiagram
@@ -129,7 +129,7 @@ sequenceDiagram
     C->>S: CreateAsync(input)
     S->>S: ValidateAsync (name unique, https URL, events, headers)
     alt errors
-        C-->>A: Edit.cshtml + form-errors
+        C-->>A: Edit.cshtml + dnf-validation-summary
     else valid
         S->>S: GenerateSecret, Protect
         S->>DB: add Webhook, SaveChanges
@@ -222,7 +222,7 @@ Messages: [feature → a webhook](../features/webhooks.md#a-webhook).
 
 | Failure | Detection | User sees | Recovery |
 | --- | --- | --- | --- |
-| Validation error | `WebhookService.ValidateAsync` | `<form-errors />`, form with the posted values | fix and save again |
+| Validation error | `WebhookService.ValidateAsync` | `<dnf-validation-summary />`, form with the posted values | fix and save again |
 | Unknown or deleted webhook | lookup | `404` (editor, save, enable/disable, test, rotate, log); delete: error toast | back to the list |
 | Secret screen reloaded or opened directly | no matching TempData value | redirect to the editor | rotate the secret for a new one |
 | Test delivery fails | `WebhookSender` | error toast "Test failed: <detail>"; the attempt in the log | fix the receiver, test again |
@@ -237,8 +237,8 @@ Server-rendered; no indicators. **Send test delivery** waits for the receiver (a
 
 | Case | Text |
 | --- | --- |
-| No webhooks | `<empty-state icon="webhook">` "No webhooks yet" - "Create one to send entry and media changes to another system as they happen." (no button of its own - **Create webhook** is in the header, with `create`) |
-| No attempts | `<empty-state icon="send">` "Nothing sent yet" - "Attempts appear here when a subscribed event happens, or after a test delivery." |
+| No webhooks | `<dnf-empty-state icon="webhook">` "No webhooks yet" - "Create one to send entry and media changes to another system as they happen." (no button of its own - **Create webhook** is in the header, with `create`) |
+| No attempts | `<dnf-empty-state icon="send">` "Nothing sent yet" - "Attempts appear here when a subscribed event happens, or after a test delivery." |
 | Never delivered | "Never" (list, editor) |
 
 ## User interactions
@@ -254,8 +254,8 @@ WebhooksController
 ├── WebhookService → DotNetForgeDbContext, IWebhookSigner (HmacWebhookSigner), IDataProtectionProvider,
 │                    IAuditService, WebhookSender (→ IHttpClientFactory "webhooks", IWebhookSigner), IHostEnvironment
 └── DotNetForgeDbContext (reads)
-Views → <action-menu>, <menu-link>, <menu-post>, <badge>, <timestamp>, <empty-state>, <alert>, <form-errors>, <icon>;
-        ui.js (data-confirm, data-copy-target, data-js-only), webhooks.js
+Views → <dnf-dropdown>, <dnf-dropdown-link>, <dnf-dropdown-post>, <dnf-badge>, <dnf-timestamp>, <dnf-empty-state>, <dnf-alert>, <dnf-validation-summary>, <dnf-icon>;
+        dnf.js (data-confirm, data-copy-target, data-js-only), webhooks.js
 ```
 
 ## Page flow

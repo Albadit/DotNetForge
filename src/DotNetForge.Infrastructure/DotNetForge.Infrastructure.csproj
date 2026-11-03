@@ -12,7 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="..\DotNetForge.Abstractions\DotNetForge.Abstractions.csproj" />
     <ProjectReference Include="..\DotNetForge.Shared\DotNetForge.Shared.csproj" />
-    <ProjectReference Include="..\DotNetForge.Core\DotNetForge.Core.csproj" />
   </ItemGroup>
 
 </Project>

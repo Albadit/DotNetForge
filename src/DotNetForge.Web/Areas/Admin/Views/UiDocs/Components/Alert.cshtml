@@ -1,0 +1,138 @@
+@* Alert (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/status.css</code></li>
+    <li>Tag helpers <code>&lt;dnf-alert&gt;</code>, <code>&lt;dnf-validation-summary&gt;</code> in <code>src/DotNetForge.UI/Components/BasicTagHelpers.cs</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>An alert is a message that stays in the page: a problem with the configuration, a warning before a risky setting, the
+    result of a check. Use the <code>&lt;dnf-alert&gt;</code> tag helper, or write the classes yourself. For the result of an
+    action, use a <a href="@UiDocsCatalog.Root/components/toast">toast</a> instead.</p>
+
+<ui-doc-example id="basic" layout="stack">
+    <dnf-alert tone="Warning" title="SMTP is not configured">Password reset emails can't be sent until an SMTP server is set in the environment.</dnf-alert>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="tones" title="Tones" description="Info (the default), Success, Warning and Danger get the tone's soft background and icon; Neutral is the plain bordered alert with the info icon." layout="stack">
+    <dnf-alert tone="Info" title="Scheduled publishing">This page goes live on 1 March at 09:00 UTC.</dnf-alert>
+    <dnf-alert tone="Success" title="Connection works">The test email was accepted by the SMTP server.</dnf-alert>
+    <dnf-alert tone="Warning" title="Webhook is failing">The last 3 deliveries to the endpoint returned 500.</dnf-alert>
+    <dnf-alert tone="Danger" title="Storage is not reachable">Uploads are paused until the S3 bucket answers again.</dnf-alert>
+    <dnf-alert tone="Neutral" title="Read-only">These values come from the environment and can't be changed here.</dnf-alert>
+</ui-doc-example>
+
+<ui-doc-example id="without-title" title="Without a title" description="Leave out title for a one-line message; the body is then the only text." layout="stack">
+    <dnf-alert tone="Info">The site is in maintenance mode - visitors see the maintenance page.</dnf-alert>
+    <dnf-alert tone="Danger">The slug is already used by another page.</dnf-alert>
+</ui-doc-example>
+
+<ui-doc-example id="rich-body" title="Lists and links" description="The child content is HTML: a list inside the body gets bullets, and a link can lead to the fix." layout="stack">
+    <dnf-alert tone="Danger" title="The import stopped">
+        <ul>
+            <li>Row 4: the content type "event" does not exist.</li>
+            <li>Row 9: the slug "about" is already used.</li>
+        </ul>
+    </dnf-alert>
+    <dnf-alert tone="Warning" title="No sender address">
+        Emails go out from a default address. <a href="/admin/email/configuration">Open the email configuration</a>
+    </dnf-alert>
+</ui-doc-example>
+
+<ui-doc-example id="plain-classes" title="Plain classes" description="The same alert written by hand: the block, a tone, the icon and a body with an optional title." layout="stack">
+    <div class="dnf-alert dnf-alert--success" role="status">
+        <dnf-icon name="circle-check" class="dnf-alert__icon" />
+        <div class="dnf-alert__body">
+            <div class="dnf-alert__title">Backup finished</div>
+            <div>1,284 entries and 312 media files were exported.</div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="validation-summary" title="Validation summary" description="Every model-state error of the request in one danger block at the top of a form. The tag helper renders nothing without errors, so this preview shows its output." layout="stack">
+    <div class="dnf-validation-summary" role="alert">
+        <ul>
+            <li>The title is required.</li>
+            <li>The slug is already used by another page.</li>
+        </ul>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="validation-summary-razor" lang="razor">
+<form method="post" class="dnf-form">
+    <dnf-validation-summary />
+    …fields…
+</form>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Classes you write are appended after the component's own; utilities beat component styles." layout="stack">
+    <dnf-alert tone="Info" class="max-w-md shadow-sm">Narrower, with a shadow.</dnf-alert>
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="The tones only set --dnf-alert-* tokens; set them in your own (unlayered) CSS to restyle alerts in a scope." layout="stack">
+    <div class="dnf-docs-demo-alerts">
+        <dnf-alert tone="Neutral" title="Draft">This entry has unpublished changes.</dnf-alert>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-alerts .dnf-alert {
+    --dnf-alert-border: var(--dnf-border-strong);
+    --dnf-alert-icon: var(--dnf-primary-text);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-alert</code></td><td>block</td><td>a row with icon and body, muted surface and border (the neutral look)</td></tr>
+        <tr><td><code>dnf-alert__icon</code></td><td>element</td><td>the icon in <code>--dnf-alert-icon</code></td></tr>
+        <tr><td><code>dnf-alert__body</code></td><td>element</td><td>a column; a <code>ul</code> inside gets bullets</td></tr>
+        <tr><td><code>dnf-alert__title</code></td><td>element</td><td>semibold first line</td></tr>
+        <tr><td><code>dnf-alert--success</code> / <code>--warning</code> / <code>--danger</code> / <code>--info</code></td><td>tone</td><td>the tone's soft background, no border, icon in the tone colour</td></tr>
+        <tr><td><code>dnf-validation-summary</code></td><td>block</td><td>a danger-soft box in the danger colour with a bulleted list</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-alert-background</code>, <code>--dnf-alert-border</code>, <code>--dnf-alert-icon</code>.</p>
+
+<h2 id="api">API</h2>
+<h3 id="api-alert"><code>&lt;dnf-alert&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfAlertTagHelper)" />
+<p>The child content is the body (HTML allowed); <code>title</code> is encoded. <code>Primary</code> renders the info tone and
+    <code>Neutral</code> the plain alert. The icon follows the tone: <code>circle-check</code> (success),
+    <code>triangle-alert</code> (warning), <code>circle-x</code> (danger), <code>info</code> (the others). The role is
+    <code>alert</code> for Danger and Warning, <code>status</code> for the rest. <code>class</code> is appended; other attributes
+    pass through.</p>
+
+<h3 id="api-validation-summary"><code>&lt;dnf-validation-summary&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfValidationSummaryTagHelper)" />
+<p>Renders every distinct, non-empty model-state error of the request as
+    <code>&lt;div class="dnf-validation-summary" role="alert"&gt;&lt;ul&gt;&lt;li&gt;…</code>, or nothing when there are none. It
+    replaces <code>asp-validation-summary</code>, whose empty state renders an inline style the Content-Security-Policy
+    forbids. <code>class</code> is appended.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li><code>role="alert"</code> interrupts the screen reader: it is used for Danger and Warning (and the validation summary) -
+        what needs attention now. The other tones are <code>role="status"</code>, announced politely.</li>
+    <li>The icon is decorative (<code>aria-hidden</code>); the text carries the meaning, so never rely on the colour alone.</li>
+    <li>A hand-written alert needs the same role as the tag helper would give it.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do put the validation summary at the top of the form.</li>
+    <li>Do say what happened and what to do next; link to the place where it can be fixed.</li>
+    <li>Don't use an alert for the result of an action - set <code>TempData</code> and redirect, the layout shows a
+        <a href="@UiDocsCatalog.Root/components/toast">toast</a>.</li>
+    <li>Don't stack many alerts; one per problem area is enough.</li>
+</ul>

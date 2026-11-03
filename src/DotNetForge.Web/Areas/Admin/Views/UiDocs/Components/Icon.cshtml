@@ -1,0 +1,158 @@
+@* Icon (UI docs). Sections: Usage, Examples, Available icons, Customization, Styling reference, API, Accessibility,
+   Guidelines. The icon list is every <symbol id> of src/DotNetForge.UI/wwwroot/icons.svg, in file order - add a new
+   symbol's id here too. *@
+@{
+    var icons = new[]
+    {
+        "dashboard", "pages", "file", "file-code", "image", "film", "music", "archive", "store", "settings", "key", "history",
+        "globe", "puzzle", "transfer", "webhook", "shield", "users", "user", "activity", "mail", "lock", "sliders", "plus",
+        "trash", "pencil", "search", "chevron-down", "chevron-up", "chevron-right", "chevron-left", "chevrons-down-up", "chevrons-up-down",
+        "sort", "x", "menu", "sun", "moon", "monitor", "log-out", "log-in", "check", "circle-check", "circle-alert",
+        "circle-x", "triangle-alert", "info", "external-link", "upload", "download", "copy", "grip", "eye", "eye-off", "more",
+        "home", "layers", "inbox", "folder", "grid", "list", "code", "link", "power", "package", "box", "plug", "bell",
+        "gauge", "panel", "palette", "clock", "calendar", "arrow-right", "arrow-left", "server", "book", "filter", "database",
+        "tag", "briefcase", "message", "smartphone", "help", "star", "type", "align-left", "pilcrow", "hash", "toggle",
+        "at-sign", "list-checks", "route", "network", "list-ordered", "braces", "repeat", "table", "arrow-up", "arrow-down",
+        "send", "save", "bold", "italic", "underline", "heading", "quote", "rotate-ccw", "wrap-text", "refresh-cw",
+    };
+}
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/icon.css</code></li>
+    <li>Tag helper <code>&lt;dnf-icon&gt;</code> in <code>src/DotNetForge.UI/Components/BasicTagHelpers.cs</code></li>
+    <li>Sprite <code>src/DotNetForge.UI/wwwroot/icons.svg</code> (24 × 24 stroke icons, paths from Lucide, ISC licence)</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>An icon is a symbol from the library's sprite, drawn with strokes in the current text colour. Use the
+    <code>&lt;dnf-icon&gt;</code> tag helper with the symbol's id; it is decorative unless you give it a label.</p>
+
+<ui-doc-example id="basic">
+    <span class="dnf-cluster"><dnf-icon name="pages" /> Pages</span>
+    <span class="dnf-cluster"><dnf-icon name="image" /> Media</span>
+    <span class="dnf-cluster"><dnf-icon name="webhook" /> Webhooks</span>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="sizes" title="Sizes" description="Sm (14px), Md (18px, the default), Lg (22px) and Xl (28px).">
+    <dnf-icon name="settings" size="Sm" />
+    <dnf-icon name="settings" />
+    <dnf-icon name="settings" size="Lg" />
+    <dnf-icon name="settings" size="Xl" />
+</ui-doc-example>
+
+<ui-doc-example id="colour" title="Colour" description="Icons follow the text colour, so a text utility on the icon or its parent colours it.">
+    <dnf-icon name="circle-check" class="text-success" />
+    <dnf-icon name="triangle-alert" class="text-warning" />
+    <dnf-icon name="circle-x" class="text-danger" />
+    <dnf-icon name="info" class="text-info" />
+    <span class="text-primary-text"><dnf-icon name="star" /></span>
+</ui-doc-example>
+
+<ui-doc-example id="label" title="With a label" description="With label the icon becomes an image with that accessible name - only when the icon alone tells something, such as a status with no text next to it.">
+    <dnf-icon name="circle-alert" label="Has errors" class="text-danger" />
+    <dnf-icon name="lock" label="Locked" />
+</ui-doc-example>
+
+<ui-doc-example id="in-controls" title="In buttons and fields" description="Components draw their own icons from the same sprite: name the control (here the icon-only button's label), not the icon.">
+    <dnf-button icon="upload">Upload</dnf-button>
+    <dnf-button icon="trash" icon-only="true" label="Delete" />
+    <div class="dnf-input-group">
+        <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+        <input class="dnf-input" type="search" aria-label="Search media" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="plain" title="Plain markup" description="Without the tag helper: an svg element with the dnf-icon class that uses the symbol from the sprite (DnfAssets.Sprite, below the app's path base).">
+    <svg class="dnf-icon dnf-icon--lg" aria-hidden="true" focusable="false"><use href="@(Context.Request.PathBase + DnfAssets.Sprite)#folder"></use></svg>
+</ui-doc-example>
+
+<p>From a script, <code>dnfUI.icon(name, size, className)</code> returns the same markup (decorative, with the
+    cache-busted sprite URL); <code>size</code> is <code>"sm"</code>, <code>"lg"</code>, <code>"xl"</code> or omitted.</p>
+<ui-doc-code id="script" lang="js">
+var markup = dnfUI.icon("refresh-cw", "sm", "dnf-button__icon");
+button.insertAdjacentHTML("afterbegin", markup);
+</ui-doc-code>
+
+<h2 id="icons">Available icons</h2>
+<p>All @icons.Length symbols of the sprite. Select a tile to copy its name.</p>
+<ul class="grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2">
+    @foreach (var icon in icons)
+    {
+        <li>
+            <button type="button" class="flex w-full flex-col items-center gap-2 rounded-md border border-border px-2 py-3 text-xs text-muted hover:bg-surface-hover hover:text-foreground" data-copy-text="@icon">
+                <dnf-icon name="@icon" size="Lg" />
+                <span class="font-mono">@icon</span>
+            </button>
+        </li>
+    }
+</ul>
+<p>Used by the library itself: <code>circle-check</code>, <code>triangle-alert</code>, <code>circle-x</code> and <code>info</code>
+    (alerts and toasts), <code>more</code> and <code>chevron-down</code> (dropdowns), <code>inbox</code> (the empty state's
+    default), <code>activity</code> (the stat card's default), <code>sort</code>, <code>chevron-left</code> and
+    <code>chevron-right</code> (<code>dnf.js</code>).</p>
+<p>To add an icon, copy its Lucide paths into a new <code>&lt;symbol id="name" viewBox="0 0 24 24"&gt;</code> in
+    <code>icons.svg</code>. A name that is not in the sprite renders nothing.</p>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A class on the tag helper is appended: colour with a text utility, size with the token or a size utility.">
+    <dnf-icon name="bell" class="text-primary-text" />
+    <dnf-icon name="bell" class="[--dnf-icon-size:2.25rem]" />
+    <dnf-icon name="bell" class="size-4" />
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="The size is the --dnf-icon-size token and the stroke a plain property; set them in your own (unlayered) CSS to restyle icons in a scope - here larger and thinner.">
+    <div class="dnf-docs-demo-icons dnf-cluster">
+        <dnf-icon name="home" />
+        <dnf-icon name="mail" />
+        <dnf-icon name="calendar" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-icons .dnf-icon {
+    --dnf-icon-size: 1.5rem;
+    stroke-width: 1.25;
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-icon</code></td><td>block</td><td>a <code>--dnf-icon-size</code> square, no fill, <code>stroke: currentColor</code>, stroke width 1.8, round caps and joins, <code>vertical-align: middle</code>, never shrinks</td></tr>
+        <tr><td><code>dnf-icon--sm</code></td><td>size</td><td>0.875rem (14px)</td></tr>
+        <tr><td><code>dnf-icon--lg</code></td><td>size</td><td>1.375rem (22px)</td></tr>
+        <tr><td><code>dnf-icon--xl</code></td><td>size</td><td>1.75rem (28px)</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-icon-size</code> (1.125rem, 18px): the width and height.</p>
+
+<h2 id="api">API</h2>
+<h3 id="api-icon"><code>&lt;dnf-icon&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfIconTagHelper)" />
+<p>A self-closing element that renders <code>&lt;svg class="dnf-icon" focusable="false"&gt;&lt;use href="…/icons.svg?v=…#name"&gt;&lt;/use&gt;&lt;/svg&gt;</code>
+    with the cache-busted sprite URL below the app's path base. Other attributes pass through; <code>class</code> is appended.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Decorative by default: <code>aria-hidden="true"</code> and <code>focusable="false"</code>.</li>
+    <li>With <code>label</code> it becomes <code>role="img"</code> with that <code>aria-label</code>. Give a label only when the icon alone names something; next to text it stays decorative.</li>
+    <li>An icon-only control gets its name on the control (<code>aria-label</code>), not on the icon inside it.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use the icon that matches the meaning across the admin (<code>pencil</code> edits, <code>trash</code> deletes, <code>more</code> opens a menu).</li>
+    <li>Do pair icons with text in navigation and buttons; icon-only buttons are for well-known actions.</li>
+    <li>Do show direction with chevrons - <code>chevron-left</code> back, <code>chevron-right</code> forward or "view all",
+        <code>chevron-up</code> / <code>chevron-down</code> move, open and sort - never the <code>arrow-*</code> icons, and write "›"
+        (not "→") between steps in text. The arrows stay in the sprite only for extensions that already use them.</li>
+    <li>Don't use icon fonts, images or inline svg paths for interface icons - add a symbol to the sprite.</li>
+</ul>

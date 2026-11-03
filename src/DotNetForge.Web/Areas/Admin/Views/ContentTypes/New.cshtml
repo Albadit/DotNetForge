@@ -8,35 +8,35 @@
     var name = Context.Request.HasFormContentType ? Context.Request.Form["name"].ToString() : string.Empty;
 }
 
-<form method="post" action="/admin/content-types/create" class="form stack-lg" novalidate>
+<form method="post" action="/admin/content-types/create" class="dnf-form" novalidate>
     @Html.AntiForgeryToken()
-    <form-errors />
+    <dnf-validation-summary />
 
-    <section class="card" aria-labelledby="start-title">
-        <div class="card-header">
+    <section class="dnf-card" aria-labelledby="start-title">
+        <div class="dnf-card__header">
             <div>
-                <h2 class="card-title" id="start-title">Start from</h2>
-                <p class="card-description">A template creates the fields for you - and the types it links to (a blog also gets categories and authors).</p>
+                <h2 class="dnf-card__title" id="start-title">Start from</h2>
+                <p class="dnf-card__description">A template creates the fields for you - and the types it links to (a blog also gets categories and authors).</p>
             </div>
         </div>
-        <div class="card-body">
-            <div class="template-grid" role="radiogroup" aria-labelledby="start-title">
-                <label class="template-card">
-                    <input type="radio" name="template" value="" checked="@(chosen.Length == 0 ? "checked" : null)" />
-                    <span class="type-icon" aria-hidden="true"><icon name="plus" /></span>
-                    <span class="template-text">
-                        <strong>Blank</strong>
-                        <span>A title field to start with; add your own.</span>
+        <div class="dnf-card__body">
+            <div class="dnf-choice-cards dnf-choice-cards--wide" role="radiogroup" aria-labelledby="start-title">
+                <label class="dnf-choice-card dnf-choice-card--detailed">
+                    <input type="radio" class="dnf-radio" name="template" value="" checked="@(chosen.Length == 0 ? "checked" : null)" />
+                    <span class="dnf-type-icon" aria-hidden="true"><dnf-icon name="plus" /></span>
+                    <span class="dnf-choice-card__text">
+                        <strong class="dnf-choice-card__title">Blank</strong>
+                        <span class="dnf-choice-card__description">A title field to start with; add your own.</span>
                     </span>
                 </label>
                 @foreach (var template in ContentTypeTemplates.All)
                 {
-                    <label class="template-card">
-                        <input type="radio" name="template" value="@template.Id" checked="@(chosen == template.Id ? "checked" : null)" />
-                        <span class="type-icon" aria-hidden="true"><icon name="@template.Icon" /></span>
-                        <span class="template-text">
-                            <strong>@template.Name @if (template.Kind == ContentTypeKind.Single) { <badge tone="Info">Single</badge> }</strong>
-                            <span>@template.Description</span>
+                    <label class="dnf-choice-card dnf-choice-card--detailed">
+                        <input type="radio" class="dnf-radio" name="template" value="@template.Id" checked="@(chosen == template.Id ? "checked" : null)" />
+                        <span class="dnf-type-icon" aria-hidden="true"><dnf-icon name="@template.Icon" /></span>
+                        <span class="dnf-choice-card__text">
+                            <strong class="dnf-choice-card__title">@template.Name @if (template.Kind == ContentTypeKind.Single) { <dnf-badge tone="Info">Single</dnf-badge> }</strong>
+                            <span class="dnf-choice-card__description">@template.Description</span>
                         </span>
                     </label>
                 }
@@ -44,18 +44,18 @@
         </div>
     </section>
 
-    <section class="card" aria-labelledby="name-title">
-        <div class="card-header"><h2 class="card-title" id="name-title">Name</h2></div>
-        <div class="card-body">
-            <div class="field">
-                <label class="field-label" for="name">Name<span class="field-optional">optional with a template</span></label>
-                <input id="name" name="name" value="@name" maxlength="100" placeholder="e.g. Blog posts, Products, Team members" aria-describedby="name-hint" />
-                <span class="field-hint" id="name-hint">Plural for a collection ("Products"). The API id is made from it; you can change both later.</span>
+    <section class="dnf-card" aria-labelledby="name-title">
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="name-title">Name</h2></div>
+        <div class="dnf-card__body">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="name">Name<span class="dnf-field__optional">optional with a template</span></label>
+                <input id="name" name="name" class="dnf-input" value="@name" maxlength="100" placeholder="e.g. Blog posts, Products, Team members" aria-describedby="name-hint" />
+                <span class="dnf-field__description" id="name-hint">Plural for a collection ("Products"). The API id is made from it; you can change both later.</span>
             </div>
         </div>
-        <div class="card-footer form-actions end">
-            <a class="btn btn-ghost" href="/admin/content-types">Cancel</a>
-            <button type="submit" class="btn btn-primary"><icon name="plus" /> Create content type</button>
+        <div class="dnf-card__footer dnf-form-actions dnf-form-actions--end">
+            <a class="dnf-button dnf-button--ghost" href="/admin/content-types">Cancel</a>
+            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="plus" /> Create content type</button>
         </div>
     </section>
 </form>

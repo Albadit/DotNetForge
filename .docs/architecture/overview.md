@@ -78,9 +78,10 @@ flowchart BT
 
 ## Key decisions
 
-- **Server-rendered admin**, no SPA or Node build; progressive enhancement only. One dependency-free design system
-  (CSS tokens + components, Razor tag helpers, vanilla `ui.js`, light/dark) for every built-in screen, shaped by the
-  CSP ([design system](design-system.md)).
+- **Server-rendered admin**, no SPA or Node build; progressive enhancement only. One component library, DotNetForge UI
+  (`src/DotNetForge.UI`: tokens + components in `dnf.css`, built by the Tailwind standalone CLI at build time, Razor
+  tag helpers, vanilla `dnf.js`, light/dark) for every built-in screen, shaped by the CSP
+  ([design system](design-system.md), [DotNetForge UI](../ui/README.md)).
 - **Two auth schemes:** cookie (`dnf.auth`) for the admin, `ApiToken` bearer for `/api`.
 - **Role-based admin gating** (`AdminArea` policy + `[Authorize(Roles = ...)]`), plus `(area, action)` checks from the
   permission matrix for content and media actions; granular permission keys for API tokens.

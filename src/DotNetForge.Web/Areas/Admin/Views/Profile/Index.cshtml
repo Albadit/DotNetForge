@@ -9,116 +9,116 @@
         .Split(new[] { ' ', '@', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0]));
 }
 
-<div class="editor">
-    <div class="editor-main">
+<div class="dnf-split">
+    <div class="dnf-split__main">
         <form method="post" action="/admin/profile" novalidate>
             @Html.AntiForgeryToken()
-            <section class="card" aria-labelledby="details-title">
-                <div class="card-header"><h2 class="card-title" id="details-title">Details</h2></div>
-                <div class="card-body stack">
+            <section class="dnf-card" aria-labelledby="details-title">
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="details-title">Details</h2></div>
+                <div class="dnf-card__body dnf-stack">
                     @if (Model.Form == "details")
                     {
-                        <form-errors />
+                        <dnf-validation-summary />
                     }
-                    <div class="form-grid">
-                        <div class="field">
-                            <label class="field-label" for="FirstName">First name<span class="field-optional">optional</span></label>
-                            <input id="FirstName" name="FirstName" value="@details.FirstName" maxlength="@UserManagementService.MaxNameLength" autocomplete="given-name" />
+                    <div class="dnf-form-grid">
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="FirstName">First name<span class="dnf-field__optional">optional</span></label>
+                            <input id="FirstName" class="dnf-input" name="FirstName" value="@details.FirstName" maxlength="@UserManagementService.MaxNameLength" autocomplete="given-name" />
                         </div>
-                        <div class="field">
-                            <label class="field-label" for="LastName">Last name<span class="field-optional">optional</span></label>
-                            <input id="LastName" name="LastName" value="@details.LastName" maxlength="@UserManagementService.MaxNameLength" autocomplete="family-name" />
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="LastName">Last name<span class="dnf-field__optional">optional</span></label>
+                            <input id="LastName" class="dnf-input" name="LastName" value="@details.LastName" maxlength="@UserManagementService.MaxNameLength" autocomplete="family-name" />
                         </div>
-                        <div class="field span-2">
-                            <label class="field-label" for="Email">Email<span class="field-required" aria-hidden="true">*</span></label>
-                            <input id="Email" name="Email" type="email" value="@details.Email" required maxlength="@UserManagementService.MaxEmailLength"
+                        <div class="dnf-field dnf-form-grid__full">
+                            <label class="dnf-field__label" for="Email">Email<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <input id="Email" class="dnf-input" name="Email" type="email" value="@details.Email" required maxlength="@UserManagementService.MaxEmailLength"
                                    autocomplete="email" aria-describedby="email-hint" />
-                            <span class="field-hint" id="email-hint">You sign in with this address.</span>
+                            <span class="dnf-field__description" id="email-hint">You sign in with this address.</span>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-primary"><icon name="check" /> Save details</button>
+                <div class="dnf-card__footer">
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Save details</button>
                 </div>
             </section>
         </form>
 
         <form method="post" action="/admin/profile/password" novalidate>
             @Html.AntiForgeryToken()
-            <section class="card" aria-labelledby="password-title">
-                <div class="card-header">
+            <section class="dnf-card" aria-labelledby="password-title">
+                <div class="dnf-card__header">
                     <div>
-                        <h2 class="card-title" id="password-title">@(Model.HasPassword ? "Password" : "Set a password")</h2>
-                        <p class="card-description">@(Model.HasPassword ? "" : "You signed up with a sign-in provider. With a password you can also sign in with your email. ")At least 8 characters with a letter and a number.</p>
+                        <h2 class="dnf-card__title" id="password-title">@(Model.HasPassword ? "Password" : "Set a password")</h2>
+                        <p class="dnf-card__description">@(Model.HasPassword ? "" : "You signed up with a sign-in provider. With a password you can also sign in with your email. ")At least 8 characters with a letter and a number.</p>
                     </div>
                 </div>
-                <div class="card-body stack">
+                <div class="dnf-card__body dnf-stack">
                     @if (Model.Form == "password")
                     {
-                        <form-errors />
+                        <dnf-validation-summary />
                     }
                     @if (Model.HasPassword)
                     {
-                        <div class="field">
-                            <label class="field-label" for="CurrentPassword">Current password<span class="field-required" aria-hidden="true">*</span></label>
-                            <input id="CurrentPassword" name="CurrentPassword" type="password" required autocomplete="current-password" />
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="CurrentPassword">Current password<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <input id="CurrentPassword" class="dnf-input" name="CurrentPassword" type="password" required autocomplete="current-password" />
                         </div>
                     }
-                    <div class="form-grid">
-                        <div class="field">
-                            <label class="field-label" for="NewPassword">New password<span class="field-required" aria-hidden="true">*</span></label>
-                            <input id="NewPassword" name="NewPassword" type="password" required autocomplete="new-password" />
+                    <div class="dnf-form-grid">
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="NewPassword">New password<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <input id="NewPassword" class="dnf-input" name="NewPassword" type="password" required autocomplete="new-password" />
                         </div>
-                        <div class="field">
-                            <label class="field-label" for="ConfirmPassword">Confirm new password<span class="field-required" aria-hidden="true">*</span></label>
-                            <input id="ConfirmPassword" name="ConfirmPassword" type="password" required autocomplete="new-password" />
+                        <div class="dnf-field">
+                            <label class="dnf-field__label" for="ConfirmPassword">Confirm new password<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <input id="ConfirmPassword" class="dnf-input" name="ConfirmPassword" type="password" required autocomplete="new-password" />
                         </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-primary"><icon name="key" /> @(Model.HasPassword ? "Change password" : "Set password")</button>
+                <div class="dnf-card__footer">
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="key" /> @(Model.HasPassword ? "Change password" : "Set password")</button>
                 </div>
             </section>
         </form>
 
-        <section class="card" aria-labelledby="security-title">
-            <div class="card-header">
+        <section class="dnf-card" aria-labelledby="security-title">
+            <div class="dnf-card__header">
                 <div>
-                    <h2 class="card-title" id="security-title">Two-step verification</h2>
-                    <p class="card-description">@(Model.MfaMethods > 0 ? "After your password you confirm with an authenticator app, a passkey or a code." : "Add a second step after your password: an authenticator app, a passkey or a code.")</p>
+                    <h2 class="dnf-card__title" id="security-title">Two-step verification</h2>
+                    <p class="dnf-card__description">@(Model.MfaMethods > 0 ? "After your password you confirm with an authenticator app, a passkey or a code." : "Add a second step after your password: an authenticator app, a passkey or a code.")</p>
                 </div>
-                <badge tone="@(Model.MfaMethods > 0 ? Tone.Success : Tone.Neutral)" dot="true">@(Model.MfaMethods > 0 ? "On" : "Off")</badge>
+                <dnf-badge tone="@(Model.MfaMethods > 0 ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(Model.MfaMethods > 0 ? "On" : "Off")</dnf-badge>
             </div>
-            <div class="card-footer">
-                <a class="btn btn-secondary" href="/admin/profile/security"><icon name="shield" /> Sign-in security</a>
+            <div class="dnf-card__footer">
+                <a class="dnf-button dnf-button--secondary" href="/admin/profile/security"><dnf-icon name="shield" /> Sign-in security</a>
             </div>
         </section>
     </div>
 
-    <aside class="editor-aside">
-        <section class="card" aria-labelledby="account-title">
-            <div class="card-body stack">
-                <div class="profile-identity">
-                    <span class="avatar avatar-lg" aria-hidden="true">@initials</span>
-                    <div class="stack-sm">
-                        <h2 class="card-title" id="account-title">@Model.DisplayName</h2>
+    <aside class="dnf-split__aside">
+        <section class="dnf-card" aria-labelledby="account-title">
+            <div class="dnf-card__body dnf-stack">
+                <div class="flex items-center gap-3 min-w-0">
+                    <span class="dnf-avatar dnf-avatar--lg" aria-hidden="true">@initials</span>
+                    <div class="dnf-stack dnf-stack--sm">
+                        <h2 class="dnf-card__title" id="account-title">@Model.DisplayName</h2>
                         <span class="text-sm text-muted">@Model.Email</span>
                     </div>
                 </div>
-                <dl class="dl dl-compact">
+                <dl class="dnf-description-list dnf-description-list--compact">
                     <dt>Roles</dt>
                     <dd>
-                        <span class="cluster">
+                        <span class="dnf-cluster">
                             @foreach (var role in Model.Roles)
                             {
-                                <badge tone="@(role.Contains("Admin") ? Tone.Accent : Tone.Neutral)">@role</badge>
+                                <dnf-badge tone="@(role.Contains("Admin") ? DnfTone.Primary : DnfTone.Neutral)">@role</dnf-badge>
                             }
                         </span>
                     </dd>
                     <dt>Member since</dt>
-                    <dd><timestamp value="@Model.Created" /></dd>
+                    <dd><dnf-timestamp value="@Model.Created" /></dd>
                     <dt>Last sign-in</dt>
-                    <dd><timestamp value="@Model.LastLogin" empty="Never" /></dd>
+                    <dd><dnf-timestamp value="@Model.LastLogin" empty="Never" /></dd>
                 </dl>
                 <p class="text-xs text-muted">Roles and status are changed by an administrator on the Users screen.</p>
             </div>

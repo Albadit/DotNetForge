@@ -6,48 +6,48 @@
 }
 
 @section Actions {
-    <a class="btn btn-secondary" href="/admin/content"><icon name="database" /> Content Manager</a>
+    <a class="dnf-button dnf-button--secondary" href="/admin/content"><dnf-icon name="database" /> Content Manager</a>
     @if (Model.CanCreate)
     {
-        <a class="btn btn-primary" href="/admin/content-types/new"><icon name="plus" /> New content type</a>
+        <a class="dnf-button dnf-button--primary" href="/admin/content-types/new"><dnf-icon name="plus" /> New content type</a>
     }
 }
 
 @if (Model.Types.Count == 0)
 {
-    <section class="card">
-        <div class="card-body">
-            <empty-state icon="database" title="No content types yet"
-                         text="A content type is a reusable shape for content - blog posts, products, events. Start from a template or build your own." />
+    <section class="dnf-card">
+        <div class="dnf-card__body">
+            <dnf-empty-state icon="database" title="No content types yet"
+                         description="A content type is a reusable shape for content - blog posts, products, events. Start from a template or build your own." />
         </div>
     </section>
 }
 else
 {
-    <section class="type-grid" aria-label="Content types">
+    <section class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-4" aria-label="Content types">
         @foreach (var type in Model.Types)
         {
-            <article class="card type-card">
-                <div class="type-card-head">
-                    <span class="type-icon" aria-hidden="true"><icon name="@type.Icon" /></span>
-                    <div class="type-card-title">
-                        <h2 class="card-title"><a href="/admin/content-types/@type.Id">@type.Name</a></h2>
-                        <span class="text-xs text-mono text-subtle">@type.Slug</span>
+            <article class="dnf-card dnf-type-card">
+                <div class="dnf-type-card__head">
+                    <span class="dnf-type-icon" aria-hidden="true"><dnf-icon name="@type.Icon" /></span>
+                    <div class="dnf-type-card__title">
+                        <h2 class="dnf-card__title"><a href="/admin/content-types/@type.Id">@type.Name</a></h2>
+                        <span class="text-xs font-mono text-subtle">@type.Slug</span>
                     </div>
-                    <badge tone="@(type.Kind == ContentTypeKind.Single ? Tone.Info : Tone.Neutral)">@(type.Kind == ContentTypeKind.Single ? "Single" : "Collection")</badge>
+                    <dnf-badge tone="@(type.Kind == ContentTypeKind.Single ? DnfTone.Info : DnfTone.Neutral)">@(type.Kind == ContentTypeKind.Single ? "Single" : "Collection")</dnf-badge>
                 </div>
                 @if (!string.IsNullOrEmpty(type.Description))
                 {
                     <p class="text-sm text-muted">@type.Description</p>
                 }
-                <dl class="type-stats">
+                <dl class="dnf-type-card__stats">
                     <div><dt>Fields</dt><dd>@type.FieldCount</dd></div>
                     <div><dt>Entries</dt><dd>@type.EntryCount</dd></div>
                     <div><dt>Published</dt><dd>@type.PublishedCount</dd></div>
                 </dl>
-                <div class="type-card-actions">
-                    <a class="btn btn-secondary btn-sm" href="/admin/content-types/@type.Id"><icon name="@(Model.CanUpdate ? "pencil" : "eye")" size="sm" /> @(Model.CanUpdate ? "Edit fields" : "View fields")</a>
-                    <a class="btn btn-ghost btn-sm" href="/admin/content/@type.Slug">Entries <icon name="arrow-right" size="sm" /></a>
+                <div class="dnf-type-card__actions">
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="/admin/content-types/@type.Id"><dnf-icon name="@(Model.CanUpdate ? "pencil" : "eye")" size="Sm" /> @(Model.CanUpdate ? "Edit fields" : "View fields")</a>
+                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/content/@type.Slug">Entries <dnf-icon name="chevron-right" size="Sm" /></a>
                 </div>
             </article>
         }

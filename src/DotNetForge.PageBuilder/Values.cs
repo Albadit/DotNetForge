@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -234,11 +231,6 @@ namespace DotNetForge.PageBuilder
             return (long)d;
         }
 
-        public static double Clamp(double value, double min, double max)
-        {
-            return value < min ? min : value > max ? max : value;
-        }
-
         /// <summary>Plain text: control characters (except newline, carriage return and tab) removed, length capped.</summary>
         public static string Text(JToken value, int max)
         {
@@ -368,11 +360,6 @@ namespace DotNetForge.PageBuilder
                 case null: return false;
                 default: number = Convert.ToDouble(raw, CultureInfo.InvariantCulture); return true;
             }
-        }
-
-        internal static bool IsNumber(JToken value)
-        {
-            return TryNumber(value, out _);
         }
 
         /// <summary><c>value === true</c>.</summary>

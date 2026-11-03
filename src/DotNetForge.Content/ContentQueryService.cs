@@ -46,7 +46,7 @@ public sealed record EntryPage(IReadOnlyList<ContentEntry> Items, int Total, int
 /// Lists entries with search, filters, sorting and paging (.docs/features/structured-content.md#querying) - for the
 /// Content Manager, content blocks on pages and the API alike. Every query reads one table: the entry columns, then
 /// the value index (<see cref="ContentEntryValue"/>) per filtered or sorted field, combined in memory, then the one page
-/// of entries by id. So it runs unchanged on every database, MongoDB included.
+/// of entries by id.
 /// </summary>
 public sealed class ContentQueryService
 {

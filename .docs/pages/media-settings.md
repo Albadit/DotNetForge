@@ -36,7 +36,7 @@ Media Library (admin layout, medium width)
 │   ├── stats: **files** · **stored** · **saved by optimization** (+ "(NN%)" when anything was saved)
 │   └── note (only when there are any): "N video(s) waiting for compression." · "N video(s) could not be compressed and are kept as uploaded (see the application log)."
 └── form (POST /admin/media-settings, antiforgery) - fieldset disabled without Settings update
-    ├── <form-errors />
+    ├── <dnf-validation-summary />
     ├── card **Upload limits** ("The largest file people can upload, per kind - on the Media screen, in entry forms and in the page builder.")
     │   ├── **Images (MB)** · **Videos and audio (MB)** · **Other files (MB)** (1-2048)
     │   └── note: "Up to 2048 MB. Behind a reverse proxy, allow large request bodies there too (nginx: client_max_body_size)."
@@ -120,7 +120,7 @@ Browser: `min`/`max`/`required` on the number fields. Server (`MediaSettingsServ
 
 | Failure | User sees | Recovery |
 | --- | --- | --- |
-| Invalid values | messages in `<form-errors />`, nothing saved | fix and save again |
+| Invalid values | messages in `<dnf-validation-summary />`, nothing saved | fix and save again |
 | `FFMPEG_PATH` set but ffmpeg doesn't start or fails `-version` | Videos card: alert "ffmpeg doesn't run" with the problem; the start error is logged as a warning | fix `FFMPEG_PATH` in `.env`, restart |
 | Videos failed to compress | Storage card note with the count; details in the application log | none needed - they are kept as uploaded |
 
@@ -154,7 +154,7 @@ MediaSettingsController
 flowchart LR
     A["GET /admin/media-settings"] -- Save settings --> B{"SaveAsync valid?"}
     B -- yes --> C["media.* rows + audit settings.changed → toast + redirect"] --> A
-    B -- no --> D[form-errors, nothing saved] --> A
+    B -- no --> D[validation summary, nothing saved] --> A
 ```
 
 ## Related pages

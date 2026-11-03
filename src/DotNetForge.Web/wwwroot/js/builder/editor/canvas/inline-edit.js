@@ -4,7 +4,7 @@ import { normalizeBlocks, normalizeRuns } from "../../core/richtext.js";
 function collectRuns(node, marks, out) {
   for (const child of Array.from(node.childNodes)) {
     if (child.nodeType === 3) {
-      const text = child.data.replace(/ /g, " ");
+      const text = child.data.replace(/\u00a0/g, " ");
       if (text) out.push({ text, ...marks });
       continue;
     }

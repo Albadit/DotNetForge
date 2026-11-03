@@ -19,7 +19,7 @@ public sealed class PublicSiteTests
 
         // Seeded: Home, About, News published and in the menu; Contact in the menu but not published.
         var visitor = await factory.CreateNoRedirectClient().GetStringAsync("/about");
-        Assert.Contains("class=\"site-nav\"", visitor);
+        Assert.Contains("class=\"dnf-site__nav\"", visitor);
         Assert.Contains("href=\"/news\"", visitor);
         Assert.Contains("href=\"/about\" aria-current=\"page\"", visitor);
         Assert.DoesNotContain("href=\"/contact\"", visitor);

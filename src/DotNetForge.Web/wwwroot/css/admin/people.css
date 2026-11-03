@@ -1,0 +1,108 @@
+/*
+  People and settings screens - the blocks no generic Dnf component covers:
+  Plugins (.docs/pages/plugins.md), API tokens and roles (.docs/pages/api-tokens.md, roles.md), sign-in security
+  (.docs/pages/sign-in-security.md) and webhooks (.docs/pages/webhooks.md). Users, profile, two-factor settings,
+  providers, settings, advanced settings and audit logs are built from Dnf components and Tailwind utilities only
+  (.docs/pages/users.md, profile.md, mfa.md, providers.md, settings.md, advanced-settings.md, audit-logs.md).
+*/
+
+@layer components {
+    /* ---- Plugins: one card per extension manifest -------------------------------------------------------------- */
+    .dnf-extension-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+        gap: var(--dnf-space-4);
+        padding: var(--dnf-space-4);
+    }
+    @media (max-width: 40rem) {
+        .dnf-extension-list { grid-template-columns: minmax(0, 1fr); }
+    }
+    .dnf-extension-card {
+        display: flex; flex-direction: column; gap: var(--dnf-space-3);
+        min-width: 0;
+        padding: var(--dnf-space-4);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface);
+    }
+    .dnf-extension-card[data-enabled="true"] { border-color: var(--dnf-primary-soft-border); }
+    .dnf-extension-card__head { display: flex; align-items: flex-start; gap: var(--dnf-space-3); min-width: 0; }
+    .dnf-extension-card__icon {
+        display: grid; place-items: center; flex: 0 0 auto;
+        width: 2.5rem; height: 2.5rem;
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+    }
+    .dnf-extension-card[data-enabled="true"] .dnf-extension-card__icon { background: var(--dnf-primary-soft); color: var(--dnf-primary-text); }
+    .dnf-extension-card__name { font-size: var(--dnf-text-md); font-weight: var(--dnf-weight-semibold); }
+    /* A problem is an icon button next to the name; its details open in a dnf-popover (.docs/pages/plugins.md). The
+       negative margin keeps the name line as tall as without it. */
+    .dnf-extension-card__problem-button { margin-block: calc(var(--dnf-space-1) * -1); }
+    .dnf-extension-card__problem-button[data-tone="warning"] { --dnf-button-foreground: var(--dnf-warning); --dnf-button-hover-foreground: var(--dnf-warning); }
+    .dnf-extension-card__problem-button[data-tone="danger"] { --dnf-button-foreground: var(--dnf-danger); --dnf-button-hover-foreground: var(--dnf-danger); }
+    /* The description takes the card's spare height, so the badges always sit right above the footer. */
+    .dnf-extension-card__description { flex: 1; margin: 0; }
+    .dnf-extension-card__badges { margin-top: auto; }
+    .dnf-extension-card__foot {
+        display: flex; align-items: center; justify-content: space-between; gap: var(--dnf-space-3);
+        margin-top: auto;
+        padding-top: var(--dnf-space-3);
+        border-top: 1px solid var(--dnf-border);
+    }
+
+    /* ---- Permission groups (API tokens → Create, Roles → edit): one framed fieldset of checks per area --------- */
+    .dnf-permission-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--dnf-space-4); }
+    .dnf-permission-group {
+        padding: var(--dnf-space-3) var(--dnf-space-4);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-md);
+    }
+    .dnf-permission-group__head {
+        display: flex; align-items: center; justify-content: space-between;
+        min-height: 1.75rem;
+        margin-bottom: var(--dnf-space-2);
+        font-weight: var(--dnf-weight-semibold);
+        text-transform: capitalize;
+    }
+    .dnf-permission-group__description { margin-bottom: var(--dnf-space-2); font-size: var(--dnf-text-xs); color: var(--dnf-muted-foreground); }
+    /* Rows at least 24px apart, the group's own check clear of the first: WCAG 2.2 target size (2.5.8). */
+    .dnf-permission-group .dnf-check { display: flex; min-height: 1.75rem; align-items: center; padding: 0.125rem 0; }
+    .dnf-permission-group .dnf-check > .dnf-checkbox { margin-top: 0; }
+
+    /* ---- Sign-in security: passkey row, authenticator QR code, recovery codes ---------------------------------- */
+    .dnf-mfa__passkey-add { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-2); margin-top: var(--dnf-space-2); }
+    .dnf-mfa__passkey-add > .dnf-input { flex: 1 1 12rem; min-width: 0; max-width: 18rem; }
+    /* White behind the code in both themes, so every scanner reads it. */
+    .dnf-mfa__qr {
+        align-self: flex-start;
+        width: 12rem; height: 12rem; max-width: none;
+        padding: var(--dnf-space-2);
+        border-radius: var(--dnf-radius-md);
+        background: #fff;
+        image-rendering: pixelated;
+    }
+    .dnf-mfa__codes {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--dnf-space-2) var(--dnf-space-6);
+        margin: 0;
+        padding-inline-start: 1.5rem;
+        list-style: decimal;
+    }
+    .dnf-mfa__codes code { font-size: var(--dnf-text-base); letter-spacing: 0.05em; }
+    @media (max-width: 30rem) {
+        .dnf-mfa__codes { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    /* ---- Webhooks: header rows (editor, rows added by js/admin/webhooks.js) and the delivery log --------------- */
+    .dnf-webhook-header-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; gap: var(--dnf-space-2); align-items: center; }
+    .dnf-delivery { min-width: 0; }
+    .dnf-delivery__summary {
+        display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-3) var(--dnf-space-5);
+        list-style: none;
+        cursor: pointer;
+    }
+    .dnf-delivery__summary::-webkit-details-marker { display: none; }
+    .dnf-delivery__summary:hover { background: var(--dnf-surface-hover); }
+    .dnf-delivery__body { padding: 0 var(--dnf-space-5) var(--dnf-space-4); }
+}

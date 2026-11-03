@@ -7,40 +7,40 @@
     var exampleUrl = $"{origin}/api/content/pages";
 }
 
-<div class="stack-lg form-narrow">
-    <alert tone="Warning" title="Copy the token now">
+<div class="dnf-stack dnf-stack--lg max-w-(--dnf-form-max)">
+    <dnf-alert tone="Warning" title="Copy the token now">
         This is the only time it is shown. Only a hash is stored, so it can't be displayed again - if you lose it, revoke it
         and create a new one.
-    </alert>
+    </dnf-alert>
 
-    <section class="card card-accent" aria-labelledby="token-title">
-        <div class="card-header"><h2 class="card-title" id="token-title">Your token</h2></div>
-        <div class="card-body">
-            <pre class="code-block" id="token-value">@Model.Plaintext<button type="button" class="btn btn-secondary btn-sm" data-copy-target="#token-text" data-js-only hidden><icon name="copy" size="sm" /> Copy</button></pre>
+    <section class="dnf-card dnf-card--accent" aria-labelledby="token-title">
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="token-title">Your token</h2></div>
+        <div class="dnf-card__body">
+            <pre class="dnf-code-block" id="token-value">@Model.Plaintext<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#token-text" data-js-only hidden><dnf-icon name="copy" size="Sm" /> Copy</button></pre>
             <span id="token-text" hidden>@Model.Plaintext</span>
         </div>
     </section>
 
-    <section class="card" aria-labelledby="usage-title">
-        <div class="card-header">
+    <section class="dnf-card" aria-labelledby="usage-title">
+        <div class="dnf-card__header">
             <div>
-                <h2 class="card-title" id="usage-title">How to use it</h2>
-                <p class="card-description">Send it in an <code>Authorization: Bearer</code> header.</p>
+                <h2 class="dnf-card__title" id="usage-title">How to use it</h2>
+                <p class="dnf-card__description">Send it in an <code>Authorization: Bearer</code> header.</p>
             </div>
         </div>
-        <div class="card-body stack">
-            <dl class="dl">
+        <div class="dnf-card__body dnf-stack">
+            <dl class="dnf-description-list">
                 <dt>API URL</dt>
                 <dd><a href="@apiBaseUrl" target="_blank" rel="noopener"><code>@apiBaseUrl</code></a></dd>
             </dl>
-            <div class="stack-sm">
-                <span class="field-label">Example request</span>
-                <pre class="code-block">curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl<button type="button" class="btn btn-secondary btn-sm" data-copy-target="#curl-text" data-js-only hidden><icon name="copy" size="sm" /> Copy</button></pre>
+            <div class="dnf-stack dnf-stack--sm">
+                <span class="dnf-field__label">Example request</span>
+                <pre class="dnf-code-block">curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#curl-text" data-js-only hidden><dnf-icon name="copy" size="Sm" /> Copy</button></pre>
                 <span id="curl-text" hidden>curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl</span>
             </div>
         </div>
-        <div class="card-footer">
-            <a class="btn btn-primary" href="/admin/api-tokens">Done</a>
+        <div class="dnf-card__footer">
+            <a class="dnf-button dnf-button--primary" href="/admin/api-tokens">Done</a>
         </div>
     </section>
 </div>

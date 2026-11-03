@@ -30,11 +30,11 @@ src/DotNetForge.Web/Controllers/AccountController.cs       Register, ForgotPassw
 src/DotNetForge.Web/Services/AccountService.cs             RegisterAsync, RequestPasswordResetAsync, FindResetUserAsync, ResetPasswordAsync, ConfirmEmailAsync, ResendConfirmationAsync; tokens, links, emails
 src/DotNetForge.Web/Services/UserAccountSettings.cs        UserAccountSettingsService (sign-ups, default role, confirmation, URLs)
 src/DotNetForge.Infrastructure/Messaging/SmtpEmailSender.cs IEmailSender over SMTP
-src/DotNetForge.Web/Views/Account/Register.cshtml          name (optional), email, password + confirm
+src/DotNetForge.Web/Views/Account/Register.cshtml          the form around Shared/_AccountFields: name (optional), email, password + confirm
 src/DotNetForge.Web/Views/Account/ForgotPassword.cshtml    email
 src/DotNetForge.Web/Views/Account/ResetPassword.cshtml     hidden token, new password + confirm
 src/DotNetForge.Web/Views/Account/Notice.cshtml            icon (mail, or circle-alert for a broken link), title, text, "Back to sign in"
-src/DotNetForge.Web/wwwroot/css/forge/auth.css             .auth-switch ("Already have an account? Sign in")
+src/DotNetForge.Web/wwwroot/css/auth.css                   .dnf-auth__switch ("Already have an account? Sign in")
 ```
 
 ## Page layout
@@ -42,15 +42,15 @@ src/DotNetForge.Web/wwwroot/css/forge/auth.css             .auth-switch ("Alread
 ```text
 Create an account (_AuthLayout)
 ├── h1 **Create an account** + "Sign up with your email address and a password."
-├── form.form (POST /register, antiforgery)
-│   ├── <form-errors />
-│   ├── .form-grid: **First name** (optional) · **Last name** (optional)
+├── form.dnf-form (POST /register, antiforgery)
+│   ├── <dnf-validation-summary />
+│   ├── .dnf-form-grid: **First name** (optional) · **Last name** (optional)
 │   ├── **Email** *, **Password** * (+ eye button, hint "At least 8 characters, including a letter and a number."), **Confirm password** *
 │   └── [**Create account**]
-└── .auth-switch "Already have an account? **Sign in**"
+└── .dnf-auth__switch "Already have an account? **Sign in**"
 
 Forgot password: h1 **Forgot your password?** · **Email** · [**Send reset link**] · "Back to sign in"
-Choose a new password: h1 · <form-errors /> · hidden token · **New password** (+ eye) · **Confirm new password** · [**Change password**]
+Choose a new password: h1 · <dnf-validation-summary /> · hidden token · **New password** (+ eye) · **Confirm new password** · [**Change password**]
 Notice: icon · h1 (title) · text · [**Back to sign in**]
 ```
 
@@ -67,7 +67,7 @@ Notice: icon · h1 (title) · text · [**Back to sign in**]
    the admin (with a "Welcome!" toast), otherwise `/` (the public site shows no toasts).
 4. **Email confirmation on:** the account is unconfirmed, a confirmation email is sent and the notice "Check your
    email" is shown.
-5. **Errors:** the form re-renders with the message in `<form-errors />` and empty password fields. With sign-ups
+5. **Errors:** the form re-renders with the message in `<dnf-validation-summary />` and empty password fields. With sign-ups
    off the `POST` answers `404` too.
 
 ### Forgot password

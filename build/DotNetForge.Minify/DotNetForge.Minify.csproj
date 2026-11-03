@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Minifies the published scripts and stylesheets (.docs/guides/deployment.md): run by `dotnet publish` in Release. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUglify" />
+  </ItemGroup>
+
+</Project>

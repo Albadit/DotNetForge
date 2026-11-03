@@ -1,0 +1,200 @@
+@* Checkbox (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+@* The MVC tag helpers are off on this page: the asp-for snippet is shown as text, not compiled against the docs
+   page's own model. *@
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/choice.css</code></li>
+    <li>Behaviour <code>data-check-group</code> in <code>src/DotNetForge.UI/wwwroot/dnf.js</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A checkbox is the browser's own <code>&lt;input type="checkbox"&gt;</code> with <code>dnf-checkbox</code>, in the primary
+    colour. Wrap it and its text in a <code>&lt;label class="dnf-check"&gt;</code> so the whole row is clickable.</p>
+
+<ui-doc-example id="basic">
+    <label class="dnf-check">
+        <input type="checkbox" class="dnf-checkbox" checked />
+        <span class="dnf-check__text">Show in the navigation</span>
+    </label>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="description" title="With a description" description="dnf-check__description adds a muted line under the label text." layout="stack">
+    <label class="dnf-check">
+        <input type="checkbox" class="dnf-checkbox" />
+        <span class="dnf-check__text">
+            Send a welcome email
+            <span class="dnf-check__description">Uses the Welcome template on Email, Templates.</span>
+        </span>
+    </label>
+</ui-doc-example>
+
+<ui-doc-example id="list" title="Check list" description="dnf-check-list stacks checks with a line between them - roles, permissions, events." layout="block">
+    <fieldset class="dnf-fieldset max-w-md">
+        <legend class="dnf-fieldset__legend">Roles</legend>
+        <div class="dnf-check-list">
+            <label class="dnf-check">
+                <input type="checkbox" class="dnf-checkbox" name="roles" value="Admin" />
+                <span class="dnf-check__text">Administrator<span class="dnf-check__description">Everything, including users and settings.</span></span>
+            </label>
+            <label class="dnf-check">
+                <input type="checkbox" class="dnf-checkbox" name="roles" value="Editor" checked />
+                <span class="dnf-check__text">Editor<span class="dnf-check__description">Pages, entries and media.</span></span>
+            </label>
+            <label class="dnf-check">
+                <input type="checkbox" class="dnf-checkbox" name="roles" value="Owner" checked disabled />
+                <span class="dnf-check__text">Owner<span class="dnf-check__description">Set when the site was installed.</span></span>
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="check-states" title="States" description="Unchecked, checked, disabled, and invalid with aria-invalid; indeterminate can only be set from script, as Check all does." layout="stack">
+    <label class="dnf-check">
+        <input type="checkbox" class="dnf-checkbox" />
+        <span class="dnf-check__text">Unchecked</span>
+    </label>
+    <label class="dnf-check">
+        <input type="checkbox" class="dnf-checkbox" checked />
+        <span class="dnf-check__text">Checked</span>
+    </label>
+    <label class="dnf-check">
+        <input type="checkbox" class="dnf-checkbox" disabled />
+        <span class="dnf-check__text">Disabled</span>
+    </label>
+    <label class="dnf-check">
+        <input type="checkbox" class="dnf-checkbox" checked disabled />
+        <span class="dnf-check__text">Checked and disabled</span>
+    </label>
+    <div class="dnf-field">
+        <label class="dnf-check">
+            <input type="checkbox" class="dnf-checkbox" required aria-invalid="true" aria-describedby="check-terms-error" />
+            <span class="dnf-check__text">I accept the terms of use</span>
+        </label>
+        <span class="dnf-field__error" id="check-terms-error">Accept the terms to continue.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="check-all" title="Check all" description="data-check-group on one checkbox checks or clears every data-check-member of the same name, and shows indeterminate when only some are checked." layout="block">
+    <div class="dnf-stack dnf-stack--sm max-w-md">
+        <label class="dnf-check">
+            <input type="checkbox" class="dnf-checkbox" data-check-group="docs-events" />
+            <span class="dnf-check__text">All entry events</span>
+        </label>
+        <div class="dnf-check-list ps-6">
+            <label class="dnf-check">
+                <input type="checkbox" class="dnf-checkbox" data-check-member="docs-events" checked />
+                <span class="dnf-check__text">entry.created</span>
+            </label>
+            <label class="dnf-check">
+                <input type="checkbox" class="dnf-checkbox" data-check-member="docs-events" />
+                <span class="dnf-check__text">entry.updated</span>
+            </label>
+            <label class="dnf-check">
+                <input type="checkbox" class="dnf-checkbox" data-check-member="docs-events" />
+                <span class="dnf-check__text">entry.deleted</span>
+            </label>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="no-text" title="Without visible text" description="A checkbox alone, as in a table row, names itself with aria-label." layout="row">
+    <input type="checkbox" class="dnf-checkbox" aria-label="Select About us" />
+    <input type="checkbox" class="dnf-checkbox" aria-label="Select Contact" checked />
+</ui-doc-example>
+
+<h3 id="asp-for">With asp-for</h3>
+<p>For a <code>bool</code> property, <code>asp-for</code> writes the checkbox and a hidden <code>false</code> input after it,
+    so an unchecked box still posts a value.</p>
+
+<ui-doc-code id="asp-for-code" lang="razor">
+<label class="dnf-check">
+    <input type="checkbox" class="dnf-checkbox" asp-for="SendWelcome" />
+    <span class="dnf-check__text">
+        Send a welcome email
+        <span class="dnf-check__description">Uses the Welcome template.</span>
+    </span>
+</label>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. The check
+    classes have no modifiers; the one component token is <code>--dnf-check-color</code>, the fill when checked.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="items-center centres a one-line label on the box instead of aligning it to the first line." layout="row">
+    <label class="dnf-check items-center">
+        <input type="checkbox" class="dnf-checkbox" checked />
+        <span class="dnf-check__text">Remember me</span>
+    </label>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS in a scope beats the component style - another accent colour." layout="row">
+    <div class="dnf-docs-demo-accent dnf-cluster">
+        <label class="dnf-check">
+            <input type="checkbox" class="dnf-checkbox" checked />
+            <span class="dnf-check__text">Delivered</span>
+        </label>
+        <label class="dnf-check">
+            <input type="checkbox" class="dnf-checkbox" />
+            <span class="dnf-check__text">Failed</span>
+        </label>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-accent :is(.dnf-checkbox, .dnf-radio) { --dnf-check-color: var(--dnf-success); }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-checkbox</code></td><td>block</td><td>a 1rem box (1.5rem on touch screens) drawn on the native checkbox: <code>--dnf-border-strong</code> border, <code>--dnf-surface</code> fill, <code>--dnf-radius-sm</code> corners</td></tr>
+        <tr><td><code>dnf-check</code></td><td>block</td><td>a <code>&lt;label&gt;</code>: the input and its text side by side, the box aligned to the first line, <code>cursor: pointer</code></td></tr>
+        <tr><td><code>dnf-check__text</code></td><td>element</td><td>the label text and its description in a column</td></tr>
+        <tr><td><code>dnf-check__description</code></td><td>element</td><td><code>text-xs</code>, muted</td></tr>
+        <tr><td><code>dnf-check-list</code></td><td>block</td><td>a column of <code>.dnf-check</code> rows separated by lines</td></tr>
+    </tbody>
+</table>
+<p><code>.dnf-radio</code> works the same way inside <code>.dnf-check</code> (<a href="@UiDocsCatalog.Root/components/radio">radio</a>).</p>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>:hover</code></td><td><code>--dnf-subtle-foreground</code> border</td></tr>
+        <tr><td>checked / indeterminate</td><td><code>:checked</code>, <code>:indeterminate</code></td><td><code>--dnf-check-color</code> fill with a check mark or a dash in <code>--dnf-primary-foreground</code></td></tr>
+        <tr><td>keyboard focus</td><td><code>:focus-visible</code></td><td>the focus ring</td></tr>
+        <tr><td>invalid</td><td><code>[aria-invalid="true"]</code></td><td><code>--dnf-danger</code> border</td></tr>
+        <tr><td>disabled</td><td><code>:disabled</code>; <code>.dnf-check:has(&gt; :disabled)</code></td><td>55% opacity, no shadow; the label gets the default cursor, and 75% opacity in a check list</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes above are the API. Two <code>dnf.js</code> behaviours check boxes together:</p>
+<table>
+    <thead><tr><th>Attribute</th><th>On</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>data-check-group="name"</code></td><td>the "all" checkbox</td><td>checks or clears every <code>[data-check-member="name"]</code>; shows checked when all members are, indeterminate when some are (also on load)</td></tr>
+        <tr><td><code>data-check-member="name"</code></td><td>each member checkbox</td><td>updates its group's checkbox when it changes</td></tr>
+        <tr><td><code>data-select-all</code> / <code>data-select-item</code></td><td>checkboxes in a collection</td><td>select rows of a <a href="@UiDocsCatalog.Root/components/table">table</a> for the bulk bar (<a href="@UiDocsCatalog.Root/behaviours">behaviours</a>)</td></tr>
+    </tbody>
+</table>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Wrapping the input in its <code>&lt;label&gt;</code> names it and makes the whole row clickable.</li>
+    <li>Put a group of checkboxes in a <a href="@UiDocsCatalog.Root/components/fieldset">fieldset</a> with a legend.</li>
+    <li>A checkbox without visible text, such as in a table row, needs <code>aria-label</code>.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use a <a href="@UiDocsCatalog.Root/components/switch">switch</a> for a setting that reads as on or off; a checkbox for choices in a form.</li>
+    <li>Do word the label positively ("Show in the navigation", not "Hide from the navigation").</li>
+    <li>Don't hide the native input and draw your own box.</li>
+</ul>

@@ -125,7 +125,7 @@ The `.env` part of the same specification is in [configuration → Planned](conf
   `DatabaseInitializer.InitializeAsync` (`MigrateAsync` + seed) throws an unhandled exception and the process dies
   with a stack trace.
 - **Field-level errors:** on a failed submission the wizard re-renders with errors on the offending field. Today every
-  `InstallationService` failure is one `ModelState` error with an empty key (shown by `<form-errors />` only).
+  `InstallationService` failure is one `ModelState` error with an empty key (shown by `<dnf-validation-summary />` only).
 
 ### Rules and validation
 

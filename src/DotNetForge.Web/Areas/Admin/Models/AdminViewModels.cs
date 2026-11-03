@@ -2,10 +2,9 @@ using DotNetForge.Shared.Content;
 
 namespace DotNetForge.Web.Areas.Admin.Models;
 
-/// <summary>Aggregated counts shown on the legacy admin dashboard (.docs/pages/dashboard.md).</summary>
+/// <summary>Aggregated counts shown on the admin dashboard (.docs/pages/dashboard.md).</summary>
 public sealed class DashboardViewModel
 {
-    public string AppName { get; init; } = string.Empty;
     public int Users { get; init; }
     public int Roles { get; init; }
     public int Pages { get; init; }
@@ -202,6 +201,12 @@ public sealed class MediaIndexViewModel
     public DotNetForge.Web.Services.MediaSettings Limits { get; init; } = DotNetForge.Web.Services.MediaSettings.Default;
 }
 
+/// <summary>A place the move dialog offers (Shared/_MoveDialog.cshtml), with the places above it.</summary>
+public sealed record MoveTarget(Guid Id, string Label, string? Hint, int Depth, IReadOnlyList<Guid> Ancestors);
+
+/// <summary>The move dialog of a screen: its radios (<see cref="Field"/>) and button post with the form <see cref="Form"/>.</summary>
+public sealed record MoveDialogModel(string Id, string Title, string Field, string Form, string? Action, string Icon, IReadOnlyList<MoveTarget> Targets);
+
 /// <summary>A folder of the media library as links and selects show it.</summary>
 public sealed record MediaFolderLink(Guid Id, string Name, string Path)
 {
@@ -353,7 +358,6 @@ public sealed class EntryEditViewModel
     public bool CanDelete { get; init; }
     public bool CanCreate { get; init; }
     public bool CanUpload { get; init; }
-    public bool IsNew => Entry is null;
 }
 
 /// <summary>One field of the entry form (the recursive <c>_Field</c> partial): its definition, value and form path.</summary>

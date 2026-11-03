@@ -18,7 +18,7 @@ public sealed class SignInTests
         var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("toast toast-danger", html);
+        Assert.Contains("dnf-toast dnf-toast--danger", html);
         Assert.Contains("Invalid email or password.", html);
         Assert.DoesNotContain("validation-summary-errors", html);
         Assert.Contains($"value=\"{DotNetForgeWebFactory.AdminEmail}\"", html);

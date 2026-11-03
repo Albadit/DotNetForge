@@ -1,0 +1,227 @@
+@* Select (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+@* The MVC tag helpers are off on this page: the asp-for snippet is shown as text, not compiled against the docs
+   page's own model. *@
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/form.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>Write <code>dnf-select</code> on a native <code>&lt;select&gt;</code>. It looks like an
+    <a href="@UiDocsCatalog.Root/components/input">input</a> with the sprite's chevron at the end, drawn in the muted text
+    colour of the current theme. Keyboard, screen reader and form behaviour stay the browser's own.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="select-status">Status</label>
+        <select class="dnf-select" id="select-status">
+            <option>Draft</option>
+            <option selected>Published</option>
+            <option>Scheduled</option>
+            <option>Archived</option>
+        </select>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="styled-list" title="Styled list" description="Where the browser supports the customizable select (Chromium 135 and later) the open list is a raised card like a dropdown menu, with a check on the chosen row and a chevron that turns while open; other browsers show their native list." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="select-role">Role</label>
+        <select class="dnf-select" id="select-role">
+            <option>Administrator</option>
+            <option selected>Editor</option>
+            <option>Author</option>
+            <option disabled>Owner (one per site)</option>
+        </select>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="groups" title="Option groups" description="optgroup labels sections of a longer list." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="select-template">Email template</label>
+        <select class="dnf-select" id="select-template">
+            <optgroup label="Accounts">
+                <option>Welcome</option>
+                <option>Confirm email</option>
+                <option>Reset password</option>
+            </optgroup>
+            <optgroup label="Content">
+                <option>Entry published</option>
+                <option>Review requested</option>
+            </optgroup>
+        </select>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="sizes" title="Sizes" description="dnf-select--sm (30px, smaller chevron), the default (36px) and dnf-select--lg (44px)." layout="stack">
+    <select class="dnf-select dnf-select--sm max-w-md" aria-label="Small">
+        <option>Last 7 days</option>
+        <option>Last 30 days</option>
+    </select>
+    <select class="dnf-select max-w-md" aria-label="Medium">
+        <option>Last 7 days</option>
+        <option>Last 30 days</option>
+    </select>
+    <select class="dnf-select dnf-select--lg max-w-md" aria-label="Large">
+        <option>Last 7 days</option>
+        <option>Last 30 days</option>
+    </select>
+</ui-doc-example>
+
+<ui-doc-example id="auto" title="Content width" description="dnf-select--auto sizes to its content (at least 9rem) - for selects inline in a toolbar or a sentence." layout="row">
+    <select class="dnf-select dnf-select--auto" aria-label="Content type">
+        <option>All types</option>
+        <option>Articles</option>
+        <option>Events</option>
+    </select>
+    <select class="dnf-select dnf-select--auto dnf-select--sm" aria-label="Sort by">
+        <option>Newest first</option>
+        <option>Oldest first</option>
+        <option>Title A to Z</option>
+    </select>
+</ui-doc-example>
+
+<ui-doc-example id="multiple" title="Multiple" description="A multiple select stays a native list box without a chevron; hold Ctrl or Shift to choose several." layout="block">
+    <div class="dnf-field max-w-md">
+        <label class="dnf-field__label" for="select-events">Webhook events</label>
+        <select class="dnf-select" id="select-events" multiple size="5" aria-describedby="select-events-help">
+            <option selected>entry.created</option>
+            <option selected>entry.updated</option>
+            <option>entry.published</option>
+            <option>entry.deleted</option>
+            <option>media.uploaded</option>
+        </select>
+        <span class="dnf-field__description" id="select-events-help">For a handful of options, a check list is easier to use.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="invalid-disabled" title="Invalid and disabled" description="The same states as an input: aria-invalid (or the field's data-invalid) for the danger border, disabled for the muted look." layout="block">
+    <div class="dnf-form-grid">
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="select-invalid">Parent page</label>
+            <select class="dnf-select" id="select-invalid" aria-invalid="true" aria-describedby="select-invalid-error">
+                <option value="">Choose a page</option>
+                <option>Home</option>
+                <option>About us</option>
+            </select>
+            <span class="dnf-field__error" id="select-invalid-error">Choose a parent page.</span>
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="select-disabled">Database</label>
+            <select class="dnf-select" id="select-disabled" disabled>
+                <option>PostgreSQL</option>
+            </select>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h3 id="asp-for">With asp-for</h3>
+<p>Write the class next to <code>asp-for</code> and <code>asp-items</code>; a model error adds <code>input-validation-error</code>,
+    drawn as invalid.</p>
+
+<ui-doc-code id="asp-for-code" lang="razor">
+<div class="dnf-field">
+    <label class="dnf-field__label" asp-for="Status">Status</label>
+    <select class="dnf-select" asp-for="Status" asp-items="Model.Statuses"></select>
+    <span class="dnf-field__error" asp-validation-for="Status"></span>
+</div>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. Level 1
+    is the modifiers <code>--sm</code>, <code>--lg</code> and <code>--auto</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A fixed width with a utility." layout="row">
+    <select class="dnf-select w-48" aria-label="Language">
+        <option>English</option>
+        <option>Deutsch</option>
+        <option>Français</option>
+    </select>
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="The control tokens of the input apply to the select too; --dnf-select-chevron-size sets the chevron." layout="block">
+    <div class="dnf-docs-demo-controls dnf-field max-w-md">
+        <label class="dnf-field__label" for="tokens-select">Layout</label>
+        <select class="dnf-select" id="tokens-select">
+            <option>Full width</option>
+            <option>Centred</option>
+            <option>With sidebar</option>
+        </select>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-controls :is(.dnf-input, .dnf-select, .dnf-textarea) {
+    --dnf-control-height: var(--dnf-control-lg);
+    --dnf-control-padding-x: var(--dnf-space-4);
+    --dnf-control-font-size: var(--dnf-text-md);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-select</code></td><td>block</td><td>the input look, <code>appearance: none</code>, the sprite's chevron at the end (the up chevron while the list is open, in browsers with <code>:open</code>)</td></tr>
+        <tr><td><code>dnf-select--sm</code> / <code>--lg</code></td><td>size</td><td>30 / 44px high; the small one has a smaller chevron</td></tr>
+        <tr><td><code>dnf-select--auto</code></td><td>modifier</td><td>content width, at least 9rem</td></tr>
+        <tr><td><code>dnf-select[multiple]</code></td><td>-</td><td>no chevron; stays a native list box</td></tr>
+    </tbody>
+</table>
+<p>Inside other components a select is sized for them: in a <code>.dnf-toolbar</code> it is <code>width: auto</code> (at least
+    9rem), in a <code>.dnf-bulk-bar</code> at most 16rem, in the pagination's rows-per-page at least 4.5rem.</p>
+
+<h3 id="styled-list-reference">The styled list</h3>
+<p>Where the browser supports <code>appearance: base-select</code> (Chromium 135 and later), a single select is drawn by
+    the library end to end:</p>
+<ul>
+    <li>the chevron is the select's <code>::picker-icon</code> and turns 180 degrees while the list is open;</li>
+    <li>the list (<code>::picker(select)</code>) is a raised card - <code>--dnf-surface-raised</code>, a border, <code>--dnf-radius-lg</code>, a medium shadow - at least as wide as the select and at most 20rem high, that fades and slides in;</li>
+    <li>options are rows like dropdown menu items: hover and focus use <code>--dnf-surface-hover</code>, the chosen one is semibold with a check (<code>::checkmark</code>) at the end, a disabled one is dimmed.</li>
+</ul>
+<p>Other browsers keep their native list and the background chevron. Multiple selects are never restyled this way.</p>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>:hover</code>, <code>[data-hovered="true"]</code></td><td>darker border</td></tr>
+        <tr><td>keyboard focus</td><td><code>:focus-visible</code></td><td><code>--dnf-primary</code> border and the focus ring</td></tr>
+        <tr><td>open</td><td><code>:open</code></td><td>the chevron points up</td></tr>
+        <tr><td>disabled</td><td><code>:disabled</code>, <code>[aria-disabled="true"]</code></td><td>muted surface and text, no shadow</td></tr>
+        <tr><td>invalid</td><td><code>[aria-invalid="true"]</code>, <code>[data-invalid="true"]</code>, <code>.input-validation-error</code>, inside <code>.dnf-field[data-invalid="true"]</code></td><td><code>--dnf-danger</code> border</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<table>
+    <thead><tr><th>Token</th><th>Set on</th><th>What it is</th></tr></thead>
+    <tbody>
+        <tr><td><code>--dnf-control-height</code>, <code>--dnf-control-padding-x</code>, <code>--dnf-control-font-size</code></td><td>the select</td><td>size, as on the <a href="@UiDocsCatalog.Root/components/input#tokens">input</a></td></tr>
+        <tr><td><code>--dnf-select-chevron-size</code></td><td>the select</td><td>the chevron's size (1rem; 0.875rem small)</td></tr>
+        <tr><td><code>--dnf-select-chevron</code>, <code>--dnf-select-chevron-open</code></td><td><code>:root</code> and every <code>[data-theme]</code></td><td>the chevron images, in each theme's muted text colour - a <code>data-theme</code> subtree gets its own</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes above are the API, on a native <code>&lt;select&gt;</code> with its own attributes
+    (<code>multiple</code>, <code>size</code>, <code>disabled</code>, <code>required</code>) and <code>&lt;option&gt;</code> /
+    <code>&lt;optgroup&gt;</code> children. Fill it with <code>asp-items</code> or write the options yourself.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>A native select keeps its keyboard and screen-reader behaviour, also when the list is styled.</li>
+    <li>Label it like any control; a filter select in a toolbar gets <code>aria-label</code>.</li>
+    <li>Mark an invalid select <code>aria-invalid="true"</code> and link its error with <code>aria-describedby</code>.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use a <a href="@UiDocsCatalog.Root/components/segmented">segmented control</a> or <a href="@UiDocsCatalog.Root/components/radio">radios</a> for 2 to 4 options that should all be visible.</li>
+    <li>Do prefer a <a href="@UiDocsCatalog.Root/components/checkbox">check list</a> to a multiple select for a few options.</li>
+    <li>Don't rebuild a select with divs, and don't put rich content in its options - use a <a href="@UiDocsCatalog.Root/components/dropdown">dropdown</a> for actions.</li>
+</ul>

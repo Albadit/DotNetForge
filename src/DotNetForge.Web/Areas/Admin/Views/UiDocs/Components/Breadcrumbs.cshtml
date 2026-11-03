@@ -1,0 +1,121 @@
+@* Breadcrumbs (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/navigation.css</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>The trail from the top of the hierarchy to the current screen: a <code>&lt;nav&gt;</code> with an ordered list. Every step
+    but the last is a link; the last is the current page, marked <code>aria-current="page"</code>. The separators are drawn by
+    CSS.</p>
+
+<ui-doc-example id="basic">
+    <nav class="dnf-breadcrumbs" aria-label="Breadcrumb">
+        <ol class="dnf-breadcrumbs__list">
+            <li class="dnf-breadcrumbs__item"><a href="/admin/settings">Settings</a></li>
+            <li class="dnf-breadcrumbs__item"><span aria-current="page">Email</span></li>
+        </ol>
+    </nav>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="deep" title="A deeper trail" description="Each level a link; the list wraps when it runs out of room.">
+    <nav class="dnf-breadcrumbs" aria-label="Breadcrumb">
+        <ol class="dnf-breadcrumbs__list">
+            <li class="dnf-breadcrumbs__item"><a href="/admin/media">Media</a></li>
+            <li class="dnf-breadcrumbs__item"><a href="/admin/media">Images</a></li>
+            <li class="dnf-breadcrumbs__item"><a href="/admin/media">2026</a></li>
+            <li class="dnf-breadcrumbs__item"><span aria-current="page">hero-spring.jpg</span></li>
+        </ol>
+    </nav>
+</ui-doc-example>
+
+<ui-doc-example id="without-link" title="A step without a page" description="A level that has no screen of its own (a sidebar group) is plain text, not a link.">
+    <nav class="dnf-breadcrumbs" aria-label="Breadcrumb">
+        <ol class="dnf-breadcrumbs__list">
+            <li class="dnf-breadcrumbs__item"><span>Developer</span></li>
+            <li class="dnf-breadcrumbs__item"><a href="/admin/webhooks">Webhooks</a></li>
+            <li class="dnf-breadcrumbs__item"><span aria-current="page">Order created</span></li>
+        </ol>
+    </nav>
+</ui-doc-example>
+
+<ui-doc-example id="collapse" title="Collapse on phones" description="dnf-breadcrumbs--collapse shows only the current page below 40rem - for top bars, where there is no room for the trail. Narrow the window to see it.">
+    <nav class="dnf-breadcrumbs dnf-breadcrumbs--collapse" aria-label="Breadcrumb">
+        <ol class="dnf-breadcrumbs__list">
+            <li class="dnf-breadcrumbs__item"><a href="/admin/content-types">Content types</a></li>
+            <li class="dnf-breadcrumbs__item"><a href="/admin/content-types">Article</a></li>
+            <li class="dnf-breadcrumbs__item"><span aria-current="page">Fields</span></li>
+        </ol>
+    </nav>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="Utilities on the list beat its muted small text.">
+    <nav class="dnf-breadcrumbs" aria-label="Breadcrumb">
+        <ol class="dnf-breadcrumbs__list text-base">
+            <li class="dnf-breadcrumbs__item"><a href="/admin/users">Users</a></li>
+            <li class="dnf-breadcrumbs__item"><span aria-current="page">Ada Lovelace</span></li>
+        </ol>
+    </nav>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="The separator is generated content; unlayered CSS replaces it in a scope.">
+    <div class="dnf-docs-demo-breadcrumbs">
+        <nav class="dnf-breadcrumbs" aria-label="Breadcrumb">
+            <ol class="dnf-breadcrumbs__list">
+                <li class="dnf-breadcrumbs__item"><a href="/admin/settings">Settings</a></li>
+                <li class="dnf-breadcrumbs__item"><a href="/admin/settings">Users</a></li>
+                <li class="dnf-breadcrumbs__item"><span aria-current="page">Sign-in security</span></li>
+            </ol>
+        </nav>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-breadcrumbs .dnf-breadcrumbs__item + .dnf-breadcrumbs__item::before {
+    content: "\203A"; /* a single right-pointing angle quotation mark */
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-breadcrumbs</code></td><td>block</td><td>the <code>&lt;nav&gt;</code> (<code>min-width: 0</code>)</td></tr>
+        <tr><td><code>dnf-breadcrumbs__list</code></td><td>element</td><td>a wrapping row, no bullets, muted <code>text-sm</code></td></tr>
+        <tr><td><code>dnf-breadcrumbs__item</code></td><td>element</td><td>one step; a "/" separator before every item but the first</td></tr>
+        <tr><td><code>dnf-breadcrumbs--collapse</code></td><td>modifier</td><td>below 40rem only the last item shows, without its separator</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>current page</td><td><code>.dnf-breadcrumbs__item &gt; [aria-current="page"]</code></td><td>foreground colour, medium weight</td></tr>
+        <tr><td>link hover</td><td><code>.dnf-breadcrumbs__item &gt; a:hover</code></td><td>muted turns foreground</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes are the API. The CMS admin layout builds the trail from the sidebar navigation
+    (<code>AdminNavigation</code>) in its top bar.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>A <code>&lt;nav aria-label="Breadcrumb"&gt;</code> landmark with an ordered list.</li>
+    <li>The current page is <code>aria-current="page"</code> and not a link.</li>
+    <li>The separator is generated content, which most screen readers don't read as a word.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do derive the trail from the navigation structure, not by hand per screen.</li>
+    <li>Do keep the labels the same as the screens' titles.</li>
+    <li>Don't use breadcrumbs as the only way to go back up - the sidebar is the main navigation.</li>
+</ul>

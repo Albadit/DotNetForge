@@ -1,0 +1,130 @@
+@* Progress (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/status.css</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A determinate progress bar: how far an upload, an import or a quota has come. Prefer the native
+    <code>&lt;progress&gt;</code> element with <code>dnf-progress</code>; a div bar exists for values a script animates. For a
+    wait of unknown length use a <a href="@UiDocsCatalog.Root/components/spinner">spinner</a>.</p>
+
+<ui-doc-example id="basic" layout="stack">
+    <progress class="dnf-progress" value="42" max="100" aria-label="Upload">42 %</progress>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="labelled" title="With a label" description="A visible label tied to the bar with for and id, and the value as text beside it." layout="stack">
+    <div class="dnf-stack dnf-stack--sm">
+        <div class="dnf-spread text-sm">
+            <label for="progress-upload">Uploading hero.jpg</label>
+            <span class="text-muted">64 %</span>
+        </div>
+        <progress class="dnf-progress" id="progress-upload" value="64" max="100">64 %</progress>
+    </div>
+    <div class="dnf-stack dnf-stack--sm">
+        <div class="dnf-spread text-sm">
+            <label for="progress-import">Importing entries</label>
+            <span class="text-muted">120 of 480</span>
+        </div>
+        <progress class="dnf-progress" id="progress-import" value="120" max="480">120 of 480</progress>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="values" title="Values" description="Native value and max: empty, partly filled and complete." layout="stack">
+    <progress class="dnf-progress" value="0" max="100" aria-label="Not started">0 %</progress>
+    <progress class="dnf-progress" value="30" max="100" aria-label="Thirty percent">30 %</progress>
+    <progress class="dnf-progress" value="100" max="100" aria-label="Complete">100 %</progress>
+</ui-doc-example>
+
+<ui-doc-example id="danger" title="Danger" description="dnf-progress--danger fills in the danger colour - a quota that is almost used up." layout="stack">
+    <div class="dnf-stack dnf-stack--sm">
+        <div class="dnf-spread text-sm">
+            <label for="progress-storage">Media storage</label>
+            <span class="text-muted">9.2 of 10 GB</span>
+        </div>
+        <progress class="dnf-progress dnf-progress--danger" id="progress-storage" value="92" max="100">92 %</progress>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="div-bar" title="Div bar" description="A div with role progressbar and a dnf-progress__bar child; the fill width comes from --dnf-progress-value. Here a Tailwind arbitrary property sets it; a script sets it on live bars." layout="stack">
+    <div class="dnf-progress" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" aria-label="Export">
+        <div class="dnf-progress__bar [--dnf-progress-value:75%]"></div>
+    </div>
+    <div class="dnf-progress dnf-progress--danger" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Failed deliveries">
+        <div class="dnf-progress__bar [--dnf-progress-value:20%]"></div>
+    </div>
+</ui-doc-example>
+
+<p>The Content-Security-Policy forbids <code>style</code> attributes, so a script sets the value through the CSSOM (which
+    <code>style-src 'self'</code> allows) and keeps <code>aria-valuenow</code> in sync. The fill animates its width.</p>
+<ui-doc-code id="div-bar-js" lang="js">
+var bar = document.querySelector("#export-progress");
+bar.querySelector(".dnf-progress__bar").style.setProperty("--dnf-progress-value", "42%");
+bar.setAttribute("aria-valuenow", "42");
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A height utility beats the component's 0.5rem: a thin bar for a card, a thick one for a dashboard." layout="stack">
+    <progress class="dnf-progress h-1" value="55" max="100" aria-label="Thin">55 %</progress>
+    <progress class="dnf-progress h-3" value="55" max="100" aria-label="Thick">55 %</progress>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="The progress bar has no colour token; recolour the fill with your own (unlayered) CSS - one rule per browser pseudo-element for a native bar." layout="stack">
+    <div class="dnf-docs-demo-progress dnf-stack">
+        <progress class="dnf-progress" value="80" max="100" aria-label="Profile complete">80 %</progress>
+        <div class="dnf-progress" role="progressbar" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100" aria-label="Checks passed">
+            <div class="dnf-progress__bar [--dnf-progress-value:80%]"></div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-progress .dnf-progress__bar { background: var(--dnf-success); }
+.dnf-docs-demo-progress .dnf-progress::-webkit-progress-value { background: var(--dnf-success); }
+.dnf-docs-demo-progress .dnf-progress::-moz-progress-bar { background: var(--dnf-success); }
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-progress</code></td><td>block</td><td>a 0.5rem, full-radius muted track; a native bar's value is <code>--dnf-primary</code></td></tr>
+        <tr><td><code>dnf-progress__bar</code></td><td>element</td><td>the fill of a div bar: <code>width: var(--dnf-progress-value, 0%)</code>, animated</td></tr>
+        <tr><td><code>dnf-progress--danger</code></td><td>modifier</td><td>the fill in <code>--dnf-danger</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>value (native)</td><td><code>value</code> / <code>max</code></td><td>the browser fills that fraction</td></tr>
+        <tr><td>value (div bar)</td><td><code>--dnf-progress-value</code> on the bar or the track</td><td>the fill's width; 0% when unset</td></tr>
+    </tbody>
+</table>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-progress-value</code> - the input of a div bar (a percentage), not a theme token.</p>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: <code>&lt;progress class="dnf-progress"&gt;</code> or the div with <code>dnf-progress__bar</code> is the API.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>A native <code>&lt;progress&gt;</code> is announced with its value; give it a <code>&lt;label for&gt;</code> or <code>aria-label</code>.</li>
+    <li>A div bar needs <code>role="progressbar"</code>, <code>aria-valuenow</code>, <code>aria-valuemin</code>, <code>aria-valuemax</code>
+        (kept in sync by your script) and a name.</li>
+    <li>The text inside a native bar is the fallback for browsers without <code>&lt;progress&gt;</code>.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do prefer the native element.</li>
+    <li>Do show the value as text too when the number matters (120 of 480).</li>
+    <li>Don't use it for waits of unknown length - use a <a href="@UiDocsCatalog.Root/components/spinner">spinner</a>.</li>
+</ul>

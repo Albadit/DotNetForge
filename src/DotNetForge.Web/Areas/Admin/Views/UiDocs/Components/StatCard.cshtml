@@ -1,0 +1,123 @@
+@* Stat card (UI docs): the stat card and the stat group. Sections: Usage, Examples, Customization, Styling reference,
+   API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/card.css</code></li>
+    <li>Tag helper <code>&lt;dnf-stat-card&gt;</code> in <code>src/DotNetForge.UI/Components/BasicTagHelpers.cs</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A stat card shows one key figure: an icon tile, a big value and what it counts. It is a card of its own, a link to the
+    screen behind the figure, or one of several tiles inside one card.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-grid dnf-grid--cols-3">
+        <dnf-stat-card icon="pages" label="Pages" value="24" />
+        <dnf-stat-card icon="image" label="Media files" value="312" />
+        <dnf-stat-card icon="users" label="Users" value="8" />
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="links" title="Links" description="With href the whole tile is a link, with a hover background - the dashboard's way to the screen behind each figure." layout="block">
+    <div class="dnf-grid dnf-grid--cols-3">
+        <dnf-stat-card icon="pages" label="Pages" value="24" href="#links" />
+        <dnf-stat-card icon="layers" label="Entries" value="1,280" href="#links" />
+        <dnf-stat-card icon="webhook" label="Webhooks" value="3" href="#links" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="group" title="Stat group" description="Several bare tiles side by side inside one card, below its header; one column on phones." layout="block">
+    <div class="dnf-card">
+        <div class="dnf-card__header">
+            <div>
+                <h3 class="dnf-card__title">Webhook deliveries</h3>
+                <p class="dnf-card__description">The last 30 days.</p>
+            </div>
+        </div>
+        <div class="dnf-stat-group">
+            <dnf-stat-card icon="send" label="Sent" value="4,812" bare="true" />
+            <dnf-stat-card icon="circle-check" label="Succeeded" value="98.6%" bare="true" />
+            <dnf-stat-card icon="clock" label="Last delivery" value="2 min ago" bare="true" />
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="classes-only" title="Plain classes" description="The same tile written as classes - for a value with markup of its own, or outside Razor." layout="block">
+    <div class="dnf-grid dnf-grid--cols-3">
+        <div class="dnf-card dnf-stat-card">
+            <span class="dnf-stat-card__icon"><dnf-icon name="database" /></span>
+            <span class="dnf-stat-card__text">
+                <span class="dnf-stat-card__value">1.4 GB</span>
+                <span class="dnf-stat-card__label">Media storage</span>
+            </span>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A class on the tag helper is appended to the tile's own classes." layout="block">
+    <div class="dnf-grid dnf-grid--cols-3">
+        <dnf-stat-card icon="activity" label="Requests today" value="12,408" class="bg-surface-muted shadow-none" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="The stat card has no component tokens; restyle its parts in a scope with your own (unlayered) CSS - here an info-coloured icon tile." layout="block">
+    <div class="dnf-docs-demo-stats dnf-grid dnf-grid--cols-3">
+        <dnf-stat-card icon="globe" label="Visitors" value="9,214" />
+        <dnf-stat-card icon="eye" label="Page views" value="31,870" />
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-stats .dnf-stat-card__icon {
+    background: var(--dnf-info-soft);
+    color: var(--dnf-info);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-stat-card</code></td><td>block</td><td>a row: the icon tile and the text; stacks below 40rem. Add <code>dnf-card</code> for a frame</td></tr>
+        <tr><td><code>dnf-stat-card__icon</code></td><td>element</td><td>a 2.5rem primary-soft tile with the icon in <code>--dnf-primary-text</code></td></tr>
+        <tr><td><code>dnf-stat-card__text</code></td><td>element</td><td>the value over the label</td></tr>
+        <tr><td><code>dnf-stat-card__value</code></td><td>element</td><td><code>text-2xl</code>, bold, tabular numbers</td></tr>
+        <tr><td><code>dnf-stat-card__label</code></td><td>element</td><td><code>text-sm</code>, muted</td></tr>
+        <tr><td><code>dnf-stat-group</code></td><td>block</td><td>three tiles in a row inside a card, a line above; one column below 40rem</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>a.dnf-stat-card:hover</code></td><td><code>--dnf-surface-hover</code> background, no underline</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<h3 id="api-stat-card"><code>&lt;dnf-stat-card&gt;</code></h3>
+<ui-doc-api type="typeof(DotNetForge.UI.Components.DnfStatCardTagHelper)" />
+<p>A self-closing element: <code>&lt;div&gt;</code>, or <code>&lt;a&gt;</code> with <code>href</code>. The value is a string - format
+    numbers yourself (<code>value="@@Model.PageCount.ToString("N0")"</code>). Other attributes pass through; <code>class</code> is
+    appended.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The icon is decorative; the value and the label are text, read in that order ("24 Pages").</li>
+    <li>A linked tile's accessible name is its value and label - keep the label meaningful on its own.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do keep values short: a number, a percentage, a relative time.</li>
+    <li>Do link a tile to the screen where the figure comes from.</li>
+    <li>Don't use a stat card for a value the user acts on - use a <a href="@UiDocsCatalog.Root/components/card">card</a> with a button.</li>
+    <li>Don't put more than three tiles in a stat group - it has three columns.</li>
+</ul>

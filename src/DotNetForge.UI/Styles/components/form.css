@@ -1,0 +1,220 @@
+/*
+  Forms (.docs/ui/components/form.md, field.md, input.md, select.md, textarea.md, input-group.md, fieldset.md).
+  Anatomy: .dnf-form > .dnf-form-grid? > .dnf-field > (.dnf-field__label > .dnf-field__required|__optional)
+           + control (.dnf-input | .dnf-select | .dnf-textarea | .dnf-input-group) + .dnf-field__description + .dnf-field__error
+  Every control carries its class: bare <input>/<select>/<textarea> keep the browser's reset look.
+  Invalid: aria-invalid="true", or ASP.NET's own input-validation-error class (asp-for with a model error), or a
+  .dnf-field[data-invalid="true"] around the control.
+*/
+
+@layer components {
+    .dnf-form { display: flex; flex-direction: column; gap: var(--dnf-space-5); }
+    .dnf-form--narrow { max-width: var(--dnf-form-max); }
+
+    .dnf-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--dnf-space-4) var(--dnf-space-5); align-items: start; }
+    .dnf-form-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dnf-form-grid__full { grid-column: 1 / -1; }
+    @media (max-width: 40rem) {
+        .dnf-form-grid, .dnf-form-grid--3 { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    .dnf-form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-2); }
+    .dnf-form-actions--end { justify-content: flex-end; }
+
+    /* ---- Field ------------------------------------------------------------------------------------------------ */
+    .dnf-field { display: flex; flex-direction: column; gap: var(--dnf-space-1); min-width: 0; }
+    .dnf-field__label { font-size: var(--dnf-text-sm); font-weight: var(--dnf-weight-semibold); color: var(--dnf-foreground); }
+    .dnf-field__required { margin-inline-start: 0.15em; color: var(--dnf-danger); }
+    .dnf-field__optional { margin-inline-start: 0.25em; color: var(--dnf-subtle-foreground); font-weight: var(--dnf-weight-regular); }
+    .dnf-field__description { font-size: var(--dnf-text-xs); color: var(--dnf-muted-foreground); }
+    .dnf-field__error { font-size: var(--dnf-text-xs); font-weight: var(--dnf-weight-medium); color: var(--dnf-danger); }
+    .dnf-field__error:empty { display: none; }
+
+    /* ---- Text controls ---------------------------------------------------------------------------------------- */
+    .dnf-input, .dnf-select, .dnf-textarea {
+        --dnf-control-height: var(--dnf-control-md);
+        --dnf-control-padding-x: 0.7rem;
+        --dnf-control-font-size: var(--dnf-text-base);
+        display: block;
+        width: 100%;
+        min-height: var(--dnf-control-height);
+        padding: 0.4rem var(--dnf-control-padding-x);
+        border: 1px solid var(--dnf-border-strong);
+        border-radius: var(--dnf-radius-md);
+        background-color: var(--dnf-surface);
+        color: var(--dnf-foreground);
+        font-size: var(--dnf-control-font-size);
+        line-height: var(--dnf-leading);
+        box-shadow: var(--dnf-shadow-xs);
+        transition: border-color var(--dnf-duration) var(--dnf-ease), box-shadow var(--dnf-duration) var(--dnf-ease);
+    }
+    .dnf-input::placeholder, .dnf-textarea::placeholder { color: var(--dnf-subtle-foreground); }
+    .dnf-input:is(:hover, [data-hovered="true"]), .dnf-select:is(:hover, [data-hovered="true"]), .dnf-textarea:is(:hover, [data-hovered="true"]) {
+        border-color: var(--dnf-subtle-foreground);
+    }
+    .dnf-input:focus-visible, .dnf-select:focus-visible, .dnf-textarea:focus-visible {
+        outline: none;
+        border-color: var(--dnf-primary);
+        box-shadow: var(--dnf-focus-ring);
+    }
+    :is(.dnf-input, .dnf-select, .dnf-textarea):is(:disabled, [aria-disabled="true"]) {
+        background-color: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+        box-shadow: none;
+    }
+    :is(.dnf-input, .dnf-textarea)[readonly]:not(:disabled) { background-color: var(--dnf-surface-muted); }
+    :is(.dnf-input, .dnf-select, .dnf-textarea):is([aria-invalid="true"], [data-invalid="true"], .input-validation-error),
+    .dnf-field[data-invalid="true"] :is(.dnf-input, .dnf-select, .dnf-textarea) {
+        border-color: var(--dnf-danger);
+    }
+
+    .dnf-input--sm, .dnf-select--sm {
+        --dnf-control-height: var(--dnf-control-sm);
+        --dnf-control-font-size: var(--dnf-text-sm);
+        padding-block: 0.2rem;
+    }
+    .dnf-input--lg, .dnf-select--lg { --dnf-control-height: var(--dnf-control-lg); --dnf-control-font-size: var(--dnf-text-md); }
+    /* A one-time code: large, spaced digits. */
+    .dnf-input--code { font-family: var(--dnf-font-mono); --dnf-control-font-size: var(--dnf-text-xl); letter-spacing: 0.3em; text-align: center; }
+    .dnf-input--mono, .dnf-textarea--mono { font-family: var(--dnf-font-mono); }
+
+    .dnf-textarea { min-height: 5rem; resize: vertical; }
+    .dnf-textarea--code { font-family: var(--dnf-font-mono); --dnf-control-font-size: var(--dnf-text-sm); line-height: 1.55; tab-size: 4; }
+
+    /* The select's arrow is the sprite's chevron (open: chevron-up where the browser supports :open), as images in
+       the muted text colour of each theme - set where the theme is decided, so a data-theme subtree gets its own. */
+    :root, [data-theme="light"] {
+        --dnf-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d535c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        --dnf-select-chevron-open: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d535c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+    }
+    [data-theme="dark"] {
+        --dnf-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a6adb8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        --dnf-select-chevron-open: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a6adb8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+    }
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+            --dnf-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a6adb8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            --dnf-select-chevron-open: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a6adb8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+        }
+    }
+
+    .dnf-select {
+        --dnf-select-chevron-size: 1rem;
+        appearance: none;
+        padding-inline-end: 2.25rem;
+        background-image: var(--dnf-select-chevron);
+        background-position: right 0.65rem center;
+        background-size: var(--dnf-select-chevron-size);
+        background-repeat: no-repeat;
+    }
+    .dnf-select:open { background-image: var(--dnf-select-chevron-open); }
+    .dnf-select--sm { --dnf-select-chevron-size: 0.875rem; padding-inline-end: 2rem; }
+    .dnf-select[multiple] { padding-inline-end: var(--dnf-control-padding-x); background-image: none; }
+    /* Inline selects (toolbars, pagers) size to their content. */
+    .dnf-select--auto { width: auto; min-width: 9rem; }
+
+    /* The customizable select (appearance: base-select, Chromium 135+): the open list is drawn like a dropdown menu -
+       a raised card that fades in, rows like menu items, a check on the chosen one - and the chevron turns up while it
+       is open. Other browsers keep their native list and the background chevron above. */
+    @supports (appearance: base-select) {
+        .dnf-select:not([multiple]), .dnf-select:not([multiple])::picker(select) { appearance: base-select; }
+        .dnf-select:not([multiple]) {
+            --dnf-select-chevron-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            --dnf-select-check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+            display: flex; align-items: center; gap: var(--dnf-space-2);
+            padding-inline-end: var(--dnf-control-padding-x);
+            background-image: none;
+        }
+        .dnf-select:not([multiple]):open { background-image: none; }
+        .dnf-select:not([multiple])::picker-icon {
+            content: "";
+            flex: 0 0 auto;
+            width: var(--dnf-select-chevron-size); height: var(--dnf-select-chevron-size);
+            margin-inline-start: auto;
+            background-color: var(--dnf-muted-foreground);
+            mask: var(--dnf-select-chevron-mask) center / contain no-repeat;
+            transition: rotate var(--dnf-duration) var(--dnf-ease);
+        }
+        .dnf-select:not([multiple]):open::picker-icon { rotate: 180deg; }
+
+        .dnf-select:not([multiple])::picker(select) {
+            min-width: anchor-size(width);
+            max-height: min(20rem, calc(100vh - 1rem));
+            margin-block: 0.25rem;
+            padding: var(--dnf-space-1);
+            border: 1px solid var(--dnf-border);
+            border-radius: var(--dnf-radius-lg);
+            background: var(--dnf-surface-raised);
+            color: var(--dnf-foreground);
+            box-shadow: var(--dnf-shadow-md);
+            opacity: 0;
+            translate: 0 -0.25rem;
+            transition: opacity var(--dnf-duration) var(--dnf-ease), translate var(--dnf-duration) var(--dnf-ease),
+                overlay var(--dnf-duration) allow-discrete, display var(--dnf-duration) allow-discrete;
+        }
+        .dnf-select:not([multiple]):open::picker(select) { opacity: 1; translate: 0 0; }
+        @starting-style {
+            .dnf-select:not([multiple]):open::picker(select) { opacity: 0; translate: 0 -0.25rem; }
+        }
+
+        .dnf-select:not([multiple]) option {
+            display: flex; align-items: center; gap: var(--dnf-space-2);
+            padding: var(--dnf-space-2) var(--dnf-space-3);
+            border-radius: var(--dnf-radius-md);
+            font-size: var(--dnf-control-font-size);
+            cursor: pointer;
+        }
+        .dnf-select:not([multiple]) option:is(:hover, :focus-visible) { outline: none; background: var(--dnf-surface-hover); }
+        .dnf-select:not([multiple]) option:checked { font-weight: var(--dnf-weight-semibold); }
+        .dnf-select:not([multiple]) option:disabled { opacity: 0.55; cursor: not-allowed; }
+        .dnf-select:not([multiple]) option::checkmark {
+            content: "";
+            order: 1;
+            width: 1rem; height: 1rem;
+            margin-inline-start: auto;
+            background-color: var(--dnf-primary-text);
+            mask: var(--dnf-select-check-mask) center / contain no-repeat;
+        }
+    }
+
+    /* ---- Input group: a control with a leading icon, a text prefix or a trailing action ------------------------ */
+    .dnf-input-group { position: relative; display: flex; align-items: stretch; min-width: 0; }
+    .dnf-input-group > .dnf-input { flex: 1 1 auto; min-width: 0; }
+    .dnf-input-group__icon {
+        position: absolute; inset-inline-start: 0.65rem; top: 50%; translate: 0 -50%;
+        color: var(--dnf-subtle-foreground);
+        pointer-events: none;
+    }
+    .dnf-input-group:has(> .dnf-input-group__icon) > .dnf-input { padding-inline-start: 2.1rem; }
+    .dnf-input-group__action { position: absolute; inset-inline-end: 0.2rem; top: 50%; translate: 0 -50%; }
+    .dnf-input-group:has(> .dnf-input-group__action) > .dnf-input { padding-inline-end: 2.75rem; }
+    /* In a small input the action shrinks so it keeps a gap to the border. */
+    .dnf-input-group:has(> .dnf-input--sm) > .dnf-input-group__action { inset-inline-end: 0.125rem; --dnf-button-height: calc(var(--dnf-control-sm) - 0.375rem); }
+    .dnf-input-group:has(> .dnf-input--sm):has(> .dnf-input-group__action) > .dnf-input { padding-inline-end: 2.25rem; }
+    .dnf-input-group__prefix {
+        display: flex; align-items: center;
+        padding: 0 var(--dnf-space-3);
+        border: 1px solid var(--dnf-border-strong); border-inline-end: 0;
+        border-start-start-radius: var(--dnf-radius-md);
+        border-end-start-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+        white-space: nowrap;
+    }
+    .dnf-input-group__prefix + .dnf-input { border-start-start-radius: 0; border-end-start-radius: 0; }
+    .dnf-input-group__suffix { display: flex; align-items: center; padding-inline-start: var(--dnf-space-2); color: var(--dnf-muted-foreground);
+        font-family: var(--dnf-font-mono); font-size: var(--dnf-text-sm); white-space: nowrap; }
+
+    /* ---- Fieldset ----------------------------------------------------------------------------------------------- */
+    .dnf-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+    .dnf-fieldset__legend { padding: 0; margin-bottom: var(--dnf-space-2); font-size: var(--dnf-text-sm); font-weight: var(--dnf-weight-semibold); }
+    /* A framed group of fields with its legend on the frame. */
+    .dnf-fieldset--framed {
+        display: flex; flex-direction: column; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-4);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+    }
+    .dnf-fieldset--framed > .dnf-fieldset__legend { margin: 0; padding: 0 var(--dnf-space-2); font-size: var(--dnf-text-base); }
+}

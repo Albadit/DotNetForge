@@ -1,0 +1,132 @@
+@* Textarea (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+@* The MVC tag helpers are off on this page: the asp-for snippet is shown as text, not compiled against the docs
+   page's own model. *@
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/form.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>Write <code>dnf-textarea</code> on a <code>&lt;textarea&gt;</code>. It looks like an
+    <a href="@UiDocsCatalog.Root/components/input">input</a>, is at least 5rem high and resizes only vertically; set its
+    starting height with <code>rows</code>.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-field max-w-lg">
+        <label class="dnf-field__label" for="textarea-description">Description</label>
+        <textarea class="dnf-textarea" id="textarea-description" rows="4">Our spring collection, with free shipping on every order until the end of April.</textarea>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="limit" title="With a length limit" description="Say the limit in the description and enforce it with maxlength." layout="block">
+    <div class="dnf-field max-w-lg">
+        <label class="dnf-field__label" for="textarea-meta">Meta description<span class="dnf-field__optional">optional</span></label>
+        <textarea class="dnf-textarea" id="textarea-meta" rows="3" maxlength="160" aria-describedby="textarea-meta-help"></textarea>
+        <span class="dnf-field__description" id="textarea-meta-help">Up to 160 characters; search engines show it under the title.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="code" title="Code" description="dnf-textarea--code: monospace, small text, line height 1.55 and four-space tabs - for SQL, JSON and other code people type." layout="block">
+    <div class="dnf-field">
+        <label class="dnf-field__label" for="textarea-sql">Query</label>
+        <textarea class="dnf-textarea dnf-textarea--code" id="textarea-sql" rows="5" spellcheck="false">SELECT id, title, published_at&#10;FROM pages&#10;WHERE status = 'Published'&#10;ORDER BY published_at DESC&#10;LIMIT 10;</textarea>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="mono" title="Monospace" description="dnf-textarea--mono keeps the normal size and line height in a monospace font - for lists of paths or keys." layout="block">
+    <div class="dnf-field max-w-lg">
+        <label class="dnf-field__label" for="textarea-origins">Allowed origins</label>
+        <textarea class="dnf-textarea dnf-textarea--mono" id="textarea-origins" rows="3" aria-describedby="textarea-origins-help">https://example.com&#10;https://shop.example.com</textarea>
+        <span class="dnf-field__description" id="textarea-origins-help">One origin per line.</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="other-states" title="Invalid, read-only and disabled" description="The input's states: aria-invalid for the danger border, readonly and disabled for the muted surface." layout="stack">
+    <div class="dnf-field max-w-lg">
+        <label class="dnf-field__label" for="textarea-invalid">Message</label>
+        <textarea class="dnf-textarea" id="textarea-invalid" rows="2" aria-invalid="true" aria-describedby="textarea-invalid-error"></textarea>
+        <span class="dnf-field__error" id="textarea-invalid-error">Enter a message.</span>
+    </div>
+    <div class="dnf-field max-w-lg">
+        <label class="dnf-field__label" for="textarea-readonly">Last error</label>
+        <textarea class="dnf-textarea dnf-textarea--mono" id="textarea-readonly" rows="2" readonly>Timeout after 10 s calling https://hooks.example.com/cms</textarea>
+    </div>
+    <div class="dnf-field max-w-lg">
+        <label class="dnf-field__label" for="textarea-disabled">Notes</label>
+        <textarea class="dnf-textarea" id="textarea-disabled" rows="2" disabled>Only owners can edit these notes.</textarea>
+    </div>
+</ui-doc-example>
+
+<h3 id="asp-for">With asp-for</h3>
+<ui-doc-code id="asp-for-code" lang="razor">
+<div class="dnf-field">
+    <label class="dnf-field__label" asp-for="Description">Description</label>
+    <textarea class="dnf-textarea" asp-for="Description" rows="4"></textarea>
+    <span class="dnf-field__error" asp-validation-for="Description"></span>
+</div>
+</ui-doc-code>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. Level 1
+    is the modifiers <code>--mono</code> and <code>--code</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A taller minimum height and smaller text." layout="block">
+    <textarea class="dnf-textarea min-h-40 text-sm" aria-label="Page body">A taller box for longer text.</textarea>
+</ui-doc-example>
+
+<ui-doc-example id="custom-tokens" title="Component tokens" description="The control tokens apply to the textarea too; --dnf-control-padding-x and --dnf-control-font-size change it (its height comes from rows and its 5rem minimum)." layout="block">
+    <div class="dnf-docs-demo-controls dnf-field max-w-lg">
+        <label class="dnf-field__label" for="tokens-textarea">Introduction</label>
+        <textarea class="dnf-textarea" id="tokens-textarea" rows="3">Welcome to our new site.</textarea>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-tokens-css" lang="css">
+.dnf-docs-demo-controls :is(.dnf-input, .dnf-select, .dnf-textarea) {
+    --dnf-control-height: var(--dnf-control-lg);
+    --dnf-control-padding-x: var(--dnf-space-4);
+    --dnf-control-font-size: var(--dnf-text-md);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-textarea</code></td><td>block</td><td>the input look, at least 5rem high, vertical resize only</td></tr>
+        <tr><td><code>dnf-textarea--mono</code></td><td>modifier</td><td>monospace</td></tr>
+        <tr><td><code>dnf-textarea--code</code></td><td>modifier</td><td>monospace, <code>text-sm</code>, line height 1.55, <code>tab-size: 4</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<p>Hover, keyboard focus, disabled, read-only, invalid and placeholder - the same selectors and looks as the
+    <a href="@UiDocsCatalog.Root/components/input#states">input</a>.</p>
+
+<h3 id="tokens">Tokens</h3>
+<p><code>--dnf-control-padding-x</code> and <code>--dnf-control-font-size</code>, defined on the textarea (as on the
+    <a href="@UiDocsCatalog.Root/components/input#tokens">input</a>). <code>--dnf-control-height</code> is defined too, but the
+    textarea's own 5rem minimum height replaces it.</p>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper: the classes above are the API, with the native attributes (<code>rows</code>,
+    <code>maxlength</code>, <code>readonly</code>, <code>disabled</code>, <code>required</code>, <code>spellcheck</code>).</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Label every textarea; link its help and error with <code>aria-describedby</code>.</li>
+    <li>Tell people about a length limit in the description, and enforce it with <code>maxlength</code>.</li>
+    <li>Turn off <code>spellcheck</code> for code, so the red underlines don't drown the text.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use <code>--code</code> for code a user types; show read-only code in a <a href="@UiDocsCatalog.Root/components/code-block">code block</a>.</li>
+    <li>Don't use a textarea for a single line.</li>
+    <li>Don't remove the resize handle unless the box grows by itself.</li>
+</ul>

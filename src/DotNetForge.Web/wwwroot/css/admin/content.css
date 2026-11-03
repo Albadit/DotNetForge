@@ -1,0 +1,352 @@
+/*
+  Content screens: the Pages tree and page editor (.docs/pages/pages.md), Content types (.docs/pages/content-types.md)
+  and the Content Manager's entry list and entry form (.docs/pages/content-manager.md).
+  Blocks: dnf-content-manager (tree + editor columns), dnf-tree (page tree, pages.js), dnf-search-preview,
+  dnf-layout-status, dnf-permission-add-row, dnf-type-card, dnf-type-icon, dnf-workflow, dnf-field-builder
+  (content-types.js), dnf-repeater, dnf-rte, dnf-media-picker, dnf-media-dialog, dnf-media-tile and
+  dnf-relation-picker (entries.js). Everything else on these screens is a generic Dnf component or a utility.
+*/
+
+@layer components {
+    /* ==== Pages: the tree beside the page editor ============================================================= */
+    .dnf-content-manager { display: grid; grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr); gap: var(--dnf-space-5); align-items: start; }
+    .dnf-content-manager__tree {
+        position: sticky; top: calc(var(--dnf-topbar-height) + var(--dnf-space-4));
+        display: flex; flex-direction: column;
+        max-height: calc(100vh - var(--dnf-topbar-height) - 2rem);
+    }
+    .dnf-content-manager__tree > .dnf-card__body { overflow-x: hidden; overflow-y: auto; padding: var(--dnf-space-2); }
+    .dnf-content-manager__search { padding: var(--dnf-space-3) var(--dnf-space-3) 0; }
+    @media (max-width: 64rem) {
+        .dnf-content-manager { grid-template-columns: minmax(0, 1fr); }
+        .dnf-content-manager__tree { position: static; max-height: 24rem; }
+    }
+
+    /* ---- Page tree: ul.dnf-tree > li.dnf-tree__item > .dnf-tree__row (+ a nested ul.dnf-tree) -----------------
+       States: item [data-collapsed="true"] / [data-dragging="true"] / [data-drop="before|after|first|inside"], row [data-active="true"],
+       tree [data-filtering="true"]. */
+    .dnf-tree { margin: 0; padding: 0; list-style: none; }
+    /* The children's guide line runs straight down from the centre of the open/close arrow: the row's left padding plus
+       half the arrow slot (.dnf-tree__toggle-slot, 1.25rem), minus half the line's width. */
+    .dnf-tree .dnf-tree { margin-left: calc(var(--dnf-space-1) + 0.625rem - 0.5px); padding-left: var(--dnf-space-2); border-left: 1px solid var(--dnf-border); }
+    .dnf-tree__row {
+        display: flex; align-items: center; gap: var(--dnf-space-1);
+        min-height: 2.125rem;
+        padding: 0 var(--dnf-space-1);
+        border-radius: var(--dnf-radius-md);
+    }
+    .dnf-tree__row:hover, .dnf-tree__row:focus-within { background: var(--dnf-surface-hover); }
+    .dnf-tree__row[data-active="true"] { background: var(--dnf-primary-soft); }
+    .dnf-tree__row[data-active="true"] .dnf-tree__title { color: var(--dnf-foreground); font-weight: var(--dnf-weight-semibold); }
+    .dnf-tree__link { display: flex; flex: 1 1 auto; align-items: center; gap: var(--dnf-space-2); min-width: 0; padding: var(--dnf-space-1) 0; color: var(--dnf-foreground); }
+    .dnf-tree__link:hover { text-decoration: none; }
+    .dnf-tree__title { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dnf-tree__slug { flex: 0 10 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dnf-subtle-foreground); font-size: var(--dnf-text-xs); white-space: nowrap; }
+    /* The whole row drags (no handle); the cursor shows it when reordering is allowed. */
+    .dnf-tree__item[draggable="true"] > .dnf-tree__row { cursor: grab; }
+    .dnf-tree__item[data-dragging="true"] > .dnf-tree__row { cursor: grabbing; }
+    .dnf-tree__item[data-dragging="true"] { opacity: 0.5; }
+    /* Where a dragged page lands: a line in the gap between pages, or the row it goes inside. */
+    .dnf-tree__item, .dnf-tree__row { position: relative; }
+    .dnf-tree__item[data-drop="before"]::before, .dnf-tree__item[data-drop="after"]::after, .dnf-tree__item[data-drop="first"] > .dnf-tree__row::after {
+        content: "";
+        position: absolute; z-index: 1; inset-inline: 0;
+        height: 2px;
+        border-radius: var(--dnf-radius-full);
+        background: var(--dnf-primary);
+        pointer-events: none;
+    }
+    .dnf-tree__item[data-drop="before"]::before { top: -1px; }
+    .dnf-tree__item[data-drop="after"]::after, .dnf-tree__item[data-drop="first"] > .dnf-tree__row::after { bottom: -1px; }
+    .dnf-tree__item[data-drop="first"] > .dnf-tree__row::after { inset-inline-start: var(--dnf-space-6); }
+    .dnf-tree__item[data-drop="inside"] > .dnf-tree__row { outline: 2px solid var(--dnf-primary); outline-offset: -2px; background: var(--dnf-primary-soft); }
+    .dnf-tree__action { opacity: 0; }
+    .dnf-tree__row:hover .dnf-tree__action, .dnf-tree__row:focus-within .dnf-tree__action, .dnf-tree__action:focus-visible { opacity: 1; }
+    @media (hover: none) { .dnf-tree__action { opacity: 1; } }
+    /* The row's ⋯ menu stays visible while it is open. */
+    .dnf-tree__action:has(> [aria-expanded="true"]) { opacity: 1; }
+    /* Open/close a page's children (pages.js); while filtering every match shows. */
+    .dnf-tree__toggle-slot { display: grid; flex: none; place-items: center; width: 1.25rem; }
+    .dnf-tree__toggle {
+        display: grid; place-items: center;
+        width: 1.25rem; height: 1.25rem;
+        padding: 0;
+        border: 0; border-radius: var(--dnf-radius-sm);
+        background: none;
+        color: var(--dnf-subtle-foreground);
+        cursor: pointer;
+    }
+    .dnf-tree__toggle:hover { background: var(--dnf-surface-muted); color: var(--dnf-foreground); }
+    .dnf-tree__toggle .dnf-icon { transition: transform var(--dnf-duration-fast) var(--dnf-ease); }
+    .dnf-tree__item[data-collapsed="true"] > .dnf-tree__row .dnf-tree__toggle .dnf-icon { transform: rotate(-90deg); }
+    @media (pointer: coarse) {
+        .dnf-tree .dnf-tree { margin-left: calc(var(--dnf-space-1) + 0.75rem - 0.5px); }
+        .dnf-tree__toggle-slot, .dnf-tree__toggle { width: 1.5rem; }
+        .dnf-tree__toggle { height: 1.5rem; }
+    }
+    .dnf-tree__item[data-collapsed="true"] > .dnf-tree { display: none; }
+    .dnf-tree[data-filtering="true"] .dnf-tree__item[data-collapsed="true"] > .dnf-tree { display: block; }
+
+    /* ==== Pages: page editor (.docs/pages/pages.md#page-editor) =============================================== */
+    /* How the page shows in search results (SEO tab). */
+    .dnf-search-preview {
+        display: flex; flex-direction: column; gap: 2px;
+        min-width: 0;
+        padding: var(--dnf-space-3) var(--dnf-space-4);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-muted);
+    }
+    .dnf-search-preview__title { overflow: hidden; color: var(--dnf-primary-text); font-size: var(--dnf-text-md); text-overflow: ellipsis; white-space: nowrap; }
+    .dnf-search-preview__url { color: var(--dnf-success); font-size: var(--dnf-text-xs); }
+    .dnf-search-preview__text {
+        display: -webkit-box; overflow: hidden;
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+        -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    /* The "add a user" row of the user permission table (Permissions tab). */
+    .dnf-permission-add-row > td { background: var(--dnf-surface-muted); }
+    /* Whether the page has a published layout (Layout tab). */
+    .dnf-layout-status {
+        display: flex; align-items: center; gap: var(--dnf-space-3);
+        padding: var(--dnf-space-4);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg);
+        background: var(--dnf-surface-muted);
+    }
+    .dnf-layout-status__icon {
+        display: grid; flex: 0 0 auto; place-items: center;
+        width: 2.5rem; height: 2.5rem;
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-primary-soft);
+        color: var(--dnf-primary-text);
+    }
+
+    /* ==== Structured content: Content types and the Content Manager (.docs/pages/content-manager.md) ========== */
+    .dnf-type-card { display: flex; flex-direction: column; gap: var(--dnf-space-3); padding: var(--dnf-space-5); }
+    .dnf-type-card__head { display: flex; align-items: flex-start; gap: var(--dnf-space-3); }
+    .dnf-type-card__title { display: flex; flex: 1 1 auto; flex-direction: column; gap: 0.1rem; min-width: 0; }
+    .dnf-type-card__title a { color: inherit; }
+    .dnf-type-card__title a:hover { color: var(--dnf-primary-text); text-decoration: none; }
+    .dnf-type-card__stats { display: flex; gap: var(--dnf-space-5); margin: 0; }
+    .dnf-type-card__stats > div { display: flex; flex-direction: column-reverse; }
+    .dnf-type-card__stats dt { color: var(--dnf-muted-foreground); font-size: var(--dnf-text-xs); }
+    .dnf-type-card__stats dd { margin: 0; font-size: var(--dnf-text-lg); font-weight: var(--dnf-weight-semibold); }
+    .dnf-type-card__actions { display: flex; flex-wrap: wrap; gap: var(--dnf-space-2); margin-top: auto; }
+
+    /* A content type's icon tile (type cards, template cards). */
+    .dnf-type-icon {
+        display: grid; flex: 0 0 auto; place-items: center;
+        width: 2.5rem; height: 2.5rem;
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-primary-soft);
+        color: var(--dnf-primary-text);
+    }
+
+    /* "How it fits together": numbered steps (Content Manager without types). */
+    .dnf-workflow {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--dnf-space-4);
+        margin: 0; padding: var(--dnf-space-5);
+        list-style: none;
+        counter-reset: step;
+    }
+    .dnf-workflow__step { display: flex; flex-direction: column; gap: var(--dnf-space-1); counter-increment: step; }
+    .dnf-workflow__step > .dnf-icon { color: var(--dnf-primary-text); }
+    .dnf-workflow__title::before { content: counter(step) ". "; color: var(--dnf-subtle-foreground); }
+    .dnf-workflow__text { color: var(--dnf-muted-foreground); font-size: var(--dnf-text-sm); }
+
+    /* ---- Field builder (content-types.js): a list of field cards; item states [data-open], [data-invalid],
+       [data-dragging] ------------------------------------------------------------------------------------------- */
+    .dnf-field-builder { display: flex; flex-direction: column; gap: var(--dnf-space-3); margin-bottom: var(--dnf-space-4); }
+    .dnf-field-builder__list { display: flex; flex-direction: column; gap: var(--dnf-space-2); margin: 0; padding: 0; list-style: none; }
+    /* What the server draws until content-types.js has the list: as tall as closed fields and the Add button. */
+    .dnf-field-builder__placeholder { height: 3rem; border-radius: var(--dnf-radius-md); }
+    .dnf-field-builder__add-placeholder { height: 1.8125rem; }
+    .dnf-field-builder__empty {
+        padding: var(--dnf-space-4);
+        border: 1px dashed var(--dnf-border-strong);
+        border-radius: var(--dnf-radius-md);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+        text-align: center;
+    }
+    .dnf-field-builder__item { border: 1px solid var(--dnf-border); border-radius: var(--dnf-radius-md); background: var(--dnf-surface); }
+    .dnf-field-builder__item[data-open="true"] { border-color: var(--dnf-border-strong); box-shadow: var(--dnf-shadow-xs); }
+    .dnf-field-builder__item[data-invalid="true"] { border-color: var(--dnf-danger); }
+    .dnf-field-builder__item[data-dragging="true"] { opacity: 0.5; }
+    .dnf-field-builder__row { display: flex; align-items: center; gap: var(--dnf-space-2); padding: var(--dnf-space-1) var(--dnf-space-2); }
+    .dnf-field-builder__grip { display: grid; place-items: center; color: var(--dnf-subtle-foreground); cursor: grab; touch-action: none; }
+    .dnf-field-builder__type-icon {
+        display: grid; flex: 0 0 auto; place-items: center;
+        width: 1.75rem; height: 1.75rem;
+        border-radius: var(--dnf-radius-sm);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+    }
+    .dnf-field-builder__summary {
+        display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-1) var(--dnf-space-2);
+        min-width: 0;
+        padding: var(--dnf-space-2);
+        border: 0; border-radius: var(--dnf-radius-sm);
+        background: none;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+    .dnf-field-builder__summary:hover { background: var(--dnf-surface-hover); }
+    .dnf-field-builder__name { font-weight: var(--dnf-weight-semibold); }
+    .dnf-field-builder__key { color: var(--dnf-muted-foreground); font-family: var(--dnf-font-mono); font-size: var(--dnf-text-xs); }
+    .dnf-field-builder__type-name { color: var(--dnf-subtle-foreground); font-size: var(--dnf-text-xs); }
+    .dnf-field-builder__tools { display: flex; flex: 0 0 auto; gap: 0.1rem; }
+    .dnf-field-builder__settings { padding: var(--dnf-space-3) var(--dnf-space-4) var(--dnf-space-4); border-top: 1px solid var(--dnf-border); }
+    .dnf-field-builder__flags { display: flex; flex-wrap: wrap; gap: var(--dnf-space-2) var(--dnf-space-5); }
+    .dnf-field-builder__nested {
+        display: flex; flex-direction: column; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-3);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-muted);
+    }
+    .dnf-field-builder__nested-title { margin: 0; font-size: var(--dnf-text-sm); font-weight: var(--dnf-weight-semibold); }
+    .dnf-field-builder__add { display: flex; flex-direction: column; align-items: flex-start; gap: var(--dnf-space-2); }
+    .dnf-field-builder__palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: var(--dnf-space-2); width: 100%; }
+    .dnf-field-builder__palette-item {
+        display: flex; align-items: flex-start; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-3);
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface);
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+    .dnf-field-builder__palette-item:hover, .dnf-field-builder__palette-item:focus-visible { border-color: var(--dnf-primary); background: var(--dnf-primary-soft); }
+    .dnf-field-builder__palette-text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+    .dnf-field-builder__palette-hint { color: var(--dnf-muted-foreground); font-size: var(--dnf-text-xs); }
+    .dnf-field-builder__options { display: flex; flex-direction: column; gap: var(--dnf-space-2); }
+    .dnf-field-builder__option { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--dnf-space-2); align-items: center; }
+
+    /* ---- Entry form (entries.js): repeaters, rich text, media and relationship pickers ---------------------- */
+    .dnf-repeater { display: flex; flex-direction: column; gap: var(--dnf-space-3); min-width: 0; }
+    .dnf-repeater__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--dnf-space-2); }
+    .dnf-repeater__rows { display: flex; flex-direction: column; gap: var(--dnf-space-3); margin: 0; padding: 0; list-style: none; }
+    .dnf-repeater__row { border: 1px solid var(--dnf-border); border-radius: var(--dnf-radius-lg); background: var(--dnf-surface); }
+    .dnf-repeater__row > .dnf-form-grid { padding: var(--dnf-space-4); }
+    .dnf-repeater__row-head {
+        display: flex; align-items: center; justify-content: space-between; gap: var(--dnf-space-2);
+        padding: var(--dnf-space-2) var(--dnf-space-2) var(--dnf-space-2) var(--dnf-space-4);
+        border-bottom: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-lg) var(--dnf-radius-lg) 0 0;
+        background: var(--dnf-surface-muted);
+    }
+    .dnf-repeater__row-title { font-size: var(--dnf-text-sm); font-weight: var(--dnf-weight-semibold); }
+    .dnf-repeater__tools { display: flex; gap: 0.1rem; }
+
+    .dnf-rte { display: flex; flex-direction: column; border: 1px solid var(--dnf-border-strong); border-radius: var(--dnf-radius-md); background: var(--dnf-surface); }
+    .dnf-rte:focus-within { border-color: var(--dnf-primary); box-shadow: var(--dnf-focus-ring); }
+    .dnf-rte > textarea, .dnf-rte > textarea:focus-visible { border: 0; box-shadow: none; }
+    .dnf-rte__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.1rem; padding: var(--dnf-space-1); border-bottom: 1px solid var(--dnf-border); }
+    .dnf-rte__sep { width: 1px; height: 1.25rem; margin: 0 var(--dnf-space-1); background: var(--dnf-border); }
+    .dnf-rte__area { min-height: 8rem; max-height: 32rem; overflow: auto; padding: var(--dnf-space-3); line-height: var(--dnf-leading); outline: none; }
+    .dnf-rte__area > :first-child { margin-top: 0; }
+    .dnf-rte__area > :last-child { margin-bottom: 0; }
+    /* Lists as the browser draws them (the reset removes their bullets and indent). */
+    .dnf-rte__area :is(ul, ol) { margin: 1em 0; padding-left: 2.5rem; }
+    .dnf-rte__area ul { list-style: disc; }
+    .dnf-rte__area ol { list-style: decimal; }
+    .dnf-rte__area h3 { font-size: var(--dnf-text-lg); }
+    .dnf-rte__area h4 { font-size: var(--dnf-text-md); }
+    .dnf-rte__area blockquote { margin: 0 0 1em; padding-left: var(--dnf-space-3); border-left: 3px solid var(--dnf-border-strong); color: var(--dnf-muted-foreground); }
+    .dnf-rte__area a { color: var(--dnf-primary-text); text-decoration: underline; }
+
+    .dnf-media-picker { display: flex; flex-wrap: wrap; gap: var(--dnf-space-2); }
+    .dnf-media-picker__item {
+        position: relative;
+        display: flex; flex-direction: column;
+        width: 8.5rem;
+        margin: 0;
+        overflow: hidden;
+        border: 1px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface);
+    }
+    .dnf-media-picker__item > img, .dnf-media-picker__file {
+        display: grid; place-items: center;
+        width: 100%; aspect-ratio: 4 / 3;
+        object-fit: cover;
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+    }
+    .dnf-media-picker__caption { padding: var(--dnf-space-1) var(--dnf-space-2); overflow: hidden; font-size: var(--dnf-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+    .dnf-media-picker__remove.dnf-button { position: absolute; top: var(--dnf-space-1); right: var(--dnf-space-1); --dnf-button-background: var(--dnf-surface); }
+    .dnf-media-picker__add {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--dnf-space-1);
+        width: 8.5rem; aspect-ratio: 1;
+        border: 1px dashed var(--dnf-border-strong);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+        font-size: var(--dnf-text-sm);
+        cursor: pointer;
+    }
+    .dnf-media-picker__add:hover { border-color: var(--dnf-primary); color: var(--dnf-foreground); }
+
+    /* The "Choose from Media" dialog (a .dnf-dialog--xl built by entries.js). */
+    .dnf-media-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: var(--dnf-space-2); padding: var(--dnf-space-5) var(--dnf-space-6) 0; }
+    .dnf-media-dialog__head > .dnf-dialog__title { margin: 0; }
+    .dnf-media-dialog .dnf-media-dialog__toolbar { padding: var(--dnf-space-3) var(--dnf-space-6); }
+    .dnf-media-dialog__grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: var(--dnf-space-3);
+        max-height: 55vh;
+        overflow: auto;
+        padding: var(--dnf-space-2) var(--dnf-space-6);
+    }
+    .dnf-media-tile {
+        display: flex; flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+        border: 2px solid var(--dnf-border);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface);
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+    .dnf-media-tile:hover { border-color: var(--dnf-subtle-foreground); }
+    .dnf-media-tile[aria-selected="true"] { border-color: var(--dnf-primary); box-shadow: var(--dnf-focus-ring); }
+    .dnf-media-tile > img, .dnf-media-tile__file {
+        display: grid; place-items: center;
+        width: 100%; aspect-ratio: 4 / 3;
+        object-fit: cover;
+        background: var(--dnf-surface-muted);
+        color: var(--dnf-muted-foreground);
+    }
+    .dnf-media-tile__name { padding: var(--dnf-space-1) var(--dnf-space-2); overflow: hidden; font-size: var(--dnf-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Relationship picker: chips (.dnf-chip-list) and a search box with a result list. */
+    .dnf-relation-picker { display: flex; flex-direction: column; gap: var(--dnf-space-2); }
+    .dnf-relation-picker__search { max-width: 24rem; }
+    .dnf-relation-picker__results {
+        position: absolute; top: calc(100% + 0.25rem); right: 0; left: 0; z-index: var(--dnf-z-sticky);
+        max-height: 16rem;
+        overflow: auto;
+        margin: 0;
+        padding: var(--dnf-space-1);
+        list-style: none;
+        border: 1px solid var(--dnf-border-strong);
+        border-radius: var(--dnf-radius-md);
+        background: var(--dnf-surface-raised);
+        box-shadow: var(--dnf-shadow-md);
+    }
+    .dnf-relation-picker__result { padding: var(--dnf-space-2) var(--dnf-space-3); border-radius: var(--dnf-radius-sm); font-size: var(--dnf-text-sm); cursor: pointer; }
+    .dnf-relation-picker__result:hover { background: var(--dnf-surface-hover); }
+    .dnf-relation-picker__result--empty { color: var(--dnf-muted-foreground); cursor: default; }
+
+    @media (max-width: 40rem) {
+        .dnf-field-builder__row { flex-wrap: wrap; }
+        .dnf-field-builder__placeholder { height: 7rem; }
+        .dnf-field-builder__tools { margin-inline-start: auto; }
+        .dnf-field-builder__option { grid-template-columns: minmax(0, 1fr) auto; }
+        .dnf-field-builder__option > input:nth-child(2) { grid-column: 1; }
+    }
+}

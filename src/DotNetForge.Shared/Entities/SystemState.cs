@@ -34,7 +34,7 @@ public class Setting
 }
 
 /// <summary>
-/// A sign-in provider on Users &amp; Permissions Plugin → Providers (.docs/features/authentication.md#providers): the
+/// A sign-in provider on Authentication → Providers (.docs/features/authentication.md#providers): the
 /// built-in Email provider (password sign-in, always on) and one row per OAuth provider of
 /// <c>OAuthProviderCatalog</c>, disabled until configured.
 /// </summary>

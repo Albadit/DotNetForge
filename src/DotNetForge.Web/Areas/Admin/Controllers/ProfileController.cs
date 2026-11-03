@@ -19,13 +19,15 @@ public sealed class ProfileController : AdminControllerBase
     private readonly ProfileService _profile;
     private readonly AuthService _auth;
     private readonly MfaService _mfa;
+    private readonly UserSessionService _sessions;
 
-    public ProfileController(DotNetForgeDbContext db, ProfileService profile, AuthService auth, MfaService mfa)
+    public ProfileController(DotNetForgeDbContext db, ProfileService profile, AuthService auth, MfaService mfa, UserSessionService sessions)
     {
         _db = db;
         _profile = profile;
         _auth = auth;
         _mfa = mfa;
+        _sessions = sessions;
     }
 
     [HttpGet("")]
@@ -69,6 +71,9 @@ public sealed class ProfileController : AdminControllerBase
             var model = await BuildAsync(details: null);
             return model is null ? NotFound() : View(nameof(Index), model with { Form = "password" });
         }
+
+        // A stolen session doesn't outlive the password; this device stays signed in.
+        await _sessions.EndOthersAsync(User, HttpContext.RequestAborted);
 
         TempData["Success"] = input.CurrentPassword is null or ""
             ? "Your password is set. You can also sign in with your email and password now."

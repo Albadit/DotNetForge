@@ -21,8 +21,8 @@ Read-only. What gets logged and how: [audit logging](../features/audit-logging.m
 src/DotNetForge.Web/Areas/Admin/Controllers/AuditLogsController.cs     AuditLogsController
 src/DotNetForge.Web/Areas/Admin/Views/AuditLogs/Index.cshtml          card with toolbar + table
 src/DotNetForge.Web/Ui/AuditPresentation.cs                           friendly action labels (Label) and icons (Icon)
-src/DotNetForge.Web/Ui/UiTagHelpers.cs                                <timestamp>, <badge>, <icon>
-src/DotNetForge.Web/wwwroot/js/forge/ui.js                            data-collection search / filter / sort / paging
+src/DotNetForge.UI/Components/BasicTagHelpers.cs                      <dnf-timestamp>, <dnf-badge>, <dnf-icon>
+src/DotNetForge.UI/wwwroot/dnf.js                                     data-collection search / filter / sort / paging
 src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs         sidebar entry, breadcrumbs
 src/DotNetForge.Shared/Entities/AuditLogEntry.cs                      entity
 src/DotNetForge.Web/Services/AuditService.cs                          writer (IAuditService, src/DotNetForge.Shared/Auditing/IAuditService.cs)
@@ -33,10 +33,10 @@ src/DotNetForge.Web/Services/AuditService.cs                          writer (IA
 ```text
 _AdminLayout - top bar: Settings › Administration Panel › Audit Logs
 Audit Logs (h1) - "The 100 most recent actions. Entries are append-only: they can't be edited or deleted."
-└── section.card[data-collection][data-page-size=25]
-    ├── card-header: **Activity** · "N total" (data-collection-count)
-    ├── .toolbar (JS only): search "Search user, action, entity or IP" · **All areas** ▾ · **Any result** ▾ (Succeeded, Failed)
-    ├── table.table.table-stack: **When** ⇅ · **Action** ⇅ · **User** ⇅ · **Entity** · **Result** · **IP address**
+└── section.dnf-card[data-collection][data-page-size=25]
+    ├── dnf-card__header: **Activity** · "N total" (data-collection-count)
+    ├── .dnf-toolbar (JS only): search "Search user, action, entity or IP" · **All areas** ▾ · **Any result** ▾ (Succeeded, Failed)
+    ├── div.dnf-table.dnf-table--stack > table: **When** ⇅ · **Action** ⇅ · **User** ⇅ · **Entity** · **Result** · **IP address**
     └── .pagination (JS, only when more than 10 entries match: **Rows per page** 10/25/50/100, default 25, remembered)
 ```
 
@@ -44,11 +44,11 @@ Audit Logs (h1) - "The 100 most recent actions. Entries are append-only: they ca
 
 | Column | Source / rendering |
 | --- | --- |
-| **When** | `<timestamp value="Timestamp">` - relative time ("just now", "3 h ago", "3 Oct 2026"), exact UTC time in the tooltip; sorts by the ISO value |
-| **Action** | `AuditPresentation.Label(Action)` as `.cell-primary` (e.g. "Updated a page") with the raw key in `<code class="cell-sub">` (`content.updated`); unknown keys (extension-defined, e.g. `contactform.submitted`) show the raw key in both places |
+| **When** | `<dnf-timestamp value="Timestamp">` - relative time ("just now", "3 h ago", "3 Oct 2026"), exact UTC time in the tooltip; sorts by the ISO value |
+| **Action** | `AuditPresentation.Label(Action)` as `.dnf-table__primary` (e.g. "Updated a page") with the raw key in `<code class="dnf-table__secondary">` (`content.updated`); unknown keys (extension-defined, e.g. `contactform.submitted`) show the raw key in both places |
 | **User** | `UserDisplaySnapshot`, or "System" when it is null (anonymous requests) |
 | **Entity** | `-` when `EntityType` is null, else `EntityType` (muted) + `EntityDisplaySnapshot` |
-| **Result** | `<badge dot="true">` **Succeeded** (`Success` tone) or **Failed** (`Danger` tone) from `Success` |
+| **Result** | `<dnf-badge dot="true">` **Succeeded** (`Success` tone) or **Failed** (`Danger` tone) from `Success` |
 | **IP address** | `IpAddress` (monospace, muted) |
 
 `UserAgent`, `EntityId` and `Details` are not shown.
@@ -64,7 +64,7 @@ Toolbar ([design system → behaviours](../architecture/design-system.md#behavio
 
 ## Functionality
 
-Display only. Search, filters, sort and pagination are progressive enhancements in `ui.js` over the 100
+Display only. Search, filters, sort and pagination are progressive enhancements in `dnf.js` over the 100
 server-rendered rows: without JavaScript the toolbar stays hidden and all 100 rows show newest first on one page.
 They never query the server, so they only ever see these 100 entries.
 
@@ -106,7 +106,7 @@ descending, `aria-sort`), the pagination buttons. All client-side; nothing is po
 ```text
 AuditLogsController
 └── DotNetForgeDbContext
-View → AuditPresentation; <timestamp>, <badge>, <icon> tag helpers; ui.js (data-collection)
+View → AuditPresentation; <dnf-timestamp>, <dnf-badge>, <dnf-icon> tag helpers; dnf.js (data-collection)
 ```
 
 ## Page flow
@@ -115,7 +115,7 @@ View → AuditPresentation; <timestamp>, <badge>, <icon> tag helpers; ui.js (dat
 flowchart LR
     A["GET /admin/audit-logs"] --> B{"Super Admin or Admin?"}
     B -- no --> D["/account/denied"]
-    B -- yes --> C["Top 100 by Id desc"] --> E["Table (ui.js: search / filter / sort / page)"]
+    B -- yes --> C["Top 100 by Id desc"] --> E["Table (dnf.js: search / filter / sort / page)"]
 ```
 
 ## Related pages

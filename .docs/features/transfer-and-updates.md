@@ -7,7 +7,7 @@ screen - built) and safe **core updates** with rollback (not built).
 
 | Piece | Location | Status |
 | --- | --- | --- |
-| Data Management screen | `GET /admin/data` → `DataManagementController`, sidebar **Settings → Global Settings** | ✔ Super Admin only ([Data Management](../pages/data-management.md)) |
+| Data Management screen | `GET /admin/data` → `DataManagementController`, sidebar **Settings → Administration Panel** | ✔ Super Admin only ([Data Management](../pages/data-management.md)) |
 | Export (download) | `DatabaseTransferService.ExportAsync(userId, database, ct)`, format `TransferFile` | ✔ every environment: the CMS database (importable) or an [additional database](#export-of-an-additional-database) (JSON copy, not importable) |
 | Backups (manual, scheduled, pruned) | `DatabaseTransferService`, `AutomaticBackupService`; files in `IFileStorage` under `backups/` | ✔ every environment, CMS database only; schedule off by default |
 | Import / restore a backup | `DatabaseTransferService.ImportAsync` / `RestoreAsync` | ✔ **Development only**; replaces all data in one transaction after a safety backup |
@@ -18,7 +18,7 @@ screen - built) and safe **core updates** with rollback (not built).
 | `PermissionAreas.Updates` | `src/DotNetForge.Shared/Constants/Permissions.cs` | in `PermissionMatrix` only Super Admin is granted it; seeded, **not enforced** (the Data Management screen checks the Super Admin role) ([authorization](authorization.md)) |
 | `InstalledExtension.UpdateAvailable` | `src/DotNetForge.Shared/Entities/InstalledExtension.cs` | returned by `GET /api/extensions`; never written (always `false`) |
 | Core / extensions / runtime split | `src/`; `extensions/` at the repository root (`AppEnvironment.ExtensionsPath`); `storage/` | ✔ folders separated |
-| `.gitignore` | repository root | ignores `.env`/`.env.*` (keeps `.env.example`), `bin/`, `obj/`, `storage/{media,backups,logs,updates}/*`, `*.db*`, `node_modules/`, test output; **not** `out/`, `publish/`, `*.log`, `.cache/` |
+| `.gitignore` | repository root | ignores `.env`/`.env.*` (keeps `.env.example`), `bin/`, `obj/`, `storage/{media,backups,logs,updates}/*`, `*.db*`, `node_modules/`, `/tools/tailwind/`, test output; **not** `out/`, `publish/`, `*.log`, `.cache/` |
 
 ### Risk and environment
 

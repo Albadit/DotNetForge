@@ -65,9 +65,19 @@ public sealed class PagesController : AdminControllerBase
             return Forbid();
         }
 
-        if (parent is Guid parentId && !await _db.Pages.AnyAsync(p => p.Id == parentId))
+        if (parent is Guid parentId)
         {
-            return NotFound();
+            var parentPage = await _db.Pages.AsNoTracking().FirstOrDefaultAsync(p => p.Id == parentId);
+            if (parentPage is null)
+            {
+                return NotFound();
+            }
+
+            if (PageService.IsHome(parentPage.Slug))
+            {
+                TempData["Error"] = PageService.NothingUnderHome;
+                return RedirectToAction(nameof(Index), new { selected = parentId });
+            }
         }
 
         var siblings = await _db.Pages.CountAsync(p => p.ParentPageId == parent);
@@ -302,6 +312,36 @@ public sealed class PagesController : AdminControllerBase
         return Ok(new { ok = true });
     }
 
+    /// <summary>The move dialog: puts a page under another (none = Root), last among its new siblings.</summary>
+    [HttpPost("move/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Move(Guid id, Guid? parentId)
+    {
+        var page = await _db.Pages.FirstOrDefaultAsync(p => p.Id == id);
+        if (page is null)
+        {
+            return NotFound();
+        }
+
+        if (!Can(Area, PermissionActions.Update) || !await CanEditPageAsync(page))
+        {
+            return Forbid();
+        }
+
+        var error = await _pages.MoveAsync(id, parentId, HttpContext.RequestAborted);
+        if (error is not null)
+        {
+            TempData["Error"] = error;
+            return RedirectToAction(nameof(Index), new { selected = id });
+        }
+
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync(AuditActions.ContentReordered, "Page", id.ToString(), page.Title);
+        var parent = parentId is null ? "Root" : await _db.Pages.Where(p => p.Id == parentId).Select(p => p.Title).FirstAsync();
+        TempData["Success"] = $"Moved '{page.Title}' to {parent}.";
+        return RedirectToAction(nameof(Index), new { selected = id });
+    }
+
     /// <summary>Whether the form changes anything that decides when the page is public.</summary>
     private static bool ChangesPublishing(Page page, PageInput form) =>
         form.Published != page.Published ||
@@ -312,7 +352,7 @@ public sealed class PagesController : AdminControllerBase
     {
         var pages = await _db.Pages
             .AsNoTracking()
-            .OrderBy(p => p.SortOrder).ThenBy(p => p.Title)
+            .OrderBy(p => p.Slug == PageService.HomeSlug ? 0 : 1).ThenBy(p => p.SortOrder).ThenBy(p => p.Title)
             .ToListAsync();
 
         var selectedForm = form;
@@ -371,13 +411,13 @@ public sealed class PagesController : AdminControllerBase
         }
 
         var parentOptions = pages
-            .Where(p => p.Id != selectedId)
+            .Where(p => p.Id != selectedId && (!PageService.IsHome(p.Slug) || p.Id == selectedForm?.ParentPageId))
             .Select(p => (p.Id, Label: $"{p.Title} (/{p.Slug.TrimStart('/')})"))
             .ToList();
 
         return new ContentIndexViewModel
         {
-            Tree = BuildTree(pages, p => CanModify(Area, PermissionActions.Delete, PermissionActions.DeleteOwn, p.CreatedById)),
+            Tree = BuildTree(pages, p => !PageService.IsHome(p.Slug) && CanModify(Area, PermissionActions.Delete, PermissionActions.DeleteOwn, p.CreatedById)),
             Selected = selectedForm,
             SelectedId = selectedId,
             Extras = extras,

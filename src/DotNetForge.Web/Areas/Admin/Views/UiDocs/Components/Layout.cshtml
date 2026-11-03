@@ -1,0 +1,233 @@
+@* Layout (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/layout.css</code></li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>A few layout primitives for the patterns every screen repeats: stack, cluster, spread, grid, split, container, divider,
+    note and skip link. Anything else about placement is Tailwind utilities in the markup (<code>flex</code>,
+    <code>gap-*</code>, <code>grid-cols-*</code>). The grey boxes below are placeholders.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-stack">
+        <div class="dnf-spread">
+            <strong>Recent pages</strong>
+            <dnf-button size="Sm">View all</dnf-button>
+        </div>
+        <div class="dnf-grid dnf-grid--cols-3">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Home</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">About us</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Contact</div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="stack" title="Stack" description="Children in a column with one gap: dnf-stack (space-4), --sm (space-2) and --lg (space-6)." layout="block">
+    <div class="dnf-grid dnf-grid--cols-3">
+        <div class="dnf-stack dnf-stack--sm">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Small</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">gap</div>
+        </div>
+        <div class="dnf-stack">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Default</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">gap</div>
+        </div>
+        <div class="dnf-stack dnf-stack--lg">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Large</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">gap</div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="cluster" title="Cluster" description="A wrapping row of inline things, vertically centred: dnf-cluster (space-2) and --lg (space-4)." layout="stack">
+    <div class="dnf-cluster">
+        <dnf-badge tone="Success">Published</dnf-badge>
+        <dnf-badge>Article</dnf-badge>
+        <dnf-badge tone="Info">3 languages</dnf-badge>
+        <dnf-button size="Sm">Edit</dnf-button>
+    </div>
+    <div class="dnf-cluster dnf-cluster--lg">
+        <dnf-button size="Sm">Preview</dnf-button>
+        <dnf-button size="Sm">Duplicate</dnf-button>
+        <dnf-button size="Sm" variant="Primary">Publish</dnf-button>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="spread" title="Spread" description="dnf-spread puts the first child at the start and the last at the end of a row - a title and its action." layout="block">
+    <div class="dnf-spread rounded-md border border-border p-3">
+        <span class="font-semibold">Webhooks</span>
+        <dnf-button size="Sm" icon="plus">Add</dnf-button>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="grid" title="Grid" description="dnf-grid with a column modifier: --cols-2 (one column below 40rem), --cols-3 (two below 64rem, one below 40rem), --cols-4 (two below 64rem), --auto (as many 16rem tracks as fit)." layout="stack">
+    <div class="dnf-grid dnf-grid--cols-2">
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-2</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-2</div>
+    </div>
+    <div class="dnf-grid dnf-grid--cols-3">
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-3</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-3</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-3</div>
+    </div>
+    <div class="dnf-grid dnf-grid--cols-4">
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-4</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-4</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-4</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">cols-4</div>
+    </div>
+    <div class="dnf-grid dnf-grid--auto">
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">auto</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">auto</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">auto</div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="split" title="Split" description="A main column and a 15 to 19rem side column - an editor with its settings beside it. The aside follows the scroll; both stack below 80rem. Without an aside it is one column." layout="block">
+    <div class="dnf-split">
+        <div class="dnf-split__main">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Main: the editor</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Main: more cards</div>
+        </div>
+        <aside class="dnf-split__aside" aria-label="Page settings">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Aside: publish</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Aside: SEO</div>
+        </aside>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="split-wide" title="Split with a wide aside" description="dnf-split--wide-aside: a 16 to 22rem side column that stays in place and stacks only below 64rem - settings layouts." layout="block">
+    <div class="dnf-split dnf-split--wide-aside">
+        <div class="dnf-split__main">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Main: settings form</div>
+        </div>
+        <aside class="dnf-split__aside" aria-label="Help">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">Aside: help</div>
+        </aside>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="container" title="Container" description="A centred column of readable width: dnf-container (96rem), --medium (80rem) and --narrow (56rem). This page is narrower than all three, so the boxes fill it." layout="stack">
+    <div class="dnf-container dnf-container--narrow">
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">dnf-container--narrow: at most 56rem, centred</div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="divider" title="Divider" description="dnf-divider is a 1px line; --label puts text in the middle; --vertical stands between items of a flex row." layout="stack">
+    <hr class="dnf-divider" />
+    <div class="dnf-divider dnf-divider--label" role="separator">or</div>
+    <div class="flex items-center gap-3 text-sm">
+        <span>12 pages</span>
+        <div class="dnf-divider dnf-divider--vertical" role="separator" aria-orientation="vertical"></div>
+        <span>3 drafts</span>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="note" title="Note" description="A short note led by an icon; the icon sits on the first line and wrapped lines align with the text." layout="stack">
+    <p class="dnf-note text-sm text-muted"><dnf-icon name="info" size="Sm" /><span>Changes to extensions apply after a restart of the app.</span></p>
+    <p class="dnf-note text-sm text-muted max-w-xs"><dnf-icon name="clock" size="Sm" /><span>Scheduled pages go live at the start of the minute, in the server's UTC time.</span></p>
+</ui-doc-example>
+
+<ui-doc-example id="skip-link" title="Skip link" description="The first focusable element of every layout, hidden above the viewport until it gets focus. Tab into the box to see it." layout="block">
+    <div class="relative h-24 overflow-hidden rounded-md border border-border p-3 pt-14 text-sm">
+        <a class="dnf-skip-link" href="#layout-skip-target">Skip to content</a>
+        <p id="layout-skip-target" tabindex="-1">The content the skip link jumps to.</p>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A utility beats the component's own value - here a gap-1 stack and a gap-8 cluster." layout="stack">
+    <div class="dnf-stack gap-1">
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">gap-1</div>
+        <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">gap-1</div>
+    </div>
+    <div class="dnf-cluster gap-8">
+        <dnf-badge>gap-8</dnf-badge>
+        <dnf-badge>gap-8</dnf-badge>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS changes a primitive in a scope - here a five-column grid." layout="block">
+    <div class="dnf-docs-demo-grid">
+        <div class="dnf-grid">
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">1</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">2</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">3</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">4</div>
+            <div class="rounded-md border border-border bg-surface-muted p-3 text-sm">5</div>
+        </div>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-grid .dnf-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-stack</code></td><td>block</td><td>a flex column, gap <code>--dnf-space-4</code>, <code>min-width: 0</code></td></tr>
+        <tr><td><code>dnf-stack--sm</code> / <code>--lg</code></td><td>modifier</td><td>gap <code>--dnf-space-2</code> / <code>--dnf-space-6</code></td></tr>
+        <tr><td><code>dnf-cluster</code></td><td>block</td><td>a wrapping, vertically centred row, gap <code>--dnf-space-2</code></td></tr>
+        <tr><td><code>dnf-cluster--lg</code></td><td>modifier</td><td>gap <code>--dnf-space-4</code></td></tr>
+        <tr><td><code>dnf-spread</code></td><td>block</td><td>a centred row, <code>justify-content: space-between</code>, gap <code>--dnf-space-4</code></td></tr>
+        <tr><td><code>dnf-grid</code></td><td>block</td><td>a grid, gap <code>--dnf-space-5</code>; set the columns with a modifier</td></tr>
+        <tr><td><code>dnf-grid--cols-2</code></td><td>modifier</td><td>2 columns; 1 below 40rem</td></tr>
+        <tr><td><code>dnf-grid--cols-3</code></td><td>modifier</td><td>3 columns; 2 below 64rem; 1 below 40rem</td></tr>
+        <tr><td><code>dnf-grid--cols-4</code></td><td>modifier</td><td>4 columns; 2 below 64rem (gap <code>--dnf-space-3</code> below 40rem)</td></tr>
+        <tr><td><code>dnf-grid--auto</code></td><td>modifier</td><td>as many 16rem-minimum tracks as fit</td></tr>
+        <tr><td><code>dnf-split</code></td><td>block</td><td>main column + a 15-19rem side column; one column without <code>__aside</code>; stacks below 80rem</td></tr>
+        <tr><td><code>dnf-split__main</code>, <code>dnf-split__aside</code></td><td>element</td><td>columns of cards, gap <code>--dnf-space-5</code></td></tr>
+        <tr><td><code>dnf-split__aside</code></td><td>element</td><td>sticky below the top bar (<code>--dnf-topbar-height</code> + <code>--dnf-space-4</code>) while side by side</td></tr>
+        <tr><td><code>dnf-split--wide-aside</code></td><td>modifier</td><td>a 16-22rem side column that does not stick and stacks only below 64rem</td></tr>
+        <tr><td><code>dnf-container</code></td><td>block</td><td>full width up to <code>--dnf-content-max</code> (96rem), centred</td></tr>
+        <tr><td><code>dnf-container--narrow</code> / <code>--medium</code></td><td>modifier</td><td>at most 56rem / 80rem</td></tr>
+        <tr><td><code>dnf-divider</code></td><td>block</td><td>a 1px <code>--dnf-border</code> line, no margin</td></tr>
+        <tr><td><code>dnf-divider--vertical</code></td><td>modifier</td><td>1px wide, stretched (in a flex row)</td></tr>
+        <tr><td><code>dnf-divider--label</code></td><td>modifier</td><td>text in the middle with a line on each side (<code>--dnf-subtle-foreground</code>, <code>text-sm</code>)</td></tr>
+        <tr><td><code>dnf-note</code></td><td>block</td><td>an icon and text in a row; <code>&gt; .dnf-icon</code> is one line high (<code>1lh</code>)</td></tr>
+        <tr><td><code>dnf-skip-link</code></td><td>block</td><td>a primary pill at the top start, moved out of view until <code>:focus</code></td></tr>
+        <tr><td><code>dnf-js-only</code></td><td>utility</td><td>hidden until <code>dnf-theme.js</code> has marked <code>&lt;html class="dnf-js"&gt;</code> (before the first paint)</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There are no tag helpers: the classes are the API. A typical screen:</p>
+<ui-doc-code id="screen" lang="html">
+<a class="dnf-skip-link" href="#main">Skip to content</a>
+…
+<main id="main" tabindex="-1">
+    <div class="dnf-split">
+        <div class="dnf-split__main">
+            <div class="dnf-card">…</div>
+        </div>
+        <aside class="dnf-split__aside">
+            <div class="dnf-card">…</div>
+        </aside>
+    </div>
+</main>
+</ui-doc-code>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>Layout classes add no semantics: use landmarks (<code>&lt;main&gt;</code>, <code>&lt;aside&gt;</code>, <code>&lt;nav&gt;</code>)
+        and headings in the markup.</li>
+    <li>A labelled divider used as a separator gets <code>role="separator"</code>; a plain <code>&lt;hr&gt;</code> is one already.</li>
+    <li>The skip link targets an element with an id and <code>tabindex="-1"</code>, so focus lands there.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use these classes for the recurring patterns and utilities for one-offs.</li>
+    <li>Don't nest <code>dnf-container</code>s or put a fixed width on a grid child - let the grid size it.</li>
+    <li>Don't rebuild a split or a grid with utilities on every screen - the primitives carry the breakpoints.</li>
+</ul>

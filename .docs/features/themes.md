@@ -49,8 +49,8 @@ else the built-in view:
 
 | View | Used for | Model | Built-in fallback |
 | --- | --- | --- | --- |
-| `Views/Page.cshtml` | every [public content page](../pages/public-page.md) and the root page | `Page` (+ `ViewData["RouteValues"]` for dynamic segments) | `src/DotNetForge.Web/Views/Home/Page.cshtml` (`_Layout`, `public.css`) |
-| `Views/Index.cshtml` | the [public home](../pages/public-home.md) fallback list (no live root page) | `List<(string Title, string Slug)>` | `src/DotNetForge.Web/Views/Home/Index.cshtml` (`_Layout`, `public.css`) |
+| `Views/Page.cshtml` | every [public content page](../pages/public-page.md) and the root page | `Page` (+ `ViewData["RouteValues"]` for dynamic segments) | `src/DotNetForge.Web/Views/Home/Page.cshtml` (`_Layout`, `site.css`) |
+| `Views/Index.cshtml` | the [public home](../pages/public-home.md) fallback list (no live root page) | `List<(string Title, string Slug)>` | `src/DotNetForge.Web/Views/Home/Index.cshtml` (`_Layout`, `site.css`) |
 
 A theme may ship either file or both; its `_ViewStart.cshtml` / `Shared/_Layout.cshtml` are found by normal Razor
 lookup from the view's folder (the views are compiled in memory from `~/extensions/...`). Theme views get, besides the
@@ -87,14 +87,14 @@ a theme can redefine them on `body` to match its palette (the sample does). The 
 classes rather than writing styles.
 
 The built-in fallback is the public layout of the [design system](../architecture/design-system.md#public-fallback):
-`Views/Shared/_Layout.cshtml` with `wwwroot/css/forge/{tokens,base,components,public}.css` (light/dark by system
-preference or the saved `dnf-theme` choice). Its header lists the `Menu` pages (`nav.site-nav`, the current page
+`Views/Shared/_Layout.cshtml` with the library's `dnf.css` and `wwwroot/css/site.css` (light/dark by system
+preference or the saved `dnf-theme` choice). Its header lists the `Menu` pages (`nav.dnf-site__nav`, the current page
 `aria-current="page"`) and shows **Admin →** only to signed-in users who may enter the admin (`Roles.CanEnterAdmin`).
 
 **Isolation.** Only `HomeController.Index` and `RenderPage` use themes, plus the page builder's canvas and draft
 preview (`PageBuilderController`), which show the page as the site does. Admin screens keep `_AdminLayout`
-(`forge/admin.css`); setup, sign-in and access denied keep `_AuthLayout` (`forge/auth.css`); the error screen keeps
-`_Layout`. A theme ships its own stylesheet and never replaces the `forge/` files. The admin's light/dark switch
+(`css/admin/*.css`); setup, sign-in and access denied keep `_AuthLayout` (`css/auth.css`); the error screen keeps
+`_Layout`. A theme ships its own stylesheet and never replaces `dnf.css` or the CMS's `wwwroot/css/` files. The admin's light/dark switch
 ([design system → themes](../architecture/design-system.md#themes)) is unrelated to public themes: a theme never
 affects it, and it never affects a theme.
 
@@ -245,4 +245,4 @@ Role defaults (permission areas `Extensions`, `Settings`; see [authorization](au
 | Serve theme assets | `ExtensionResourcesController` / `ExtensionResources.Serve` (`Path.GetFullPath` + prefix check); never expose `extensions/` through `UseStaticFiles` |
 | Write a theme | [extension development guide](../guides/extension-development.md); tests: `ExtensionTests` (fixture `tests/fixtures/extensions/test-theme`) |
 | Per-page theme/layout fields | `Page` entity → migration → form, following [content pages and routing → Where to change things](content-pages-and-routing.md#where-to-change-things) |
-| Keep admin and auth screens unthemed | `_AdminLayout`, `_AuthLayout` and `wwwroot/css/forge/` - themes ship their own CSS and never load or replace these |
+| Keep admin and auth screens unthemed | `_AdminLayout`, `_AuthLayout`, `wwwroot/css/admin/` and `css/auth.css` - themes ship their own CSS and never load or replace these |

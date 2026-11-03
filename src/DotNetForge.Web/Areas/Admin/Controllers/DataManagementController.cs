@@ -12,7 +12,7 @@ using Microsoft.Net.Http.Headers;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Settings → Global Settings → Data Management (.docs/pages/data-management.md), Super Admin only. Export (download) and backups
+/// Settings → Administration Panel → Data Management (.docs/pages/data-management.md), Super Admin only. Export (download) and backups
 /// (stored, manual or scheduled) work everywhere; import and restore replace all data and exist only in Development.
 /// Rules, records and audit: <see cref="DatabaseTransferService"/>.
 /// </summary>

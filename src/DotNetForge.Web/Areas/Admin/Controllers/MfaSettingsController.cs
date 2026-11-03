@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Users &amp; Permissions Plugin → Two-factor authentication (.docs/pages/mfa.md): which second factors users may set
+/// Authentication → Two-factor authentication (.docs/pages/mfa.md): which second factors users may set
 /// up - authenticator app, passkeys, email codes, SMS codes - and whether everyone who opens the admin must have one.
 /// Reading needs Settings read, saving Settings update; the rules live in <see cref="MfaSettingsService"/>.
 /// </summary>

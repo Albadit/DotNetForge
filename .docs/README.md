@@ -15,7 +15,7 @@ New here? Read in this order:
 2. [Codebase architecture](architecture/codebase.md) - projects, folders, layers, rules for changes
 3. [Data flow](architecture/data-flow.md) - startup, request pipeline, routing, auth and API flows
 4. [Page (screen) architecture](architecture/pages.md) - route map, layouts, navigation, how screens talk to the backend;
-   the UI itself is the [design system](architecture/design-system.md)
+   the UI is the [DotNetForge UI library](ui/README.md), used as described in the [design system](architecture/design-system.md)
 5. [Feature documents](#features) - one authoritative document per concept
 6. [Screen documents](#screens) - one per screen
 7. [Development guide](guides/development.md) - run, debug, troubleshoot
@@ -37,9 +37,10 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 │   ├── codebase.md              projects, folders, layers, DI, architectural rules
 │   ├── data-flow.md             startup, pipeline, routing, auth/API/DB/background/error flows
 │   ├── pages.md                 screen architecture + full route map
-│   ├── design-system.md         UI: tokens, components, tag helpers, layouts, themes, accessibility
+│   ├── design-system.md         how the CMS uses the UI library: brand, layouts, feedback, building a screen
 │   ├── database.md              tables, ER diagram, migrations, seeding
 │   └── dependencies.md          project refs, NuGet, DI registrations, must-not-bypass list
+├── ui/                          DotNetForge UI: the component library (styling, theming, behaviours, extensions, one page per component)
 ├── database/                    the database layer: providers, routing, configuration, MongoDB, security
 ├── features/                    cross-screen concepts (authoritative), incl. planned-only modules
 ├── pages/                       one file per screen
@@ -54,9 +55,24 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | [codebase.md](architecture/codebase.md) | What is each project/folder for? Where does new code go? Which rules must changes follow? |
 | [data-flow.md](architecture/data-flow.md) | What happens at startup and on each request? How are URLs routed? |
 | [pages.md](architecture/pages.md) | Which screens exist, at which routes, with which permissions? How is a screen built? |
-| [design-system.md](architecture/design-system.md) | How do screens look and behave? Which components, tag helpers, icons and tokens exist? Light/dark, accessibility. |
+| [design-system.md](architecture/design-system.md) | How do the CMS screens use the UI library? Brand, admin shell, auth and public layouts, feedback (toasts, confirm), accessibility, building a screen. |
 | [database.md](architecture/database.md) | Which tables exist, what writes them, how are migrations and seeding done? |
 | [dependencies.md](architecture/dependencies.md) | What references what? Which services are registered and who uses them? |
+
+## UI library
+
+DotNetForge UI (`src/DotNetForge.UI`) - the components, tokens, utilities, tag helpers and behaviours every screen and
+extension view is built from.
+
+| Document | Answers |
+| --- | --- |
+| [README.md](ui/README.md) | What is it, how does a view use it, the component API, the state attributes, the component catalogue |
+| [styling.md](ui/styling.md) | Cascade layers, the three customization levels, BEM naming, the Tailwind build |
+| [theming.md](ui/theming.md) | Every token, light/dark, the theme switch, re-theming a subtree |
+| [behaviours.md](ui/behaviours.md) | `dnf.js`: the `dnfUI` API and every `data-*` hook |
+| [extensions.md](ui/extensions.md) | Using the library from an extension: assets, isolation, overrides, Tailwind in an extension |
+| [UI docs](pages/ui-docs.md) | The component reference, in the app (`/admin/docs/ui`): a page per component with live examples, code, styling reference and the generated API table |
+| [migration.md](ui/migration.md) | Old Forge names → Dnf names |
 
 ## Database layer
 
@@ -127,6 +143,7 @@ Terminology is fixed in the [glossary](glossary.md) - in particular, a **screen*
 | Admin | API Tokens | `/admin/api-tokens` | [api-tokens.md](pages/api-tokens.md) |
 | Admin | API Endpoints | `/admin/api-endpoints` | [api-endpoints.md](pages/api-endpoints.md) |
 | Admin | API Docs (Scalar) | `/admin/api-docs` | [api-docs.md](features/api-docs.md) |
+| Admin | UI docs (component library documentation) | `/admin/docs/ui` | [ui-docs.md](pages/ui-docs.md) |
 | Admin | Webhooks (list, editor, secret, delivery log) | `/admin/webhooks` | [webhooks.md](pages/webhooks.md) |
 | Admin | Roles | `/admin/roles` | [roles.md](pages/roles.md) |
 | Admin | Users | `/admin/users` | [users.md](pages/users.md) |

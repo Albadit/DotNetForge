@@ -1,0 +1,181 @@
+@* Choice card (UI docs). Sections: Usage, Examples, Customization, Styling reference, API, Accessibility, Guidelines. *@
+
+<ul class="dnf-docs-source">
+    <li>CSS <code>src/DotNetForge.UI/Styles/components/choice.css</code></li>
+    <li>No tag helper - the classes are the API</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<p>Choice cards draw radio or checkbox options as selectable cards. Each card is a <code>&lt;label class="dnf-choice-card"&gt;</code>
+    around a native input, in a <code>dnf-choice-cards</code> grid; the checked card takes the primary colours.</p>
+
+<ui-doc-example id="basic" layout="block">
+    <div class="dnf-choice-cards" role="radiogroup" aria-label="Field type">
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-kind" value="text" checked />
+            <dnf-icon name="type" /> Text
+        </label>
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-kind" value="number" />
+            <dnf-icon name="hash" /> Number
+        </label>
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-kind" value="date" />
+            <dnf-icon name="calendar" /> Date
+        </label>
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-kind" value="media" />
+            <dnf-icon name="image" /> Media
+        </label>
+    </div>
+</ui-doc-example>
+
+<h2 id="examples">Examples</h2>
+
+<ui-doc-example id="detailed" title="Detailed" description="dnf-choice-card--detailed adds a title and a description and hides the input visually - the card itself shows the choice." layout="block">
+    <fieldset class="dnf-fieldset">
+        <legend class="dnf-fieldset__legend">Start from</legend>
+        <div class="dnf-choice-cards dnf-choice-cards--wide">
+            <label class="dnf-choice-card dnf-choice-card--detailed">
+                <input type="radio" name="card-template" value="blank" checked />
+                <span class="dnf-choice-card__text">
+                    <span class="dnf-choice-card__title"><dnf-icon name="file" /> Blank page</span>
+                    <span class="dnf-choice-card__description">An empty layout to build in the page builder.</span>
+                </span>
+            </label>
+            <label class="dnf-choice-card dnf-choice-card--detailed">
+                <input type="radio" name="card-template" value="blog" />
+                <span class="dnf-choice-card__text">
+                    <span class="dnf-choice-card__title"><dnf-icon name="book" /> Blog</span>
+                    <span class="dnf-choice-card__description">Posts with an author, tags and a cover image.</span>
+                </span>
+            </label>
+            <label class="dnf-choice-card dnf-choice-card--detailed">
+                <input type="radio" name="card-template" value="landing" />
+                <span class="dnf-choice-card__text">
+                    <span class="dnf-choice-card__title"><dnf-icon name="layers" /> Landing page</span>
+                    <span class="dnf-choice-card__description">A hero, three features and a call to action.</span>
+                </span>
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="checkboxes" title="Several choices" description="With checkboxes, any number of cards can be selected." layout="block">
+    <fieldset class="dnf-fieldset">
+        <legend class="dnf-fieldset__legend">Export</legend>
+        <div class="dnf-choice-cards">
+            <label class="dnf-choice-card">
+                <input type="checkbox" class="dnf-checkbox" name="card-export" value="pages" checked />
+                <dnf-icon name="pages" /> Pages
+            </label>
+            <label class="dnf-choice-card">
+                <input type="checkbox" class="dnf-checkbox" name="card-export" value="entries" checked />
+                <dnf-icon name="database" /> Entries
+            </label>
+            <label class="dnf-choice-card">
+                <input type="checkbox" class="dnf-checkbox" name="card-export" value="media" />
+                <dnf-icon name="image" /> Media
+            </label>
+            <label class="dnf-choice-card">
+                <input type="checkbox" class="dnf-checkbox" name="card-export" value="users" />
+                <dnf-icon name="users" /> Users
+            </label>
+        </div>
+    </fieldset>
+</ui-doc-example>
+
+<ui-doc-example id="disabled" title="Disabled" description="A disabled input dims its card to 70% opacity and drops the pointer cursor." layout="block">
+    <div class="dnf-choice-cards" role="radiogroup" aria-label="Storage">
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-storage" value="local" checked />
+            <dnf-icon name="server" /> Local disk
+        </label>
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-storage" value="s3" disabled />
+            <dnf-icon name="archive" /> S3 bucket
+        </label>
+    </div>
+</ui-doc-example>
+
+<h2 id="customization">Customization</h2>
+<p>The three <a href="@UiDocsCatalog.Root/customization">customization levels</a>, none needing <code>!important</code>. Level 1
+    is the modifiers <code>--wide</code> and <code>--detailed</code>; there are no component tokens.</p>
+
+<ui-doc-example id="custom-tailwind" title="Tailwind utilities" description="A fixed two-column grid instead of the auto-fill one." layout="block">
+    <div class="dnf-choice-cards grid-cols-2" role="radiogroup" aria-label="Layout">
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-layout" value="grid" checked />
+            <dnf-icon name="grid" /> Grid
+        </label>
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-layout" value="list" />
+            <dnf-icon name="list" /> List
+        </label>
+    </div>
+</ui-doc-example>
+
+<ui-doc-example id="custom-css" title="Your own CSS" description="Unlayered CSS in a scope beats the component style - the selected card in the success colours." layout="block">
+    <div class="dnf-docs-demo-choice dnf-choice-cards" role="radiogroup" aria-label="Environment">
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-env" value="production" checked />
+            <dnf-icon name="globe" /> Production
+        </label>
+        <label class="dnf-choice-card">
+            <input type="radio" class="dnf-radio" name="card-env" value="staging" />
+            <dnf-icon name="box" /> Staging
+        </label>
+    </div>
+</ui-doc-example>
+
+<ui-doc-code id="custom-css-code" lang="css">
+.dnf-docs-demo-choice .dnf-choice-card:has(input:checked) {
+    border-color: var(--dnf-success);
+    background: var(--dnf-success-soft);
+}
+</ui-doc-code>
+
+<h2 id="styling">Styling reference</h2>
+<h3 id="classes">Classes</h3>
+<table>
+    <thead><tr><th>Class</th><th>Kind</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>dnf-choice-cards</code></td><td>block</td><td>an auto-fill grid of cards at least 9rem wide</td></tr>
+        <tr><td><code>dnf-choice-cards--wide</code></td><td>modifier</td><td>cards at least 16rem wide, a larger gap</td></tr>
+        <tr><td><code>dnf-choice-card</code></td><td>block</td><td>a bordered <code>&lt;label&gt;</code> with the input, an icon and text in a row, medium weight</td></tr>
+        <tr><td><code>dnf-choice-card--detailed</code></td><td>modifier</td><td>larger padding and radius, regular weight; the direct <code>&gt; input</code> is hidden (opacity 0, absolutely positioned) - the card is the control</td></tr>
+        <tr><td><code>dnf-choice-card__text</code></td><td>element</td><td>the title and description in a column</td></tr>
+        <tr><td><code>dnf-choice-card__title</code></td><td>element</td><td>semibold, with room for an icon</td></tr>
+        <tr><td><code>dnf-choice-card__description</code></td><td>element</td><td><code>text-sm</code>, muted</td></tr>
+    </tbody>
+</table>
+
+<h3 id="states">States</h3>
+<table>
+    <thead><tr><th>State</th><th>Selector</th><th>Look</th></tr></thead>
+    <tbody>
+        <tr><td>hover</td><td><code>:hover</code></td><td>darker border</td></tr>
+        <tr><td>selected</td><td><code>:has(input:checked)</code></td><td><code>--dnf-primary</code> border, <code>--dnf-primary-soft</code> background</td></tr>
+        <tr><td>keyboard focus</td><td><code>:has(input:focus-visible)</code></td><td>the focus ring on the card</td></tr>
+        <tr><td>disabled</td><td><code>:has(input:disabled)</code></td><td>70% opacity, default cursor</td></tr>
+    </tbody>
+</table>
+
+<h2 id="api">API</h2>
+<p>There is no tag helper and no behaviour: the classes above are the API. The states come from the native input inside
+    each card, so <code>name</code>, <code>value</code>, <code>checked</code> and <code>disabled</code> (or <code>asp-for</code>)
+    work as usual.</p>
+
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+    <li>The input stays in the page and keeps its keyboard behaviour (arrow keys between radios); the focus is drawn on the card.</li>
+    <li>Name the group with a fieldset legend, or <code>role="radiogroup"</code> and <code>aria-label</code>.</li>
+    <li>Icons inside a card are decorative; the card's text names the option.</li>
+</ul>
+
+<h2 id="guidelines">Guidelines</h2>
+<ul>
+    <li>Do use cards when an option needs an icon or a sentence to be understood.</li>
+    <li>Don't put links or buttons inside a choice card - the whole card is a label.</li>
+    <li>Don't hide the input with <code>display: none</code> - it would leave the keyboard order.</li>
+</ul>

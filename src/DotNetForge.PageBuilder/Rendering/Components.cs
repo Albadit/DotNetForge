@@ -1,7 +1,4 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
@@ -117,8 +114,6 @@ namespace DotNetForge.PageBuilder.Rendering
         {
             return type != null && Renderers.TryGetValue(type, out var renderer) ? renderer : null;
         }
-
-        public static IReadOnlyCollection<IComponentRenderer> All => Renderers.Values.ToList();
 
         /// <summary>
         /// Registers an extension component together with its schema (shaped like an
