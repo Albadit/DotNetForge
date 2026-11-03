@@ -343,10 +343,12 @@ pwsh tests/DotNetForge.UiTests/bin/Debug/net10.0/playwright.ps1 install chromium
 dotnet test tests/DotNetForge.UiTests          # needs PostgreSQL like the integration tests
 ```
 
+CI doesn't run them (no job; the build job still compiles them with the solution): run them locally before a change
+to the UI library, a screen or `dnf.js` is merged.
+
 Screenshots (`Snapshots.cs`): a baseline per operating system (fonts render differently) in
 `tests/DotNetForge.UiTests/Baselines/<os>/`, which is git-ignored - every machine keeps its own. A missing baseline is
-recorded and the check passes, so the first run on a machine (and every CI run, which starts without baselines) only
-records; later runs compare against them. `DNF_UI_UPDATE_SNAPSHOTS=1` re-records all of them after an intended visual
+recorded and the check passes, so the first run on a machine only records; later runs compare against them. `DNF_UI_UPDATE_SNAPSHOTS=1` re-records all of them after an intended visual
 change (look at the new images first). A screenshot matches when at most 0.002 % of its pixels - and never fewer than 12 - differ
 by more than 24 in a colour channel; on a mismatch the actual image and a red diff are written to
 `tests/DotNetForge.UiTests/TestResults/ui-snapshots/` (git-ignored). Spinners and transitions are frozen
@@ -417,9 +419,6 @@ the analyzer doesn't run on them.
 - **build-and-test** on `ubuntu-latest`, `windows-latest`, `macos-latest`: `dotnet tool restore`,
   `dotnet build DotNetForge.slnx --configuration Release`, the **unit** tests in Release (live S3 tests skipped). The
   integration tests need PostgreSQL, so they run in the Linux jobs below.
-- **ui-tests** (`UI tests (Chromium)`) on Ubuntu: a `postgres:17-alpine` service, `playwright.ps1 install --with-deps
-  chromium`, then `dotnet test tests/DotNetForge.UiTests`; the screenshots it records are uploaded as an artifact (it has
-  no baselines to compare with, so the visual tests only record there - accessibility and behaviour tests run in full).
 - **format** on Ubuntu: `dotnet format <project> --verify-no-changes --severity error` for the host, every `src/*`,
   `tests/*` and `build/*` project.
 - **lint-js** (`JavaScript lint`) on Ubuntu: `npm ci`, `npm run lint` in `tools/` ([JavaScript](#javascript)).

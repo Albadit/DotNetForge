@@ -30,6 +30,7 @@ using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -264,13 +265,22 @@ public static class DependencyRegistration
         // compilation lets extensions ship views under extensions/ that are compiled in memory and rendered on
         // demand; the extra file provider is rooted at the folder that contains extensions/ (the app folder when
         // published, the repository root in a checkout), so views resolve as ~/extensions/... and nothing is written.
-        // Extension assemblies are application parts too (their controllers) and compile references for their views.
+        // The container owns that provider (a keyed singleton from a factory), so its file watcher ends with the host -
+        // one handed straight to the options outlived it, and on Linux every one keeps an inotify instance (128 per
+        // user by default: the integration tests, a host per test, ran out). Extension assemblies are application
+        // parts too (their controllers) and compile references for their views.
+        services.AddKeyedSingleton<IFileProvider>(ExtensionViews, (_, _) => new PhysicalFileProvider(ExtensionViewRoot(env)));
+        // ASPDEPR003: runtime compilation is obsolete for the app's own views (compiled at build time), but extension
+        // views only exist at runtime - this names the options type that AddRazorRuntimeCompilation below configures.
+#pragma warning disable ASPDEPR003
+        services.AddOptions<MvcRazorRuntimeCompilationOptions>()
+            .Configure<IServiceProvider>((options, provider) => options.FileProviders.Add(provider.GetRequiredKeyedService<IFileProvider>(ExtensionViews)));
+#pragma warning restore ASPDEPR003
         var loaded = extensions.Extensions.Where(e => e.IsLoaded).ToList();
         var mvc = services.AddControllersWithViews(options => options.Conventions.Add(new ExtensionControllerConvention(extensions)))
             .AddApplicationPart(typeof(ContentApiController).Assembly)
             .AddRazorRuntimeCompilation(options =>
             {
-                options.FileProviders.Add(new PhysicalFileProvider(ExtensionViewRoot(env)));
                 foreach (var path in loaded.SelectMany(e => e.ReferencePaths).Distinct(StringComparer.OrdinalIgnoreCase))
                 {
                     options.AdditionalReferencePaths.Add(path);
@@ -420,6 +430,9 @@ public static class DependencyRegistration
                 }));
         });
     }
+
+    /// <summary>The key of the file provider extension views are compiled from (runtime Razor compilation).</summary>
+    private const string ExtensionViews = "extension-views";
 
     /// <summary>The folder that contains <c>extensions/</c>; extension view paths are relative to it.</summary>
     public static string ExtensionViewRoot(AppEnvironment env) =>
