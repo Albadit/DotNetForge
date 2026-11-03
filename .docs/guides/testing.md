@@ -93,6 +93,7 @@ variables** before the host builds:
 | `APP_URL` | `http://localhost` (the base of the links in recorded emails) |
 | `SMTP_HOST`, `SMTP_FROM` | `smtp.test.invalid`, `cms@example.com`: email counts as configured (so **Forgot password?** and email confirmation are available); `IEmailSender` is replaced through `ConfigureTestServices` by a recorder - the messages are in `factory.SentEmails`, nothing is sent |
 | `EXTENSIONS_PATH` | the constructor's `extensionsPath` argument, or empty (= the repository's `extensions/`) |
+| `DOTNET_USE_POLLING_FILE_WATCHER` | `true`: file providers poll instead of using inotify. Each host's web root file provider keeps a watcher (for versioned file URLs) after the host is disposed; Linux allows 128 inotify instances per user, so with a host per test CI ran out after a minute (`The configured user limit (128) on the number of inotify instances has been reached`, then 500s). Polling keeps the suite at one or two. The tests never wait for the web root to notice a change; the extension folder's own `FileSystemWatcher` (`ExtensionLoader`) is unaffected |
 
 So each factory gets a fresh, migrated, seeded database and its own media folder; the work directory is deleted on
 dispose (best effort). Because of these process-wide variables, parallelization is disabled (`AssemblyInfo.cs`).
