@@ -7,7 +7,13 @@ using DotNetForge.Web.ApiDocs;
 using DotNetForge.Web.Middleware;
 using DotNetForge.Web.Startup;
 
-var builder = WebApplication.CreateBuilder(args);
+// A published app has wwwroot (and extensions/) next to its dll: that folder is its content root even when it is started
+// from another one (`dotnet out/DotNetForge.Web.dll`). A build in bin/ has none - dotnet run and the tests keep the default.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = Directory.Exists(Path.Combine(AppContext.BaseDirectory, "wwwroot")) ? AppContext.BaseDirectory : null,
+});
 
 // 1. Load and validate the .env configuration contract. Missing/invalid config aborts startup with a clear,
 //    actionable message (.docs/features/configuration.md). Outside Development nothing may default to a path
@@ -47,11 +53,19 @@ app.UseResponseCompression();
 // Inside compression: a screen asked for again unchanged is answered 304 (navigation.js keeps its copy).
 app.UseMiddleware<ScreenUnchangedMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
+// A Release build serves the Brotli/gzip copies its publish wrote instead of compressing each request.
+if (BuildConfiguration.IsRelease)
+{
+    app.UseMiddleware<PrecompressedStaticFilesMiddleware>();
+}
+
 app.UseStaticFiles(new StaticFileOptions
 {
+    ContentTypeProvider = PrecompressedStaticFiles.ContentTypes,
     // asp-append-version: ?v= is a hash of the file, so that URL's content never changes and needs no checking again.
     OnPrepareResponse = file =>
     {
+        PrecompressedStaticFiles.Prepare(file);
         if (file.Context.Request.Query.ContainsKey("v"))
         {
             file.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";

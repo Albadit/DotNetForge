@@ -5,7 +5,7 @@ import js from "@eslint/js";
 import globals from "globals";
 
 export default [
-  { ignores: ["**/bin/**", "**/obj/**", "**/wwwroot/lib/**", "**/TestResults/**", "storage/**"] },
+  { ignores: ["**/bin/**", "**/obj/**", "**/wwwroot/lib/**", "**/TestResults/**", "storage/**", "out/**"] },
   js.configs.recommended,
   {
     rules: {

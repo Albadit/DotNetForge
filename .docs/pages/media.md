@@ -443,7 +443,7 @@ flowchart TD
   earlier stay ticked when a filter hides them and are posted with the rest. Dragging a selected file drags only the
   selected files (`input[name=ids]`), not the selected folders.
 - Image thumbnails request the file itself through `/media/{id}/{name}` - with S3 that is a presigned redirect per
-  image (allowed by the CSP's `img-src 'self' data: https:`).
+  image (allowed by the CSP's `img-src 'self' data: https:`, plus the storage origin when it is plain `http`, like a local RustFS).
 - Bulk delete deletes one file at a time, then one folder at a time; a failure part-way leaves what was deleted so far
   deleted (each already audited).
 

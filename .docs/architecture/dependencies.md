@@ -22,7 +22,7 @@ introduced. Layer responsibilities are in [codebase.md](codebase.md).
 | `DotNetForge.Tests` | Abstractions, Shared, Core, Data, Infrastructure, Extensions, PageBuilder, UI | Web, Api |
 | `DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj`; build-only (`ReferenceOutputAssembly="false"`): `tests/fixtures/extensions/test-kit`, the `markdown-kit`, `contact-form` and `seo-toolkit` samples | - |
 | `DotNetForge.UiTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj` (browser tests of the UI library, [testing](../guides/testing.md#ui-tests)) | - |
-| `DotNetForge.Minify` (`build/`) | nothing in the solution (+ `NUglify`); run by `dotnet publish` | everything - build tooling |
+| `DotNetForge.Minify` (`build/`) | nothing in the solution (+ `NUglify`; Brotli/gzip from the BCL); run by `dotnet publish` | everything - build tooling |
 | `DotNetForge.Analyzers` (`build/`) | nothing in the solution (+ `Microsoft.CodeAnalysis.CSharp`); every other project of the solution gets it as a compiler-only analyzer from `Directory.Build.props` (`OutputItemType="Analyzer"`, `ReferenceOutputAssembly="false"`) - the [guardrails](../guides/testing.md#guardrails) | everything - build tooling, never in a build output |
 | Extension projects (`extensions/**/*.csproj`) | Sdk, Abstractions, Shared, UI via `extensions/Directory.Build.props` (`Private="false"`: never copied into `bin/`); other extensions with `Private="false"` (Contact Form → Markdown Kit); their own NuGet packages with explicit versions (central package management is off for them) | `src/` projects other than those four; the host loads them, nothing references them |
 

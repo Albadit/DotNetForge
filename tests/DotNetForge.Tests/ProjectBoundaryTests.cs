@@ -82,8 +82,12 @@ public sealed class ProjectBoundaryTests
 
     private static readonly string Root = AppPaths.FindRepositoryRoot(AppContext.BaseDirectory)!;
 
+    // out/ is a local publish (README "Test the production build locally"): it holds copies of the extensions' projects.
+    private static readonly string PublishOutput = System.IO.Path.Combine(Root, "out") + System.IO.Path.DirectorySeparatorChar;
+
     private static readonly List<ProjectFile> Projects = Directory
         .EnumerateFiles(Root, "*.csproj", SearchOption.AllDirectories)
+        .Where(path => !path.StartsWith(PublishOutput, StringComparison.OrdinalIgnoreCase))
         .Where(path => !path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
             .Any(part => part is "bin" or "obj" or "node_modules" or "TestResults"))
         .Select(Read)

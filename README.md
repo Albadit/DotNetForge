@@ -83,6 +83,31 @@ project; the web app is `src/DotNetForge.Web`.
 
 In VS Code, **F5** starts the debugger and **Run Build Task** offers build, run, watch and test tasks.
 
+### Test the production build locally
+
+`dotnet run` serves every file as written, for debugging. To see what a server sends - minified HTML, CSS and
+JavaScript, precompressed with Brotli and gzip - publish a Release build and run it (Windows `cmd`, from the
+repository root):
+
+```bat
+dotnet build
+dotnet publish src/DotNetForge.Web -c Release -o out
+dotnet out/DotNetForge.Web.dll
+```
+
+- `dotnet build` first compiles the extensions; the publish copies them into `out/extensions` as they are.
+- The published app uses its own folder for `wwwroot` and `extensions`, wherever it is started from (`cd out` and
+  `dotnet DotNetForge.Web.dll` works too). `out/` is git-ignored.
+- `.env`: a `.env` in `out/` wins; without one, the app inside the checkout uses the repository's `.env`. Copy it into
+  the folder only when you move the build elsewhere (as on a server).
+- It runs in **Production** on http://localhost:5000 (stop `dotnet run` first, or add `--urls http://localhost:5001`):
+  PostgreSQL and S3 storage must be set in `.env` (`.env.developer` uses the local RustFS of
+  `docker/compose.dev.yml`). For local file storage instead, run `set ASPNETCORE_ENVIRONMENT=Development` before the
+  last line.
+- Without a publish, `dotnet DotNetForge.Web.dll` stops with "The application to execute does not exist".
+- What exactly gets minified and compressed:
+  [development and production builds](.docs/guides/development.md#development-and-production-builds).
+
 ## Configuration (`.env`)
 
 Copy `.env.example` to `.env` and set the values. Secrets are **never** committed (see

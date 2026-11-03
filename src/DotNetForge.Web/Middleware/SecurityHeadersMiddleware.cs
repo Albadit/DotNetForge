@@ -1,9 +1,12 @@
+using DotNetForge.Shared.Configuration;
+
 namespace DotNetForge.Web.Middleware;
 
 /// <summary>
 /// Adds browser security headers to every response (.docs/features/security.md). The Content-Security-Policy allows
 /// scripts and styles only from this origin - views carry no inline script or style - and images/media also from
-/// HTTPS origins, because media downloads redirect to presigned object-storage URLs; frames also from the two video
+/// HTTPS origins, because media downloads redirect to presigned object-storage URLs (and from the configured S3 storage
+/// when it is plain http, like a local RustFS or MinIO); frames also from the two video
 /// hosts the page builder embeds (YouTube no-cookie, Vimeo). In Development the policy is
 /// report-only, so the developer exception page (which uses inline styles) still renders.
 /// </summary>
@@ -16,14 +19,31 @@ public sealed class SecurityHeadersMiddleware
 
     private readonly RequestDelegate _next;
     private readonly string _cspHeaderName;
+    private readonly string? _storageSource;
 
-    public SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvironment environment)
+    public SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvironment environment, AppEnvironment app)
     {
         _next = next;
         _cspHeaderName = environment.IsDevelopment()
             ? "Content-Security-Policy-Report-Only"
             : "Content-Security-Policy";
+        _storageSource = StorageSource(app.Storage);
     }
+
+    /// <summary>
+    /// The origin of S3 storage served over plain http (<c>http://localhost:9000</c>), else null: media redirects to its
+    /// presigned URLs, which <c>https:</c> in the policy does not cover. HTTPS storage needs nothing extra.
+    /// </summary>
+    public static string? StorageSource(StorageSettings storage) =>
+        Uri.TryCreate(storage.S3ServiceUrl, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttp
+            ? url.GetLeftPart(UriPartial.Authority)
+            : null;
+
+    /// <summary>A policy with the http storage origin added to its image and media sources.</summary>
+    private string WithStorage(string policy) => _storageSource is null
+        ? policy
+        : policy.Replace("img-src 'self' data: https:;", $"img-src 'self' data: https: {_storageSource};", StringComparison.Ordinal)
+            .Replace("media-src 'self' https:;", $"media-src 'self' https: {_storageSource};", StringComparison.Ordinal);
 
     /// <summary>
     /// The policy of the Scalar API reference page (.docs/features/api-docs.md): its one inline script runs only with the
@@ -65,12 +85,12 @@ public sealed class SecurityHeadersMiddleware
     public Task InvokeAsync(HttpContext context)
     {
         var headers = context.Response.Headers;
-        headers[_cspHeaderName] = ContentSecurityPolicy;
+        headers[_cspHeaderName] = WithStorage(ContentSecurityPolicy);
         context.Response.OnStarting(() =>
         {
             if (context.Items[Scalar.AspNetCore.ScalarOptions.NonceHttpContextItemKey] is string nonce)
             {
-                context.Response.Headers[_cspHeaderName] = ApiReferencePolicy(nonce);
+                context.Response.Headers[_cspHeaderName] = WithStorage(ApiReferencePolicy(nonce));
             }
             else if (context.Items[PolicyOverrideItemKey] is string policy)
             {
@@ -79,7 +99,7 @@ public sealed class SecurityHeadersMiddleware
             }
             else if (context.Items[PagePolicyItemKey] is string pagePolicy)
             {
-                context.Response.Headers[_cspHeaderName] = pagePolicy;
+                context.Response.Headers[_cspHeaderName] = WithStorage(pagePolicy);
             }
 
             return Task.CompletedTask;

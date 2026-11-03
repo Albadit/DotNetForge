@@ -24,7 +24,7 @@ public sealed class DashboardController : AdminControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var state = await _db.SystemState.AsNoTracking().FirstOrDefaultAsync();
+        var state = await _db.SystemState.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync();
 
         var now = DateTime.UtcNow;
         var model = new DashboardViewModel

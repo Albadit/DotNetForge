@@ -69,6 +69,9 @@ public sealed class UserSessionService
                 Roles = _db.UserRoles.Where(ur => ur.UserId == u.Id).Join(_db.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r.Name).ToList(),
                 Sessions = _db.UserSessions.Where(s => s.UserId == u.Id).Select(s => new { s.Id, s.ExpiresDate }).ToList(),
             })
+            // One round trip on this hot path (every request after the cache expires): the rows are roles x sessions of one
+            // user, a handful each - cheaper than the three queries a split query would send.
+            .AsSingleQuery()
             .FirstOrDefaultAsync(ct);
         return user is null
             ? new CachedUser(Array.Empty<string>(), new Dictionary<Guid, DateTime>())

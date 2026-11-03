@@ -169,7 +169,7 @@ DotNetForge/                         repository root
 │   ├── fixtures/extensions/         fixture extensions the integration tests load
 │   ├── fixtures/page-builder/       golden page builder fixtures (input, normalized document, HTML, CSS)
 │   └── js/                          page-builder-fixtures.mjs: the fixtures through the browser modules (Node)
-├── build/DotNetForge.Minify/        minifies the published scripts and stylesheets (run by `dotnet publish`)
+├── build/DotNetForge.Minify/        minifies the published scripts and stylesheets, then writes their .br/.gz copies (run by `dotnet publish`)
 ├── build/DotNetForge.Analyzers/     the code-size guardrails (DNF1001 file length, DNF1002 nesting), a compiler-only analyzer
 ├── tools/                           npm build and dev tooling: package.json + lock (Tailwind CSS CLI, ESLint), eslint.config.mjs; node_modules/ git-ignored
 ├── extensions/<type>/<name>/        user extensions, one folder per manifest (+ optional .csproj → bin/); copied to the publish output
@@ -318,6 +318,9 @@ dialog, rendered by `_AdminLayout` and `_AuthLayout`) and `_ThemeMenu`. `Ui/` ho
 | `wwwroot/js/admin/navigation.js` | `_AdminLayout`, deferred, right after `nav-state.js` (so before every screen script): swaps a screen in place for a sidebar link (`window.dnfScreen` for screen scripts), loads screens ahead on hover and after a start ([navigation](pages.md#navigation)) |
 | `Areas/Admin/Navigation/AdminShell.cs` | The files the admin layout loads, the screen-only request (`X-Dnf-Screen`), the shell fingerprint that tells `navigation.js` a screen fits the page, and the sidebar groups remembered in the `dnf-nav` cookie ([navigation](pages.md#navigation)) |
 | `Middleware/ScreenUnchangedMiddleware.cs` | A screen-only request asked for again with its ETag: `304` without a body when the screen renders the same (antiforgery token values aside) ([navigation](pages.md#navigation)) |
+| `Middleware/HtmlMinificationFilter.cs` | MVC result filter, registered only in a Release build: the HTML a view renders goes out minified (`Core/Html/HtmlMinifier`; [development and production builds](../guides/development.md#development-and-production-builds)) |
+| `Middleware/PrecompressedStaticFiles.cs` | `PrecompressedStaticFilesMiddleware` (Release builds only): a static text file is answered with the `.br`/`.gz` copy the publish wrote, if the browser accepts it; `PrecompressedStaticFiles` gives the copy the original's content type and marks it `Content-Encoding` |
+| `Startup/BuildConfiguration.cs` | `IsRelease`: the switch for the Release-only behaviour (minified HTML, precompressed files) |
 | `wwwroot/js/admin/pages.js`, `entries.js`, `content-types.js`, `media.js`, `endpoints.js`, `email-templates.js`, `webhooks.js`, `showcase.js` | their screen only (`@section Scripts`) |
 | `wwwroot/js/admin/passkeys.js` | Sign-in security and the two-step verification step |
 | `wwwroot/img/` | `favicon.svg`, `logo-dark.svg` (dark sidebar, auth panel), `logo-mark.svg` (public header, auth on phones), `logo.svg` (light sidebar, README); the icon sprite is the library's |
@@ -662,6 +665,7 @@ get signed `POST`s from `WebhookSender` ([webhooks](../features/webhooks.md)).
 | `PageService.Slugify`, `.ToUtc`, `.IsDynamic` | `src/DotNetForge.Web/Services/PageService.cs` (the slug rules actually used) |
 | `MediaService.IsInline`, `.UrlFor`, `.AllowedTypes` | `src/DotNetForge.Web/Services/MediaService.cs` |
 | `EmailValidator`, `PasswordPolicy` | `Core/Validation` |
+| `HtmlMinifier` (the Release build's HTML minification) | `Core/Html` |
 | `StorageKey` | `Abstractions/Storage` |
 | `SqliteConnectionStrings` | `Shared/Configuration` |
 | `DotEnvParser` | `Infrastructure/Configuration` |

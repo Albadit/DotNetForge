@@ -198,17 +198,18 @@ feedback, building a screen) first.
 - In Development the CSP is report-only: watch the browser console for violations, then run
   `dotnet test tests/DotNetForge.IntegrationTests --filter AdminUiTests` (inline style/script, one `<h1>`, icons
   present in the sprite).
-- No CSS/JS libraries, web fonts or CDNs. The build steps are Tailwind, run by MSBuild (below), and a minifier at publish time (below).
+- No CSS/JS libraries, web fonts or CDNs. The build steps are Tailwind, run by MSBuild (below), and a minifier at publish time (below) that also writes the Brotli/gzip copies; a Release build also minifies the HTML it sends. To try the production build locally, see the README ("Test the production build locally").
 
 ### Development and production builds
 
 | | Development (`dotnet build`, Debug) | Production (`dotnet publish -c Release`) |
 | --- | --- | --- |
+| Page HTML (views, incl. extensions' views) | as the views write it | minified while it is sent (`HtmlMinificationFilter`, a Release build of the web app; rules in `Core/Html/HtmlMinifier`): whitespace next to a block-level tag goes and between inline content becomes one space (one line break inside text, kept for `white-space: pre-line`); comments go except the page builder's `<!--pe:...-->` markers; closing tags the HTML spec lets out go where it does (`</li>`, `</td>`, `</tr>`, `</option>`, `</head>`, `</body>`, ...); empty `class`/`style` attributes go. `<pre>`, `<textarea>`, `<script>`, `<style>` and attribute values stay exactly as written - markup whose whitespace matters belongs in a `<pre>`, and a block element made inline by CSS (inline-block) belongs in a flex or grid parent. Every admin screen renders identically (element boxes and text compared in a browser); the dashboard is 21 % smaller, the audit log 33 %. Files, JSON and redirects are not touched; there is no inline CSS or JavaScript to minify (the CSP forbids it) |
 | `dnf.css` | readable, with an inline source map | minified, no source map |
 | Screen CSS (`wwwroot/css`) | the source as it is | minified by the Tailwind CSS CLI (`tools/node_modules`, run with `node`) |
 | Scripts (`wwwroot/js/admin`, `dnf.js`, `dnf-theme.js`) | the source as it is, so no source map is needed | minified by `build/DotNetForge.Minify` (NUglify, at publish time only; it is not part of the running app) |
 | Page builder (`wwwroot/js/builder`) and Monaco | as they are | as they are: the builder's source is what the C# renderer must match |
-| Compression | stylesheets, scripts, icons, JSON (Brotli or gzip, `Optimal`: a screen repeats its row markup, which `Fastest` barely finds - the Users screen 20 KB instead of 8 - for about a millisecond more) | the same, plus screens |
+| Compression | stylesheets, scripts, icons, JSON compressed per request (Brotli or gzip, `Optimal`: a screen repeats its row markup, which `Fastest` barely finds - the Users screen 20 KB instead of 8 - for about a millisecond more) | screens too, per request. Static text files (`.css`, `.js`, `.mjs`, `.svg`, `.json`) are compressed **once at publish**, after minifying, at the strongest levels (Brotli 11, gzip smallest - `dnf.css` 13.2 KB instead of 16 KB): `build/DotNetForge.Minify` writes a `.br` and a `.gz` next to each, and `PrecompressedStaticFilesMiddleware` (Release builds only) answers with the copy the browser accepts, keeping the original's `Content-Type` and cache headers - no compression work per request, as Nuxt's `compressPublicAssets` |
 | Native libraries | every platform | every platform without their debug symbols, or one platform with `-r` / `--use-current-runtime` (the [Docker image](deployment.md#docker)); English resources only |
 
 `dnf.css` is built again when the configuration changes, so a Release build after a Debug one can't ship the readable

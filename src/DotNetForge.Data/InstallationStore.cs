@@ -22,7 +22,7 @@ public sealed class InstallationStore : IInstallationStore
 
     public async Task<bool> IsInstalledAsync(CancellationToken cancellationToken = default)
     {
-        var state = await _db.SystemState.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var state = await _db.SystemState.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(cancellationToken);
         return state?.Installed ?? false;
     }
 
@@ -32,7 +32,7 @@ public sealed class InstallationStore : IInstallationStore
 
         await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
 
-        var state = await _db.SystemState.FirstOrDefaultAsync(cancellationToken);
+        var state = await _db.SystemState.OrderBy(s => s.Id).FirstOrDefaultAsync(cancellationToken);
         if (state is null)
         {
             state = new SystemState { Id = 1 };

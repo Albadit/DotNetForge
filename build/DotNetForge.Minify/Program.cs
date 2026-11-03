@@ -1,8 +1,9 @@
 using System.Diagnostics;
+using System.IO.Compression;
 using NUglify;
 
 // Minifies a published wwwroot in place (.docs/guides/deployment.md): the screens' scripts and stylesheets, and the UI
-// library's scripts. Development serves the sources as they are; only `dotnet publish` in Release runs this. Left alone:
+// library's scripts; then writes the compressed copies the app serves. Development serves the sources as they are; only `dotnet publish` in Release runs this. Left alone:
 // the page builder's ES modules (their source is the fixture the C# renderer must match) and vendored libraries.
 // A file that can't be minified is published as it is, with a warning: a slightly bigger file beats a broken release.
 if (args.Length != 1 || !Directory.Exists(args[0]))
@@ -59,7 +60,33 @@ else
 }
 
 Console.WriteLine($"Minified the published assets: {saved / 1024} KB smaller.");
+
+// Compressed once here, at the strongest levels, instead of on every request (like Nuxt's compressPublicAssets): a .br
+// and a .gz next to each text file, written after minification so they match it - the SDK's own copies are older.
+// The app serves them as they are (src/DotNetForge.Web/Middleware/PrecompressedStaticFiles.cs).
+var texts = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Where(IsText).ToList();
+foreach (var file in texts)
+{
+    var content = File.ReadAllBytes(file);
+    File.WriteAllBytes(file + ".br", Compress(content, output => new BrotliStream(output, CompressionLevel.SmallestSize)));
+    File.WriteAllBytes(file + ".gz", Compress(content, output => new GZipStream(output, CompressionLevel.SmallestSize)));
+}
+
+Console.WriteLine($"Compressed {texts.Count} published text files (Brotli and gzip).");
 return 0;
+
+static bool IsText(string file) => Path.GetExtension(file) is ".css" or ".js" or ".mjs" or ".svg" or ".json";
+
+static byte[] Compress(byte[] content, Func<Stream, Stream> compressor)
+{
+    using var output = new MemoryStream();
+    using (var stream = compressor(output))
+    {
+        stream.Write(content);
+    }
+
+    return output.ToArray();
+}
 
 static IEnumerable<string> Files(string root, params (string Folder, string Pattern)[] sets) =>
     sets.Select(set => (Path: Path.Combine(root, set.Folder), set.Pattern))

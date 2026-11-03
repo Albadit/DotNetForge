@@ -75,7 +75,7 @@ Verified in the current code; each is a candidate for a hardening change.
   (`/admin/ext/{id}/raw`) and the API through a Super Admin's admin session are not redirected for a user who has no
   method yet; removing a method or making new recovery codes needs only the open session (no password prompt)
   ([MFA](mfa.md#known-limitations)).
-- **CSP:** `img-src` and `media-src` allow any `https:` origin (needed for presigned storage URLs); the Scalar API
+- **CSP:** `img-src` and `media-src` allow any `https:` origin (needed for presigned storage URLs), plus the S3 storage's own origin when `STORAGE_S3_SERVICE_URL` is plain `http` (a local RustFS or MinIO such as `http://localhost:9000`: without it Production blocks every thumbnail; `SecurityHeadersMiddleware.StorageSource`); the Scalar API
   reference page allows inline styles (`style-src 'unsafe-inline'`). Nonces exist only for Scalar's script, not for
   the app's own views.
 - **Data Protection keys are unencrypted at rest** in the database (ASP.NET Core logs "No XML encryptor configured"):

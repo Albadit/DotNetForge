@@ -25,6 +25,7 @@ using DotNetForge.Shared.Enums;
 using DotNetForge.Shared.Stores;
 using DotNetForge.Web.ApiDocs;
 using DotNetForge.Web.Authentication;
+using DotNetForge.Web.Middleware;
 using DotNetForge.Web.Services;
 using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
@@ -277,7 +278,15 @@ public static class DependencyRegistration
             .Configure<IServiceProvider>((options, provider) => options.FileProviders.Add(provider.GetRequiredKeyedService<IFileProvider>(ExtensionViews)));
 #pragma warning restore ASPDEPR003
         var loaded = extensions.Extensions.Where(e => e.IsLoaded).ToList();
-        var mvc = services.AddControllersWithViews(options => options.Conventions.Add(new ExtensionControllerConvention(extensions)))
+        var mvc = services.AddControllersWithViews(options =>
+            {
+                options.Conventions.Add(new ExtensionControllerConvention(extensions));
+                // A Release build (dotnet publish) sends views' HTML minified; dotnet run (Debug) as written.
+                if (BuildConfiguration.IsRelease)
+                {
+                    options.Filters.Add<HtmlMinificationFilter>();
+                }
+            })
             .AddApplicationPart(typeof(ContentApiController).Assembly)
             .AddRazorRuntimeCompilation(options =>
             {
