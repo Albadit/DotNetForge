@@ -427,11 +427,13 @@ the analyzer doesn't run on them.
   a SeaweedFS container (`chrislusf/seaweedfs server -s3`, bucket `dnf-test`); runs the unit tests **including** the
   live S3 tests (`DNF_TEST_S3_*` set) and the whole integration suite on PostgreSQL (`DNF_TEST_POSTGRES` set).
 - **additional-databases** (`Additional database (<provider>)`): a matrix that starts SQL Server 2022, MySQL 8.4 or
-  MongoDB 8.0 (single-node replica set) with `docker run`, next to a `postgres:17-alpine` service for the CMS database,
+  MongoDB 7.0 (single-node replica set) with `docker run`, next to a `postgres:17-alpine` service for the CMS database,
   and runs `dotnet test tests/DotNetForge.IntegrationTests --filter "FullyQualifiedName~AdditionalDatabase|FullyQualifiedName~DatabaseCredential"`
-  with only that entry's `DNF_TEST_SQLSERVER`, `DNF_TEST_MYSQL` or `DNF_TEST_MONGODB` set. The MongoDB entry runs on
-  `ubuntu-24.04`: MongoDB 8.x exits at startup on Linux kernels 6.19 and newer
-  ([SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912)), which the Ubuntu 26.04 `ubuntu-latest` image has.
+  with only that entry's `DNF_TEST_SQLSERVER`, `DNF_TEST_MYSQL` or `DNF_TEST_MONGODB` set. CI uses MongoDB 7.0, not
+  the 8.0 of `docker/databases/mongodb.yml`: MongoDB 8.x exits at startup on Linux kernels 6.19 to 7.0.13
+  ([SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912)), which every GitHub Ubuntu runner has had since
+  late October 2026 (also `ubuntu-24.04`, which the job used before). Locally, Docker Desktop's kernel is older, so 8.0
+  starts; go back to 8.0 in CI once the runners' kernel is 7.0.14 or newer.
 - **read-only-container** (`Read-only container`) on Ubuntu: `docker compose -f docker/compose.app.yml up -d --build`
   (the production image, read-only root filesystem with a `/tmp` tmpfs, PostgreSQL, RustFS and Mailpit); waits for
   `/health`, requests `/setup`, and fails if `touch /app/probe` succeeds inside the app container
