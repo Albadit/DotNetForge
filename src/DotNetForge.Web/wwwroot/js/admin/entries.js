@@ -36,9 +36,10 @@
         entryForm.addEventListener("input", function () { dirty = true; });
         entryForm.addEventListener("change", function () { dirty = true; });
         entryForm.addEventListener("submit", function () { dirty = false; });
-        window.addEventListener("beforeunload", function (event) {
+        window.dnfScreen.on(window, "beforeunload", function (event) {
             if (dirty) { event.preventDefault(); event.returnValue = ""; }
         });
+        window.dnfScreen.guard(function () { return dirty; });
     }
 
     // ---- Slugs: generated from their text field until edited by hand -------------------------------------------

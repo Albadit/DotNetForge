@@ -30,7 +30,9 @@ using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 
 namespace DotNetForge.Web.Startup;
@@ -62,8 +64,10 @@ public static class DependencyRegistration
             options.MimeTypes = new[] { "text/css", "text/javascript", "application/javascript", "image/svg+xml", "application/json" }
                 .Concat(hostEnv.IsDevelopment() ? Array.Empty<string>() : new[] { "text/html" });
         });
-        services.Configure<BrotliCompressionProviderOptions>(options => options.Level = System.IO.Compression.CompressionLevel.Fastest);
-        services.Configure<GzipCompressionProviderOptions>(options => options.Level = System.IO.Compression.CompressionLevel.Fastest);
+        // Optimal, not Fastest: a screen repeats the same row markup dozens of times, which Fastest barely finds - the Users
+        // screen was 20 KB instead of about 7 - for well under a millisecond saved.
+        services.Configure<BrotliCompressionProviderOptions>(options => options.Level = System.IO.Compression.CompressionLevel.Optimal);
+        services.Configure<GzipCompressionProviderOptions>(options => options.Level = System.IO.Compression.CompressionLevel.Optimal);
 
         // Persistence (.docs/database/architecture.md). Providers are registered by name; the configured databases
         // are resolved against them, the main database's provider registers DotNetForgeDbContext, and
@@ -272,6 +276,8 @@ public static class DependencyRegistration
                     options.AdditionalReferencePaths.Add(path);
                 }
             });
+        // Warm-up requests leave the flash messages alone (NavigationWarmUp).
+        services.Replace(ServiceDescriptor.Singleton<ITempDataDictionaryFactory, WarmUpTempDataFactory>());
         mvc.ConfigureApplicationPartManager(parts =>
         {
             foreach (var extension in loaded)

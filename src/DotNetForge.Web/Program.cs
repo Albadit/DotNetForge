@@ -44,6 +44,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseResponseCompression();
+// Inside compression: a screen asked for again unchanged is answered 304 (navigation.js keeps its copy).
+app.UseMiddleware<ScreenUnchangedMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseStaticFiles(new StaticFileOptions
 {

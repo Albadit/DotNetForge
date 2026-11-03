@@ -115,7 +115,7 @@ An unlayered rule also beats Tailwind utilities written in the markup, so don't 
 ## Tailwind
 
 Tailwind CSS v4 runs at **build time only**: the browser gets one static `dnf.css`. There is no Node.js and no
-`package.json` - the build uses Tailwind's standalone CLI.
+`package.json` for it - the build uses Tailwind's standalone CLI.
 
 ### Theme mapping
 
@@ -144,7 +144,7 @@ web host or any project referencing `DotNetForge.UI` (the SDK, so every extensio
 | Item | Value |
 | --- | --- |
 | Tailwind version | `4.3.3` (`TailwindVersion`) |
-| Binary | `tailwindcss-<platform>` from `github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/`, downloaded **once** into `tools/tailwind/4.3.3/` at the repository root (git-ignored, `/tools/`) |
+| Binary | `tailwindcss-<platform>` from `github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/`, downloaded **once** into `tools/tailwind/4.3.3/` at the repository root (git-ignored, `/tools/tailwind/`) |
 | Platforms | `windows-x64.exe` (on every Windows), `macos-arm64`, `macos-x64`, `linux-x64`, `linux-arm64`, `linux-x64-musl` / `linux-arm64-musl` (when `/etc/alpine-release` exists) |
 | Size | the Windows binary is about 112 MB (112,503,296 bytes) |
 | Verification | the download is checked against the SHA-256 of the release's `sha256sums.txt`, pinned per platform in the targets file; a mismatch deletes the file and fails the build |

@@ -180,7 +180,8 @@ as signed `POST`s and retried when the receiver fails ([webhooks](.docs/features
 ```bash
 dotnet test tests/DotNetForge.Tests              # unit tests
 dotnet test tests/DotNetForge.IntegrationTests   # integration tests (setup, auth, API)
-dotnet format --verify-no-changes                # style check (.editorconfig)
+dotnet format --severity error                       # fix formatting and style
+dotnet format --verify-no-changes --severity error   # only check
 ```
 
 ## Continuous integration
@@ -189,7 +190,7 @@ dotnet format --verify-no-changes                # style check (.editorconfig)
 
 - **Build & test** across **Ubuntu, Windows, and macOS** (the cross-platform acceptance criterion):
   `dotnet build` + both test suites.
-- **Format & style**: `dotnet format --verify-no-changes` against `.editorconfig` for every project.
+- **Format & style**: `dotnet format --verify-no-changes --severity error` against `.editorconfig` for every project.
 
 [`.github/dependabot.yml`](.github/dependabot.yml) keeps NuGet and GitHub Actions dependencies current.
 

@@ -22,6 +22,8 @@ introduced. Layer responsibilities are in [codebase.md](codebase.md).
 | `DotNetForge.Tests` | Abstractions, Shared, Core, Data, Infrastructure, Extensions, PageBuilder, UI | Web, Api |
 | `DotNetForge.IntegrationTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj`; build-only (`ReferenceOutputAssembly="false"`): `tests/fixtures/extensions/test-kit`, the `markdown-kit`, `contact-form` and `seo-toolkit` samples | - |
 | `DotNetForge.UiTests` | `src/DotNetForge.Web/DotNetForge.Web.csproj` (browser tests of the UI library, [testing](../guides/testing.md#ui-tests)) | - |
+| `DotNetForge.Minify` (`build/`) | nothing in the solution (+ `NUglify`); run by `dotnet publish` | everything - build tooling |
+| `DotNetForge.Analyzers` (`build/`) | nothing in the solution (+ `Microsoft.CodeAnalysis.CSharp`); every other project of the solution gets it as a compiler-only analyzer from `Directory.Build.props` (`OutputItemType="Analyzer"`, `ReferenceOutputAssembly="false"`) - the [guardrails](../guides/testing.md#guardrails) | everything - build tooling, never in a build output |
 | Extension projects (`extensions/**/*.csproj`) | Sdk, Abstractions, Shared, UI via `extensions/Directory.Build.props` (`Private="false"`: never copied into `bin/`); other extensions with `Private="false"` (Contact Form → Markdown Kit); their own NuGet packages with explicit versions (central package management is off for them) | `src/` projects other than those four; the host loads them, nothing references them |
 
 ```mermaid
@@ -44,7 +46,9 @@ flowchart BT
     IT[IntegrationTests] --> Web
 ```
 
-(Transitive edges omitted.) Why the unusual edges exist:
+(Transitive edges omitted.) `ProjectBoundaryTests` (unit tests) enforces this table from the `.csproj` files: a
+reference to a project, package or ASP.NET Core that a project's row doesn't list fails, and so does a project without
+a row - change both together ([guardrails](../guides/testing.md#guardrails)). Why the unusual edges exist:
 
 - **`Core` ⟂ `Data`** - kept as siblings so domain logic stays testable without EF Core. Bridge them with an
   interface in `Shared/Stores` implemented in `Data` (`IInstallationStore`).
@@ -106,7 +110,7 @@ packages pull SQLitePCLRaw 2.1.12.
 Rate limiting (`AddRateLimiter`), Data Protection, `IMemoryCache` and forwarded headers come from the shared
 framework (`Microsoft.AspNetCore.App`) - no packages.
 
-There are no frontend packages: no `package.json`, no ESLint config. The UI stylesheet is compiled by the **Tailwind
+There are no frontend packages: the app has no `package.json` (the one in `tools/` is only the [lint](#development-tooling)). The UI stylesheet is compiled by the **Tailwind
 CSS** standalone CLI (v4.3.3, MIT) at build time - a pinned, SHA-256-verified binary downloaded once into the
 git-ignored `tools/tailwind/` by `src/DotNetForge.UI/build/Tailwind.targets`; nothing of it ships except the generated
 `dnf.css` ([styling → build](../ui/styling.md#build)). One vendored library: the **Monaco** code
@@ -132,8 +136,9 @@ signed with the BCL's HMAC-SHA256; TOTP and the built-in OAuth providers use the
 
 ## Development tooling
 
-`package.json` holds only ESLint (`eslint`, `@eslint/js`, `globals`), for the [JavaScript lint](../guides/testing.md#javascript).
-Nothing from npm is part of the application.
+`tools/package.json` holds only ESLint (`eslint`, `@eslint/js`, `globals`), for the [JavaScript lint](../guides/testing.md#javascript);
+it is in `tools/`, next to the downloaded Tailwind CLI, so the repository root holds only the .NET solution. Nothing from
+npm is part of the application.
 
 ## DI registrations
 
@@ -144,6 +149,7 @@ All in `src/DotNetForge.Web/Startup/DependencyRegistration.AddDotNetForge(env, h
 | Service | Implementation | Lifetime | Injected by |
 | --- | --- | --- | --- |
 | `AppEnvironment` | instance from `EnvConfigurationLoader` | singleton | `AccountController`, `SetupController`, `HomeController`, `DashboardController`, `SettingsController`, `Ffmpeg` (`FfmpegPath`) |
+| `ITempDataDictionaryFactory` | `WarmUpTempDataFactory` (replaces MVC's): the usual TempData, except for a navigation warm-up request, which gets an empty one that saves nothing | singleton | views and controllers (`TempData`), `_Feedback` |
 | `IMemoryCache` | `AddMemoryCache()` | singleton | cookie session check (`ValidateSessionAsync`, key `dnf:session:{userId}`), `ApiTokenAuthenticationHandler` (key `dnf:apitoken:{sha256}`), `MfaSettingsService` (`dnf:mfa:required`), `MfaService` (`dnf:mfa:enrolled:{userId}`) - 30 s each |
 | `DotNetForgeDbContext` | `AddDbContext<DotNetForgeDbContext, PostgreSqlDbContext>` by `PostgreSqlDatabaseProvider.AddDbContext` (the CMS database is PostgreSQL) | scoped | almost every controller, all API controllers, `MediaFilesController`, `AuthService`, `AuditService`, `PageService`, `MediaService`, `InstallationStore`, `ApiTokenAuthenticationHandler`, the Data Protection key repository, admin extension views (`@inject`) |
 | `DatabaseProviderRegistry`, `DatabaseCatalog` | `AddDotNetForgeDatabases` (built during registration from `AddDatabaseProvider<T>(name)` calls) | singleton | `QueryRouter`, `Program.cs` (schema initialization), `SqlEndpointRunner`, `DatabaseTransferService` (export choices) |

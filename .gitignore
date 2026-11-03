@@ -47,7 +47,7 @@ coverage/
 .cache/
 
 # ---- Tailwind CSS CLI (downloaded by src/DotNetForge.UI/build/Tailwind.targets) and its output ----
-/tools/
+/tools/tailwind/
 src/DotNetForge.UI/wwwroot/dnf.css
 
 # ---- UI test screenshots: baselines are recorded per machine on the first run (.docs/guides/testing.md#ui-tests) ----

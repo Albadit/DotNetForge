@@ -1,6 +1,8 @@
 @using DotNetForge.Web.Areas.Admin.Navigation
 @using System.Security.Claims
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
 @inject AdminNavigationService Navigation
+@inject IFileVersionProvider Versions
 @using Microsoft.AspNetCore.Authorization
 @inject IAuthorizationService Authorization
 @*
@@ -8,6 +10,10 @@
     AdminNavigationService), top bar (breadcrumbs, view site, theme), page header and content. Never restyled by public
     themes. Screens set ViewData["Title"] (h1), optionally ViewData["Description"], and put header buttons in
     @section Actions { }. Styles: the Dnf components (dnf.css) plus the admin screen files in /css/admin/.
+
+    Asked for by navigation.js (header X-Dnf-Screen), it renders the screen only - the top bar, the content, the toasts
+    and the screen's scripts - with the shell's fingerprint: the page it is swapped into already has the rest
+    (.docs/architecture/pages.md#navigation).
 *@
 @{
     // The UI docs (/admin/docs/ui) are for the people who build screens and extensions: Super Admins and Developers.
@@ -21,28 +27,48 @@
     var email = User.FindFirst(ClaimTypes.Email)?.Value;
     var initials = string.Concat(displayName.Split(new[] { ' ', '@', '.' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0]));
     var isDashboard = string.Equals(Context.Request.Path.Value?.TrimEnd('/'), "/admin", StringComparison.OrdinalIgnoreCase);
+
+    string Versioned(string path) => Versions.AddFileVersionToPath(Context.Request.PathBase, path);
+    var stylesheets = AdminShell.Stylesheets.Select(Versioned).ToArray();
+    var scripts = AdminShell.Scripts.ToDictionary(path => path, Versioned);
+    var shell = AdminShell.Fingerprint(stylesheets.Concat(scripts.Values), nav, $"{displayName}|{email}|{canReadUiDocs}");
+    var screenOnly = AdminShell.IsScreenOnly(Context.Request);
+    ViewData["ScreenOnly"] = screenOnly;
+    if (!Context.Response.HasStarted)
+    {
+        Context.Response.Headers.Append("Vary", AdminShell.ScreenHeader);
+    }
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
     <title>@title · DotNetForge Admin</title>
-    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
-    <script src="~/_content/DotNetForge.UI/dnf-theme.js" asp-append-version="true"></script>
-    <link rel="stylesheet" href="~/_content/DotNetForge.UI/dnf.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/admin/shell.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/admin/content.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/admin/media.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/admin/tools.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/admin/people.css" asp-append-version="true" />
-    <script src="~/_content/DotNetForge.UI/dnf.js" asp-append-version="true" defer></script>
-    @await RenderSectionAsync("Head", required: false)
+    <meta name="dnf-shell" content="@shell" />
+    <meta name="dnf-active" content="@AdminShell.ActiveHref(nav)" />
+    @if (screenOnly)
+    {
+        IgnoreSection("Head");
+    }
+    else
+    {
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="light dark" />
+        <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
+        <script src="@scripts["/_content/DotNetForge.UI/dnf-theme.js"]"></script>
+        @foreach (var stylesheet in stylesheets)
+        {
+            <link rel="stylesheet" href="@stylesheet" />
+        }
+        <script src="@scripts["/_content/DotNetForge.UI/dnf.js"]" defer></script>
+        @await RenderSectionAsync("Head", required: false)
+    }
 </head>
-<body>
-    <a class="dnf-skip-link" href="#main">Skip to content</a>
-    <div class="dnf-shell" data-shell>
+<body data-started="@DotNetForge.Web.Services.NavigationWarmUp.StartId">
+    @if (!screenOnly)
+    {
+        <a class="dnf-skip-link" href="#main">Skip to content</a>
+        @:<div class="dnf-shell" data-shell>
         <aside class="dnf-sidebar" id="sidebar" aria-label="Admin" data-drawer-panel>
             <div class="dnf-sidebar__header">
                 <a class="dnf-sidebar__brand" href="/admin" aria-label="DotNetForge - Dashboard">
@@ -83,9 +109,13 @@
                 </div>
             </div>
         </aside>
-        @* Synchronous on purpose, right after the complete sidebar: restores its open groups and scroll position before the first paint. *@
-        <script src="~/js/admin/nav-state.js" asp-append-version="true"></script>
+        @* Synchronous on purpose, right after the complete sidebar: restores its open groups and scroll position before the
+           first paint. navigation.js is deferred, so it doesn't hold that up; it still runs before the screen's own
+           (deferred) scripts, which use its window.dnfScreen. *@
+        <script src="@scripts["/js/admin/nav-state.js"]" data-lasting></script>
+        <script src="@scripts["/js/admin/navigation.js"]" data-lasting defer></script>
         <div class="dnf-sidebar__backdrop" data-drawer-backdrop data-drawer-close hidden></div>
+    }
 
         <div class="dnf-shell__main">
             <header class="dnf-topbar">
@@ -146,7 +176,10 @@
                 @RenderBody()
             </main>
         </div>
-    </div>
+    @if (!screenOnly)
+    {
+        @:</div>
+    }
     <partial name="_Feedback" />
     @await RenderSectionAsync("Scripts", required: false)
 </body>

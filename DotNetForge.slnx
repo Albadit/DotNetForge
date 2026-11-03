@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/build/">
+    <Project Path="build/DotNetForge.Analyzers/DotNetForge.Analyzers.csproj" />
     <Project Path="build/DotNetForge.Minify/DotNetForge.Minify.csproj" />
   </Folder>
   <Folder Name="/extensions/">

@@ -4,6 +4,7 @@
       screens set TempData and redirect (PRG) - they never render their own flash markup;
     - the confirmation dialog used by every form with data-confirm="question" (dnf.js; falls back to window.confirm).
     dnf.js fills #dnf-toast-template for dnfUI.toast() and the [data-confirm-*] parts of #dnf-confirm-dialog.
+    A screen-only response (ViewData["ScreenOnly"], navigation.js) has the toasts only: the page already has the rest.
 *@
 @{
     var toasts = new List<(string Tone, string Icon, string Message)>();
@@ -25,6 +26,8 @@
     }
 </div>
 
+@if (ViewData["ScreenOnly"] as bool? != true)
+{
 <template id="dnf-toast-template">
     <div class="dnf-toast" role="status" data-toast>
         <dnf-icon name="info" class="dnf-toast__icon" />
@@ -50,3 +53,4 @@
         </div>
     </form>
 </dialog>
+}

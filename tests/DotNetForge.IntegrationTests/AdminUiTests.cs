@@ -125,7 +125,7 @@ public sealed partial class AdminUiTests
         Assert.Matches("data-nav-group=\"API &amp; Webhooks\" open=\"open\"\\s+data-nav-active=\"true\"", adminHtml);
         Assert.Matches("data-nav-group=\"Global Settings\"\\s+data-nav-active=\"false\"", adminHtml);
         Assert.Matches("data-nav-group=\"Email\"\\s+data-nav-active=\"false\"", adminHtml);
-        Assert.Matches("</aside>\\s*<script src=\"/js/admin/nav-state.js\\?v=[^\"]+\"></script>", adminHtml);
+        Assert.Matches("</aside>\\s*<script src=\"/js/admin/nav-state.js\\?v=[^\"]+\" data-lasting></script>", adminHtml);
 
         // Pages comes before the Content Manager in the Main section.
         Assert.True(adminHtml.IndexOf("href=\"/admin/pages\"", StringComparison.Ordinal)

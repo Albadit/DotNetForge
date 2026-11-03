@@ -1,9 +1,11 @@
-// JavaScript lint (.docs/guides/testing.md#javascript): `npm ci` once, then `npm run lint`. Development tooling only.
+// JavaScript lint (.docs/guides/testing.md#javascript): in tools/, `npm ci` once, then `npm run lint`. Development
+// tooling only. The script runs ESLint from the repository root with this file, so the patterns below are relative to
+// the root.
 import js from "@eslint/js";
 import globals from "globals";
 
 export default [
-  { ignores: ["**/bin/**", "**/obj/**", "**/wwwroot/lib/**", "**/TestResults/**", "storage/**", "tools/**"] },
+  { ignores: ["**/bin/**", "**/obj/**", "**/wwwroot/lib/**", "**/TestResults/**", "storage/**", "tools/tailwind/**"] },
   js.configs.recommended,
   {
     rules: {
@@ -28,7 +30,7 @@ export default [
     rules: { "no-control-regex": "off" },
   },
   {
-    files: ["tests/js/*.mjs", "eslint.config.mjs"],
+    files: ["tests/js/*.mjs", "tools/eslint.config.mjs"],
     languageOptions: { sourceType: "module", globals: globals.node },
   },
 ];

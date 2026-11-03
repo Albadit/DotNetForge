@@ -4,8 +4,8 @@
 // It also marks <html class="dnf-js">, so .dnf-js-only controls (the theme menu) show from the first paint.
 //
 // dnf.js is deferred, so on a real network the page can paint before it runs, and everything it then changes jumps:
-// a saved list view over the grid, toolbars pushing the content down, long tables shrinking to one page, the first tab
-// giving way to the one in the URL. So the parts
+// a saved list view over the grid, toolbars pushing the content down, long tables shrinking to one page, sort buttons
+// widening their columns, the first tab giving way to the one in the URL. So the parts
 // of its work that change the layout start here (.docs/ui/behaviours.md#before-the-first-paint): a mutation observer
 // sees each element as the parser adds it, before the browser can paint it. dnf.js does the same work again afterwards,
 // which changes nothing, and adds the behaviour.
@@ -55,6 +55,27 @@
         if (state.size > 0 && state.seen > state.size) { item.hidden = true; }
     }
 
+    // The sortable headers of a collection's table as initCollection in dnf.js makes them - the label and the sort icon
+    // in a button - so the columns already have the widths they keep. The head is complete once the body arrives.
+    function sortHeaders(table) {
+        if (!table || !table.closest("[data-collection]")) { return; }
+        Array.prototype.forEach.call(table.querySelectorAll("th[data-sort]"), function (th) {
+            if (th.closest("table") !== table || th.querySelector(".dnf-table__sort")) { return; }
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "dnf-table__sort";
+            var label = document.createElement("span");
+            label.textContent = th.textContent.trim();
+            var icon = document.createElement("span"); // the icon's place; dnf.js draws it
+            icon.className = "dnf-icon dnf-icon--sm";
+            icon.setAttribute("aria-hidden", "true");
+            button.appendChild(label);
+            button.appendChild(icon);
+            th.textContent = "";
+            th.appendChild(button);
+        });
+    }
+
     // Tree branches the user closed (pages.js owns the toggle).
     var collapsedPages = null;
     function collapseItem(item) {
@@ -88,9 +109,17 @@
         if (element.hasAttribute("data-js-only")) { element.hidden = false; }
         if (element.hasAttribute("data-view-mode")) { applyView(element); }
         if (element.hasAttribute("data-item")) { pageItem(element); }
+        if (element.tagName === "TBODY") { sortHeaders(element.closest("table")); }
         if (element.hasAttribute("data-tree-item")) { collapseItem(element); }
         if (element.hasAttribute("data-tab-panel")) { showPanel(element); }
     }
+
+    // Content swapped in later (the admin's navigation.js): the same work for everything under root, before it is painted.
+    window.dnfSettle = function (root) {
+        collapsedPages = null;
+        if (root.nodeType === 1) { settle(root); }
+        Array.prototype.forEach.call(root.querySelectorAll("*"), settle);
+    };
 
     var observer = new MutationObserver(function (records) {
         records.forEach(function (record) {

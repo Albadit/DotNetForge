@@ -123,7 +123,7 @@ public sealed class DatabaseTransferService
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                await FailAsync(record, AuditActions.TransferExported, ex, ct);
+                await FailAsync(record, AuditActions.TransferExported, ex);
                 return (null, $"The export failed ({ex.GetType().Name}); see the log.");
             }
         }
@@ -362,7 +362,7 @@ public sealed class DatabaseTransferService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await FailAsync(record, AuditActions.BackupCreated, ex, ct);
+            await FailAsync(record, AuditActions.BackupCreated, ex);
             return new TransferOutcome(false, $"The backup failed ({ex.GetType().Name}); see the log.", record);
         }
     }
@@ -446,7 +446,8 @@ public sealed class DatabaseTransferService
         await _audit.LogAsync(action, nameof(TransferRecord), record.Id.ToString(), record.FileName, details, cancellationToken: ct);
     }
 
-    private async Task FailAsync(TransferRecord record, string action, Exception ex, CancellationToken ct)
+    // Not cancellable: a cancelled request still leaves its failure on record (RefuseAsync).
+    private async Task FailAsync(TransferRecord record, string action, Exception ex)
     {
         _logger.LogError(ex, "{Operation} failed.", record.Operation);
         _db.ChangeTracker.Clear();

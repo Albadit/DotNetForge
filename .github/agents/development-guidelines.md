@@ -37,6 +37,6 @@ Full guide: [development.md](../../.docs/guides/development.md). Testing: [testi
 
 ## Definition of done
 
-Both test projects green, `dotnet format --verify-no-changes` clean per project, docs updated. When implementing part
+Both test projects green, `dotnet format --verify-no-changes --severity error` clean per project, docs updated. When implementing part
 of the planned scope, use the **Acceptance criteria** in the owning document's *Planned (not implemented)* section and update
 [implementation-status.md](../../.docs/implementation-status.md).

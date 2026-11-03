@@ -18,7 +18,7 @@ screen - built) and safe **core updates** with rollback (not built).
 | `PermissionAreas.Updates` | `src/DotNetForge.Shared/Constants/Permissions.cs` | in `PermissionMatrix` only Super Admin is granted it; seeded, **not enforced** (the Data Management screen checks the Super Admin role) ([authorization](authorization.md)) |
 | `InstalledExtension.UpdateAvailable` | `src/DotNetForge.Shared/Entities/InstalledExtension.cs` | returned by `GET /api/extensions`; never written (always `false`) |
 | Core / extensions / runtime split | `src/`; `extensions/` at the repository root (`AppEnvironment.ExtensionsPath`); `storage/` | ✔ folders separated |
-| `.gitignore` | repository root | ignores `.env`/`.env.*` (keeps `.env.example`), `bin/`, `obj/`, `storage/{media,backups,logs,updates}/*`, `*.db*`, `node_modules/`, test output; **not** `out/`, `publish/`, `*.log`, `.cache/` |
+| `.gitignore` | repository root | ignores `.env`/`.env.*` (keeps `.env.example`), `bin/`, `obj/`, `storage/{media,backups,logs,updates}/*`, `*.db*`, `node_modules/`, `/tools/tailwind/`, test output; **not** `out/`, `publish/`, `*.log`, `.cache/` |
 
 ### Risk and environment
 

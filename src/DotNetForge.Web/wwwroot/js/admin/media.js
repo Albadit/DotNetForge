@@ -34,7 +34,7 @@
             .map(function (box) { return box.value; });
     }
 
-    document.addEventListener("dragstart", function (event) {
+    window.dnfScreen.on(document, "dragstart", function (event) {
         var item = event.target.closest && event.target.closest("[data-drag-file], [data-drag-folder]");
         if (!item) { return; }
         if (item.hasAttribute("data-drag-file")) {
@@ -51,7 +51,7 @@
         item.setAttribute("data-dragging", "true");
     });
 
-    document.addEventListener("dragend", function (event) {
+    window.dnfScreen.on(document, "dragend", function (event) {
         var item = event.target.closest && event.target.closest("[data-drag-file][data-dragging], [data-drag-folder][data-dragging]");
         if (item) { item.removeAttribute("data-dragging"); }
         clearTargets();
@@ -72,7 +72,7 @@
         });
     }
 
-    document.addEventListener("dragover", function (event) {
+    window.dnfScreen.on(document, "dragover", function (event) {
         var zone = target(event);
         if (!zone) { return; }
         event.preventDefault();
@@ -83,12 +83,12 @@
         }
     });
 
-    document.addEventListener("dragleave", function (event) {
+    window.dnfScreen.on(document, "dragleave", function (event) {
         var zone = target(event);
         if (zone && !zone.contains(event.relatedTarget)) { zone.removeAttribute("data-drop-target"); }
     });
 
-    document.addEventListener("drop", function (event) {
+    window.dnfScreen.on(document, "drop", function (event) {
         var zone = target(event);
         if (!zone) { return; }
         event.preventDefault();
@@ -177,15 +177,15 @@
         function hasFiles(event) {
             return event.dataTransfer && Array.prototype.indexOf.call(event.dataTransfer.types || [], "Files") >= 0;
         }
-        document.addEventListener("dragenter", function (event) {
+        window.dnfScreen.on(document, "dragenter", function (event) {
             if (hasFiles(event) && !isOpen()) { setOpen(true); }
         });
-        document.addEventListener("dragover", function (event) {
+        window.dnfScreen.on(document, "dragover", function (event) {
             if (!hasFiles(event)) { return; }
             event.preventDefault();
             zone.setAttribute("data-dragging", "true");
         });
-        document.addEventListener("drop", function (event) {
+        window.dnfScreen.on(document, "drop", function (event) {
             if (!hasFiles(event)) { return; }
             event.preventDefault();
             zone.removeAttribute("data-dragging");
@@ -221,7 +221,7 @@
         }
         input.form.addEventListener("submit", function () { lock(true); });
         // Back to this page from the browser's history: usable again.
-        window.addEventListener("pageshow", function () { lock(false); });
+        window.dnfScreen.on(window, "pageshow", function () { lock(false); });
 
         function sync() {
             var transfer = new DataTransfer();
@@ -317,7 +317,7 @@
         var rename = dialog.querySelector("[data-folder-rename]");
         var move = dialog.querySelector("[data-folder-move]");
         var select = move.querySelector("select");
-        document.addEventListener("click", function (event) {
+        window.dnfScreen.on(document, "click", function (event) {
             var button = event.target.closest && event.target.closest("[data-folder-edit]");
             if (!button) { return; }
             var id = button.getAttribute("data-folder-edit");
@@ -345,7 +345,7 @@
         [info, rename].forEach(function (dialog) {
             if (dialog) { dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } }); }
         });
-        document.addEventListener("click", function (event) {
+        window.dnfScreen.on(document, "click", function (event) {
             var button = event.target.closest && event.target.closest("[data-file-info], [data-file-rename]");
             if (!button) { return; }
             if (button.hasAttribute("data-file-info") && info && typeof info.showModal === "function") {
@@ -683,7 +683,7 @@
             if (index >= 0 && list[index + by]) { show(list[index + by]); }
         }
 
-        document.addEventListener("click", function (event) {
+        window.dnfScreen.on(document, "click", function (event) {
             var open = event.target.closest && event.target.closest("[data-preview-open]");
             if (!open || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) { return; }
             var card = open.closest("[data-preview]");
@@ -724,7 +724,7 @@
         }
         // One file or folder, from its ⋯ menu, whatever else is selected.
         var item = document.querySelector("[data-item-move]");
-        document.addEventListener("click", function (event) {
+        window.dnfScreen.on(document, "click", function (event) {
             var button = event.target.closest && event.target.closest("[data-media-move-item]");
             if (!button) { return; }
             var field = button.getAttribute("data-media-move-item");

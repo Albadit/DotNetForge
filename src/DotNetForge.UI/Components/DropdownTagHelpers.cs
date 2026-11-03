@@ -43,9 +43,25 @@ public sealed class DnfDropdownTagHelper : DnfTagHelper
     /// <summary>Extra classes for the menu panel (e.g. a width utility).</summary>
     public string? MenuClass { get; set; }
 
+    /// <summary>
+    /// The menu's id: numbered in order within the page, so the same screen renders the same markup every time (an
+    /// unchanged screen can then be answered with 304); random only outside a view.
+    /// </summary>
+    private string MenuId()
+    {
+        if (ViewContext?.HttpContext.Items is not { } items)
+        {
+            return $"dnf-menu-{Guid.NewGuid():N}"[..21];
+        }
+
+        var next = (items[typeof(DnfDropdownTagHelper)] as int? ?? 0) + 1;
+        items[typeof(DnfDropdownTagHelper)] = next;
+        return $"dnf-menu-{next}";
+    }
+
     public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
-        var id = $"dnf-menu-{Guid.NewGuid():N}"[..21];
+        var id = MenuId();
         var items = (await output.GetChildContentAsync()).GetContent();
         var size = Size == DnfSize.Md ? string.Empty : $" dnf-button--{Kebab(Size == DnfSize.Xl ? DnfSize.Lg : Size)}";
         var iconClass = Size == DnfSize.Sm ? "dnf-icon dnf-icon--sm dnf-button__icon" : "dnf-icon dnf-button__icon";

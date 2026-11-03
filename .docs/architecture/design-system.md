@@ -9,7 +9,7 @@ keeps only the decisions specific to the CMS: brand, layouts, feedback and how a
 | --- | --- |
 | Library: tokens, components, utilities (`dnf.css`), tag helpers, behaviours (`dnf.js`), theme bootstrap, icon sprite | `src/DotNetForge.UI/` - [ui/README.md](../ui/README.md) |
 | CMS screen CSS (shell, screen-specific blocks), in `@layer components` | `src/DotNetForge.Web/wwwroot/css/admin/` (`shell.css`, `content.css`, `media.css`, `tools.css`, `people.css`; `docs.css` for the UI docs only), `css/auth.css`, `css/site.css` |
-| Page scripts | `src/DotNetForge.Web/wwwroot/js/admin/` (`nav-state.js` in the admin layout; `pages.js`, `entries.js`, `content-types.js`, `media.js`, `endpoints.js`, `email-templates.js`, `webhooks.js`, `passkeys.js`, `showcase.js` per screen) |
+| Page scripts | `src/DotNetForge.Web/wwwroot/js/admin/` (`nav-state.js` and `navigation.js` in the admin layout; `pages.js`, `entries.js`, `content-types.js`, `media.js`, `endpoints.js`, `email-templates.js`, `webhooks.js`, `passkeys.js`, `showcase.js` per screen) |
 | Presentation helpers | `src/DotNetForge.Web/Ui/` (`AuditPresentation` - audit action labels and icons, `MediaPresentation` - file kind and size) |
 | Shared partials | `Views/Shared/_Feedback.cshtml` (toasts + confirm dialog), `_ThemeMenu.cshtml` - admin and auth layouts |
 | Navigation | `Areas/Admin/Navigation/AdminNavigation.cs` (tree + `AdminNavigationService`) |
@@ -48,7 +48,8 @@ logo pair, navigation from `_Sidebar`, account menu with Profile, View site and 
 (`dnf-container`) starting with the page header. Below 64rem the sidebar is a drawer (menu button, backdrop, Escape,
 focus moves in and back - `dnf.js` [drawer hooks](../ui/behaviours.md#drawer-navigation), styled by `shell.css`).
 `nav-state.js` runs synchronously right after the sidebar to restore its open groups (`details[data-nav-group]`) and
-scroll position before the first paint.
+scroll position before the first paint; `navigation.js` then swaps most screens in place, so the sidebar simply stays
+([navigation](pages.md#navigation)).
 
 A screen sets:
 

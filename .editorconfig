@@ -25,5 +25,34 @@ dotnet_style_qualification_for_field = false:suggestion
 dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
 csharp_style_namespace_declarations = file_scoped:suggestion
 
+# ---- Unused code: warnings in the IDE and in `dotnet build` (EnforceCodeStyleInBuild, Directory.Build.props). A
+# discard (_ = ..., or a parameter named _) marks something deliberately unused.
+# A value assigned and never read.
+dotnet_diagnostic.IDE0059.severity = warning
+# A parameter no code reads (not on public members: their signature is a contract).
+dotnet_diagnostic.IDE0060.severity = warning
+dotnet_code_quality_unused_parameters = non_public
+# A private member nothing uses, or one written but never read.
+dotnet_diagnostic.IDE0051.severity = warning
+dotnet_diagnostic.IDE0052.severity = warning
+
+# ---- Guardrails (.docs/guides/testing.md#guardrails). Suggestions: the IDE marks methods and files growing past what is
+# easy to review, without failing or cluttering the build on code that already does - and plain `dotnet format`, which
+# tries to fix every warning, stays quiet about them (there is no automatic fix). Raise them once the backlog is down.
+# Cyclomatic complexity above 20 (the limit is in CodeMetricsConfig.txt).
+dotnet_diagnostic.CA1502.severity = suggestion
+# More than 500 lines of code in a file (DNF1001) and statements nested more than 4 deep (DNF1002): the analyzer in
+# build/DotNetForge.Analyzers.
+dotnet_diagnostic.DNF1001.severity = suggestion
+dotnet_diagnostic.DNF1002.severity = suggestion
+dnf_max_file_lines = 500
+dnf_max_depth = 4
+
+# The EF Core migrations are generated from the model (`dotnet ef migrations add`, .docs/architecture/database.md):
+# their length follows the schema, not code anyone splits by hand. Only the length guardrail is lifted; every other rule
+# still applies to them.
+[src/DotNetForge.Data/Database/Providers/PostgreSql/Migrations/*.cs]
+dotnet_diagnostic.DNF1001.severity = none
+
 [*.csproj]
 indent_size = 2

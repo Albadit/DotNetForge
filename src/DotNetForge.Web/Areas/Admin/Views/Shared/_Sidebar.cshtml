@@ -3,8 +3,12 @@
 @*
     Admin sidebar (.docs/architecture/pages.md#navigation), built by AdminNavigationService from AdminNavigation.Tree:
     only links the user may open, the active one marked with aria-current. Settings sub-groups are <details>: the one
-    holding the active screen is open; nav-state.js remembers what the user opened or closed.
+    holding the active screen is open, the others as the user left them (the dnf-nav cookie nav-state.js keeps), so the
+    page arrives that way.
 *@
+@{
+    var remembered = AdminShell.RememberedGroups(Context.Request);
+}
 <nav class="dnf-nav" aria-label="Main navigation">
     @foreach (var navSection in Model.Sections)
     {
@@ -21,7 +25,7 @@
             }
             @foreach (var group in navSection.Groups)
             {
-                <details class="dnf-nav__group" data-nav-group="@group.Label" open="@(group.ContainsActive ? "open" : null)"
+                <details class="dnf-nav__group" data-nav-group="@group.Label" open="@(group.ContainsActive || remembered.GetValueOrDefault(group.Label) ? "open" : null)"
                          data-nav-active="@(group.ContainsActive ? "true" : "false")">
                     <summary class="dnf-nav__group-title">
                         <span>@group.Label</span>

@@ -42,6 +42,10 @@
     <PackageVersion Include="QRCoder" Version="1.8.0" />
     <!-- Only build/DotNetForge.Minify, at publish time; never part of the running app. -->
     <PackageVersion Include="NUglify" Version="1.23.6" />
+    <!-- build/DotNetForge.Analyzers (the code-size guardrails the compiler runs; never part of the running app) builds
+         against it, no newer than the compiler of the .NET 10 SDK that loads it; EF Core's design-time package needs
+         the same version (transitive pinning). -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
 
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

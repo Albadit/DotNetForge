@@ -23,6 +23,23 @@
     ::view-transition-group(*), ::view-transition-new(*) { animation: none; }
     ::view-transition-old(*) { display: none; }
 
+    /* Loading: a screen that takes a moment shows a bar running along the top (html[data-navigating], nav-state.js), so
+       a click never seems to have done nothing. It waits 150 ms, so a quick screen never shows it. */
+    html[data-navigating] .dnf-shell::after {
+        content: "";
+        position: fixed; top: 0; left: 0; right: 0; z-index: var(--dnf-z-toast);
+        height: 2px;
+        background: var(--dnf-primary);
+        transform-origin: left;
+        pointer-events: none;
+        animation: dnf-navigating 10s cubic-bezier(0.1, 0.8, 0.2, 1) 150ms both;
+    }
+    @keyframes dnf-navigating { from { transform: scaleX(0); } to { transform: scaleX(0.95); } }
+    @keyframes dnf-navigating-still { from { opacity: 0; } to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+        html[data-navigating] .dnf-shell::after { animation: dnf-navigating-still 1ms linear 150ms both; }
+    }
+
     /* ==== Sidebar (the navigation surface: white in light, charcoal in dark) ================================== */
     .dnf-sidebar {
         view-transition-name: sidebar;
@@ -80,16 +97,21 @@
     .dnf-nav__link:hover { background: var(--dnf-nav-hover); color: var(--dnf-nav-strong-foreground); text-decoration: none; }
     .dnf-nav__link:focus-visible { outline: 2px solid var(--dnf-focus); outline-offset: -2px; }
     .dnf-nav__link > .dnf-icon { color: var(--dnf-nav-muted-foreground); }
-    .dnf-nav__link[aria-current="page"] { background: var(--dnf-nav-surface); color: var(--dnf-nav-strong-foreground); }
-    .dnf-nav__link[aria-current="page"] > .dnf-icon { color: var(--dnf-primary-text); }
+    /* The current screen, and the one just chosen (data-pressed, nav-state.js) while it loads. */
+    .dnf-nav__link:is([aria-current="page"], [data-pressed]) { background: var(--dnf-nav-surface); color: var(--dnf-nav-strong-foreground); }
+    .dnf-nav__link:is([aria-current="page"], [data-pressed]) > .dnf-icon { color: var(--dnf-primary-text); }
     /* The active indicator: the logo's diagonal cut, in forge orange. */
-    .dnf-nav__link[aria-current="page"]::before {
+    .dnf-nav__link:is([aria-current="page"], [data-pressed])::before {
         content: "";
         position: absolute; left: calc(-1 * var(--dnf-space-3)); top: 0.35rem; bottom: 0.35rem;
         width: 0.3rem;
         background: var(--dnf-primary);
         clip-path: polygon(0 0, 100% 15%, 100% 85%, 0 100%);
     }
+    /* Once another link is chosen, the screen being left no longer looks current. */
+    .dnf-nav:has([data-pressed]) .dnf-nav__link[aria-current="page"]:not([data-pressed]) { background: transparent; color: var(--dnf-nav-foreground); }
+    .dnf-nav:has([data-pressed]) .dnf-nav__link[aria-current="page"]:not([data-pressed]) > .dnf-icon { color: var(--dnf-nav-muted-foreground); }
+    .dnf-nav:has([data-pressed]) .dnf-nav__link[aria-current="page"]:not([data-pressed])::before { content: none; }
     .dnf-nav__link-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .dnf-nav__badge {
         padding: 0.05rem 0.4rem;

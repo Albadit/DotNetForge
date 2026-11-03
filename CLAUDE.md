@@ -8,7 +8,9 @@ app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker fi
   only in each doc's `## Planned (not implemented)` section - check `.docs/implementation-status.md` before assuming a
   feature exists.
 - **Rules for changes:** `.docs/architecture/codebase.md#architectural-rules-for-changes` and
-  `.docs/architecture/dependencies.md#dependencies-that-must-not-be-bypassed`.
+  `.docs/architecture/dependencies.md#dependencies-that-must-not-be-bypassed`. A new project reference or package
+  needs its entry in `ProjectBoundaryTests`; keep the build free of new warnings (unused code) and don't add to the
+  size suggestions (complexity, file length, nesting: `.docs/guides/testing.md#guardrails`).
 - **Terminology:** `.docs/glossary.md` ("screen" = UI view, "content page"/`Page` = entity, "live" ≠ `Published`).
 - **Skills:** `admin-page`, `api-endpoint`, `database-change`, `admin-extension`, `verify`, `documentation`,
   `software-engineering`, `release-notes` (in `.claude/skills/`).
@@ -22,7 +24,7 @@ dotnet build                                      # whole solution, incl. extens
 dotnet run --project src/DotNetForge.Web          # start; http://localhost:5000 → /setup on a fresh DB
 dotnet test                                       # unit + integration tests (integration needs PostgreSQL)
 python .claude/skills/verify/check_links.py       # docs link check
-npm ci && npm run lint                            # JavaScript lint (optional Node.js; nothing from npm reaches the app)
+cd tools && npm ci && npm run lint                # JavaScript lint (optional Node.js; nothing from npm reaches the app)
 ```
 
 ## Must know

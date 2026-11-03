@@ -60,7 +60,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          for proj in src/*/*.csproj tests/*/*.csproj; do
+          for proj in src/*/*.csproj tests/*/*.csproj build/*/*.csproj; do
             echo "::group::dotnet format $proj"
             dotnet format "$proj" --verify-no-changes --severity error
             echo "::endgroup::"
@@ -78,12 +78,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: tools/package-lock.json
 
       - name: Install ESLint
         run: npm ci
+        working-directory: tools
 
       - name: Lint
         run: npm run lint
+        working-directory: tools
 
   postgres-and-s3:
     # The integration tests on the CMS database (PostgreSQL, a fresh database per test) plus the live S3 contract

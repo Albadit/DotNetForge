@@ -4,12 +4,12 @@
   "description": "Development tooling only: nothing here is part of the application.",
   "type": "module",
   "scripts": {
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "cd .. && eslint --config tools/eslint.config.mjs .",
+    "lint:fix": "cd .. && eslint --config tools/eslint.config.mjs . --fix"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "eslint": "10.14.0",
-    "globals": "17.13.0"
+    "globals": "17.14.0"
   }
 }

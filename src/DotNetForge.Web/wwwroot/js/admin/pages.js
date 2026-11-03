@@ -23,7 +23,7 @@
     syncPublish();
 
     // ---- Page permissions: remove a user row (both rules back to "Not set"; the save drops the user) ------------
-    document.addEventListener("click", function (event) {
+    window.dnfScreen.on(document, "click", function (event) {
         var button = event.target instanceof Element ? event.target.closest("[data-remove-user-row]") : null;
         if (!button) { return; }
         var row = button.closest("[data-user-row]");

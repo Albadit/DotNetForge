@@ -63,7 +63,10 @@ the component reference in the in-app UI docs, `/admin/docs/ui`, source in `src/
      production. Prefer Dnf components and utilities; a screen-specific block goes into the matching
      `src/DotNetForge.Web/wwwroot/css/admin/*.css` (in `@layer components`, `--dnf-*` tokens only); a reusable
      component into `src/DotNetForge.UI` (`.docs/ui/README.md#where-to-change-things`). Behaviour as a `dnf.js`
-     `data-*` hook or a page script in `src/DotNetForge.Web/wwwroot/js/admin/` via `@section Scripts`. New icons go
+     `data-*` hook or a page script in `src/DotNetForge.Web/wwwroot/js/admin/` via `@section Scripts`. Mark it
+     `data-screen` so the screen swaps in place from the sidebar - then bind anything outside the screen (`document`,
+     `window`) through `window.dnfScreen.on(...)` and report unsaved work through `window.dnfScreen.guard(...)`
+     (`.docs/architecture/pages.md#navigation`); unmarked, the screen just comes as a full page load. New icons go
      into `src/DotNetForge.UI/wwwroot/icons.svg`. A new utility or component class needs `dotnet build` (Tailwind).
 6. **Sidebar** - add a `NavLink("Label", "/admin/<slug>", "<icon>", typeof(<Name>Controller))` in the right
    section/group of `AdminNavigation.Tree` (`src/DotNetForge.Web/Areas/Admin/Navigation/AdminNavigation.cs`); when

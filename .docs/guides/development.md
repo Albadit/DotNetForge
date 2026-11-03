@@ -207,7 +207,7 @@ feedback, building a screen) first.
 | Screen CSS (`wwwroot/css`) | the source as it is | minified by the Tailwind binary |
 | Scripts (`wwwroot/js/admin`, `dnf.js`, `dnf-theme.js`) | the source as it is, so no source map is needed | minified by `build/DotNetForge.Minify` (NUglify, at publish time only; it is not part of the running app) |
 | Page builder (`wwwroot/js/builder`) and Monaco | as they are | as they are: the builder's source is what the C# renderer must match |
-| Compression | stylesheets, scripts, icons, JSON | the same, plus screens |
+| Compression | stylesheets, scripts, icons, JSON (Brotli or gzip, `Optimal`: a screen repeats its row markup, which `Fastest` barely finds - the Users screen 20 KB instead of 8 - for about a millisecond more) | the same, plus screens |
 | Native libraries | every platform | every platform without their debug symbols, or one platform with `-r` / `--use-current-runtime` (the [Docker image](deployment.md#docker)); English resources only |
 
 `dnf.css` is built again when the configuration changes, so a Release build after a Debug one can't ship the readable
@@ -359,7 +359,7 @@ testing and linting targets in [testing → Planned](testing.md#planned-not-impl
 
 | Item | Target | Today |
 | --- | --- | --- |
-| Node.js + npm (optional) | `npm ci`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | ✔ [JavaScript lint](testing.md#javascript) |
+| Node.js + npm (optional) | in `tools/`: `npm ci`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | ✔ [JavaScript lint](testing.md#javascript) |
 | Run URL | the app is reached at `APP_URL` | Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS`; see [configuration → Planned](../features/configuration.md#planned-not-implemented) |
 | PostgreSQL end to end | create the database and a user; set the `Host=…` connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `docker/databases/postgres.yml` |
 | Switching provider | only a `.env` change plus migrations | ✘ by design: the CMS database is PostgreSQL only; other databases are additional databases ([database configuration](../database/configuration.md)) |

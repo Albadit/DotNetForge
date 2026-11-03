@@ -169,6 +169,9 @@ DotNetForge/                         repository root
 │   ├── fixtures/extensions/         fixture extensions the integration tests load
 │   ├── fixtures/page-builder/       golden page builder fixtures (input, normalized document, HTML, CSS)
 │   └── js/                          page-builder-fixtures.mjs: the fixtures through the browser modules (Node)
+├── build/DotNetForge.Minify/        minifies the published scripts and stylesheets (run by `dotnet publish`)
+├── build/DotNetForge.Analyzers/     the code-size guardrails (DNF1001 file length, DNF1002 nesting), a compiler-only analyzer
+├── tools/                           JavaScript lint (ESLint: package.json, eslint.config.mjs); tailwind/ = the downloaded Tailwind CLI (git-ignored)
 ├── extensions/<type>/<name>/        user extensions, one folder per manifest (+ optional .csproj → bin/); copied to the publish output
 ├── extensions/Directory.Build.props build settings shared by every extension project
 ├── docker/
@@ -183,7 +186,9 @@ DotNetForge/                         repository root
 ├── .github/                         CI workflow, Dependabot, AI-agent quick references (agents/)
 ├── .claude/skills/                  project skills for Claude Code
 ├── .vscode/                         build/run/test/migration tasks and F5 launch config
-├── Directory.Build.props            net10.0, nullable, implicit usings, central package management
+├── Directory.Build.props            net10.0, nullable, implicit usings, central package management, code rules in the build + the guardrail analyzer
+├── .editorconfig                    formatting (dotnet format) and code rules: unused code, the guardrails
+├── CodeMetricsConfig.txt            CA1502's complexity limit (20)
 ├── Directory.Packages.props         every NuGet version
 ├── global.json                      SDK pin
 └── .env.example                     configuration template (copy to .env)
@@ -309,7 +314,10 @@ dialog, rendered by `_AdminLayout` and `_AuthLayout`) and `_ThemeMenu`. `Ui/` ho
 | `wwwroot/css/admin/shell.css`, `content.css`, `media.css`, `tools.css`, `people.css` | `_AdminLayout` |
 | `wwwroot/css/admin/docs.css`, `wwwroot/js/admin/docs.js` | the [UI docs](../pages/ui-docs.md) layout and examples |
 | `wwwroot/css/auth.css` / `site.css` | `_AuthLayout` / `_Layout` |
-| `wwwroot/js/admin/nav-state.js` | `_AdminLayout`, synchronously right after the sidebar (restores open sidebar groups and scroll position before the first paint) |
+| `wwwroot/js/admin/nav-state.js` | `_AdminLayout`, synchronously right after the sidebar (restores the sidebar's scroll position before the first paint; keeps the open groups in the `dnf-nav` cookie, which `_Sidebar` renders) |
+| `wwwroot/js/admin/navigation.js` | `_AdminLayout`, deferred, right after `nav-state.js` (so before every screen script): swaps a screen in place for a sidebar link (`window.dnfScreen` for screen scripts), loads screens ahead on hover and after a start ([navigation](pages.md#navigation)) |
+| `Areas/Admin/Navigation/AdminShell.cs` | The files the admin layout loads, the screen-only request (`X-Dnf-Screen`), the shell fingerprint that tells `navigation.js` a screen fits the page, and the sidebar groups remembered in the `dnf-nav` cookie ([navigation](pages.md#navigation)) |
+| `Middleware/ScreenUnchangedMiddleware.cs` | A screen-only request asked for again with its ETag: `304` without a body when the screen renders the same (antiforgery token values aside) ([navigation](pages.md#navigation)) |
 | `wwwroot/js/admin/pages.js`, `entries.js`, `content-types.js`, `media.js`, `endpoints.js`, `email-templates.js`, `webhooks.js`, `showcase.js` | their screen only (`@section Scripts`) |
 | `wwwroot/js/admin/passkeys.js` | Sign-in security and the two-step verification step |
 | `wwwroot/img/` | `favicon.svg`, `logo-dark.svg` (dark sidebar, auth panel), `logo-mark.svg` (public header, auth on phones), `logo.svg` (light sidebar, README); the icon sprite is the library's |
@@ -684,7 +692,10 @@ with `PrivateAssets="all"`, so it never reaches the published app. `src/DotNetFo
 compiles the UI stylesheet with the pinned Tailwind CSS standalone CLI (downloaded once into the git-ignored
 `tools/tailwind/`, SHA-256 verified; [styling → build](../ui/styling.md#build)). `DotNetForge.slnx` at the root lists every
 project, so `dotnet build` and `dotnet test` work without arguments - see
-[development guide](../guides/development.md#everyday-commands-repository-root).
+[development guide](../guides/development.md#everyday-commands-repository-root). `.editorconfig` holds the formatting
+and code rules; `EnforceCodeStyleInBuild` runs them in the build too, with CA1502 and the analyzer in
+`build/DotNetForge.Analyzers` as the [guardrails](../guides/testing.md#guardrails) (suggestions), and
+`ProjectBoundaryTests` keeps the [project references](dependencies.md#project-references) to the documented layers.
 
 ### Development environment
 

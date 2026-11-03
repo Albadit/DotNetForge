@@ -41,6 +41,7 @@ factory sets every other environment variable itself, and nothing is written ins
 | `InstallationServiceTests.cs` | `InstallationServiceTests` (5) | `InstallationService` with a `FakeInstallationStore`: success, mismatch, weak password, invalid email, already installed |
 | `ManifestValidationTests.cs` | `ManifestValidationTests` (31) | `ManifestValidator`: required fields, permissions, type, semver, all nine types, `assembly` must be a `.dll` inside the extension folder (11 cases: `..`, rooted, backslash, hidden segment, non-`.dll`, empty rejected) |
 | `PageBuilder/*.cs` | `GoldenFixtureTests`, `DocumentValidatorTests`, `ValuesTests`, `ContentComponentTests`, `ComponentRegistryTests`, `SecurityRegressionTests`, `SegmentsTests` (with all fixture cases) | the page builder's C# side, ported with the reference project's tests: every golden fixture in `tests/fixtures/page-builder/render` (84, 7 of them content lists) normalizes and renders byte for byte; validator, value, URL and component rules ([page builder → Testing](../features/page-builder.md#testing)) |
+| `ProjectBoundaryTests.cs` | `ProjectBoundaryTests` (3) | the [project boundaries](../architecture/dependencies.md#project-references) from the `.csproj` files: each project references only the projects, NuGet packages and ASP.NET Core its layer allows (default: nothing), extensions only other extensions; a project without an entry, or an entry without a project, fails; the rules notice a forbidden reference ([guardrails](#guardrails)) |
 | `PermissionTests.cs` | `PermissionTests` (13) | `PermissionService` / `PermissionMatrix` defaults and union semantics; checks from stored grants (custom role, edited built-in role, Super Admin, matrix fallback) with a fixed `IRoleGrantStore` |
 | `SecurityPrimitiveTests.cs` | `PasswordHasherTests` (3), `ApiTokenFactoryTests` (2), `WebhookSignerTests` (3) | `Pbkdf2PasswordHasher`, `ApiTokenFactory`, `HmacWebhookSigner` |
 | `ValidationTests.cs` | `PasswordPolicyTests` (7), `EmailValidatorTests` (6) | `PasswordPolicy`, `EmailValidator` (the `SlugHelper` tests were removed with the class; slug rules are tested through `PageService`) |
@@ -358,8 +359,35 @@ changes on an open session, sign-out with a copied cookie, expiry, disabling, pa
 ## JavaScript
 
 ESLint checks every script of the CMS, the UI library and the extensions, apart from the bundled Monaco
-(`eslint.config.mjs`): `npm ci` once, then `npm run lint`, or `npm run lint:fix`. It is development tooling: Node.js is
-optional and nothing from npm reaches the app. The page builder has its own [fixtures](../features/page-builder.md).
+(`tools/eslint.config.mjs`): in `tools/`, `npm ci` once, then `npm run lint`, or `npm run lint:fix` (the script runs
+ESLint from the repository root, so the patterns are relative to it). It is development tooling, kept in `tools/` out of
+the repository root: Node.js is optional and nothing from npm reaches the app. The page builder has its own [fixtures](../features/page-builder.md).
+
+## Guardrails
+
+The C# counterpart of a lint configuration: rules that run in the IDE as you type and in `dotnet build`
+(`EnforceCodeStyleInBuild`, `Directory.Build.props`), set in `.editorconfig`.
+
+| Rule | What it flags | Severity | Where it is set |
+| --- | --- | --- | --- |
+| Project boundaries | a project referencing a project, NuGet package or ASP.NET Core its layer doesn't allow; a project without a layer | test failure | `ProjectBoundaryTests` (table above), mirrors [dependencies → project references](../architecture/dependencies.md#project-references) |
+| `IDE0059` | a value assigned and never read | warning | `.editorconfig` |
+| `IDE0060` | a parameter nothing reads, on non-public members (a public signature is a contract) | warning | `.editorconfig` |
+| `IDE0051`, `IDE0052` | a private member nothing uses, or one written but never read | warning | `.editorconfig` |
+| `CA1502` | a method with a cyclomatic complexity above 20 | suggestion | `.editorconfig`, the limit in `CodeMetricsConfig.txt` (.NET's own rule) |
+| `DNF1001` | a file with more than 500 lines of code (blank lines and comments don't count) | suggestion | `.editorconfig` `dnf_max_file_lines`; analyzer in `build/DotNetForge.Analyzers` |
+| `DNF1002` | a statement nested more than 4 deep in its method (`if`, `switch`, `try`, `for`, `foreach`, `while`, `do`; an `else if` stays at its `if`'s depth; a local function or lambda starts again) | suggestion | `.editorconfig` `dnf_max_depth`; same analyzer |
+
+A discard (`_ = ...`, a parameter named `_`) marks something deliberately unused. The size rules (`CA1502`, `DNF1001`,
+`DNF1002`) are suggestions: the IDE marks code growing past what is easy to review (in VS Code as hints, and in the
+Problems panel), without failing or cluttering the build on code that already does (at the time they were added: 32
+methods above 20, `EntryData.cs` and `MobileTests.cs` above 500 lines, nothing nested deeper than 4). They have no
+automatic fix, so as warnings plain `dotnet format` - which tries to fix every warning - would report "Unable to fix
+CA1502. No associated code fix found." for each; as suggestions it stays quiet. Raise them to `warning` or `error` in
+`.editorconfig` once that backlog is down. Generated code is
+skipped, and the EF Core migrations (generated by `dotnet ef`, their length follows the schema) lift only `DNF1001` in
+their own `.editorconfig` section. Extensions keep their own build settings (`extensions/Directory.Build.props`), so
+the analyzer doesn't run on them.
 
 ## What to test when you change something
 
@@ -379,6 +407,7 @@ optional and nothing from npm reaches the app. The page builder has its own [fix
 | New database provider | [adding a provider → Tests](../database/adding-a-provider.md#4-tests) |
 | UI library component, token or behaviour (`src/DotNetForge.UI`) | the component's page in the [UI docs](../pages/ui-docs.md) (examples, styling reference, doc comments for its API table); a tag helper case in `UI/DnfTagHelperTests`; a `BehaviourTests` case for new dnf.js behaviour; re-record the affected baselines on purpose |
 | Markup of a screen | `UI/UiSourceTests` stays green (no Forge class, every `dnf-` class defined, no `!important`) |
+| A project reference, NuGet package or new project | its entry in `ProjectBoundaryTests.Rules` and the [project references](../architecture/dependencies.md#project-references) table, together |
 | Bug fix | a regression test that fails without the fix |
 
 ## CI
@@ -391,9 +420,9 @@ optional and nothing from npm reaches the app. The page builder has its own [fix
 - **ui-tests** (`UI tests (Chromium)`) on Ubuntu: a `postgres:17-alpine` service, `playwright.ps1 install --with-deps
   chromium`, then `dotnet test tests/DotNetForge.UiTests`; the screenshots it records are uploaded as an artifact (it has
   no baselines to compare with, so the visual tests only record there - accessibility and behaviour tests run in full).
-- **format** on Ubuntu: `dotnet format <project> --verify-no-changes --severity error` for the host, every `src/*`
-  and every `tests/*` project.
-- **lint-js** (`JavaScript lint`) on Ubuntu: `npm ci`, `npm run lint` ([JavaScript](#javascript)).
+- **format** on Ubuntu: `dotnet format <project> --verify-no-changes --severity error` for the host, every `src/*`,
+  `tests/*` and `build/*` project.
+- **lint-js** (`JavaScript lint`) on Ubuntu: `npm ci`, `npm run lint` in `tools/` ([JavaScript](#javascript)).
 - **postgres-and-s3** (`Integration tests (PostgreSQL) + S3 storage`) on Ubuntu: a `postgres:17-alpine` service and
   a SeaweedFS container (`chrislusf/seaweedfs server -s3`, bucket `dnf-test`); runs the unit tests **including** the
   live S3 tests (`DNF_TEST_S3_*` set) and the whole integration suite on PostgreSQL (`DNF_TEST_POSTGRES` set).
@@ -413,7 +442,7 @@ optional and nothing from npm reaches the app. The page builder has its own [fix
 ### Line endings
 
 `.gitattributes` keeps text files LF in the repository and on every machine, as `.editorconfig` asks, so
-`dotnet format <project> --verify-no-changes` gives the same answer on Windows as in CI.
+`dotnet format <project> --verify-no-changes --severity error` gives the same answer on Windows as in CI.
 
 ## Planned (not implemented)
 
@@ -506,7 +535,7 @@ Structure, execution and quality:
   folder).
 - [ ] An ESLint configuration is present and runnable wherever JavaScript or TypeScript is used.
 - [x] Automated formatting rules exist and are verified in CI (`.editorconfig`, `ci.yml` format job with
-  `dotnet format --verify-no-changes`).
+  `dotnet format --verify-no-changes --severity error`).
 - [ ] Naming conventions are documented and consistently applied (documented in the
   [development guide](development.md#conventions) only partly; not enforced).
 - [x] Dependencies are managed deliberately with no unnecessary packages (`Directory.Packages.props`, Dependabot).

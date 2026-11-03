@@ -530,12 +530,23 @@ public sealed class MediaController : AdminControllerBase
             .AsNoTracking()
             .Where(m => m.FolderId == folderId)
             .OrderByDescending(m => m.UploadedDate)
-            .Select(m => new { m.Id, m.FileName, m.OriginalName, m.ContentType, m.SizeBytes, m.OriginalSizeBytes, m.Optimization, m.IsPublic, m.UploadedDate, m.UploadedById })
+            .Select(m => new
+            {
+                m.Id,
+                m.FileName,
+                m.OriginalName,
+                m.ContentType,
+                m.SizeBytes,
+                m.OriginalSizeBytes,
+                m.Optimization,
+                m.IsPublic,
+                m.UploadedDate,
+                m.UploadedById,
+                UploaderEmail = _db.Users.Where(u => u.Id == m.UploadedById).Select(u => u.Email).FirstOrDefault(),
+            })
             .ToListAsync();
-        var uploaderIds = rows.Where(m => m.UploadedById is not null).Select(m => m.UploadedById!.Value).Distinct().ToList();
-        var uploaders = await _db.Users.AsNoTracking().Where(u => uploaderIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Email);
 
-        // Content counts of the subfolders shown here (single-table queries, combined in memory).
+        // Content counts of the subfolders shown here.
         var children = folders.Where(f => f.ParentId == folderId).ToList();
         var childIds = children.Select(f => f.Id).ToList();
         var fileCounts = await _db.MediaFiles.AsNoTracking()
@@ -583,7 +594,7 @@ public sealed class MediaController : AdminControllerBase
                 Optimization = m.Optimization,
                 IsPublic = m.IsPublic,
                 UploadedDate = m.UploadedDate,
-                UploadedBy = m.UploadedById is { } by ? uploaders.GetValueOrDefault(by) : null,
+                UploadedBy = m.UploaderEmail,
                 Url = MediaService.UrlFor(m.Id, m.FileName),
                 CanDelete = canDeleteAny || (canDeleteOwn && m.UploadedById is not null && m.UploadedById == CurrentUserId),
                 CanEdit = canUpdateAny || (canUpdateOwn && m.UploadedById is not null && m.UploadedById == CurrentUserId),

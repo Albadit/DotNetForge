@@ -29,10 +29,12 @@ adds it, before the browser can paint it, and stops at `DOMContentLoaded`.
 | `[data-js-only]` | shown |
 | `[data-view-mode]` with an `id` its `[data-view-switch]` targets (the switch comes first in the page) | the saved view, and `aria-pressed` on the switch's buttons |
 | `[data-item]` in a `[data-collection]` with `data-page-size` | hidden past the first page, at the saved page size |
+| `th[data-sort]` of a table in a `[data-collection]` (when its `<tbody>` arrives, so the head is complete) | the sort button with the label and the icon's place, so the columns keep their widths when `dnf.js` draws the icon |
 | `[data-tree-item]` | `data-collapsed`, from the branches closed in the page tree |
 | `[data-tab-panel]` in a `[data-tabs]` (the tabs come first in the group) | the open tab: `hidden` on the other panels, `aria-selected` on the tabs, `data-tabbed` on the root, which hides the panel titles |
 
-`dnf.js` repeats the work afterwards, which changes nothing, and adds the behaviour. A view switch also keeps the first
+Content swapped in later (the admin's screen navigation) gets the same work from `window.dnfSettle(root)`, before
+it is painted. `dnf.js` repeats the work afterwards, which changes nothing, and adds the behaviour. A view switch also keeps the first
 item in sight on the screen, because the two layouts differ in height. What a screen's own script draws can't start
 early, so the server draws skeletons of the same height in its place (the content type fields, the endpoint cards). Without JavaScript none of this
 runs, and every item shows. A new behaviour that changes the layout on load belongs in this list.

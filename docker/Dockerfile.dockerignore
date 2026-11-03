@@ -10,7 +10,8 @@
 .env.*
 !.env.example
 storage/
-# The Tailwind CSS CLI (one binary per platform) and its output: the build downloads and runs the Linux one.
+# Development tooling (the JavaScript lint) and the Tailwind CSS CLI (one binary per platform) with its output: the
+# build downloads and runs the Linux one.
 tools/
 **/node_modules/
 src/DotNetForge.UI/wwwroot/dnf.css
