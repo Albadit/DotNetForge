@@ -5,8 +5,18 @@
 # docker/Dockerfile.dockerignore (next to this file) limits the build context.
 # Configuration (database, object storage) comes from environment variables - never baked into the image.
 
+FROM node:22-bookworm-slim AS node
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Node.js for the Tailwind CSS CLI from npm, which compiles the UI stylesheet during the build and minifies the screen
+# stylesheets at publish (src/DotNetForge.UI/build/Tailwind.targets, build/DotNetForge.Minify). Build stage only.
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm
 WORKDIR /src
+# The CLI first: this layer is cached until the lock file changes (the build then finds node_modules up to date).
+COPY tools/package.json tools/package-lock.json tools/
+RUN cd tools && npm ci --ignore-scripts --no-audit --no-fund
 COPY . .
 # Extensions with code are compiled into their own bin/ folders first; the publish below copies extensions/ as files
 # (.docs/features/extensions.md#deployment).

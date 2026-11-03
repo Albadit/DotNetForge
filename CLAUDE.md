@@ -20,11 +20,11 @@ app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker fi
 ```bash
 cp .env.example .env                              # once (or .env.developer: local RustFS/Ceph S3 + Mailpit SMTP)
 docker compose -f docker/databases/postgres.yml up -d   # PostgreSQL on localhost:5432 (set DATABASE_CONNECTION_STRING)
-dotnet build                                      # whole solution, incl. extensions (1st build downloads the Tailwind CLI)
+dotnet build                                      # whole solution, incl. extensions (needs Node.js 20+: 1st build npm-installs Tailwind)
 dotnet run --project src/DotNetForge.Web          # start; http://localhost:5000 → /setup on a fresh DB
 dotnet test                                       # unit + integration tests (integration needs PostgreSQL)
 python .claude/skills/verify/check_links.py       # docs link check
-cd tools && npm ci && npm run lint                # JavaScript lint (optional Node.js; nothing from npm reaches the app)
+cd tools && npm ci && npm run lint                # JavaScript lint (nothing from npm reaches the app)
 ```
 
 ## Must know

@@ -223,18 +223,18 @@
     counts as invalid.</p>
 
 <h2 id="build">How the stylesheet is built</h2>
-<p>Tailwind CSS v4 runs at <strong>build time only</strong>: the browser gets one static <code>dnf.css</code>, and there is
-    no Node.js and no <code>package.json</code>. <code>src/DotNetForge.UI/build/Tailwind.targets</code> runs Tailwind's
-    standalone CLI on <code>Styles/dnf.css</code> and writes <code>wwwroot/dnf.css</code> (git-ignored) whenever an input
+<p>Tailwind CSS v4 runs at <strong>build time only</strong>: the browser gets one static <code>dnf.css</code>, and nothing
+    from npm ships with the app. <code>src/DotNetForge.UI/build/Tailwind.targets</code> runs Tailwind's CLI from npm
+    (so building needs Node.js 20 or newer) on <code>Styles/dnf.css</code> and writes <code>wwwroot/dnf.css</code> (git-ignored) whenever an input
     changed - so <code>dotnet build</code> of the solution, the web host or any project that references the library keeps
     it current.</p>
 <table>
     <thead><tr><th>Item</th><th>Value</th></tr></thead>
     <tbody>
-        <tr><td>Tailwind version</td><td><code>4.3.3</code>, downloaded once into <code>tools/tailwind/4.3.3/</code> at the repository root and checked against a pinned SHA-256</td></tr>
-        <tr><td>Command</td><td><code>tailwindcss --input Styles/dnf.css --output wwwroot/dnf.css</code>, plus <code>--minify</code> in Release</td></tr>
+        <tr><td>Tailwind version</td><td><code>@@tailwindcss/cli</code> <code>4.3.3</code>, pinned in <code>tools/package.json</code> and <code>tools/package-lock.json</code>; the first build installs it once with <code>npm ci</code> into the git-ignored <code>tools/node_modules/</code></td></tr>
+        <tr><td>Command</td><td><code>tailwindcss --input Styles/dnf.css --output wwwroot/dnf.css</code> (run with <code>node</code>, <code>NODE_PATH=tools/node_modules</code>), plus <code>--minify</code> in Release</td></tr>
         <tr><td>Rebuilt when</td><td>a stylesheet, the library's C# or scripts, a view, C# or script of the web host, or an extension's view, C# or script changed</td></tr>
-        <tr><td><code>DNF_TAILWIND_PATH</code></td><td>use this <code>tailwindcss</code> binary (same version) instead of downloading - offline or locked-down machines</td></tr>
+        <tr><td>Upgrading</td><td><code>npm install -E @@tailwindcss/cli&#64;&lt;version&gt;</code> in <code>tools/</code>, then <code>dotnet build</code>; Dependabot proposes new versions weekly</td></tr>
         <tr><td><code>-p:DnfSkipTailwind=true</code></td><td>compile without regenerating <code>dnf.css</code> (parallel builds of one checkout); a missing file is still generated</td></tr>
     </tbody>
 </table>

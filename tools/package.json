@@ -1,7 +1,7 @@
 {
   "name": "dotnetforge-tooling",
   "private": true,
-  "description": "Development tooling only: nothing here is part of the application.",
+  "description": "Build and development tooling - the Tailwind CSS CLI that compiles the UI stylesheet (src/DotNetForge.UI/build/Tailwind.targets) and ESLint. Nothing here is part of the application.",
   "type": "module",
   "scripts": {
     "lint": "cd .. && eslint --config tools/eslint.config.mjs .",
@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@tailwindcss/cli": "4.3.3",
     "eslint": "10.14.0",
     "globals": "17.14.0"
   }

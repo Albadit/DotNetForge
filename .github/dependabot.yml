@@ -12,7 +12,7 @@ updates:
           - "Microsoft.*"
           - "Npgsql.*"
 
-  # Keep the development tooling (ESLint) up to date.
+  # Keep the build and development tooling (the Tailwind CSS CLI of the UI stylesheet, ESLint) up to date.
   - package-ecosystem: npm
     directory: "/tools"
     schedule:

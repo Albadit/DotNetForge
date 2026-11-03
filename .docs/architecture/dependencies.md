@@ -110,10 +110,11 @@ packages pull SQLitePCLRaw 2.1.12.
 Rate limiting (`AddRateLimiter`), Data Protection, `IMemoryCache` and forwarded headers come from the shared
 framework (`Microsoft.AspNetCore.App`) - no packages.
 
-There are no frontend packages: the app has no `package.json` (the one in `tools/` is only the [lint](#development-tooling)). The UI stylesheet is compiled by the **Tailwind
-CSS** standalone CLI (v4.3.3, MIT) at build time - a pinned, SHA-256-verified binary downloaded once into the
-git-ignored `tools/tailwind/` by `src/DotNetForge.UI/build/Tailwind.targets`; nothing of it ships except the generated
-`dnf.css` ([styling → build](../ui/styling.md#build)). One vendored library: the **Monaco** code
+There are no frontend packages: the app ships nothing from npm. One `package.json`, in `tools/`, holds build and
+development tools only. `tools/package.json` pins the **Tailwind CSS** CLI (`@tailwindcss/cli` 4.3.3, MIT), which
+`src/DotNetForge.UI/build/Tailwind.targets` installs with `npm ci` into the git-ignored `tools/node_modules/` and runs
+at build time (so building needs Node.js 20+); nothing of it ships except the generated `dnf.css`
+([styling → build](../ui/styling.md#build)). The same file holds the [lint](#development-tooling). One vendored library: the **Monaco** code
 editor (`monaco-editor` 0.52.2, MIT, Microsoft), the files of its AMD build that the HTML editor needs - loader,
 editor core, the HTML and CSS language services and their worker, and the HTML/CSS/JavaScript colorizers, about
 5.6 MB - copied into `src/DotNetForge.Web/wwwroot/lib/monaco/` with its `LICENSE` and `ThirdPartyNotices.txt`. It is
@@ -136,9 +137,11 @@ signed with the BCL's HMAC-SHA256; TOTP and the built-in OAuth providers use the
 
 ## Development tooling
 
-`tools/package.json` holds only ESLint (`eslint`, `@eslint/js`, `globals`), for the [JavaScript lint](../guides/testing.md#javascript);
-it is in `tools/`, next to the downloaded Tailwind CLI, so the repository root holds only the .NET solution. Nothing from
-npm is part of the application.
+`tools/package.json` holds the Tailwind CSS CLI (`@tailwindcss/cli`, which the build installs and runs -
+[styling → build](../ui/styling.md#build)) and ESLint (`eslint`, `@eslint/js`, `globals`), for the
+[JavaScript lint](../guides/testing.md#javascript); it is in `tools/`, so the repository root holds only the .NET
+solution. The build runs Tailwind with `NODE_PATH=tools/node_modules`, so the stylesheet's `@import "tailwindcss"`
+resolves there. Dependabot updates them weekly. Nothing from npm is part of the application.
 
 ## DI registrations
 

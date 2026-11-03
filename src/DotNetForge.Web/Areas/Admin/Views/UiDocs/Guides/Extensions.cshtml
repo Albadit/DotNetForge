@@ -201,8 +201,10 @@ tailwindcss --input Styles/reports.css --output Views/Resources/css/reports.css 
         to the stylesheet.</li>
     <li>Link the output <strong>after</strong> <code>dnf.css</code>. Its rules are in the same named layers as the host's,
         so they merge into them: your utilities sit in <code>utilities</code>, above the components, like the host's.</li>
-    <li>Use the host's Tailwind version, <code>4.3.3</code>; in a checkout the binary is already in
-        <code>tools/tailwind/4.3.3/</code>.</li>
+    <li>Use the host's Tailwind version (<code>@@tailwindcss/cli</code> in <code>tools/package.json</code>, today
+        <code>4.3.3</code>): <code>npx @@tailwindcss/cli&#64;4.3.3 ...</code> or a <code>package.json</code> of your own.
+        The <code>@@import "tailwindcss/..."</code> lines resolve from the stylesheet's folder upwards, then from
+        <code>NODE_PATH</code> - in a checkout, <code>NODE_PATH=tools/node_modules</code> uses the host's install.</li>
     <li>The host's build does not run this step: run it yourself (or in your CI) and ship the generated file in
         <code>Views/Resources/</code>, which is read at request time and must not be written at runtime.</li>
     <li><code>Styles/theme.css</code> only maps names to <code>--dnf-*</code> tokens; the values come from the host's

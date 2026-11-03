@@ -114,8 +114,9 @@ An unlayered rule also beats Tailwind utilities written in the markup, so don't 
 
 ## Tailwind
 
-Tailwind CSS v4 runs at **build time only**: the browser gets one static `dnf.css`. There is no Node.js and no
-`package.json` for it - the build uses Tailwind's standalone CLI.
+Tailwind CSS v4 runs at **build time only**: the browser gets one static `dnf.css`. The build uses Tailwind's CLI from
+npm (`@tailwindcss/cli`, pinned in `tools/package.json`), so building needs Node.js; nothing from npm
+reaches the app.
 
 ### Theme mapping
 
@@ -143,22 +144,27 @@ web host or any project referencing `DotNetForge.UI` (the SDK, so every extensio
 
 | Item | Value |
 | --- | --- |
-| Tailwind version | `4.3.3` (`TailwindVersion`) |
-| Binary | `tailwindcss-<platform>` from `github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/`, downloaded **once** into `tools/tailwind/4.3.3/` at the repository root (git-ignored, `/tools/tailwind/`) |
-| Platforms | `windows-x64.exe` (on every Windows), `macos-arm64`, `macos-x64`, `linux-x64`, `linux-arm64`, `linux-x64-musl` / `linux-arm64-musl` (when `/etc/alpine-release` exists) |
-| Size | the Windows binary is about 112 MB (112,503,296 bytes) |
-| Verification | the download is checked against the SHA-256 of the release's `sha256sums.txt`, pinned per platform in the targets file; a mismatch deletes the file and fails the build |
-| Command | `tailwindcss --input Styles/dnf.css --output wwwroot/dnf.css` (+ `--minify` in `Release`), run in `src/DotNetForge.UI` |
-| Incremental | skipped when no input changed: `Styles/**/*.css`, the project's `*.cs`, `src/DotNetForge.Web/**/*.cshtml`, `**/*.cs` and `wwwroot/js/**/*.js`, `extensions/**/*.cshtml`, and the targets file |
-| When it runs | before `BeforeBuild` and `ResolveProjectStaticWebAssets`, so even a clean build serves the new file |
+| Tailwind version | `4.3.3`: `@tailwindcss/cli` in `tools/package.json` (exact version, next to ESLint) and `tools/package-lock.json` (the whole tree, every platform's native package) |
+| Requirement | Node.js 20 or newer (with npm) on the `PATH`; without it the build fails with "Node.js 20 or newer is needed to build the UI stylesheet" |
+| Install | `npm ci --ignore-scripts` in `tools/` into `tools/node_modules/` (git-ignored) - once, on the first build, and again only when `package.json` or `package-lock.json` is newer than the installed tree. No install scripts run: the CLI needs none |
+| Command | `node tools/node_modules/@tailwindcss/cli/dist/index.mjs --input Styles/dnf.css --output wwwroot/dnf.css`, with `--minify` in `Release` and `--map` (inline source map) otherwise, run in `src/DotNetForge.UI` with `NODE_PATH=tools/node_modules` - Tailwind resolves `@import "tailwindcss"` from the stylesheet's folder upwards and then from `NODE_PATH` |
+| Incremental | skipped when no input changed: `Styles/**/*.css`, the project's `*.cs`, `src/DotNetForge.Web/**/*.cshtml`, `**/*.cs` and `wwwroot/js/**/*.js`, `extensions/**/*.cshtml`, the installed tree and the targets file |
+| When it runs | before `BeforeBuild` and `ResolveProjectStaticWebAssets`, so even a clean build serves the new file; never in IDE design-time builds (`DesignTimeBuild=true`), which need no stylesheet and would run npm beside the real build |
 
 | Setting | Effect |
 | --- | --- |
-| `DNF_TAILWIND_PATH` (environment variable or `-p:DNF_TAILWIND_PATH=...`) | use this `tailwindcss` binary (same version) instead of downloading - offline or locked-down machines |
 | `-p:DnfSkipTailwind=true` | compile without regenerating `wwwroot/dnf.css` (for parallel builds of one checkout, which must not all write the file); if the file does not exist yet it is still generated |
 
-CI and Docker need network access to GitHub once per machine or image build (`docker/Dockerfile` builds inside the SDK
-image, so it downloads the Linux binary there), or `DNF_TAILWIND_PATH` pointing at a binary provided another way.
+**Upgrading Tailwind.** In `tools/`: `npm install -E @tailwindcss/cli@<version>` (or `@latest`), which
+updates `package.json` and `package-lock.json`; the next `dotnet build` installs it and recompiles. Dependabot opens a
+pull request for new versions weekly (`.github/dependabot.yml`, directory `/tools`). Check the
+[UI tests](../guides/testing.md#ui-tests) and the in-app UI docs after a major version, and keep the version named in
+[Tailwind in an extension](extensions.md#tailwind-in-an-extension) in step.
+
+CI installs Node.js with `actions/setup-node` in every job that builds. `docker/Dockerfile` copies Node.js from the
+official `node:22-bookworm-slim` image into its .NET build stage and runs `npm ci` in `tools/` as its own cached layer;
+the runtime image has no Node.js. Both need network access to the npm registry (or a mirror set with
+`npm config set registry`).
 
 ### What is scanned
 

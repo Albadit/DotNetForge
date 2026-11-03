@@ -27,6 +27,8 @@ built versus planned is in
 ## Requirements
 
 - [.NET SDK 10.0](https://dotnet.microsoft.com/download) (pinned via [`global.json`](global.json)).
+- [Node.js](https://nodejs.org) 20 or newer, with npm: the build compiles the UI stylesheet with Tailwind CSS from npm
+  (installed automatically on the first build; nothing from npm ships with the app).
 - PostgreSQL - e.g. `docker compose -f docker/databases/postgres.yml up -d` (Docker), or any PostgreSQL server.
 
 ## Quick start
@@ -130,10 +132,10 @@ See [.docs/architecture/overview.md](.docs/architecture/overview.md) for a one-p
 ## Admin panel (server-rendered Razor)
 
 The admin UI and the first-run **setup wizard** are **server-rendered ASP.NET Core MVC** in the
-[`src/DotNetForge.Web/Areas/Admin/`](src/DotNetForge.Web/Areas/Admin/) area, served at **`/admin`** (and **`/setup`** for the wizard). No Node
-build step - it ships with the host. Every screen uses the dependency-free **DotNetForge UI** component library (light and dark,
+[`src/DotNetForge.Web/Areas/Admin/`](src/DotNetForge.Web/Areas/Admin/) area, served at **`/admin`** (and **`/setup`** for the wizard). No
+JavaScript bundler and nothing from npm at runtime - it ships with the host. Every screen uses the dependency-free **DotNetForge UI** component library (light and dark,
 role-aware sidebar, works on phones and without JavaScript) in [`src/DotNetForge.UI/`](src/DotNetForge.UI/): components,
-tokens and Tailwind utilities compiled at build time into one `dnf.css` (Tailwind's standalone CLI), `<dnf-*>`
+tokens and Tailwind utilities compiled at build time into one `dnf.css` (the Tailwind CSS CLI from npm, [`tools/package.json`](tools/package.json)), `<dnf-*>`
 Razor tag helpers, `dnf.js` behaviours and an icon sprite - see [.docs/ui/](.docs/ui/README.md). CMS screen CSS and
 scripts are in [`src/DotNetForge.Web/wwwroot/css/`](src/DotNetForge.Web/wwwroot/css/) and
 [`wwwroot/js/admin/`](src/DotNetForge.Web/wwwroot/js/admin/) - see [design-system.md](.docs/architecture/design-system.md).

@@ -48,7 +48,7 @@ behaviour under **Planned (not implemented)**; the gap is tracked in
 | API docs | `Microsoft.AspNetCore.OpenApi` builds the OpenAPI document of `/api/*` and the custom endpoints; `Scalar.AspNetCore` renders it at `/admin/api-docs/reference/` ([API docs](../features/api-docs.md)) | `src/DotNetForge.Web/ApiDocs/`, `DependencyRegistration` (`AddOpenApi`) |
 | Crypto | BCL only: PBKDF2-SHA256 (`Rfc2898DeriveBytes.Pbkdf2`), HMAC-SHA256, SHA-256, `RandomNumberGenerator` | `src/DotNetForge.Infrastructure/Security`, `ApiTokenAuthenticationHandler` |
 | Configuration | In-house `.env` parser + environment variables, typed as `AppEnvironment` | `src/DotNetForge.Infrastructure/Configuration` |
-| Frontend | The DotNetForge UI library ([.docs/ui](../ui/README.md)): BEM `dnf-*` components and `--dnf-*` tokens compiled with Tailwind CSS v4 (standalone CLI at build time, no Node) into one `dnf.css`, `<dnf-*>` Razor tag helpers, `dnf.js` behaviours, an SVG icon sprite; the CMS adds screen CSS and page scripts ([design-system.md](design-system.md)). Light and dark themes. No inline script or style. No bundler, no front-end packages. | `src/DotNetForge.UI/`, `src/DotNetForge.Web/wwwroot/` |
+| Frontend | The DotNetForge UI library ([.docs/ui](../ui/README.md)): BEM `dnf-*` components and `--dnf-*` tokens compiled with Tailwind CSS v4 (the npm CLI at build time; nothing from npm ships) into one `dnf.css`, `<dnf-*>` Razor tag helpers, `dnf.js` behaviours, an SVG icon sprite; the CMS adds screen CSS and page scripts ([design-system.md](design-system.md)). Light and dark themes. No inline script or style. No bundler, no front-end packages. | `src/DotNetForge.UI/`, `src/DotNetForge.Web/wwwroot/` |
 | Page builder | Layout documents, validation and HTML/CSS rendering in `DotNetForge.PageBuilder`; the editor as plain ES modules (`wwwroot/js/builder/`) with its own styles (`wwwroot/builder/`). Ported from the Dnn.Libraries.PageEditor project ([page builder](../features/page-builder.md)). | `src/DotNetForge.PageBuilder`, `src/DotNetForge.Web/wwwroot/{js/,}builder` |
 | Container | `docker/Dockerfile` (`sdk:10.0` build → `aspnet:10.0`, non-root `$APP_UID`, port 8080); `docker/compose.dev.yml` (PostgreSQL + RustFS + Mailpit), `docker/compose.app.yml` (the app built and run in Docker), one compose file per service in `docker/databases/`, `docker/s3/`, `docker/mail/` | `docker/` |
 | Tests | xUnit 2.9, `Microsoft.AspNetCore.Mvc.Testing` (`WebApplicationFactory<Program>`) | `tests/` |
@@ -171,7 +171,7 @@ DotNetForge/                         repository root
 │   └── js/                          page-builder-fixtures.mjs: the fixtures through the browser modules (Node)
 ├── build/DotNetForge.Minify/        minifies the published scripts and stylesheets (run by `dotnet publish`)
 ├── build/DotNetForge.Analyzers/     the code-size guardrails (DNF1001 file length, DNF1002 nesting), a compiler-only analyzer
-├── tools/                           JavaScript lint (ESLint: package.json, eslint.config.mjs); tailwind/ = the downloaded Tailwind CLI (git-ignored)
+├── tools/                           npm build and dev tooling: package.json + lock (Tailwind CSS CLI, ESLint), eslint.config.mjs; node_modules/ git-ignored
 ├── extensions/<type>/<name>/        user extensions, one folder per manifest (+ optional .csproj → bin/); copied to the publish output
 ├── extensions/Directory.Build.props build settings shared by every extension project
 ├── docker/
@@ -450,7 +450,7 @@ The DotNetForge UI component library ([.docs/ui](../ui/README.md)), a Razor clas
 `base.css`, `components/*.css`), `DnfTagHelper.cs` (enums `DnfSize`, `DnfTone`, `DnfButtonVariant`, `DnfAssets`, the
 tag helper base class), `Components/` (the `<dnf-*>` tag helpers), `wwwroot/` (`dnf.js`, `dnf-theme.js`,
 `icons.svg`, and `dnf.css` - git-ignored build output) and `build/Tailwind.targets` (compiles the stylesheet with the
-Tailwind CLI on every build, [styling → build](../ui/styling.md#build)).
+Tailwind CSS CLI from `tools/` on every build, [styling → build](../ui/styling.md#build)).
 
 - **Belongs here:** anything generic a screen or an extension can reuse - components, tokens, utilities, tag helpers,
   `data-*` behaviours, icons.
@@ -689,8 +689,8 @@ MSBuild with `Directory.Build.props` (target framework, nullable, `ManagePackage
 `InvariantGlobalization=false` - SQL Server's client, used for additional databases, needs ICU) and `Directory.Packages.props` (all versions, transitive pinning). Local tool `dotnet-ef`
 10.0.12 pinned in `.config/dotnet-tools.json`. `Microsoft.EntityFrameworkCore.Design` is referenced only by `Data`
 with `PrivateAssets="all"`, so it never reaches the published app. `src/DotNetForge.UI/build/Tailwind.targets`
-compiles the UI stylesheet with the pinned Tailwind CSS standalone CLI (downloaded once into the git-ignored
-`tools/tailwind/`, SHA-256 verified; [styling → build](../ui/styling.md#build)). `DotNetForge.slnx` at the root lists every
+compiles the UI stylesheet with the Tailwind CSS CLI from npm (pinned in `tools/package.json` + `package-lock.json`,
+installed by `npm ci` into the git-ignored `tools/node_modules/`; [styling → build](../ui/styling.md#build)). `DotNetForge.slnx` at the root lists every
 project, so `dotnet build` and `dotnet test` work without arguments - see
 [development guide](../guides/development.md#everyday-commands-repository-root). `.editorconfig` holds the formatting
 and code rules; `EnforceCodeStyleInBuild` runs them in the build too, with CA1502 and the analyzer in

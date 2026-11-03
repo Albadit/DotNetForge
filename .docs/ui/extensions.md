@@ -147,8 +147,11 @@ tailwindcss --input Styles/reports.css --output Views/Resources/css/reports.css 
 - `source(none)` turns off automatic detection; `@source` names the folders to scan (relative to the stylesheet).
 - Link the output **after** `dnf.css`. Its rules are in the same named layers as the host's, so they merge into them:
   your utilities sit in `utilities`, above the components, like the host's.
-- Use the same Tailwind version as the host (`4.3.3`, [styling → build](styling.md#build)); in a checkout the binary is
-  already in `tools/tailwind/4.3.3/`.
+- Use the same Tailwind version as the host (`@tailwindcss/cli` in `tools/package.json`, today `4.3.3`,
+  [styling → build](styling.md#build)): `npx @tailwindcss/cli@4.3.3 --input ...`, or a `package.json` of your own. The
+  `@import "tailwindcss/..."` lines resolve from the stylesheet's folder upwards, then from `NODE_PATH`; in a checkout
+  the CLI is already installed, so run it as the host's build does:
+  `NODE_PATH=<repo>/tools/node_modules node <repo>/tools/node_modules/@tailwindcss/cli/dist/index.mjs --input ...`.
 - The host's build does not run this step: run it yourself (or in your CI) and ship the generated file in
   `Views/Resources/`, which is read at request time and must not be written at runtime.
 - `Styles/theme.css` only maps names to `--dnf-*` tokens; the values come from the host's `dnf.css` at runtime.

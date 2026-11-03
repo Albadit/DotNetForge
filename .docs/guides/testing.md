@@ -364,7 +364,8 @@ changes on an open session, sign-out with a copied cookie, expiry, disabling, pa
 ESLint checks every script of the CMS, the UI library and the extensions, apart from the bundled Monaco
 (`tools/eslint.config.mjs`): in `tools/`, `npm ci` once, then `npm run lint`, or `npm run lint:fix` (the script runs
 ESLint from the repository root, so the patterns are relative to it). It is development tooling, kept in `tools/` out of
-the repository root: Node.js is optional and nothing from npm reaches the app. The page builder has its own [fixtures](../features/page-builder.md).
+the repository root, next to the build's Tailwind CSS CLI (the first `dotnet build` already ran `npm ci` there); nothing
+from npm reaches the app. The page builder has its own [fixtures](../features/page-builder.md).
 
 ## Guardrails
 

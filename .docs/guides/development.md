@@ -7,9 +7,10 @@ Set up, run, debug and change DotNetForge CMS locally. Architecture: [codebase.m
 - .NET SDK 10.0 - `global.json` pins `10.0.100` with `rollForward: latestFeature` (any 10.0.1xx+ feature band works).
 - PostgreSQL - the CMS database. Easiest: Docker (`docker/databases/postgres.yml`), or any local PostgreSQL server.
   The integration tests need it too ([testing](testing.md#databases)).
-- Node.js is optional, for the [JavaScript lint](testing.md#javascript) and the page builder fixtures: the frontend is
-  server-rendered Razor, CSS and plain JS, and the app ships nothing from npm. The UI stylesheet is compiled by the Tailwind
-  CSS standalone CLI, which the first build downloads (about 112 MB on Windows, [Tailwind on the first build](#tailwind-css-on-the-first-build)).
+- Node.js 20 or newer (with npm): the build compiles the UI stylesheet with the Tailwind CSS CLI from npm, which the
+  first build installs ([Tailwind on the first build](#tailwind-css-on-the-first-build)). Node.js also runs the
+  [JavaScript lint](testing.md#javascript) and the page builder fixtures. The frontend is server-rendered Razor, CSS and
+  plain JS: the app ships nothing from npm.
 
 ## First run
 
@@ -204,7 +205,7 @@ feedback, building a screen) first.
 | | Development (`dotnet build`, Debug) | Production (`dotnet publish -c Release`) |
 | --- | --- | --- |
 | `dnf.css` | readable, with an inline source map | minified, no source map |
-| Screen CSS (`wwwroot/css`) | the source as it is | minified by the Tailwind binary |
+| Screen CSS (`wwwroot/css`) | the source as it is | minified by the Tailwind CSS CLI (`tools/node_modules`, run with `node`) |
 | Scripts (`wwwroot/js/admin`, `dnf.js`, `dnf-theme.js`) | the source as it is, so no source map is needed | minified by `build/DotNetForge.Minify` (NUglify, at publish time only; it is not part of the running app) |
 | Page builder (`wwwroot/js/builder`) and Monaco | as they are | as they are: the builder's source is what the C# renderer must match |
 | Compression | stylesheets, scripts, icons, JSON (Brotli or gzip, `Optimal`: a screen repeats its row markup, which `Fastest` barely finds - the Users screen 20 KB instead of 8 - for about a millisecond more) | the same, plus screens |
@@ -217,15 +218,16 @@ the file and the URL changes. Screens and API answers are not cached that way.
 ### Tailwind CSS on the first build
 
 `src/DotNetForge.UI/build/Tailwind.targets` compiles `Styles/dnf.css` into `wwwroot/dnf.css` (git-ignored) on every
-build whose inputs changed. The first build on a machine **downloads** the Tailwind CSS 4.3.3 standalone CLI for the
-platform from GitHub into `tools/tailwind/4.3.3/` at the repository root (git-ignored; the Windows binary is about
-112 MB) and checks its SHA-256 - later builds reuse it. Details: [styling → build](../ui/styling.md#build).
+build whose inputs changed, with the Tailwind CSS CLI from npm (`@tailwindcss/cli`, pinned in
+`tools/package.json` and `tools/package-lock.json`, next to ESLint). The first build on a machine runs `npm ci` in
+`tools/`, which installs it into `tools/node_modules/` (git-ignored) - once; later builds reuse it until the lock file
+changes. Details and upgrading: [styling → build](../ui/styling.md#build).
 
 | Situation | What to do |
 | --- | --- |
-| No internet / a proxy blocks GitHub | put a `tailwindcss` 4.3.3 binary somewhere and set `DNF_TAILWIND_PATH` to it (environment variable or `-p:DNF_TAILWIND_PATH=...`) |
-| "does not match its SHA-256" | the download was corrupted or replaced; it was deleted - build again, or use `DNF_TAILWIND_PATH` |
-| "No Tailwind CSS 4.3.3 binary is known for '…'" | an unsupported platform: use `DNF_TAILWIND_PATH` |
+| "Node.js 20 or newer is needed to build the UI stylesheet" | install Node.js (it brings npm) from nodejs.org and build again; restart the IDE/terminal so the `PATH` has it |
+| `npm ci` fails (no internet, a proxy) | point npm at a reachable registry or mirror (`npm config set registry ...`, `npm config set proxy ...`), then build again |
+| A new Tailwind version | `npm install -E @tailwindcss/cli@<version>` in `tools/`, then `dotnet build` ([styling → upgrading](../ui/styling.md#build)) |
 | Several builds of one checkout in parallel | pass `-p:DnfSkipTailwind=true` to all but one: they compile without rewriting `wwwroot/dnf.css` (it is still generated when it does not exist) |
 | A utility class has no effect | it was not in a scanned file at the last build: rebuild; build class names in full, never from string pieces |
 
@@ -359,7 +361,7 @@ testing and linting targets in [testing → Planned](testing.md#planned-not-impl
 
 | Item | Target | Today |
 | --- | --- | --- |
-| Node.js + npm (optional) | in `tools/`: `npm ci`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | ✔ [JavaScript lint](testing.md#javascript) |
+| Node.js + npm | the build installs the Tailwind CSS CLI with `npm ci` in `tools/`; there also `npm ci`, then `npm run lint` / `npm run lint:fix` (ESLint) for admin and theme JS/TS | ✔ [Tailwind build](../ui/styling.md#build), [JavaScript lint](testing.md#javascript) |
 | Run URL | the app is reached at `APP_URL` | Kestrel URLs come from `launchSettings.json` / `ASPNETCORE_URLS`; see [configuration → Planned](../features/configuration.md#planned-not-implemented) |
 | PostgreSQL end to end | create the database and a user; set the `Host=…` connection string; migrations; run | ✔ PostgreSQL migration set applied at startup; local server via `docker/databases/postgres.yml` |
 | Switching provider | only a `.env` change plus migrations | ✘ by design: the CMS database is PostgreSQL only; other databases are additional databases ([database configuration](../database/configuration.md)) |

@@ -30,14 +30,14 @@ foreach (var script in Files(root, ("js/admin", "*.js"), ("_content/DotNetForge.
 var tailwind = FindTailwind();
 if (tailwind is null)
 {
-    Console.WriteLine("warning: no Tailwind binary found, stylesheets are published as they are.");
+    Console.WriteLine("warning: no Tailwind CSS CLI found (tools/node_modules), stylesheets are published as they are.");
 }
 else
 {
     foreach (var stylesheet in Files(root, ("css", "*.css"), ("css/admin", "*.css")))
     {
         var output = Path.GetTempFileName();
-        var process = Process.Start(new ProcessStartInfo(tailwind, ["--input", stylesheet, "--output", output, "--minify"])
+        var process = Process.Start(new ProcessStartInfo("node", [tailwind, "--input", stylesheet, "--output", output, "--minify"])
         {
             RedirectStandardError = true,
             RedirectStandardOutput = true,
@@ -79,20 +79,15 @@ static long Keep(string file, string source, string minified)
 
 static void Warn(string file, string problem) => Console.WriteLine($"warning: {Path.GetFileName(file)} stays as it is: {problem}");
 
-// The binary the build already pinned and downloaded (src/DotNetForge.UI/build/Tailwind.targets).
+// The CLI the build already installed from npm (src/DotNetForge.UI/build/Tailwind.targets), run with node.
 static string? FindTailwind()
 {
-    if (Environment.GetEnvironmentVariable("DNF_TAILWIND_PATH") is { Length: > 0 } configured)
-    {
-        return configured;
-    }
-
     for (var folder = new DirectoryInfo(AppContext.BaseDirectory); folder is not null; folder = folder.Parent)
     {
-        var tools = Path.Combine(folder.FullName, "tools", "tailwind");
-        if (Directory.Exists(tools))
+        var cli = Path.Combine(folder.FullName, "tools", "node_modules", "@tailwindcss", "cli", "dist", "index.mjs");
+        if (File.Exists(cli))
         {
-            return Directory.EnumerateFiles(tools, "tailwindcss-*", SearchOption.AllDirectories).FirstOrDefault();
+            return cli;
         }
     }
 
