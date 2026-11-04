@@ -216,14 +216,14 @@ extensions. It is read-only and part of the admin area (never themed, never reac
 
 | Widget | Summarizes | Drill-down target | Today |
 | --- | --- | --- | --- |
-| Project statistics | totals: pages, content entries, published vs. draft, media items, users, extensions | [Content Manager](content-manager.md), [Settings overview](settings.md#planned-not-implemented) | partly: Pages, Media files, Users, Enabled extensions cards (no published/draft split) |
+| Project statistics | totals: pages, content entries, published vs. draft, media items, users, extensions | [Content Manager](content-manager.md), [Settings overview](environment-variables.md#planned-not-implemented) | partly: Pages, Media files, Users, Enabled extensions cards (no published/draft split) |
 | Content statistics | pages/entries by status (published, draft, scheduled, disabled), recently edited, awaiting review | Content Manager, pre-filtered | ✘ |
 | User statistics | total, active vs. disabled, new registrations over a period, users per role | [Users](users.md), [Roles](roles.md) | Users and Roles counts only |
 | Media statistics | total items, storage used, public vs. private, breakdown by file type | [Media](media.md) | Media files count only |
 | Recent activity | latest audit entries (sign-ins, content created/updated/deleted, media uploaded, extension installed, role changed) | [Audit Logs](audit-logs.md) | ✔ the 8 latest entries with **View all**; not filtered by role |
 | Installed extensions | count + list with enabled/disabled status and available updates | [Plugins](plugins.md) | Enabled extensions count only |
-| System health | database connectivity and provider, environment, storage availability, background job/queue status, error indicators | [Settings overview](settings.md#planned-not-implemented) | ✘ |
-| Update status | current CMS version, available CMS update, extensions with pending updates | [Settings overview](settings.md#planned-not-implemented), [transfer and updates](../features/transfer-and-updates.md) | CMS version only (System card) |
+| System health | database connectivity and provider, environment, storage availability, background job/queue status, error indicators | [Settings overview](environment-variables.md#planned-not-implemented) | ✘ |
+| Update status | current CMS version, available CMS update, extensions with pending updates | [Settings overview](environment-variables.md#planned-not-implemented), [transfer and updates](../features/transfer-and-updates.md) | CMS version only (System card) |
 
 **Custom widgets** ([extensions](../features/extensions.md#slots))
 

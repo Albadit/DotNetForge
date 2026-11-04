@@ -85,7 +85,7 @@ public sealed class SecurityController : AdminControllerBase
             return View(_mfa.RebuildAuthenticator(user, token) ?? _mfa.BeginAuthenticator(user));
         }
 
-        return await AddedAsync(user, "Your authenticator app is set up.");
+        return await AddedAsync(user, T["Your authenticator app is set up."]);
     }
 
     // ---- Email and SMS codes ----------------------------------------------------------------------------------------
@@ -146,7 +146,7 @@ public sealed class SecurityController : AdminControllerBase
             return View("Code", new CodeSetupViewModel(type, target ?? string.Empty, token ?? string.Empty));
         }
 
-        return await AddedAsync(user, type == MfaMethodType.Sms ? "SMS codes are on." : "Email codes are on.");
+        return await AddedAsync(user, type == MfaMethodType.Sms ? T["SMS codes are on."] : T["Email codes are on."]);
     }
 
     // ---- Passkeys (passkeys.js) -------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ public sealed class SecurityController : AdminControllerBase
     {
         if (await CurrentAsync() is not { } user || !(await _settings.GetAsync(HttpContext.RequestAborted)).Passkeys)
         {
-            return Json(new { error = "Passkeys are turned off." });
+            return Json(new { error = T["Passkeys are turned off."] });
         }
 
         var ceremony = await _mfa.BeginPasskeyRegistrationAsync(user, HttpContext.RequestAborted);
@@ -170,7 +170,7 @@ public sealed class SecurityController : AdminControllerBase
     {
         if (await CurrentAsync() is not { } user || !(await _settings.GetAsync(HttpContext.RequestAborted)).Passkeys)
         {
-            return Json(new { error = "Passkeys are turned off." });
+            return Json(new { error = T["Passkeys are turned off."] });
         }
 
         // CompletePasskeyRegistrationAsync writes the user.mfa.added audit entry.
@@ -179,7 +179,7 @@ public sealed class SecurityController : AdminControllerBase
             return Json(new { error });
         }
 
-        var next = await AddedAsync(user, "Your passkey is added.");
+        var next = await AddedAsync(user, T["Your passkey is added."]);
         return Json(new { redirect = ((RedirectToActionResult)next).ActionName == nameof(RecoveryCodes) ? "/admin/profile/security/recovery-codes" : "/admin/profile/security" });
     }
 
@@ -223,13 +223,13 @@ public sealed class SecurityController : AdminControllerBase
         // RemoveAsync writes the user.mfa.removed audit entry.
         if (!await _mfa.RemoveAsync(user, id, HttpContext.RequestAborted))
         {
-            TempData["Error"] = "That method no longer exists.";
+            TempData["Error"] = T["That method no longer exists."];
         }
         else
         {
             TempData["Success"] = await _db.UserMfaMethods.AnyAsync(m => m.UserId == user.Id)
-                ? "Removed."
-                : "Removed. Two-step verification is off for your account.";
+                ? T["Removed."]
+                : T["Removed. Two-step verification is off for your account."];
         }
         return RedirectToAction(nameof(Index));
     }
@@ -249,7 +249,7 @@ public sealed class SecurityController : AdminControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["Success"] = message + " Save your recovery codes now.";
+        TempData["Success"] = message + " " + T["Save your recovery codes now."];
         TempData[RecoveryCodesKey] = string.Join(' ', await _mfa.GenerateRecoveryCodesAsync(user, HttpContext.RequestAborted));
         return RedirectToAction(nameof(RecoveryCodes));
     }

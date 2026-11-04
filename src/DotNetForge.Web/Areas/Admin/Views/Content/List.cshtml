@@ -2,7 +2,7 @@
 @{
     var type = Model.Type;
     ViewData["Title"] = type.Name;
-    ViewData["Description"] = string.IsNullOrEmpty(type.Description) ? $"Entries of {type.Name}. Show them on pages with a content list." : type.Description;
+    ViewData["Description"] = string.IsNullOrEmpty(type.Description) ? T["Entries of {0}. Show them on pages with a content list.", type.Name] : type.Description;
     var anyDeletable = Model.Rows.Any(r => r.CanDelete);
     var colspan = 4 + Model.Columns.Count + (anyDeletable ? 1 : 0);
 
@@ -19,25 +19,27 @@
 @section Actions {
     @if (Model.CanEditType)
     {
-        <a class="dnf-button dnf-button--secondary" href="/admin/content-types/@type.Id"><dnf-icon name="layers" /> Fields</a>
+        <a class="dnf-button dnf-button--secondary" href="/admin/content-types/@type.Id"><dnf-icon name="layers" /> @T["Fields"]</a>
     }
     @if (Model.CanCreate)
     {
-        <a class="dnf-button dnf-button--primary" href="/admin/content/@type.Slug/new"><dnf-icon name="plus" /> New entry</a>
+        <a class="dnf-button dnf-button--primary" href="/admin/content/@type.Slug/new"><dnf-icon name="plus" /> @T["New entry"]</a>
     }
 }
 
 <section class="dnf-card" aria-labelledby="entries-title" data-collection>
     <div class="dnf-card__header">
         <div>
-            <h2 class="dnf-card__title" id="entries-title">Entries</h2>
-            <p class="dnf-card__description">@Model.Total @(Model.Total == 1 ? "entry" : "entries")@(Model.Search is { Length: > 0 } || Model.Status is not null ? " match" : "")</p>
+            <h2 class="dnf-card__title" id="entries-title">@T["Entries"]</h2>
+            <p class="dnf-card__description">@(Model.Search is { Length: > 0 } || Model.Status is not null
+                ? (Model.Total == 1 ? T["1 entry match"] : T["{0} entries match", Model.Total])
+                : (Model.Total == 1 ? T["1 entry"] : T["{0} entries", Model.Total]))</p>
         </div>
-        <nav class="dnf-segmented" aria-label="Status">
-            <a class="dnf-segmented__item" href="@Model.Url(q => q["status"] = null)" aria-current="@(Model.Status is null ? "true" : null)">All</a>
-            <a class="dnf-segmented__item" href="@Model.Url(q => q["status"] = "published")" aria-current="@(Model.Status == "published" ? "true" : null)">Published</a>
-            <a class="dnf-segmented__item" href="@Model.Url(q => q["status"] = "changed")" aria-current="@(Model.Status == "changed" ? "true" : null)">Changed</a>
-            <a class="dnf-segmented__item" href="@Model.Url(q => q["status"] = "draft")" aria-current="@(Model.Status == "draft" ? "true" : null)">Draft</a>
+        <nav class="dnf-segmented" aria-label="@T["Status"]">
+            <a class="dnf-segmented__item" href="@Model.Url(q => q["status"] = null)" aria-current="@(Model.Status is null ? "true" : null)">@T["All"]</a>
+            <a class="dnf-segmented__item" href="@Model.Url(q => q["status"] = "published")" aria-current="@(Model.Status == "published" ? "true" : null)">@T["Published"]</a>
+            <a class="dnf-segmented__item" href="@Model.Url(q => q["status"] = "changed")" aria-current="@(Model.Status == "changed" ? "true" : null)">@T["Changed"]</a>
+            <a class="dnf-segmented__item" href="@Model.Url(q => q["status"] = "draft")" aria-current="@(Model.Status == "draft" ? "true" : null)">@T["Draft"]</a>
         </nav>
     </div>
 
@@ -45,12 +47,12 @@
         <form method="get" action="/admin/content/@type.Slug" class="dnf-toolbar" role="search">
             @if (anyDeletable)
             {
-                <label class="dnf-check" aria-label="Select all entries" data-js-only hidden><input type="checkbox" class="dnf-checkbox" data-select-all /></label>
+                <label class="dnf-check" aria-label="@T["Select all entries"]" data-js-only hidden><input type="checkbox" class="dnf-checkbox" data-select-all /></label>
             }
             <div class="dnf-toolbar__search dnf-input-group">
                 <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
-                <label class="sr-only" for="entry-search">Search entries</label>
-                <input id="entry-search" type="search" name="q" value="@Model.Search" class="dnf-input dnf-input--sm" placeholder="Search @type.Name.ToLowerInvariant()" />
+                <label class="sr-only" for="entry-search">@T["Search entries"]</label>
+                <input id="entry-search" type="search" name="q" value="@Model.Search" class="dnf-input dnf-input--sm" placeholder="@T["Search {0}", type.Name.ToLowerInvariant()]" />
             </div>
             @if (Model.Status is not null)
             {
@@ -64,28 +66,28 @@
             {
                 <input type="hidden" name="desc" value="true" />
             }
-            <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm">Search</button>
+            <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm">@T["Search"]</button>
             @if (Model.Search is { Length: > 0 })
             {
-                <a class="dnf-button dnf-button--ghost dnf-button--sm" href="@Model.Url(q => q["q"] = null)">Clear</a>
+                <a class="dnf-button dnf-button--ghost dnf-button--sm" href="@Model.Url(q => q["q"] = null)">@T["Clear"]</a>
             }
             @if (Model.CanReorder && Model.Rows.Count > 1)
             {
                 <span class="dnf-toolbar__spacer"></span>
-                <span class="text-xs text-subtle" data-js-only hidden><dnf-icon name="grip" size="Sm" /> Drag rows, or use Move up and Move down in their menu, to set the order content lists use by default</span>
+                <span class="text-xs text-subtle" data-js-only hidden><dnf-icon name="grip" size="Sm" /> @T["Drag rows, or use Move up and Move down in their menu, to set the order content lists use by default"]</span>
             }
         </form>
 
         @if (anyDeletable)
         {
             <form method="post" action="/admin/content/@type.Slug/delete-selected" id="bulkDelete" class="dnf-bulk-bar" data-bulk-bar hidden
-                  data-confirm="Delete the selected entries? Pages that show them stop showing them." data-confirm-title="Delete entries" data-confirm-action="Delete entries">
+                  data-confirm="@T["Delete the selected entries? Pages that show them stop showing them."]" data-confirm-title="@T["Delete entries"]" data-confirm-action="@T["Delete entries"]">
                 @Html.AntiForgeryToken()
-                <label class="dnf-check" aria-label="Select all entries"><input type="checkbox" class="dnf-checkbox" data-select-all /></label>
-                <span class="dnf-bulk-bar__count" data-bulk-count>0 selected</span>
+                <label class="dnf-check" aria-label="@T["Select all entries"]"><input type="checkbox" class="dnf-checkbox" data-select-all /></label>
+                <span class="dnf-bulk-bar__count" data-bulk-count>@T["{0} selected", 0]</span>
                 <span class="flex-auto"></span>
-                <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" data-bulk-clear>Clear</button>
-                <button type="submit" class="dnf-button dnf-button--danger dnf-button--sm"><dnf-icon name="trash" size="Sm" /> Delete selected</button>
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" data-bulk-clear>@T["Clear"]</button>
+                <button type="submit" class="dnf-button dnf-button--danger dnf-button--sm"><dnf-icon name="trash" size="Sm" /> @T["Delete selected"]</button>
             </form>
         }
     </div>
@@ -96,16 +98,16 @@
                 <tr>
                     @if (anyDeletable)
                     {
-                        <th scope="col" class="dnf-table__cell--check"><span class="sr-only">Select</span></th>
+                        <th scope="col" class="dnf-table__cell--check"><span class="sr-only">@T["Select"]</span></th>
                     }
-                    <th scope="col" aria-sort="@AriaSort("title")"><a class="dnf-table__sort" href="@SortUrl("title")">Title <dnf-icon name="@SortIcon("title")" size="Sm" /></a></th>
+                    <th scope="col" aria-sort="@AriaSort("title")"><a class="dnf-table__sort" href="@SortUrl("title")">@T["Title"] <dnf-icon name="@SortIcon("title")" size="Sm" /></a></th>
                     @foreach (var (key, label) in Model.Columns)
                     {
                         <th scope="col" aria-sort="@AriaSort(key)"><a class="dnf-table__sort" href="@SortUrl(key)">@label <dnf-icon name="@SortIcon(key)" size="Sm" /></a></th>
                     }
-                    <th scope="col">Status</th>
-                    <th scope="col" aria-sort="@AriaSort("updatedAt")"><a class="dnf-table__sort" href="@SortUrl("updatedAt")">Updated <dnf-icon name="@SortIcon("updatedAt")" size="Sm" /></a></th>
-                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
+                    <th scope="col">@T["Status"]</th>
+                    <th scope="col" aria-sort="@AriaSort("updatedAt")"><a class="dnf-table__sort" href="@SortUrl("updatedAt")">@T["Updated"] <dnf-icon name="@SortIcon("updatedAt")" size="Sm" /></a></th>
+                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">@T["Actions"]</span></th>
                 </tr>
             </thead>
             <tbody data-entry-rows="@(Model.CanReorder ? $"/admin/content/{type.Slug}/reorder" : null)">
@@ -119,7 +121,7 @@
                             <td class="dnf-table__cell--check">
                                 @if (row.CanDelete)
                                 {
-                                    <label class="dnf-check" aria-label="Select @title"><input type="checkbox" class="dnf-checkbox" name="ids" value="@e.Id" form="bulkDelete" data-select-item /></label>
+                                    <label class="dnf-check" aria-label="@T["Select {0}", title]"><input type="checkbox" class="dnf-checkbox" name="ids" value="@e.Id" form="bulkDelete" data-select-item /></label>
                                 }
                             </td>
                         }
@@ -136,52 +138,52 @@
                         {
                             <td data-label="@Model.Columns[i].Label">@row.Columns[i]</td>
                         }
-                        <td data-label="Status">
+                        <td data-label="@T["Status"]">
                             @if (!e.Published)
                             {
-                                <dnf-badge tone="Neutral" dot="true">Draft</dnf-badge>
+                                <dnf-badge tone="Neutral" dot="true">@T["Draft"]</dnf-badge>
                             }
                             else if (e.HasDraft)
                             {
-                                <dnf-badge tone="Warning" dot="true">Changed</dnf-badge>
+                                <dnf-badge tone="Warning" dot="true">@T["Changed"]</dnf-badge>
                             }
                             else
                             {
-                                <dnf-badge tone="Success" dot="true">Published</dnf-badge>
+                                <dnf-badge tone="Success" dot="true">@T["Published"]</dnf-badge>
                             }
                         </td>
-                        <td data-label="Updated"><dnf-timestamp value="@e.UpdatedDate" /></td>
+                        <td data-label="@T["Updated"]"><dnf-timestamp value="@e.UpdatedDate" /></td>
                         <td class="dnf-table__cell--actions">
-                            <dnf-dropdown label="Actions for @title">
-                                <dnf-dropdown-link href="/admin/content/@type.Slug/@e.Id" icon="@(row.CanEdit ? "pencil" : "eye")">@(row.CanEdit ? "Edit" : "View")</dnf-dropdown-link>
+                            <dnf-dropdown label="@T["Actions for {0}", title]">
+                                <dnf-dropdown-link href="/admin/content/@type.Slug/@e.Id" icon="@(row.CanEdit ? "pencil" : "eye")">@(row.CanEdit ? T["Edit"] : T["View"])</dnf-dropdown-link>
                                 @if (Model.CanCreate)
                                 {
-                                    <dnf-dropdown-post action="/admin/content/@type.Slug/@e.Id/duplicate" icon="copy">Duplicate</dnf-dropdown-post>
+                                    <dnf-dropdown-post action="/admin/content/@type.Slug/@e.Id/duplicate" icon="copy">@T["Duplicate"]</dnf-dropdown-post>
                                 }
                                 @if (Model.CanReorder && row != Model.Rows[0])
                                 {
-                                    <dnf-dropdown-button icon="chevron-up" data-entry-move="up" data-js-only hidden>Move up</dnf-dropdown-button>
+                                    <dnf-dropdown-button icon="chevron-up" data-entry-move="up" data-js-only hidden>@T["Move up"]</dnf-dropdown-button>
                                 }
                                 @if (Model.CanReorder && row != Model.Rows[Model.Rows.Count - 1])
                                 {
-                                    <dnf-dropdown-button icon="chevron-down" data-entry-move="down" data-js-only hidden>Move down</dnf-dropdown-button>
+                                    <dnf-dropdown-button icon="chevron-down" data-entry-move="down" data-js-only hidden>@T["Move down"]</dnf-dropdown-button>
                                 }
                                 @if (Model.CanPublish)
                                 {
                                     if (!e.Published || e.HasDraft)
                                     {
-                                        <dnf-dropdown-post action="/admin/content/@type.Slug/@e.Id/publish" icon="send" field-returnTo="list">@(e.Published ? "Publish changes" : "Publish")</dnf-dropdown-post>
+                                        <dnf-dropdown-post action="/admin/content/@type.Slug/@e.Id/publish" icon="send" field-returnTo="list">@(e.Published ? T["Publish changes"] : T["Publish"])</dnf-dropdown-post>
                                     }
                                     if (e.Published)
                                     {
-                                        <dnf-dropdown-post action="/admin/content/@type.Slug/@e.Id/unpublish" icon="eye-off" field-returnTo="list">Unpublish</dnf-dropdown-post>
+                                        <dnf-dropdown-post action="/admin/content/@type.Slug/@e.Id/unpublish" icon="eye-off" field-returnTo="list">@T["Unpublish"]</dnf-dropdown-post>
                                     }
                                 }
                                 @if (row.CanDelete)
                                 {
                                     <dnf-dropdown-separator />
                                     <dnf-dropdown-post action="/admin/content/@type.Slug/@e.Id/delete" icon="trash" danger="true"
-                                               confirm="Delete '@title'? Pages that show it stop showing it. This can't be undone." confirm-title="Delete entry" confirm-action="Delete">Delete</dnf-dropdown-post>
+                                               confirm="@T["Delete '{0}'? Pages that show it stop showing it. This can't be undone.", title]" confirm-title="@T["Delete entry"]" confirm-action="@T["Delete"]">@T["Delete"]</dnf-dropdown-post>
                                 }
                             </dnf-dropdown>
                         </td>
@@ -193,14 +195,14 @@
                         <td colspan="@colspan">
                             @if (Model.Search is { Length: > 0 } || Model.Status is not null)
                             {
-                                <text>No entry matches. <a href="/admin/content/@type.Slug">Show all entries</a></text>
+                                <text>@T["No entry matches."] <a href="/admin/content/@type.Slug">@T["Show all entries"]</a></text>
                             }
                             else
                             {
-                                <text>No entries yet.</text>
+                                <text>@T["No entries yet."]</text>
                                 @if (Model.CanCreate)
                                 {
-                                    <a href="/admin/content/@type.Slug/new">Create the first one</a>
+                                    <a href="/admin/content/@type.Slug/new">@T["Create the first one"]</a>
                                 }
                             }
                         </td>
@@ -212,12 +214,12 @@
 
     @if (Model.PageCount > 1)
     {
-        <nav class="dnf-pagination" aria-label="Pages">
-            <span>Page @Model.Page of @Model.PageCount</span>
+        <nav class="dnf-pagination" aria-label="@T["Pages"]">
+            <span>@T["Page {0} of {1}", Model.Page, Model.PageCount]</span>
             <div class="dnf-pagination__pages">
                 @if (Model.Page > 1)
                 {
-                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="@Model.Url(q => q["page"] = (Model.Page - 1).ToString())" rel="prev"><dnf-icon name="chevron-left" size="Sm" /> Previous</a>
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="@Model.Url(q => q["page"] = (Model.Page - 1).ToString())" rel="prev"><dnf-icon name="chevron-left" size="Sm" /> @T["Previous"]</a>
                 }
                 @for (var p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.PageCount, Model.Page + 2); p++)
                 {
@@ -226,7 +228,7 @@
                 }
                 @if (Model.Page < Model.PageCount)
                 {
-                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="@Model.Url(q => q["page"] = (Model.Page + 1).ToString())" rel="next">Next <dnf-icon name="chevron-right" size="Sm" /></a>
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="@Model.Url(q => q["page"] = (Model.Page + 1).ToString())" rel="next">@T["Next"] <dnf-icon name="chevron-right" size="Sm" /></a>
                 }
             </div>
         </nav>

@@ -1,4 +1,5 @@
 /** Right-click menu for the canvas and the layers panel. */
+import { t } from "./i18n.js";
 import { jsx, useEffect, useRef } from "./vdom.js";
 import { signal } from "../core/signal.js";
 import { resetBreakpoint } from "../core/commands.js";
@@ -39,36 +40,36 @@ export function ContextMenu({ actions }) {
     const bp = session.breakpoint.value;
     const groups = [
         [
-            { label: 'Edit text', icon: 'text', keys: 'Enter', run: () => inline.start(sel[0]), disabled: !first || !inline.canEdit(first.id) },
-            { label: 'Select parent', icon: 'up', keys: 'Esc', run: () => actions.selectParent(), disabled: !first?.parent },
+            { label: t("Edit text"), icon: 'text', keys: 'Enter', run: () => inline.start(sel[0]), disabled: !first || !inline.canEdit(first.id) },
+            { label: t("Select parent"), icon: 'up', keys: 'Esc', run: () => actions.selectParent(), disabled: !first?.parent },
         ],
         [
-            { label: 'Copy', icon: 'copy', keys: 'Ctrl+C', run: () => actions.copy(), disabled: !sel.length || isRoot },
-            { label: 'Cut', keys: 'Ctrl+X', run: () => actions.cut(), disabled: !layout || !sel.length || isRoot },
-            { label: 'Paste', keys: 'Ctrl+V', run: () => actions.paste(), disabled: !layout },
-            { label: 'Duplicate', icon: 'duplicate', keys: 'Ctrl+D', run: () => actions.duplicate(), disabled: !layout || !sel.length || isRoot },
+            { label: t("Copy"), icon: 'copy', keys: 'Ctrl+C', run: () => actions.copy(), disabled: !sel.length || isRoot },
+            { label: t("Cut"), keys: 'Ctrl+X', run: () => actions.cut(), disabled: !layout || !sel.length || isRoot },
+            { label: t("Paste"), keys: 'Ctrl+V', run: () => actions.paste(), disabled: !layout },
+            { label: t("Duplicate"), icon: 'duplicate', keys: 'Ctrl+D', run: () => actions.duplicate(), disabled: !layout || !sel.length || isRoot },
         ],
         [
-            { label: 'Bring to front', keys: 'Ctrl+Shift+]', run: () => actions.moveToEnd('front'), disabled: !layout || !first?.parent },
-            { label: 'Bring forward', keys: 'Ctrl+]', run: () => actions.reorder(1), disabled: !layout || !first?.parent },
-            { label: 'Send backward', keys: 'Ctrl+[', run: () => actions.reorder(-1), disabled: !layout || !first?.parent },
-            { label: 'Send to back', keys: 'Ctrl+Shift+[', run: () => actions.moveToEnd('back'), disabled: !layout || !first?.parent },
+            { label: t("Bring to front"), keys: 'Ctrl+Shift+]', run: () => actions.moveToEnd('front'), disabled: !layout || !first?.parent },
+            { label: t("Bring forward"), keys: 'Ctrl+]', run: () => actions.reorder(1), disabled: !layout || !first?.parent },
+            { label: t("Send backward"), keys: 'Ctrl+[', run: () => actions.reorder(-1), disabled: !layout || !first?.parent },
+            { label: t("Send to back"), keys: 'Ctrl+Shift+[', run: () => actions.moveToEnd('back'), disabled: !layout || !first?.parent },
         ],
         [
-            { label: 'Group selection', icon: 'wrap', keys: 'Ctrl+G', run: () => actions.wrap(), disabled: !layout || !sel.length || isRoot },
-            { label: 'Frame selection', icon: 'frame', keys: 'Ctrl+Alt+G', run: () => actions.wrap(), disabled: !layout || !sel.length || isRoot },
-            { label: 'Ungroup', icon: 'unwrap', keys: 'Ctrl+Shift+G', run: () => actions.unwrap(), disabled: !layout || first?.type !== 'container' },
-            { label: 'Add auto layout', icon: 'stackV', keys: 'Shift+A', run: () => actions.addAutoLayout(), disabled: !layout || !sel.length || isRoot },
-            { label: 'Remove auto layout', icon: 'free', keys: 'Alt+Shift+A', run: () => actions.removeAutoLayout(), disabled: !layout || !first?.children || first?.locked },
+            { label: t("Group selection"), icon: 'wrap', keys: 'Ctrl+G', run: () => actions.wrap(), disabled: !layout || !sel.length || isRoot },
+            { label: t("Frame selection"), icon: 'frame', keys: 'Ctrl+Alt+G', run: () => actions.wrap(), disabled: !layout || !sel.length || isRoot },
+            { label: t("Ungroup"), icon: 'unwrap', keys: 'Ctrl+Shift+G', run: () => actions.unwrap(), disabled: !layout || first?.type !== 'container' },
+            { label: t("Add auto layout"), icon: 'stackV', keys: 'Shift+A', run: () => actions.addAutoLayout(), disabled: !layout || !sel.length || isRoot },
+            { label: t("Remove auto layout"), icon: 'free', keys: 'Alt+Shift+A', run: () => actions.removeAutoLayout(), disabled: !layout || !first?.children || first?.locked },
         ],
         [
-            { label: first?.hidden ? 'Show' : 'Hide', icon: first?.hidden ? 'eye' : 'eyeOff', keys: 'Ctrl+Shift+H', run: () => actions.toggleHidden(), disabled: !layout || !sel.length || isRoot },
-            { label: first?.locked ? 'Unlock' : 'Lock', icon: first?.locked ? 'unlock' : 'lock', keys: 'Ctrl+Shift+L', run: () => actions.toggleLocked(), disabled: !layout || !sel.length || isRoot },
-            { label: 'Rename', keys: 'Ctrl+R', run: () => actions.rename(), disabled: !layout || !sel.length || isRoot },
-            ...(bp !== 'base' ? [{ label: 'Reset ' + (bp === 'tablet' ? 'tablet' : 'mobile') + ' changes', icon: 'restore', run: () => resetBreakpoint(store, sel, bp, ['style', 'layout', 'place']), disabled: !layout || !sel.length }] : []),
+            { label: first?.hidden ? t("Show") : t("Hide"), icon: first?.hidden ? 'eye' : 'eyeOff', keys: 'Ctrl+Shift+H', run: () => actions.toggleHidden(), disabled: !layout || !sel.length || isRoot },
+            { label: first?.locked ? t("Unlock") : t("Lock"), icon: first?.locked ? 'unlock' : 'lock', keys: 'Ctrl+Shift+L', run: () => actions.toggleLocked(), disabled: !layout || !sel.length || isRoot },
+            { label: t("Rename"), keys: 'Ctrl+R', run: () => actions.rename(), disabled: !layout || !sel.length || isRoot },
+            ...(bp !== 'base' ? [{ label: bp === 'tablet' ? t("Reset tablet changes") : t("Reset mobile changes"), icon: 'restore', run: () => resetBreakpoint(store, sel, bp, ['style', 'layout', 'place']), disabled: !layout || !sel.length }] : []),
         ],
         [
-            { label: 'Delete', icon: 'trash', keys: 'Del', run: () => actions.remove(), disabled: !layout || !sel.length || isRoot, danger: true },
+            { label: t("Delete"), icon: 'trash', keys: 'Del', run: () => actions.remove(), disabled: !layout || !sel.length || isRoot, danger: true },
         ],
     ];
     const w = 260, h = 560;

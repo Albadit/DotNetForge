@@ -1,7 +1,7 @@
 @using DotNetForge.Web.Areas.Admin.Navigation
 @model ModulePlaceholderViewModel
 @{
-    ViewData["Title"] = Model.Title;
+    ViewData["Title"] = T[Model.Title];
     var path = Context.Request.Path.Value?.TrimEnd('/');
     var icon = AdminNavigation.Tree
         .SelectMany(s => s.Links.Concat(s.Groups.SelectMany(g => g.Links)))
@@ -9,13 +9,13 @@
 }
 
 <section class="dnf-card">
-    <dnf-empty-state icon="@icon" title="@Model.Title is coming soon" description="@Model.Description">
-        <a class="dnf-button dnf-button--secondary" href="/admin"><dnf-icon name="chevron-left" /> Back to dashboard</a>
+    <dnf-empty-state icon="@icon" title="@T["{0} is coming soon", T[Model.Title]]" description="@T[Model.Description]">
+        <a class="dnf-button dnf-button--secondary" href="/admin"><dnf-icon name="chevron-left" /> @T["Back to dashboard"]</a>
     </dnf-empty-state>
     <div class="dnf-card__footer">
         <span class="text-sm text-muted grow min-w-0">
-            <dnf-badge tone="Primary">Planned</dnf-badge>
-            The planned behaviour is described in <code>@Model.DocPath</code>, section "Planned (not implemented)".
+            <dnf-badge tone="Primary">@T["Planned"]</dnf-badge>
+            @T["The planned behaviour is described in"] <code>@Model.DocPath</code>@T[", section \"Planned (not implemented)\"."]
         </span>
     </div>
 </section>

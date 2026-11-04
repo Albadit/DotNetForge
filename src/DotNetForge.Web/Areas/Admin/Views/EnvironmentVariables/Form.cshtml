@@ -1,0 +1,92 @@
+@using DotNetForge.Web.Services
+@model EnvironmentVariablesController.EnvironmentVariableFormModel
+@{
+    var input = Model.Input;
+    ViewData["PageWidth"] = "narrow";
+    ViewData["Title"] = Model.IsNew ? T["Add Environment Variable"] : T["Edit {0}", input.Key ?? ""];
+    var environment = input.Environment ?? string.Empty;
+}
+
+<form method="post" action="/admin/environment-variables/save" class="dnf-card" aria-label="@ViewData["Title"]">
+    @Html.AntiForgeryToken()
+    @if (!Model.IsNew)
+    {
+        <input type="hidden" name="Id" value="@input.Id" />
+    }
+    <div class="dnf-card__body dnf-stack">
+        <dnf-validation-summary />
+
+        <fieldset class="dnf-fieldset">
+            <legend class="dnf-fieldset__legend">@T["Type"]</legend>
+            <div class="dnf-choice-cards dnf-choice-cards--wide">
+                <label class="dnf-choice-card dnf-choice-card--detailed">
+                    <input type="radio" name="IsSecret" value="true" checked="@(input.IsSecret ? "checked" : null)" />
+                    <span class="dnf-choice-card__text">
+                        <span class="dnf-choice-card__title"><dnf-icon name="lock" size="Sm" /> @T["Secret"]</span>
+                        <span class="dnf-choice-card__description">@T["You can't reveal this value after saving. Use for passwords, API keys and tokens."]</span>
+                    </span>
+                </label>
+                <label class="dnf-choice-card dnf-choice-card--detailed">
+                    <input type="radio" name="IsSecret" value="false" checked="@(input.IsSecret ? null : "checked")" />
+                    <span class="dnf-choice-card__text">
+                        <span class="dnf-choice-card__title"><dnf-icon name="code" size="Sm" /> @T["Config"]</span>
+                        <span class="dnf-choice-card__description">@T["Readable after saving for users with access. Use for values that aren't sensitive."]</span>
+                    </span>
+                </label>
+            </div>
+        </fieldset>
+
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="Key">@T["Key"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
+            @if (Model.IsNew)
+            {
+                <input id="Key" name="Key" value="@input.Key" required maxlength="@EnvironmentVariableService.MaxKeyLength" class="dnf-input dnf-input--mono"
+                       placeholder="CLIENT_KEY" autocomplete="off" spellcheck="false" autofocus />
+            }
+            else
+            {
+                <input id="Key" name="Key" value="@input.Key" readonly class="dnf-input dnf-input--mono" aria-describedby="key-hint" />
+                <span class="dnf-field__description" id="key-hint">@T["A key can't be renamed: add a new variable and delete this one."]</span>
+            }
+        </div>
+
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="Value">@T["Value"]</label>
+            <div class="dnf-input-group">
+                <input id="Value" name="Value" type="password" value="@input.Value" maxlength="@EnvironmentVariableService.MaxValueLength" class="dnf-input dnf-input--mono"
+                       placeholder="@(Model.WasSecret ? T["Leave empty to keep the current secret"] : T["Enter a value"])" autocomplete="off" spellcheck="false"
+                       aria-describedby="@(Model.WasSecret ? "value-hint" : null)" autofocus="@(Model.IsNew ? null : "autofocus")" />
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-input-group__action" data-reveal="#Value"
+                        aria-pressed="false" aria-label="@T["Show value"]" data-js-only hidden>
+                    <dnf-icon name="eye" data-reveal-icon="show" />
+                    <dnf-icon name="eye-off" data-reveal-icon="hide" hidden />
+                </button>
+            </div>
+            @if (Model.WasSecret)
+            {
+                <span class="dnf-field__description" id="value-hint">@T["The saved secret can't be shown. Enter a new value to replace it."]</span>
+            }
+        </div>
+
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="Note">@T["Note"]<span class="dnf-field__optional">@T["optional"]</span></label>
+            <input id="Note" name="Note" value="@input.Note" maxlength="@EnvironmentVariableService.MaxNoteLength" class="dnf-input"
+                   placeholder="@T["Where to rotate it, or who to contact"]" />
+        </div>
+
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="Environment">@T["Environment"]</label>
+            <select id="Environment" name="Environment" class="dnf-select" aria-describedby="environment-hint">
+                @foreach (var option in EnvironmentVariableService.Environments)
+                {
+                    <option value="@option" selected="@(option == environment ? "selected" : null)">@(option.Length == 0 ? T["All Environments"] : T[option])</option>
+                }
+            </select>
+            <span class="dnf-field__description" id="environment-hint">@T["A value for one environment wins over the one for all environments there. This site runs in {0}.", T[DotNetForge.Shared.Entities.SettingEnvironment.Current]]</span>
+        </div>
+    </div>
+    <div class="dnf-card__footer">
+        <a class="dnf-button dnf-button--ghost" href="/admin/environment-variables">@T["Cancel"]</a>
+        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> @T["Save"]</button>
+    </div>
+</form>

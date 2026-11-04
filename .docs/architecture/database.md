@@ -53,6 +53,10 @@ erDiagram
     ContentType ||--o{ ContentEntry : "ContentTypeId (no FK)"
     ContentEntry ||--o{ ContentEntryValue : "EntryId (no FK)"
     CustomEndpoint ||--o{ CustomEndpointOperation : "EndpointId (no FK)"
+    Page ||--o{ PageTranslation : "PageId (no FK)"
+    ContentEntry ||--o{ ContentEntryTranslation : "EntryId (no FK)"
+    Locale ||--o{ PageTranslation : "LocaleId (no FK)"
+    Locale ||--o{ ContentEntryTranslation : "LocaleId (no FK)"
 ```
 
 Only the six "cascade" relationships are real foreign keys. `ParentPageId` is a plain column with no FK constraint - integrity is maintained by application code (e.g. `PageService.DeleteAsync` re-parents children).
@@ -60,7 +64,9 @@ Only the six "cascade" relationships are real foreign keys. `ParentPageId` is a 
 `PagePermissionService` ignores grants of roles that no longer exist). `ContentEntry.ContentTypeId` and
 `ContentEntryValue.EntryId` are plain columns as well: `ContentEntryService` and `ContentTypeService` remove an entry's
 index rows and a type's entries in the same save, and `CustomEndpointOperation.EndpointId` is one too
-(`CustomEndpointService` saves and deletes an endpoint's operations with it). References *inside* entry JSON (media ids, linked entry ids) are not
+(`CustomEndpointService` saves and deletes an endpoint's operations with it). The translation tables' `PageId`,
+`EntryId` and `LocaleId` are plain columns too: deleting a page, an entry or a locale deletes its translations in code
+([internationalization](../features/internationalization.md)). References *inside* entry JSON (media ids, linked entry ids) are not
 constrained at all: they are checked on save and a missing one is skipped when rendering
 ([structured content](../features/structured-content.md)). `AuditLogEntry`, `InstalledExtension`, `SystemState`,
 `AuthProvider`, `MediaFile`, `ApiToken`, `Setting` and `DataProtectionKey` are standalone tables. There is one site per
@@ -71,7 +77,7 @@ removed by the `RemoveTenants` migrations).
 
 | Table (`DbSet`) | Key | Important columns | Unique indexes / constraints | Written by |
 | --- | --- | --- | --- | --- |
-| `Users` | `Guid Id` | `Email`(256), `FirstName`(100), `LastName`(100), `PasswordHash` (empty for an account created through a sign-in provider until it sets a password), `Status`, `EmailConfirmed`, `FailedLoginCount`, `LockoutEndUtc`, `LastLoginDate` | `Email` unique; `DisplayName` is computed, not stored | `InstallationStore`, `AuthService` (counters, last login), `UserManagementService`, `ProfileService` |
+| `Users` | `Guid Id` | `Email`(256), `FirstName`(100), `LastName`(100), `PasswordHash` (empty for an account created through a sign-in provider until it sets a password), `Status`, `EmailConfirmed`, `FailedLoginCount`, `LockoutEndUtc`, `LastLoginDate`, `AdminLanguage`(35, the user's own admin language; null = the site's) | `Email` unique; `DisplayName` is computed, not stored | `InstallationStore`, `AuthService` (counters, last login), `UserManagementService`, `ProfileService` |
 | `Roles` | `Guid Id` | `Name`(100), `Description`(500), `IsBuiltIn` | `Name` unique | `DataSeeder`, `RoleManagementService` |
 | `RolePermissions` | `Guid Id` | `RoleId`, `Area`(100), `Action`(100) | (`RoleId`, `Area`, `Action`) unique | `DataSeeder`, `RoleManagementService`; read by `RoleGrantStore` |
 | `UserRoles` | (`UserId`, `RoleId`) | - | composite PK | `InstallationStore`, `UserManagementService` |
@@ -87,18 +93,21 @@ removed by the `RemoveTenants` migrations).
 | `AuditLogs` | `long Id` (auto-increment) | `UserId` (null for API-token actions), `UserDisplaySnapshot`(256), `Action`(100), `EntityType`, `EntityId`(100), `EntityDisplaySnapshot`(400), `IpAddress`, `UserAgent`(512), `Timestamp`, `Details`, `Success` | indexes on `Timestamp` and `Action` | `AuditService` (`IAuditService`) only (append-only; snapshots truncated to the column lengths) |
 | `InstalledExtensions` | `string Id` (manifest id, 200) | `Name`, `Description`, `Version`, `Type`, `Author`, `Status`, `InstalledDate`, `UpdateAvailable`, `PermissionsCsv`, `Website`, `License` | - | `ExtensionLifecycleService` (upsert on enable from the manifest, `InstalledDate` on first enable; `Status` on disable; `UpdateAvailable` never); read by `ExtensionState` (enabled ids, cached 30 s), `PluginsController`, `DashboardController`, `GET /api/extensions` |
 | `SystemState` | `int Id` (always 1) | `Installed`, `InstalledAtUtc`, `CmsVersion` (default `"1.0.0"`), `SeedVersion` (one-time data updates applied, [Seeding](#seeding)) | single row | `DataSeeder`, `InstallationStore` |
-| `ContentTypes` | `Guid Id` | `Name`(100), `Slug`(64, the API id), `Description`(500), `Icon`(40), `Kind` (`ContentTypeKind`), `FieldsJson` (unbounded, the field definitions), `TitleField`(64), `Drafts`, `SortOrder`, `CreatedById`, dates | `Slug` unique | `ContentTypeService` |
+| `ContentTypes` | `Guid Id` | `Name`(100), `Slug`(64, the API id), `Description`(500), `Icon`(40), `Kind` (`ContentTypeKind`), `FieldsJson` (unbounded, the field definitions), `TitleField`(64), `Drafts`, `Localized` (entries can be translated), `SortOrder`, `CreatedById`, dates | `Slug` unique | `ContentTypeService` |
 | `ContentEntries` | `Guid Id` | `ContentTypeId`, `Title`(300), `SearchText`(1000, lower-cased), `DataJson` (working copy) / `PublishedDataJson` (published values, null = not published) - unbounded, `Published`, `HasDraft`, `PublishedDate`, `PublishedById`, `SortOrder`, `Version`, `CreatedById`, `UpdatedById`, dates | index (`ContentTypeId`, `SortOrder`) | `ContentEntryService` |
 | `ContentEntryValues` | `Guid Id` | `ContentTypeId`, `EntryId`, `Published` (which version), `Field`(100), `Text`(200, lower-cased), `Number` (double), `Date` | indexes (`ContentTypeId`, `Published`, `Field`, `Text`), (`ContentTypeId`, `Published`, `Field`, `Number`), (`EntryId`) | `ContentEntryService` (rewritten on every save, publish and type change); read by `ContentQueryService` ([querying](../features/structured-content.md#querying)) |
 | `CustomEndpoints` | `Guid Id` | `Name`(100), `Path`(200, the base path), `Description`(500), `Access` (`EndpointAccess`), `TokenProtected` (unbounded, nullable: the endpoint's own token encrypted with Data Protection), `Enabled`, `Database`(64, nullable: the additional database its SQL runs on, lower case; null = the CMS database), `CreatedById`, dates | index on `Path` (not unique: `CustomEndpointService` refuses a second endpoint with the same base path) | `CustomEndpointService` ([custom endpoints](../features/custom-endpoints.md)) |
 | `EmailLog` | `Guid Id` | `SentAt`, `Recipient`(320), `Subject`(500), `Template`(100)?, `Success`, `Error`(300)? | `SentAt` | `LoggingEmailSender` - one row per send attempt, kept 30 days ([Email Configuration](../pages/email-configuration.md#email-log)) |
 | `EmailTemplates` | `Guid Id` | `Key`(100), `Subject`(500), `Body` (unbounded; the service caps it at 20 000), `UpdatedDate`, `UpdatedById` | `Key` unique | `EmailTemplateService` - a row only while a template is customized ([email templates](../pages/email-templates.md)) |
 | `CustomEndpointOperations` | `Guid Id` | `EndpointId`, `Name`(100, nullable), `Method`(10), `Path`(200, the sub-path; empty = the endpoint's path), `Sql` and `ParametersJson` (unbounded), `Result` (`EndpointResultShape`), `TimeoutSeconds`, `MaxRows`, `SortOrder` | (`EndpointId`, `Method`, `Path`) unique; one method + path shape across all endpoints is checked by `CustomEndpointService` | `CustomEndpointService` (saved and deleted with the endpoint); run by `SqlEndpointRunner` |
-| `Settings` | `Guid Id` | `Key`(200), `Value`(4000) | `Key` unique (one value per key) | `SettingsController`; screens with their own rows: `UserAccountSettingsService` (`users.*`), `DatabaseTransferService` (`transfer.backup.*`), `MediaSettingsService` (`media.*`, [Media Library settings](../pages/media-settings.md)), `MfaSettingsService` (`mfa.*`, [Two-factor authentication](../pages/mfa.md)) |
+| `Settings` | `Guid Id` | `Key`(200), `Value`(8000: up to 4000 entered, a secret stored encrypted), `IsSecret`, `Environment`(50; `""` = all environments, else `Development` / `Staging` / `Production`), `Note`(500)?, `CreatedDate`, `UpdatedDate`, `UpdatedById`? | (`Key`, `Environment`) unique (one value per key and environment); **query filter**: only rows for all environments and for the context's `SettingEnvironment` (from `SettingEnvironment.Current` = the host environment) | `EnvironmentVariableService` ([Environment Variables](../pages/environment-variables.md); `IgnoreQueryFilters` to see every environment); screens with their own rows (`Environment` `""`): `UserAccountSettingsService` (`users.*`), `DatabaseTransferService` (`transfer.backup.*`), `MediaSettingsService` (`media.*`, [Media Library settings](../pages/media-settings.md)), `MfaSettingsService` (`mfa.*`, [Two-factor authentication](../pages/mfa.md)), `AdminLanguageService` (`i18n.adminLanguage`, [Internationalization](../pages/internationalization.md)) |
 | `TransferRecords` | `Guid Id` | `Operation`, `Status` (enums), `Provider`(50), `SourceProvider`(50)?, `FileName`(260), `StorageKey`(500)?, `SizeBytes`, `RecordCount`, `Checksum`(64)?, `Automatic`, `Note`(200)?, `Error`(2000)?, `StartedAt`, `CompletedAt`?, `InitiatedById`? | `StartedAt` | `DatabaseTransferService` - one row per export, backup, import or restore; `MediaExportService` - one per media export (`TransferOperation.MediaExport` = 4); never exported or replaced by an import ([Data Management](../pages/data-management.md)) |
 | `AuthProviders` | `Guid Id` | `Key`(50, `AuthProviderKeys`: `email`, `google`, ...), `Name`(100), `Enabled`, `IsBuiltIn` (Email), `SettingsJson`(8000: `ProviderSettings` JSON, client secret and Apple key protected with Data Protection), `UpdatedDate` (moves on every save; other instances reload the sign-in schemes when it does) | `Key` unique, `Name` unique | `DataSeeder` (one row per provider), `AuthProviderService` (Providers screen); read by `OAuthProviderRegistry` ([authentication → providers](../features/authentication.md#providers)) |
 | `UserMfaMethods` | `Guid Id` | `UserId` (FK, cascade), `Type` (`MfaMethodType`: 1 authenticator app, 2 email, 3 SMS, 4 passkey), `Name`(100), `Secret`(1000, TOTP secret protected with Data Protection), `PhoneNumber`(20, E.164), `CredentialId`(bytea, 1024) and `PublicKey`(bytea, 2048) of a passkey, `Counter` (last TOTP step / passkey signature counter), `CreatedDate`, `LastUsedDate` | indexes `UserId`, `CredentialId` (uniqueness of a credential checked by `MfaService`) | `MfaService` ([MFA](../features/mfa.md)) |
 | `UserRecoveryCodes` | `Guid Id` | `UserId` (FK, cascade), `CodeHash`(64, SHA-256 hex), `CreatedDate`, `UsedDate` | index `UserId` | `MfaService` ([recovery codes](../features/mfa.md#recovery-codes)) |
+| `Locales` | `Guid Id` | `Code`(35, BCP-47 in canonical case), `DisplayName`(100), `IsDefault`, `Enabled`, `SortOrder`, `CreatedDate` | `Code` unique; `IsDefault` unique **filtered** on `"IsDefault"` (at most one default) | `DataSeeder` (English when empty), `LocaleService` ([internationalization](../features/internationalization.md#locales)); read by `LocaleCatalog` (cached 30 s) |
+| `PageTranslations` | `Guid Id` | `PageId`, `LocaleId` (no FKs), `Title`(300), `MetaTitle`(300), `MetaDescription`(1000), `LayoutJson` / `DraftLayoutJson` (unbounded), `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`, `LayoutPublishedDate`, `UpdatedById`, `UpdatedDate` | (`PageId`, `LocaleId`) unique; index `LocaleId` | `PageTranslationService` (Translations tab, default switch), `PageBuilderController` (a translation's layout), `PagesController` (duplicate), `PageService.DeleteAsync`, `LocaleService.DeleteAsync` ([content pages](../features/internationalization.md#content-pages)) |
+| `ContentEntryTranslations` | `Guid Id` | `EntryId`, `LocaleId` (no FKs), `DataJson` (working copy of the translated values) / `PublishedDataJson` (null until published) - unbounded, `UpdatedById`, `UpdatedDate` | (`EntryId`, `LocaleId`) unique; index `LocaleId` | `EntryTranslationService`; `ContentEntryService` (publish, unpublish, duplicate, delete, field changes); `LocaleService.DeleteAsync` ([entries](../features/internationalization.md#entries)) |
 | `DataProtectionKeys` | `int Id` (auto-increment) | `FriendlyName`, `Xml` | - | ASP.NET Core Data Protection (`PersistKeysToDbContext<DotNetForgeDbContext>`) |
 
 Enums are stored as integers (`UserStatus`, `PageType`, `TokenDuration`, `ExtensionType`, `ExtensionStatus`,
@@ -107,20 +116,23 @@ Enums are stored as integers (`UserStatus`, `PageType`, `TokenDuration`, `Extens
 
 `DataProtectionKeys` holds the key ring for the auth cookie, antiforgery tokens, TempData, the custom endpoint
 tokens (`CustomEndpoints.TokenProtected`), the sign-in providers' secrets (`AuthProviders.SettingsJson`), the
-authenticator-app secrets (`UserMfaMethods.Secret`) and the webhook signing secrets (`Webhooks.Secret`), so every instance shares it and sessions survive restarts on a read-only
+authenticator-app secrets (`UserMfaMethods.Secret`), the webhook signing secrets (`Webhooks.Secret`) and the secret environment variables (`Settings.Value` where `IsSecret`), so every instance shares it and sessions survive restarts on a read-only
 filesystem. The key XML is stored **unencrypted**: anyone who can read this table can forge cookies and decrypt the
 endpoint tokens. Deleting the rows signs everyone out and makes every endpoint token unreadable (callers get `401`
 until each endpoint gets a new token with **Generate token**), and likewise makes provider secrets (re-enter them on
-[Providers](../pages/providers.md)), authenticator apps (set up again) and webhook secrets (deliveries fail with "Not
-sent" until the secret is rotated on [Webhooks](../pages/webhooks.md)) unusable.
+[Providers](../pages/providers.md)), authenticator apps (set up again) webhook secrets (deliveries fail with "Not
+sent" until the secret is rotated on [Webhooks](../pages/webhooks.md)) and secret environment variables (enter them again on
+[Environment Variables](../pages/environment-variables.md)) unusable.
 
 ### Column lengths
 
 PostgreSQL enforces `HasMaxLength` (`character varying(n)`). Input is therefore checked before
 saving so an oversized value is a validation message, not a 500: `PageService` (Title 300, Slug 200, Meta title 300,
-Meta description 1000, Keywords 500, Canonical/Target URL/File reference 2000), `SettingsController` (key 200, value
-4000), `ApiTokensController` (name 200, description 1000), `InstallationService` (email 256, names 100),
-`ContentTypeService` (name 100, API id 64, description 500), `CustomEndpointService` (endpoint name 100, path 200,
+Meta description 1000, Keywords 500, Canonical/Target URL/File reference 2000), `EnvironmentVariableService` (key 200, value
+4000, note 500), `ApiTokensController` (name 200, description 1000), `InstallationService` (email 256, names 100),
+`ContentTypeService` (name 100, API id 64, description 500), `LocaleService` (display name 100; codes ≤ 35 by
+`LocaleCodes`), `PageTranslationService` (translated title and meta title 300, meta description 1000),
+`CustomEndpointService` (endpoint name 100, path 200,
 description 500; operation name 100, full path 200); `EntryData` cuts entry titles (300), search text (1000)
 and index text (200); and `AuditService` truncates its snapshots.
 
@@ -158,6 +170,8 @@ automatically at startup:
 | `20261028135245_AddSignInProvidersAndMfa` | `AuthProviders.Key` (`character varying(50)`, unique index) and `UpdatedDate`; `AuthProviders.SettingsJson` 4000 → 8000; tables `UserMfaMethods` and `UserRecoveryCodes` (FKs to `Users`, cascade). Existing rows get their key from the name before the unique index (`Twitter/X` → `x`, otherwise the name lower-cased without non-alphanumerics: `GitHub` → `github`); `DataSeeder` then adds the missing providers and removes the never-configured old ones |
 | `20261029092426_AddWebhookDelivery` | `WebhookDeliveries.EventId` (uuid, not null, default empty GUID for existing rows), `NextAttemptDate` (nullable), `RequestBody` (`character varying(65536)`), `ResponseBody` (`character varying(4000)`); index `IX_WebhookDeliveries_Outcome_NextAttemptDate` |
 | `20261030133232_AddUserSessions` | table `UserSessions` with indexes on `UserId` and `ExpiresDate`. Cookies from before it have no session, so everyone signs in once |
+| `20261104113431_AddInternationalization` | tables `Locales` (unique `Code`, filtered unique `IsDefault`), `PageTranslations` and `ContentEntryTranslations` (unique (owner, `LocaleId`), index `LocaleId`); `Users.AdminLanguage` (`character varying(35)`, nullable); `ContentTypes.Localized` (bool, not null, default `false`: existing types are not localized). The seeder then adds English as the default locale |
+| `20261104160111_AddEnvironmentVariables` | `Settings.IsSecret` (default `false`), `Environment` (`character varying(50)`, default `''` = all environments), `Note` (500, nullable), `CreatedDate` and `UpdatedDate` (existing rows get `now()`), `UpdatedById` (nullable); `Value` 4000 → 8000; the unique index on `Key` replaced by (`Key`, `Environment`) unique |
 
 **Every schema change needs one migration** for `PostgreSqlDbContext`. Use the
 [database-change skill](../../.claude/skills/database-change/SKILL.md) or, from the repository root:
@@ -189,6 +203,7 @@ After generating:
 | Built-in roles | per role name missing | the seven roles (`IsBuiltIn = true`; a database seeded before `Developer` existed gets it on the next start) with `RolePermission` rows from `PermissionMatrix.GrantsFor(role)` |
 | Starter pages | no pages | `Home` (`/`, published), `About` (`about`, published), `News` (`news`, published), `Contact` (`contact`, not published), and under About: `Team` (`team`, published), `History` (`history`, not published) |
 | Auth providers (`SeedAuthProvidersAsync`) | **every start** | one row per `AuthProviderKeys` key that is missing: `email` (Email, enabled, built-in) and the ten OAuth providers `google`, `microsoft`, `apple`, `facebook`, `github`, `linkedin`, `x`, `discord`, `gitlab`, `twitch` (disabled); renames a row whose name differs from the catalog; removes rows whose key is not in the catalog while they are disabled and their `SettingsJson` is empty or `{}` (the Auth0, CAS, Cognito, Instagram, Keycloak, Patreon, Reddit and VK rows of earlier versions) - a configured one is kept ([authentication → providers](../features/authentication.md#providers)) |
+| Locales (`SeedLocalesAsync`) | no locale | `Locale { Code = "en", DisplayName = "English", IsDefault = true, Enabled = true }` - a new database, or one from before locales existed ([internationalization](../features/internationalization.md#locales)) |
 | System state | no row | `SystemState { Id = 1, Installed = false }` |
 | One-time updates (`UpgradeAsync`) | `SystemState.SeedVersion < DataSeeder.CurrentSeedVersion` | each missing step once, then `SeedVersion = CurrentSeedVersion`. Step 1: built-in roles with no grant in `Content types` / `Entries` get the matrix defaults of those areas ([authorization](../features/authorization.md#permission-matrix-default-grants)). Step 2: every existing user gets `EmailConfirmed = true`, so turning on email confirmation never locks out accounts that predate it ([authentication](../features/authentication.md#self-service-accounts)) |
 
@@ -207,6 +222,8 @@ the [Content types](../pages/content-types.md) screen).
 | Delete a content page | `PagesController.Delete` removes its `PagePermissions` and `PageUserPermissions` before `PageService.DeleteAsync` |
 | Delete an entry / several | `ContentEntryService.DeleteAsync` / `DeleteManyAsync` remove the entries' `ContentEntryValues` with them; entries that linked to it keep the id (skipped when rendering) |
 | Delete a custom endpoint | `CustomEndpointService.DeleteAsync` removes its `CustomEndpointOperations` in the same save |
+| Delete a locale | `LocaleService.DeleteAsync` (never the default): its `PageTranslations` and `ContentEntryTranslations`, then the locale, in one transaction |
+| Delete a page / an entry (translations) | `PageService.DeleteAsync` removes the page's `PageTranslations`; `ContentEntryService.DeleteAsync` / `DeleteManyAsync` / `DeleteAllAsync` the entries' `ContentEntryTranslations` |
 | Delete a content type | `ContentTypeService.DeleteAsync`: refused while another type links to it; its entries and index rows go in the same save (a collection with entries only with explicit confirmation) |
 | Revoke an API token | soft: `Revoked = true`, row kept |
 | Delete a webhook | `WebhookService.DeleteAsync`: its `WebhookDeliveries` go with it (cascade), pending attempts included |

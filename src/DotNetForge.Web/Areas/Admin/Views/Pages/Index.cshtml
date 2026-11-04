@@ -1,7 +1,7 @@
 @model ContentIndexViewModel
 @{
-    ViewData["Title"] = "Pages";
-    ViewData["Description"] = "Build the site's page tree, then edit each page's URL, SEO, publishing and layout. Structured content lives in the Content Manager.";
+    ViewData["Title"] = T["Pages"];
+    ViewData["Description"] = T["Build the site's page tree, then edit each page's URL, SEO, publishing and layout. Structured content lives in the Content Manager."];
     ViewData["SelectedId"] = Model.SelectedId;
     var pageCount = CountPages(Model.Tree);
 
@@ -16,18 +16,18 @@
     @* One shared form: the header button and every "add child" button in the tree submit it via formaction (POST + antiforgery). *@
     <form id="treeActions" method="post" class="inline">
         @Html.AntiForgeryToken()
-        <button type="submit" class="dnf-button dnf-button--primary" formaction="/admin/pages/create"><dnf-icon name="plus" /> New page</button>
+        <button type="submit" class="dnf-button dnf-button--primary" formaction="/admin/pages/create"><dnf-icon name="plus" /> @T["New page"]</button>
     </form>
 }
 
 <div class="dnf-content-manager">
     <aside class="dnf-card dnf-content-manager__tree" aria-labelledby="tree-title">
         <div class="dnf-card__header">
-            <h2 class="dnf-card__title" id="tree-title">Pages</h2>
+            <h2 class="dnf-card__title" id="tree-title">@T["Pages"]</h2>
             <div class="flex items-center gap-1">
                 @* Close / open every page with children at once (pages.js). *@
                 <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only" data-tree-collapse-all data-js-only hidden
-                        aria-label="Close all pages" data-tooltip="Close all">
+                        aria-label="@T["Close all pages"]" data-tooltip="@T["Close all"]">
                     <dnf-icon name="chevrons-down-up" size="Sm" />
                 </button>
                 <dnf-badge>@pageCount</dnf-badge>
@@ -36,33 +36,33 @@
         @if (pageCount > 0)
         {
             <div class="dnf-content-manager__search" data-js-only hidden>
-                <label class="sr-only" for="tree-filter">Filter pages</label>
+                <label class="sr-only" for="tree-filter">@T["Filter pages"]</label>
                 <div class="dnf-input-group">
                     <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
-                    <input id="tree-filter" type="search" class="dnf-input dnf-input--sm" placeholder="Filter pages" autocomplete="off" data-tree-filter />
+                    <input id="tree-filter" type="search" class="dnf-input dnf-input--sm" placeholder="@T["Filter pages"]" autocomplete="off" data-tree-filter />
                 </div>
             </div>
         }
         <div class="dnf-card__body">
             @if (Model.Tree.Count == 0)
             {
-                <dnf-empty-state icon="pages" title="No pages yet" description="Create the first page of your site." compact="true">
-                    <button type="submit" class="dnf-button dnf-button--primary dnf-button--sm" form="treeActions" formaction="/admin/pages/create"><dnf-icon name="plus" size="Sm" /> New page</button>
+                <dnf-empty-state icon="pages" title="@T["No pages yet"]" description="@T["Create the first page of your site."]" compact="true">
+                    <button type="submit" class="dnf-button dnf-button--primary dnf-button--sm" form="treeActions" formaction="/admin/pages/create"><dnf-icon name="plus" size="Sm" /> @T["New page"]</button>
                 </dnf-empty-state>
             }
             else
             {
                 <partial name="_TreeNodes" model="Model.Tree" />
-                <p class="text-xs text-muted" data-tree-empty hidden>No page matches the filter.</p>
+                <p class="text-xs text-muted" data-tree-empty hidden>@T["No page matches the filter."]</p>
             }
         </div>
     </aside>
 
-    <section aria-label="Page editor">
+    <section aria-label="@T["Page editor"]">
         @if (Model.Selected is null)
         {
             <div class="dnf-card">
-                <dnf-empty-state icon="pencil" title="Select a page to edit" description="Choose a page in the tree, or create a new one. Drag a page between two others, or onto one to put it inside; its child pages go with it." />
+                <dnf-empty-state icon="pencil" title="@T["Select a page to edit"]" description="@T["Choose a page in the tree, or create a new one. Drag a page between two others, or onto one to put it inside; its child pages go with it."]" />
             </div>
         }
         else
@@ -78,7 +78,7 @@
 {
     @* Move… in a page's menu opens this (pages.js sets the form's action). *@
     <form id="page-move" method="post">@Html.AntiForgeryToken()</form>
-    <partial name="_MoveDialog" model="@(new MoveDialogModel("page-move-dialog", "Move page", "parentId", "page-move", null, "pages", MoveTargets(Model.Tree, 0, Array.Empty<Guid>()).ToList()))" />
+    <partial name="_MoveDialog" model="@(new MoveDialogModel("page-move-dialog", T["Move page"], "parentId", "page-move", null, "pages", MoveTargets(Model.Tree, 0, Array.Empty<Guid>()).ToList()))" />
 }
 
 @section Scripts {

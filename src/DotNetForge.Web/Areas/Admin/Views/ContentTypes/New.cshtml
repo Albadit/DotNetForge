@@ -1,8 +1,8 @@
 @using DotNetForge.Core.Content
 @using DotNetForge.Shared.Enums
 @{
-    ViewData["Title"] = "New content type";
-    ViewData["Description"] = "Name it and choose where to start. Every field of a template can be changed afterwards.";
+    ViewData["Title"] = T["New content type"];
+    ViewData["Description"] = T["Name it and choose where to start. Every field of a template can be changed afterwards."];
     ViewData["PageWidth"] = "medium";
     var chosen = Context.Request.HasFormContentType ? Context.Request.Form["template"].ToString() : string.Empty;
     var name = Context.Request.HasFormContentType ? Context.Request.Form["name"].ToString() : string.Empty;
@@ -15,8 +15,8 @@
     <section class="dnf-card" aria-labelledby="start-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="start-title">Start from</h2>
-                <p class="dnf-card__description">A template creates the fields for you - and the types it links to (a blog also gets categories and authors).</p>
+                <h2 class="dnf-card__title" id="start-title">@T["Start from"]</h2>
+                <p class="dnf-card__description">@T["A template creates the fields for you - and the types it links to (a blog also gets categories and authors)."]</p>
             </div>
         </div>
         <div class="dnf-card__body">
@@ -25,8 +25,8 @@
                     <input type="radio" class="dnf-radio" name="template" value="" checked="@(chosen.Length == 0 ? "checked" : null)" />
                     <span class="dnf-type-icon" aria-hidden="true"><dnf-icon name="plus" /></span>
                     <span class="dnf-choice-card__text">
-                        <strong class="dnf-choice-card__title">Blank</strong>
-                        <span class="dnf-choice-card__description">A title field to start with; add your own.</span>
+                        <strong class="dnf-choice-card__title">@T["Blank"]</strong>
+                        <span class="dnf-choice-card__description">@T["A title field to start with; add your own."]</span>
                     </span>
                 </label>
                 @foreach (var template in ContentTypeTemplates.All)
@@ -35,8 +35,8 @@
                         <input type="radio" class="dnf-radio" name="template" value="@template.Id" checked="@(chosen == template.Id ? "checked" : null)" />
                         <span class="dnf-type-icon" aria-hidden="true"><dnf-icon name="@template.Icon" /></span>
                         <span class="dnf-choice-card__text">
-                            <strong class="dnf-choice-card__title">@template.Name @if (template.Kind == ContentTypeKind.Single) { <dnf-badge tone="Info">Single</dnf-badge> }</strong>
-                            <span class="dnf-choice-card__description">@template.Description</span>
+                            <strong class="dnf-choice-card__title">@T[template.Name] @if (template.Kind == ContentTypeKind.Single) { <dnf-badge tone="Info">@T["Single"]</dnf-badge> }</strong>
+                            <span class="dnf-choice-card__description">@T[template.Description]</span>
                         </span>
                     </label>
                 }
@@ -45,17 +45,17 @@
     </section>
 
     <section class="dnf-card" aria-labelledby="name-title">
-        <div class="dnf-card__header"><h2 class="dnf-card__title" id="name-title">Name</h2></div>
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="name-title">@T["Name"]</h2></div>
         <div class="dnf-card__body">
             <div class="dnf-field">
-                <label class="dnf-field__label" for="name">Name<span class="dnf-field__optional">optional with a template</span></label>
-                <input id="name" name="name" class="dnf-input" value="@name" maxlength="100" placeholder="e.g. Blog posts, Products, Team members" aria-describedby="name-hint" />
-                <span class="dnf-field__description" id="name-hint">Plural for a collection ("Products"). The API id is made from it; you can change both later.</span>
+                <label class="dnf-field__label" for="name">@T["Name"]<span class="dnf-field__optional">@T["optional with a template"]</span></label>
+                <input id="name" name="name" class="dnf-input" value="@name" maxlength="100" placeholder="@T["e.g. Blog posts, Products, Team members"]" aria-describedby="name-hint" />
+                <span class="dnf-field__description" id="name-hint">@T["Plural for a collection (\"Products\"). The API id is made from it; you can change both later."]</span>
             </div>
         </div>
         <div class="dnf-card__footer dnf-form-actions dnf-form-actions--end">
-            <a class="dnf-button dnf-button--ghost" href="/admin/content-types">Cancel</a>
-            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="plus" /> Create content type</button>
+            <a class="dnf-button dnf-button--ghost" href="/admin/content-types">@T["Cancel"]</a>
+            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="plus" /> @T["Create content type"]</button>
         </div>
     </section>
 </form>

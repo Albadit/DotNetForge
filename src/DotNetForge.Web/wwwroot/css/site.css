@@ -25,6 +25,12 @@
     .dnf-site__nav > a:is(:hover, [aria-current="page"]) { color: var(--dnf-foreground); text-decoration: none; }
     .dnf-site__nav > a[aria-current="page"] { font-weight: var(--dnf-weight-semibold); }
 
+    /* The language switcher: the page in every enabled locale (.docs/features/internationalization.md#public-site). */
+    .dnf-site__languages nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--dnf-space-1) var(--dnf-space-3); }
+    .dnf-site__languages a { color: var(--dnf-muted-foreground); font-size: var(--dnf-text-sm); }
+    .dnf-site__languages a:hover { color: var(--dnf-foreground); text-decoration: none; }
+    .dnf-site__languages a[aria-current="true"] { color: var(--dnf-foreground); font-weight: var(--dnf-weight-semibold); }
+
     /* ---- Main ------------------------------------------------------------------------------------------------ */
     .dnf-site__main { display: flex; flex: 1 0 auto; flex-direction: column; gap: var(--dnf-space-10); padding-top: var(--dnf-space-12); padding-bottom: var(--dnf-space-16); }
     .dnf-site__main:focus { outline: none; }

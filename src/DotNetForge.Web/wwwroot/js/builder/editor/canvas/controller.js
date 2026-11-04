@@ -1,3 +1,4 @@
+import { t } from "../../ui/i18n.js";
 import { signal } from "../../core/signal.js";
 import { layoutAt, gridPlacementAt, freePlacementAt, styleAt } from "../../core/responsive.js";
 import { componentDef } from "../../core/schema.js";
@@ -14,12 +15,12 @@ function insertSpec(session, spec, target) {
     const existing = placedModules(store.doc).get(spec.moduleId);
     if (existing) {
       moveNodes(store, [existing], target);
-      session.toast("That module was already on the page; it has been moved here.");
+      session.toast(t("That module was already on the page; it has been moved here."));
       return existing;
     }
   }
   if (spec.nodes) {
-    const id = insertSubtree(store, spec.nodes, target, "Insert " + spec.label);
+    const id = insertSubtree(store, spec.nodes, target, t("Insert {0}", spec.label));
     // A content list block: select the list, whose Data tab is where it is set up.
     const root = id ? store.doc.nodes[id] : null;
     const list = root?.type === "collection" ? root : (root?.children ?? []).map((c) => store.doc.nodes[c]).find((n) => n?.type === "collection");
@@ -104,7 +105,7 @@ class CanvasController {
         return;
       }
     } catch (e) {
-      this.error.set("The page could not be opened for editing: " + (e instanceof Error ? e.message : String(e)));
+      this.error.set(t("The page could not be opened for editing: {0}", e instanceof Error ? e.message : String(e)));
       return;
     }
     win.addEventListener("scroll", this.invalidate, { passive: true });
@@ -357,7 +358,7 @@ class CanvasController {
       parent = candidates.find(accepts) ?? null;
     }
     if (!parent) {
-      s.toast(`A ${componentDef(type)?.label ?? type} cannot be placed here.`, "error");
+      s.toast(t("A {0} cannot be placed here.", componentDef(type)?.label ?? type), "error");
       return null;
     }
     const target = { parent, index, bp: s.breakpoint.value };
@@ -484,19 +485,19 @@ class MoveOperation {
         return held ? heldMetrics(held, live) : live;
       }
     });
-    const t = this.target;
-    const sameParent = t?.parent === this.node.parent;
-    const parent = t ? doc.nodes[t.parent] : null;
+    const drop = this.target;
+    const sameParent = drop?.parent === this.node.parent;
+    const parent = drop ? doc.nodes[drop.parent] : null;
     const layout = parent ? layoutAt(parent, bp) : null;
-    if (t && sameParent && layout?.mode === "grid" && t.at?.col && t.at.row) {
-      const key = t.at.col + ":" + t.at.row;
-      const parentEl = c.frame.layoutTargetOf(t.parent);
+    if (drop && sameParent && layout?.mode === "grid" && drop.at?.col && drop.at.row) {
+      const key = drop.at.col + ":" + drop.at.row;
+      const parentEl = c.frame.layoutTargetOf(drop.parent);
       this.grid = gridMetrics(parentEl, layout.columns ?? 12, layout.rowHeight ?? 40);
       if (key !== this.gridKey) {
         this.gridKey = key;
-        const items = gridItemsAt(doc, t.parent, bp);
+        const items = gridItemsAt(doc, drop.parent, bp);
         const was = new Map(items.map((i) => [i.id, i.col + ":" + i.row]));
-        this.gridItems = placeItem(items, this.id, { col: t.at.col, row: t.at.row, ...this.span }, layout.columns ?? 12, { float: layout.compact !== false, pin: true });
+        this.gridItems = placeItem(items, this.id, { col: drop.at.col, row: drop.at.row, ...this.span }, layout.columns ?? 12, { float: layout.compact !== false, pin: true });
         for (const it of this.gridItems) {
           const el = c.frame.elements.get(it.id);
           if (!el) continue;
@@ -511,10 +512,10 @@ class MoveOperation {
       this.gridKey = "";
     }
     this.freePos = null;
-    if (t && sameParent && layout?.mode === "free" && t.at && t.at.x !== void 0) {
-      const container = t.container;
+    if (drop && sameParent && layout?.mode === "free" && drop.at && drop.at.x !== void 0) {
+      const container = drop.container;
       const others = (parent.children ?? []).filter((id) => id !== this.id).map((id) => c.rectOfNode(id)).filter((r) => !!r);
-      const snapped = snapFree({ x: container.x + t.at.x, y: container.y + t.at.y, w: this.startRect.w, h: this.startRect.h }, others, container, !alt, { x: true, y: true });
+      const snapped = snapFree({ x: container.x + drop.at.x, y: container.y + drop.at.y, w: this.startRect.w, h: this.startRect.h }, others, container, !alt, { x: true, y: true });
       this.guides = snapped.guides;
       this.freePos = { x: Math.round(snapped.box.x - container.x), y: Math.round(snapped.box.y - container.y) };
       this.ghost = snapped.box;
@@ -523,16 +524,16 @@ class MoveOperation {
     void shift;
   }
   view() {
-    const t = this.target;
+    const drop = this.target;
     const v = emptyView("move");
     v.ghost = this.freePos ? null : this.ghost;
     v.guides = this.guides;
-    v.indicator = t ? t.indicator : null;
-    v.container = t ? t.container : null;
+    v.indicator = drop ? drop.indicator : null;
+    v.container = drop ? drop.container : null;
     v.grid = this.grid;
-    if (t?.at?.col && this.grid) {
+    if (drop?.at?.col && this.grid) {
       v.label = `${this.span.colSpan} × ${this.span.rowSpan}`;
-      v.labelAt = t.indicator.kind === "cell" ? { x: t.indicator.rect.x + t.indicator.rect.w, y: t.indicator.rect.y + t.indicator.rect.h } : null;
+      v.labelAt = drop.indicator.kind === "cell" ? { x: drop.indicator.rect.x + drop.indicator.rect.w, y: drop.indicator.rect.y + drop.indicator.rect.h } : null;
     } else if (this.freePos) {
       v.label = `${this.freePos.x}, ${this.freePos.y}`;
       v.labelAt = this.ghost ? { x: this.ghost.x + this.ghost.w, y: this.ghost.y + this.ghost.h } : null;
@@ -541,17 +542,17 @@ class MoveOperation {
   }
   commit() {
     this.preview.restore();
-    const t = this.target;
-    if (!t) return;
+    const drop = this.target;
+    if (!drop) return;
     const s = this.c.session;
     const store = s.store;
     const bp = s.breakpoint.value;
     const doc = store.doc;
-    const parent = doc.nodes[t.parent];
+    const parent = doc.nodes[drop.parent];
     const layout = layoutAt(parent, bp);
-    if (t.parent === this.node.parent) {
-      if (layout.mode === "grid" && t.at?.col && t.at.row) {
-        moveGridItem(store, this.id, bp, { col: t.at.col, row: t.at.row, ...this.span });
+    if (drop.parent === this.node.parent) {
+      if (layout.mode === "grid" && drop.at?.col && drop.at.row) {
+        moveGridItem(store, this.id, bp, { col: drop.at.col, row: drop.at.row, ...this.span });
         return;
       }
       if (layout.mode === "free" && this.freePos) {
@@ -559,7 +560,7 @@ class MoveOperation {
         return;
       }
     }
-    moveNodes(store, [this.id], { parent: t.parent, index: t.index, bp, at: t.at });
+    moveNodes(store, [this.id], { parent: drop.parent, index: drop.index, bp, at: drop.at });
   }
   cancel() {
     this.preview.restore();
@@ -760,10 +761,10 @@ class InsertOperation {
     return v;
   }
   commit() {
-    const t = this.target;
-    if (!t) return;
+    const drop = this.target;
+    if (!drop) return;
     const s = this.c.session;
-    insertSpec(s, this.spec, { parent: t.parent, index: t.index, bp: s.breakpoint.value, at: t.at });
+    insertSpec(s, this.spec, { parent: drop.parent, index: drop.index, bp: s.breakpoint.value, at: drop.at });
   }
   cancel() {
   }

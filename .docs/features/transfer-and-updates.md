@@ -47,6 +47,9 @@ tables/<Entity>.json     one per entity, a JSON array of row objects (property n
   media details, users (with their two-factor methods and recovery codes), roles, permissions, settings, auth providers,
   email templates, API tokens (hashes), custom
   endpoints, webhooks and deliveries, installed extensions, the audit log.
+- **Environment variables:** export and import ignore query filters (`IgnoreQueryFilters` in `TransferFile`), so an
+  export holds the variables of every environment - also those the exporting site doesn't use - and an import replaces
+  them all ([Environment Variables](../pages/environment-variables.md)).
 - **Not included:** `DataProtectionKeys` (this site's key ring - secrets), `SystemState` (this site's install state
   and data version), `TransferRecords` (this site's transfer history), media files - the separate
   [media export](../pages/data-management.md#media-export) downloads those.
@@ -56,7 +59,9 @@ tables/<Entity>.json     one per entity, a JSON array of row objects (property n
   secrets (those apps stop working; the user signs in with another method or a recovery code and sets the app up
   again) and webhook signing secrets (the imported webhooks stay as they were, enabled ones included, but every
   attempt - pending ones from the export too - fails with "Not sent: …" without contacting the receiver until the
-  secret is rotated on [Webhooks](../pages/webhooks.md)). Webhook header values are in the file in clear. Recovery codes (hashes), passkeys (public keys - as long as `APP_URL`'s host is the same) and email/SMS
+  secret is rotated on [Webhooks](../pages/webhooks.md)) and secret [environment variables](../pages/environment-variables.md)
+  (exported still encrypted; on another site `IEnvironmentVariables` returns null for them until they are entered
+  again). Config environment variables and webhook header values are in the file in clear. Recovery codes (hashes), passkeys (public keys - as long as `APP_URL`'s host is the same) and email/SMS
   methods keep working ([MFA → storage](mfa.md#storage-secrets-and-transfer)). A restore into the same site keeps
   everything. (SMTP settings live in `.env`, not in the data.)
 - The CMS database is read in one `RepeatableRead` transaction, so the tables agree with each other; dates without a

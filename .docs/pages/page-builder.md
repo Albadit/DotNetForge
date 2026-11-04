@@ -11,9 +11,9 @@ entries of a content type, designed once as an item template whose elements are 
 
 | Item | Value |
 | --- | --- |
-| Route | `GET /admin/pages/{id}/builder` (plus `canvas`, `preview`, `draft.css` and the JSON API under the same path, including `content/types`, `content/link-targets`, `content/preview`, `content/entries` - [page builder → API](../features/page-builder.md#api)). The old `/admin/content/{id}/builder` answers 301 here |
-| Opened from | **Open page builder** on the [Pages](pages.md#page-editor) screen's **Layout** tab |
-| Sidebar / breadcrumbs | none - the screen replaces the admin shell; the ✕ in the top bar returns to Pages (`#layout`) |
+| Route | `GET /admin/pages/{id}/builder` (plus `canvas`, `preview`, `draft.css` and the JSON API under the same path, including `content/types`, `content/link-targets`, `content/preview`, `content/entries` - [page builder → API](../features/page-builder.md#api)). The old `/admin/content/{id}/builder` answers 301 here. A translation's layout: `GET /admin/pages/{id}/translations/{locale}/builder` (the same sub-paths; an enabled locale other than the default, else 404) |
+| Opened from | **Open page builder** on the [Pages](pages.md#page-editor) screen's **Layout** tab; **Edit <locale> layout** on its **Translations** tab |
+| Sidebar / breadcrumbs | none - the screen replaces the admin shell; the ✕ in the top bar returns to Pages (`#layout`, or `#translations` from a translation) |
 
 ## Relevant source files
 
@@ -36,6 +36,15 @@ src/DotNetForge.Web/wwwroot/builder/editor.css, editor-host.css        editor st
 ├ center: canvas                       (the page with its theme at the device width in an iframe; selection, handles, grid, guides)
 └ right: inspector                     Design | Content (Data for a content list) | Advanced for the selection; page status and breakpoints otherwise
 ```
+
+**A translation's layout** ([internationalization → content pages](../features/internationalization.md#content-pages)):
+the page name reads "<title> (<locale>)"; the first open starts from a copy of the page's own layout (draft, else
+published), saved as the translation's draft; save, publish, unpublish, discard and preview work on the translation
+only; the canvas, the preview and the content-list previews show the page in that locale (translated menu and entries,
+links under `/de/`, `<html lang="de">`). Visitors of `/de/...` see the published translation, else the main layout.
+
+The editor's own text follows the [admin language](../features/internationalization.md#admin-language) (the `builder`
+catalog section through `ui/i18n.js`; right-to-left languages set `dir="rtl"`).
 
 The editor is light or dark like the admin screens: it uses the admin's theme setting (`localStorage` `dnf-theme`, the
 admin's Light / Dark / System menu), and changing it in the editor's ⋯ menu changes it for the admin too. The canvas shows the page

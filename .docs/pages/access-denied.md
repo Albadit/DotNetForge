@@ -11,7 +11,7 @@ Tells them so and offers a way back or to sign in as someone else.
 | --- | --- |
 | Route | `GET /account/denied` (status code set to **403**) |
 | Query parameter | `ReturnUrl` is appended by the cookie middleware but ignored |
-| Reached from | a direct URL or bookmark to an admin screen whose role check fails (e.g. an Editor opening `/admin/users`, `/admin/plugins` or `/admin/settings` - the sidebar no longer shows those links), and any `Forbid()` from a resource-level check (e.g. an Author editing, deleting or reordering a page they did not create on [Pages](pages.md), or an entry in the [Content Manager](content-manager.md)) |
+| Reached from | a direct URL or bookmark to an admin screen whose role check fails (e.g. an Editor opening `/admin/users`, `/admin/plugins` or `/admin/environment-variables` - the sidebar no longer shows those links), and any `Forbid()` from a resource-level check (e.g. an Author editing, deleting or reordering a page they did not create on [Pages](pages.md), or an entry in the [Content Manager](content-manager.md)) |
 
 ## Relevant source files
 

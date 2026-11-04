@@ -10,12 +10,35 @@
                         data-active="true" while there are any); __var = a {{variable}} in the text
   .dnf-email-preview    the sandboxed preview frame of Email → Templates
   .dnf-probe            the connection test steps of Email Configuration: __step > icon + __name + __detail + __time
+  .dnf-env-vars         the Environment Variables list (.docs/pages/environment-variables.md): __toolbar, __sort,
+                        __key > __icon (lock / code) + __name, __value > __eye (the reveal button, or its empty place) +
+                        __masked (always the same dots) / __plain (a shown config value), __updated > __editor (avatar)
 
   Data Management needs nothing beyond the Dnf components. Method badges are dnf-badge--mono, the path prefix a
   dnf-input-group__prefix, test output a dnf-code-block (data-invalid="true" on errors).
 */
 
 @layer components {
+    /* ---- Environment Variables --------------------------------------------------------------------------------- */
+    .dnf-env-vars__toolbar { flex-wrap: wrap; gap: var(--dnf-space-2); }
+    .dnf-env-vars__sort { display: flex; align-items: center; gap: var(--dnf-space-2); margin-inline-start: auto; }
+    .dnf-env-vars__key { display: flex; align-items: center; gap: var(--dnf-space-3); min-width: 0; }
+    .dnf-env-vars__icon {
+        display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+        width: 2rem; height: 2rem;
+        border: 1px solid var(--dnf-border); border-radius: var(--dnf-radius-full);
+        color: var(--dnf-muted-foreground);
+    }
+    .dnf-env-vars__key > .dnf-stack { align-items: flex-start; }
+    .dnf-env-vars__name { padding: 0; background: none; font-weight: var(--dnf-weight-semibold); overflow-wrap: anywhere; }
+    .dnf-env-vars__value { display: inline-flex; align-items: center; gap: var(--dnf-space-2); min-width: 0; max-width: 22rem; }
+    /* The eye's place: a secret or an empty value keeps its dots in line with the others. */
+    .dnf-env-vars__eye { flex: 0 0 auto; width: 2rem; }
+    .dnf-env-vars__masked { color: var(--dnf-muted-foreground); letter-spacing: 0.08em; white-space: nowrap; }
+    .dnf-env-vars__plain { padding: 0; background: none; overflow-wrap: anywhere; }
+    .dnf-env-vars__updated { display: inline-flex; align-items: center; gap: var(--dnf-space-2); white-space: nowrap; color: var(--dnf-muted-foreground); }
+    .dnf-env-vars__editor { display: inline-flex; }
+
     /* ---- API Endpoints editor ---------------------------------------------------------------------------------- */
     .dnf-endpoint-op__request { display: grid; flex: 1; grid-template-columns: 8rem minmax(0, 1fr); gap: var(--dnf-space-4); min-width: 0; }
     .dnf-endpoint-op__settings { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--dnf-space-4); }

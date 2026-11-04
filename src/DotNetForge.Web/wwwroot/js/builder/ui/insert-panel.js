@@ -3,6 +3,7 @@
  * section has no counterpart here). Drag an item onto the canvas to place it exactly, or click it to add it next
  * to the selection.
  */
+import { t } from "./i18n.js";
 import { jsx, useState } from "./vdom.js";
 import { allComponents, onRegistryChange } from "../components/registry.js";
 import { useEffect, useReducer } from "./vdom.js";
@@ -10,9 +11,9 @@ import { Icon } from "./icons.js";
 import { PRESETS } from "../editor/presets.js";
 import { useDocVersion, useEditor } from "./hooks.js";
 const CATEGORIES = [
-    { id: 'structure', label: 'Layout' },
-    { id: 'content', label: 'Content' },
-    { id: 'media', label: 'Media' },
+    { id: 'structure', label: t("Layout") },
+    { id: 'content', label: t("Content") },
+    { id: 'media', label: t("Media") },
 ];
 export function InsertPanel() {
     const { canvas } = useEditor();
@@ -55,15 +56,15 @@ export function InsertPanel() {
     const presets = PRESETS.filter(p => match(p.label) || match(p.description));
     const presetGroups = new Map();
     for (const p of presets) {
-        const g = p.group ?? 'Blocks';
+        const g = p.group ?? t("Blocks");
         presetGroups.set(g, [...(presetGroups.get(g) ?? []), p]);
     }
     return (jsx("div", { class: "pe-insert" },
         jsx("div", { class: "pe-search" },
             jsx(Icon, { name: "search", size: 16 }),
-            jsx("input", { type: "search", placeholder: "Search components", value: query, "aria-label": "Search components", onInput: e => setQuery(e.target.value) })),
+            jsx("input", { type: "search", placeholder: t("Search components"), value: query, "aria-label": t("Search components"), onInput: e => setQuery(e.target.value) })),
         jsx("div", { class: "pe-insert-scroll" },
-            jsx("p", { class: "pe-hint pe-insert-tip" }, "Drag onto the page, or click to add next to the selection."),
+            jsx("p", { class: "pe-hint pe-insert-tip" }, t("Drag onto the page, or click to add next to the selection.")),
             CATEGORIES.map(cat => {
                 const list = comps.filter(c => (c.schema.category === cat.id || (cat.id === 'content' && !CATEGORIES.some(x => x.id === c.schema.category))) && (match(c.schema.label) || match(c.type)));
                 if (!list.length)

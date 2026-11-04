@@ -40,7 +40,7 @@ flowchart LR
 
 A `ContentType` row: `Name`, `Slug` (the **API id**, `^[a-z][a-z0-9-]{0,63}$`, unique; `api`, `types`,
 `new` and `media` are reserved because the Content Manager's routes use them), `Description`, `Icon` (one of
-`ContentTypeService.Icons`), `Kind`, `FieldsJson`, `TitleField`, `Drafts`, `SortOrder`.
+`ContentTypeService.Icons`), `Kind`, `FieldsJson`, `TitleField`, `Drafts`, `Localized`, `SortOrder`.
 
 | Kind | Meaning |
 | --- | --- |
@@ -49,6 +49,11 @@ A `ContentType` row: `Name`, `Slug` (the **API id**, `^[a-z][a-z0-9-]{0,63}$`, u
 
 **Drafts** (default on): saving keeps changes as the working copy until someone publishes. Off: every save publishes
 (validated as a publish, so it needs the `publish` grant).
+
+**Localized** (default off): entries can be translated into the site's other locales - the top-level text, long text
+and rich text fields that are not unique get a value per locale, every other field is shared; off hides the
+translations (kept). Rules, the Content Manager's translation form, rendering and `?locale=` in the API:
+[internationalization → entries](internationalization.md#entries).
 
 **Title field**: the top-level text, slug or email field that names an entry in lists, pickers and the browser tab of
 a detail page (`ContentSchema.TitleKey`: the configured one, else the first such field). Copied into
@@ -142,6 +147,10 @@ and the API get slugs too; the form script does the same while typing.
 | Duplicate | `DuplicateAsync` | unpublished copy placed after the original; slugs get `-copy`, other unique values are cleared, the title gets " (copy)" |
 | Delete, bulk delete | `DeleteAsync`, `DeleteManyAsync` | removes the index rows too; a single type's entry can't be deleted |
 | Reorder | `ReorderAsync` | the moved entries share their old positions in the new order |
+
+Publishing, unpublishing, duplicating and deleting carry a localized entry's translations along
+([internationalization → entries](internationalization.md#entries)); saving a translation writes `entry.translated`, which
+fires no webhook.
 
 Every action except reorder writes an `entry.*` audit entry, which also fires the subscribed
 [webhooks](webhooks.md#events) (`entry.create`, `entry.update`, `entry.publish`, `entry.unpublish`, `entry.delete`) -
@@ -276,6 +285,10 @@ sequenceDiagram
     end
 ```
 
+On a translated page (`/de/...`) the lists of localized types show the published translations and their item links
+get the locale's prefix ([internationalization](internationalization.md#entries)); queries, filters and sort still
+run on the default-locale values.
+
 Nothing is cached: entries are read per request, so an edit shows everywhere at once. The layout's CSS does not
 depend on the data and keeps its cache-forever URL. The editor gets the same data from
 `POST /admin/pages/{id}/builder/content/preview` (published entries; `editor/content.js` refetches when a list's query
@@ -342,7 +355,6 @@ a case in `content-list-fixtures.mjs`, the Display segment in `data-panel.js`.
 - **History**: every save of an entry (and a type) as a version; compare, restore ([content pages → history](content-pages-and-routing.md#content-history-and-review)).
 - **Review workflow** for entries (submit, approve, reject), optionally mandatory.
 - **Scheduled publishing** of entries (publish/unpublish dates like pages, [scheduled publishing](scheduled-publishing.md)).
-- **Localization**: per-field translations ([internationalization](internationalization.md)).
 - **Tags**: a shared tag vocabulary as a field type.
 - **Deeper relations**: binding and API expansion beyond one level; filtering by a linked entry's field
   (`category.slug`) - today filters take top-level fields only.
@@ -361,4 +373,4 @@ a case in `content-list-fixtures.mjs`, the Display segment in `data-panel.js`.
 - [x] Editing an entry changes every page that shows it (`StructuredContentTests.Pages_show_content_lists_and_detail_pages_and_follow_entry_edits`).
 - [ ] Content history with compare and restore.
 - [ ] Review workflow and scheduling for entries.
-- [ ] Localized fields.
+- [x] Localized fields: text fields of a localized type per locale ([internationalization](internationalization.md#entries)).

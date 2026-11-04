@@ -5,9 +5,9 @@
     var saved = Model.Saved;
     var input = Model.Input;
     ViewData["PageWidth"] = creating ? "narrow" : "medium";
-    ViewData["Title"] = creating ? "Create user" : "Edit user";
+    ViewData["Title"] = creating ? T["Create user"] : T["Edit user"];
     ViewData["Description"] = creating
-        ? "Add a person who can sign in to the admin. Their roles decide what they can do."
+        ? T["Add a person who can sign in to the admin. Their roles decide what they can do."]
         : saved!.Email;
     var chosen = input.RoleIds.ToHashSet();
     var readOnly = !Model.CanSave;
@@ -19,43 +19,43 @@
         <dnf-validation-summary />
         @if (readOnly)
         {
-            <dnf-alert tone="Info" title="View only">You can see this user but not change them.</dnf-alert>
+            <dnf-alert tone="Info" title="@T["View only"]">@T["You can see this user but not change them."]</dnf-alert>
         }
 
         <fieldset class="dnf-stack dnf-stack--lg" disabled="@(readOnly ? "disabled" : null)">
             <section class="dnf-card" aria-labelledby="details-title">
-                <div class="dnf-card__header"><h2 class="dnf-card__title" id="details-title">Details</h2></div>
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="details-title">@T["Details"]</h2></div>
                 <div class="dnf-card__body dnf-form-grid">
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="FirstName">First name<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" for="FirstName">@T["First name"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input id="FirstName" class="dnf-input" name="FirstName" value="@input.FirstName" maxlength="@UserManagementService.MaxNameLength" autocomplete="off" />
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="LastName">Last name<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" for="LastName">@T["Last name"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input id="LastName" class="dnf-input" name="LastName" value="@input.LastName" maxlength="@UserManagementService.MaxNameLength" autocomplete="off" />
                     </div>
                     <div class="dnf-field dnf-form-grid__full">
-                        <label class="dnf-field__label" for="Email">Email<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                        <label class="dnf-field__label" for="Email">@T["Email"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                         <input id="Email" class="dnf-input" name="Email" type="email" value="@input.Email" required maxlength="@UserManagementService.MaxEmailLength"
                                autocomplete="off" aria-describedby="email-hint" />
-                        <span class="dnf-field__description" id="email-hint">They sign in with this address.</span>
+                        <span class="dnf-field__description" id="email-hint">@T["They sign in with this address."]</span>
                     </div>
                     <div class="dnf-field dnf-form-grid__full">
                         <label class="dnf-field__label" for="Password">
-                            @(creating ? "Password" : "New password")
+                            @(creating ? T["Password"] : T["New password"])
                             @if (creating)
                             {
                                 <span class="dnf-field__required" aria-hidden="true">*</span>
                             }
                             else
                             {
-                                <span class="dnf-field__optional">optional</span>
+                                <span class="dnf-field__optional">@T["optional"]</span>
                             }
                         </label>
                         <input id="Password" class="dnf-input" name="Password" type="password" required="@(creating ? "required" : null)" autocomplete="new-password"
                                aria-describedby="password-hint" />
                         <span class="dnf-field__description" id="password-hint">
-                            At least 8 characters with a letter and a digit.@(creating ? " Share it with the user securely." : " Leave empty to keep the current password.")
+                            @T["At least 8 characters with a letter and a digit."]@(creating ? " " + T["Share it with the user securely."] : " " + T["Leave empty to keep the current password."])
                         </span>
                     </div>
                 </div>
@@ -64,10 +64,10 @@
             <section class="dnf-card" aria-labelledby="roles-title">
                 <div class="dnf-card__header">
                     <div>
-                        <h2 class="dnf-card__title" id="roles-title">Roles<span class="dnf-field__required" aria-hidden="true">*</span></h2>
-                        <p class="dnf-card__description">The user can do everything any of their roles allows. Changes apply at their next sign-in.</p>
+                        <h2 class="dnf-card__title" id="roles-title">@T["Roles"]<span class="dnf-field__required" aria-hidden="true">*</span></h2>
+                        <p class="dnf-card__description">@T["The user can do everything any of their roles allows. Changes apply at their next sign-in."]</p>
                     </div>
-                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/roles"><dnf-icon name="shield" /> Manage roles</a>
+                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/roles"><dnf-icon name="shield" /> @T["Manage roles"]</a>
                 </div>
                 <div class="dnf-card__body">
                     <div class="dnf-check-list">
@@ -82,11 +82,11 @@
                                         @role.Name
                                         @if (role.IsBuiltIn)
                                         {
-                                            <dnf-badge tone="Neutral">Built-in</dnf-badge>
+                                            <dnf-badge tone="Neutral">@T["Built-in"]</dnf-badge>
                                         }
                                     </span>
                                     <span class="dnf-check__description">
-                                        @(role.Locked ? "Only a Super Admin can give this role." : role.Description ?? "Custom role")
+                                        @(role.Locked ? T["Only a Super Admin can give this role."] : role.Description ?? T["Custom role"])
                                     </span>
                                 </span>
                             </label>
@@ -102,8 +102,8 @@
                 {
                     @* The status is not part of this form: a new user is enabled, and Disable/Enable access (aside) changes it. *@
                     <div class="dnf-card__footer">
-                        <a class="dnf-button dnf-button--ghost" href="/admin/users">Cancel</a>
-                        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="@(creating ? "plus" : "check")" /> @(creating ? "Create user" : "Save changes")</button>
+                        <a class="dnf-button dnf-button--ghost" href="/admin/users">@T["Cancel"]</a>
+                        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="@(creating ? "plus" : "check")" /> @(creating ? T["Create user"] : T["Save changes"])</button>
                     </div>
                 }
             </section>
@@ -116,15 +116,15 @@
         <aside class="dnf-split__aside">
             <section class="dnf-card" aria-labelledby="account-title">
                 <div class="dnf-card__header">
-                    <h2 class="dnf-card__title" id="account-title">Account</h2>
-                    <dnf-badge tone="@(saved.Enabled ? DnfTone.Success : DnfTone.Danger)" dot="true">@(saved.Enabled ? "Enabled" : "Disabled")</dnf-badge>
+                    <h2 class="dnf-card__title" id="account-title">@T["Account"]</h2>
+                    <dnf-badge tone="@(saved.Enabled ? DnfTone.Success : DnfTone.Danger)" dot="true">@(saved.Enabled ? T["Enabled"] : T["Disabled"])</dnf-badge>
                 </div>
                 <div class="dnf-card__body">
                     <dl class="dnf-description-list dnf-description-list--compact">
-                        <dt>Created</dt>
+                        <dt>@T["Created"]</dt>
                         <dd><dnf-timestamp value="@saved.Created" /></dd>
-                        <dt>Last sign-in</dt>
-                        <dd><dnf-timestamp value="@saved.LastLogin" empty="Never" /></dd>
+                        <dt>@T["Last sign-in"]</dt>
+                        <dd><dnf-timestamp value="@saved.LastLogin" empty="@T["Never"]" /></dd>
                     </dl>
                 </div>
             </section>
@@ -132,14 +132,14 @@
             <section class="dnf-card" aria-labelledby="effective-title">
                 <div class="dnf-card__header">
                     <div>
-                        <h2 class="dnf-card__title" id="effective-title">Effective permissions</h2>
-                        <p class="dnf-card__description">What the saved roles allow together.</p>
+                        <h2 class="dnf-card__title" id="effective-title">@T["Effective permissions"]</h2>
+                        <p class="dnf-card__description">@T["What the saved roles allow together."]</p>
                     </div>
                 </div>
                 <div class="dnf-card__body">
                     @if (saved.Roles.Count == 0)
                     {
-                        <p class="text-muted text-sm">No roles, so no permissions.</p>
+                        <p class="text-muted text-sm">@T["No roles, so no permissions."]</p>
                     }
                     else
                     {
@@ -147,21 +147,21 @@
                             @foreach (var (area, actions) in saved.Permissions)
                             {
                                 <li class="flex flex-col gap-1">
-                                    <span class="font-semibold">@area.Label</span>
+                                    <span class="font-semibold">@T[area.Label]</span>
                                     @if (actions.Count == 0)
                                     {
-                                        <span class="text-subtle text-sm">No access</span>
+                                        <span class="text-subtle text-sm">@T["No access"]</span>
                                     }
                                     else if (actions.Count == area.Actions.Count)
                                     {
-                                        <dnf-badge tone="Success">Full access</dnf-badge>
+                                        <dnf-badge tone="Success">@T["Full access"]</dnf-badge>
                                     }
                                     else
                                     {
                                         <span class="dnf-cluster">
                                             @foreach (var action in actions)
                                             {
-                                                <dnf-badge>@DotNetForge.Shared.Authorization.PermissionCatalog.ActionLabel(action)</dnf-badge>
+                                                <dnf-badge>@T[DotNetForge.Shared.Authorization.PermissionCatalog.ActionLabel(action)]</dnf-badge>
                                             }
                                         </span>
                                     }
@@ -176,30 +176,30 @@
             {
                 <section class="dnf-card" aria-labelledby="mfa-title">
                     <div class="dnf-card__header">
-                        <h2 class="dnf-card__title" id="mfa-title">Two-step verification</h2>
-                        <dnf-badge tone="@(mfaMethods.Count > 0 ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(mfaMethods.Count > 0 ? "On" : "Off")</dnf-badge>
+                        <h2 class="dnf-card__title" id="mfa-title">@T["Two-step verification"]</h2>
+                        <dnf-badge tone="@(mfaMethods.Count > 0 ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(mfaMethods.Count > 0 ? T["On"] : T["Off"])</dnf-badge>
                     </div>
                     <div class="dnf-card__body dnf-stack dnf-stack--sm">
                         @if (mfaMethods.Count == 0)
                         {
-                            <p class="text-sm text-muted">@(Model.IsSelf ? "Set it up on Profile › Sign-in security." : "The user hasn't set up a second step.")</p>
+                            <p class="text-sm text-muted">@(Model.IsSelf ? T["Set it up on Profile › Sign-in security."] : T["The user hasn't set up a second step."])</p>
                         }
                         else
                         {
                             <span class="dnf-cluster">
                                 @foreach (var method in mfaMethods)
                                 {
-                                    <dnf-badge>@DotNetForge.Web.Services.Mfa.MfaService.Label(method.Type)</dnf-badge>
+                                    <dnf-badge>@T[DotNetForge.Web.Services.Mfa.MfaService.Label(method.Type)]</dnf-badge>
                                 }
                             </span>
                             @if (Model.CanSave && !Model.IsSelf)
                             {
-                                <p class="text-sm text-muted">Lost their phone or key? Remove every method: they sign in with their password and set up a new one.</p>
+                                <p class="text-sm text-muted">@T["Lost their phone or key? Remove every method: they sign in with their password and set up a new one."]</p>
                                 <form method="post" action="/admin/users/@Model.Id/mfa/reset"
-                                      data-confirm="Remove every two-step method and recovery code of @saved.Email? Until they set up a new one, their password alone signs them in."
-                                      data-confirm-title="Reset two-step verification" data-confirm-action="Remove methods">
+                                      data-confirm="@T["Remove every two-step method and recovery code of {0}? Until they set up a new one, their password alone signs them in.", saved.Email]"
+                                      data-confirm-title="@T["Reset two-step verification"]" data-confirm-action="@T["Remove methods"]">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm"><dnf-icon name="rotate-ccw" /> Reset two-step verification</button>
+                                    <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm"><dnf-icon name="rotate-ccw" /> @T["Reset two-step verification"]</button>
                                 </form>
                             }
                         }
@@ -210,14 +210,14 @@
             @if (Model.CanSave && !Model.IsSelf)
             {
                 <section class="dnf-card" aria-labelledby="status-title">
-                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="status-title">@(saved.Enabled ? "Disable access" : "Enable access")</h2></div>
+                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="status-title">@(saved.Enabled ? T["Disable access"] : T["Enable access"])</h2></div>
                     <div class="dnf-card__body dnf-stack dnf-stack--sm">
                         <p class="text-sm text-muted">
-                            @(saved.Enabled ? "Stops the user signing in without deleting them." : "Lets the user sign in again.")
+                            @(saved.Enabled ? T["Stops the user signing in without deleting them."] : T["Lets the user sign in again."])
                         </p>
                         <form method="post" action="/admin/users/@Model.Id/@(saved.Enabled ? "disable" : "enable")">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm"><dnf-icon name="power" /> @(saved.Enabled ? "Disable user" : "Enable user")</button>
+                            <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm"><dnf-icon name="power" /> @(saved.Enabled ? T["Disable user"] : T["Enable user"])</button>
                         </form>
                     </div>
                 </section>
@@ -226,14 +226,14 @@
             @if (Model.CanDelete)
             {
                 <section class="dnf-card dnf-card--danger" aria-labelledby="danger-title">
-                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="danger-title">Delete user</h2></div>
+                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="danger-title">@T["Delete user"]</h2></div>
                     <div class="dnf-card__body dnf-stack dnf-stack--sm">
-                        <p class="text-sm text-muted">Removes the account and its role assignments. Audit entries keep their name.</p>
+                        <p class="text-sm text-muted">@T["Removes the account and its role assignments. Audit entries keep their name."]</p>
                         <form method="post" action="/admin/users/@Model.Id/delete"
-                              data-confirm="Delete @saved.Email? They can't sign in any more. This can't be undone."
-                              data-confirm-title="Delete user" data-confirm-action="Delete user">
+                              data-confirm="@T["Delete {0}? They can't sign in any more. This can't be undone.", saved.Email]"
+                              data-confirm-title="@T["Delete user"]" data-confirm-action="@T["Delete user"]">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="dnf-button dnf-button--danger-soft dnf-button--sm"><dnf-icon name="trash" /> Delete user</button>
+                            <button type="submit" class="dnf-button dnf-button--danger-soft dnf-button--sm"><dnf-icon name="trash" /> @T["Delete user"]</button>
                         </form>
                     </div>
                 </section>

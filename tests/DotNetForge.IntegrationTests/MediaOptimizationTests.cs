@@ -106,8 +106,8 @@ public sealed class MediaOptimizationTests
         Assert.Contains("data-max-image=\"1048576\"", media);
         Assert.Contains("images up to 1 MB, videos and audio up to 100 MB", media);
         // The generic Settings screen can't bypass these checks.
-        var bypass = await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/settings", "/admin/settings/save",
-            new Dictionary<string, string> { ["key"] = "media.maxImageMb", ["value"] = "0" });
+        var bypass = await DotNetForgeWebFactory.PostFormAsync(admin, "/admin/environment-variables/new", "/admin/environment-variables/save",
+            new Dictionary<string, string> { ["Key"] = "media.maxImageMb", ["Value"] = "0", ["IsSecret"] = "false" });
         Assert.Contains("'media.maxImageMb' is managed on Media Library", WebUtility.HtmlDecode(await bypass.Content.ReadAsStringAsync()));
         await factory.WithDbAsync(async db =>
         {

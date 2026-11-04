@@ -1,3 +1,4 @@
+import { t } from "../ui/i18n.js";
 import { subtree, topLevel } from "../core/doc.js";
 import {
   duplicateNodes,
@@ -45,7 +46,7 @@ class Actions {
   remove() {
     if (!this.canLayout || !this.sel.length) return;
     const locked = this.sel.filter((id) => this.store.doc.nodes[id]?.locked);
-    if (locked.length) this.session.toast("Locked elements are not deleted. Unlock them first.", "info");
+    if (locked.length) this.session.toast(t("Locked elements are not deleted. Unlock them first."), "info");
     removeNodes(this.store, this.sel);
   }
   duplicate() {
@@ -63,7 +64,7 @@ class Actions {
     } catch {
     }
     memoryClipboard = data;
-    this.session.toast(roots.length === 1 ? "Copied." : `Copied ${roots.length} elements.`);
+    this.session.toast(roots.length === 1 ? t("Copied.") : t("Copied {0} elements.", roots.length));
   }
   cut() {
     if (!this.canLayout) return;
@@ -79,7 +80,7 @@ class Actions {
     } catch {
     }
     if (!data || data.peClipboard !== 1) {
-      this.session.toast("Nothing to paste. Copy elements first (Ctrl+C).");
+      this.session.toast(t("Nothing to paste. Copy elements first (Ctrl+C)."));
       return;
     }
     const doc = this.store.doc;
@@ -91,10 +92,10 @@ class Actions {
       if (!valid) continue;
       const target = this.pasteTarget(valid[0].type);
       if (!target) {
-        this.session.toast(`A ${valid[0].type} cannot be pasted here.`, "error");
+        this.session.toast(t("A {0} cannot be pasted here.", valid[0].type), "error");
         continue;
       }
-      const id = insertSubtree(this.store, valid, { ...target, bp: this.session.breakpoint.value }, "Paste");
+      const id = insertSubtree(this.store, valid, { ...target, bp: this.session.breakpoint.value }, t("Paste"));
       if (id) created.push(id);
     }
     if (created.length) this.store.select(created);
@@ -124,7 +125,7 @@ class Actions {
       const doc = normalizeDocument({ schema: 1, root: "pagex", nodes: fake, settings: this.store.doc.settings });
       return subtree(doc, root.id).map((id) => doc.nodes[id]);
     } catch {
-      this.session.toast("The copied content could not be pasted here.", "error");
+      this.session.toast(t("The copied content could not be pasted here."), "error");
       return null;
     }
   }
@@ -173,11 +174,11 @@ class Actions {
     if (kids) this.store.select([...kids]);
   }
   wrap() {
-    if (this.canLayout && this.sel.length && !wrapNodes(this.store, this.sel)) this.session.toast("These elements cannot be wrapped together (they must share a parent).", "error");
+    if (this.canLayout && this.sel.length && !wrapNodes(this.store, this.sel)) this.session.toast(t("These elements cannot be wrapped together (they must share a parent)."), "error");
   }
   unwrap() {
     const id = this.sel[0];
-    if (this.canLayout && id && !unwrapNode(this.store, id)) this.session.toast("Only containers can be removed this way.", "error");
+    if (this.canLayout && id && !unwrapNode(this.store, id)) this.session.toast(t("Only containers can be removed this way."), "error");
   }
   toggleHidden() {
     if (!this.canLayout || !this.sel.length) return;
@@ -200,7 +201,7 @@ class Actions {
     const first = doc.nodes[this.sel[0]];
     if (this.sel.length === 1 && first?.children) {
       if (flowOf(this.session, first.id).startsWith("stack")) {
-        this.session.toast("This container already has auto layout.");
+        this.session.toast(t("This container already has auto layout."));
         return;
       }
       setFlow(this.session, this.canvas, first.id, guessFlow(this.session, first.id));

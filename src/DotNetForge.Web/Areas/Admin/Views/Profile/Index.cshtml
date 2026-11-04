@@ -2,8 +2,8 @@
 @model ProfileController.ProfileViewModel
 @{
     ViewData["PageWidth"] = "medium";
-    ViewData["Title"] = "Profile";
-    ViewData["Description"] = "Your own account: how your name and email appear, and your password.";
+    ViewData["Title"] = T["Profile"];
+    ViewData["Description"] = T["Your own account: how your name and email appear, your password and the language of the admin."];
     var details = Model.Details;
     var initials = string.Concat(Model.DisplayName
         .Split(new[] { ' ', '@', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0]));
@@ -14,7 +14,7 @@
         <form method="post" action="/admin/profile" novalidate>
             @Html.AntiForgeryToken()
             <section class="dnf-card" aria-labelledby="details-title">
-                <div class="dnf-card__header"><h2 class="dnf-card__title" id="details-title">Details</h2></div>
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="details-title">@T["Details"]</h2></div>
                 <div class="dnf-card__body dnf-stack">
                     @if (Model.Form == "details")
                     {
@@ -22,23 +22,23 @@
                     }
                     <div class="dnf-form-grid">
                         <div class="dnf-field">
-                            <label class="dnf-field__label" for="FirstName">First name<span class="dnf-field__optional">optional</span></label>
+                            <label class="dnf-field__label" for="FirstName">@T["First name"]<span class="dnf-field__optional">@T["optional"]</span></label>
                             <input id="FirstName" class="dnf-input" name="FirstName" value="@details.FirstName" maxlength="@UserManagementService.MaxNameLength" autocomplete="given-name" />
                         </div>
                         <div class="dnf-field">
-                            <label class="dnf-field__label" for="LastName">Last name<span class="dnf-field__optional">optional</span></label>
+                            <label class="dnf-field__label" for="LastName">@T["Last name"]<span class="dnf-field__optional">@T["optional"]</span></label>
                             <input id="LastName" class="dnf-input" name="LastName" value="@details.LastName" maxlength="@UserManagementService.MaxNameLength" autocomplete="family-name" />
                         </div>
                         <div class="dnf-field dnf-form-grid__full">
-                            <label class="dnf-field__label" for="Email">Email<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <label class="dnf-field__label" for="Email">@T["Email"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                             <input id="Email" class="dnf-input" name="Email" type="email" value="@details.Email" required maxlength="@UserManagementService.MaxEmailLength"
                                    autocomplete="email" aria-describedby="email-hint" />
-                            <span class="dnf-field__description" id="email-hint">You sign in with this address.</span>
+                            <span class="dnf-field__description" id="email-hint">@T["You sign in with this address."]</span>
                         </div>
                     </div>
                 </div>
                 <div class="dnf-card__footer">
-                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Save details</button>
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> @T["Save details"]</button>
                 </div>
             </section>
         </form>
@@ -48,8 +48,8 @@
             <section class="dnf-card" aria-labelledby="password-title">
                 <div class="dnf-card__header">
                     <div>
-                        <h2 class="dnf-card__title" id="password-title">@(Model.HasPassword ? "Password" : "Set a password")</h2>
-                        <p class="dnf-card__description">@(Model.HasPassword ? "" : "You signed up with a sign-in provider. With a password you can also sign in with your email. ")At least 8 characters with a letter and a number.</p>
+                        <h2 class="dnf-card__title" id="password-title">@(Model.HasPassword ? T["Password"] : T["Set a password"])</h2>
+                        <p class="dnf-card__description">@(Model.HasPassword ? "" : T["You signed up with a sign-in provider. With a password you can also sign in with your email."] + " ")@T["At least 8 characters with a letter and a number."]</p>
                     </div>
                 </div>
                 <div class="dnf-card__body dnf-stack">
@@ -60,23 +60,23 @@
                     @if (Model.HasPassword)
                     {
                         <div class="dnf-field">
-                            <label class="dnf-field__label" for="CurrentPassword">Current password<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <label class="dnf-field__label" for="CurrentPassword">@T["Current password"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                             <input id="CurrentPassword" class="dnf-input" name="CurrentPassword" type="password" required autocomplete="current-password" />
                         </div>
                     }
                     <div class="dnf-form-grid">
                         <div class="dnf-field">
-                            <label class="dnf-field__label" for="NewPassword">New password<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <label class="dnf-field__label" for="NewPassword">@T["New password"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                             <input id="NewPassword" class="dnf-input" name="NewPassword" type="password" required autocomplete="new-password" />
                         </div>
                         <div class="dnf-field">
-                            <label class="dnf-field__label" for="ConfirmPassword">Confirm new password<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                            <label class="dnf-field__label" for="ConfirmPassword">@T["Confirm new password"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                             <input id="ConfirmPassword" class="dnf-input" name="ConfirmPassword" type="password" required autocomplete="new-password" />
                         </div>
                     </div>
                 </div>
                 <div class="dnf-card__footer">
-                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="key" /> @(Model.HasPassword ? "Change password" : "Set password")</button>
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="key" /> @(Model.HasPassword ? T["Change password"] : T["Set password"])</button>
                 </div>
             </section>
         </form>
@@ -84,15 +84,42 @@
         <section class="dnf-card" aria-labelledby="security-title">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="security-title">Two-step verification</h2>
-                    <p class="dnf-card__description">@(Model.MfaMethods > 0 ? "After your password you confirm with an authenticator app, a passkey or a code." : "Add a second step after your password: an authenticator app, a passkey or a code.")</p>
+                    <h2 class="dnf-card__title" id="security-title">@T["Two-step verification"]</h2>
+                    <p class="dnf-card__description">@(Model.MfaMethods > 0 ? T["After your password you confirm with an authenticator app, a passkey or a code."] : T["Add a second step after your password: an authenticator app, a passkey or a code."])</p>
                 </div>
-                <dnf-badge tone="@(Model.MfaMethods > 0 ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(Model.MfaMethods > 0 ? "On" : "Off")</dnf-badge>
+                <dnf-badge tone="@(Model.MfaMethods > 0 ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(Model.MfaMethods > 0 ? T["On"] : T["Off"])</dnf-badge>
             </div>
             <div class="dnf-card__footer">
-                <a class="dnf-button dnf-button--secondary" href="/admin/profile/security"><dnf-icon name="shield" /> Sign-in security</a>
+                <a class="dnf-button dnf-button--secondary" href="/admin/profile/security"><dnf-icon name="shield" /> @T["Sign-in security"]</a>
             </div>
         </section>
+
+        <form method="post" action="/admin/profile/language">
+            @Html.AntiForgeryToken()
+            <section class="dnf-card" aria-labelledby="language-title">
+                <div class="dnf-card__header">
+                    <div>
+                        <h2 class="dnf-card__title" id="language-title">@T["Admin language"]</h2>
+                        <p class="dnf-card__description">@T["The language the admin screens are shown in for you. Content is edited in its own languages."]</p>
+                    </div>
+                </div>
+                <div class="dnf-card__body">
+                    <div class="dnf-field">
+                        <label class="dnf-field__label" for="language">@T["Language"]</label>
+                        <select id="language" name="language" class="dnf-select">
+                            <option value="" selected="@(Model.Language is null ? "selected" : null)">@T["Site default ({0})", Model.SiteLanguage.Name]</option>
+                            @foreach (var language in Model.Languages)
+                            {
+                                <option value="@language.Code" lang="@language.Code" selected="@(language.Code == Model.Language ? "selected" : null)">@language.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="dnf-card__footer">
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> @T["Save language"]</button>
+                </div>
+            </section>
+        </form>
     </div>
 
     <aside class="dnf-split__aside">
@@ -106,7 +133,7 @@
                     </div>
                 </div>
                 <dl class="dnf-description-list dnf-description-list--compact">
-                    <dt>Roles</dt>
+                    <dt>@T["Roles"]</dt>
                     <dd>
                         <span class="dnf-cluster">
                             @foreach (var role in Model.Roles)
@@ -115,12 +142,12 @@
                             }
                         </span>
                     </dd>
-                    <dt>Member since</dt>
+                    <dt>@T["Member since"]</dt>
                     <dd><dnf-timestamp value="@Model.Created" /></dd>
-                    <dt>Last sign-in</dt>
-                    <dd><dnf-timestamp value="@Model.LastLogin" empty="Never" /></dd>
+                    <dt>@T["Last sign-in"]</dt>
+                    <dd><dnf-timestamp value="@Model.LastLogin" empty="@T["Never"]" /></dd>
                 </dl>
-                <p class="text-xs text-muted">Roles and status are changed by an administrator on the Users screen.</p>
+                <p class="text-xs text-muted">@T["Roles and status are changed by an administrator on the Users screen."]</p>
             </div>
         </section>
     </aside>

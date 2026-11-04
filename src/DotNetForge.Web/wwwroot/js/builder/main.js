@@ -2,6 +2,7 @@
 // screen (Areas/Admin/Views/PageBuilder/Index.cshtml), which passes its configuration as data-* attributes on
 // #pe-editor-root. Everything below is plain JavaScript ported from the Dnn.Libraries.PageEditor sources: the core
 // (store, commands, renderer, canvas) and the UI (ui/, the reference's components one to one, rendered by ui/vdom.js).
+import { t } from "./ui/i18n.js";
 import "./components/builtins.js";
 import { CanvasController } from "./editor/canvas/controller.js";
 import { InlineEditor } from "./editor/canvas/inline-edit.js";
@@ -57,7 +58,7 @@ window.addEventListener("beforeunload", (e) => {
 async function close() {
   if (session.isDirty) await session.save();
   const state = session.saveState.value;
-  if ((state === "error" || state === "offline" || state === "conflict") && !window.confirm("Some changes could not be saved. Leave anyway and lose them?")) return;
+  if ((state === "error" || state === "offline" || state === "conflict") && !window.confirm(t("Some changes could not be saved. Leave anyway and lose them?"))) return;
   session.dispose();
   location.assign(config.backUrl);
 }

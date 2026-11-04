@@ -19,6 +19,9 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 //    actionable message (.docs/features/configuration.md). Outside Development nothing may default to a path
 //    inside the (read-only) deployment directory.
 //    Database settings are validated by their providers while services are registered.
+// The environment-specific environment variables this app reads (.docs/pages/environment-variables.md).
+DotNetForge.Shared.Entities.SettingEnvironment.Current = builder.Environment.EnvironmentName;
+
 AppEnvironment env;
 try
 {
@@ -72,6 +75,9 @@ app.UseStaticFiles(new StaticFileOptions
         }
     },
 });
+// The request's locale (/de/... on the public site); after static files, which have no locale, and before routing,
+// which sees the path without the prefix (.docs/features/internationalization.md#request-locale).
+app.UseMiddleware<RequestLocaleMiddleware>();
 app.UseRouting();
 
 // Install detection gates everything except the setup wizard until setup completes.
@@ -83,6 +89,8 @@ app.UseMiddleware<ExtensionEndpointGateMiddleware>();
 // The built-in OAuth providers' schemes follow their Providers settings (re-read at most every 30 s).
 app.UseMiddleware<DotNetForge.Web.Authentication.OAuthProviderRefreshMiddleware>();
 app.UseAuthentication();
+// The admin language needs the signed-in user (their own choice on Profile).
+app.UseMiddleware<AdminLanguageMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
 

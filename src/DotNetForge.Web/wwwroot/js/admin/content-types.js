@@ -15,22 +15,22 @@
     var titleSelect = document.querySelector("[data-title-field]");
 
     var TYPES = [
-        { type: "text", label: "Text", icon: "type", hint: "A short line: a name or a title." },
-        { type: "textarea", label: "Long text", icon: "align-left", hint: "Several lines of plain text." },
-        { type: "richText", label: "Rich text", icon: "pilcrow", hint: "Formatted text: headings, lists, links." },
-        { type: "number", label: "Number", icon: "hash", hint: "Prices, quantities, ratings." },
-        { type: "boolean", label: "Yes / no", icon: "toggle", hint: "A switch: in stock, featured." },
-        { type: "date", label: "Date", icon: "calendar", hint: "A day, optionally with a time." },
-        { type: "select", label: "Select", icon: "list-checks", hint: "One or more options from a list." },
-        { type: "email", label: "Email", icon: "at-sign", hint: "An email address." },
-        { type: "url", label: "Link", icon: "link", hint: "A web address or a site path." },
-        { type: "slug", label: "Slug", icon: "route", hint: "A URL-safe name, made from a text field." },
-        { type: "image", label: "Image", icon: "image", hint: "One or more pictures from Media." },
-        { type: "file", label: "File", icon: "file", hint: "Documents and downloads from Media." },
-        { type: "relationship", label: "Relationship", icon: "network", hint: "Links to entries of another type." },
-        { type: "array", label: "Array", icon: "list-ordered", hint: "Several values of one kind: tags, features." },
-        { type: "group", label: "Group", icon: "braces", hint: "Fields kept together: an address, SEO." },
-        { type: "repeater", label: "Repeater", icon: "repeat", hint: "Rows of fields: variants, team members." }
+        { type: "text", label: dnfText("Text"), icon: "type", hint: dnfText("A short line: a name or a title.") },
+        { type: "textarea", label: dnfText("Long text"), icon: "align-left", hint: dnfText("Several lines of plain text.") },
+        { type: "richText", label: dnfText("Rich text"), icon: "pilcrow", hint: dnfText("Formatted text: headings, lists, links.") },
+        { type: "number", label: dnfText("Number"), icon: "hash", hint: dnfText("Prices, quantities, ratings.") },
+        { type: "boolean", label: dnfText("Yes / no"), icon: "toggle", hint: dnfText("A switch: in stock, featured.") },
+        { type: "date", label: dnfText("Date"), icon: "calendar", hint: dnfText("A day, optionally with a time.") },
+        { type: "select", label: dnfText("Select"), icon: "list-checks", hint: dnfText("One or more options from a list.") },
+        { type: "email", label: dnfText("Email"), icon: "at-sign", hint: dnfText("An email address.") },
+        { type: "url", label: dnfText("Link"), icon: "link", hint: dnfText("A web address or a site path.") },
+        { type: "slug", label: dnfText("Slug"), icon: "route", hint: dnfText("A URL-safe name, made from a text field.") },
+        { type: "image", label: dnfText("Image"), icon: "image", hint: dnfText("One or more pictures from Media.") },
+        { type: "file", label: dnfText("File"), icon: "file", hint: dnfText("Documents and downloads from Media.") },
+        { type: "relationship", label: dnfText("Relationship"), icon: "network", hint: dnfText("Links to entries of another type.") },
+        { type: "array", label: dnfText("Array"), icon: "list-ordered", hint: dnfText("Several values of one kind: tags, features.") },
+        { type: "group", label: dnfText("Group"), icon: "braces", hint: dnfText("Fields kept together: an address, SEO.") },
+        { type: "repeater", label: dnfText("Repeater"), icon: "repeat", hint: dnfText("Rows of fields: variants, team members.") }
     ];
     var KEY = /^[a-z][A-Za-z0-9_]{0,49}$/;
     var MAX_DEPTH = 3;
@@ -73,8 +73,8 @@
     }
 
     function keyProblem(field, siblings) {
-        if (!KEY.test(field.key || "")) { return "Start with a lower-case letter; use letters, digits and _."; }
-        if (siblings.some(function (f) { return f !== field && (f.key || "").toLowerCase() === field.key.toLowerCase(); })) { return "Another field already uses this API name."; }
+        if (!KEY.test(field.key || "")) { return dnfText("Start with a lower-case letter; use letters, digits and _."); }
+        if (siblings.some(function (f) { return f !== field && (f.key || "").toLowerCase() === field.key.toLowerCase(); })) { return dnfText("Another field already uses this API name."); }
         return null;
     }
 
@@ -86,7 +86,7 @@
             var candidates = fields.filter(function (f) { return f.type === "text" || f.type === "slug" || f.type === "email"; });
             titleSelect.innerHTML = candidates.map(function (f) {
                 return "<option value=\"" + esc(f.key) + "\"" + (f.key === current ? " selected" : "") + ">" + esc(f.label || f.key) + " (" + esc(f.key) + ")</option>";
-            }).join("") || "<option value=\"\">Add a text field first</option>";
+            }).join("") || "<option value=\"\">" + esc(dnfText("Add a text field first")) + "</option>";
         }
     }
 
@@ -116,7 +116,7 @@
     function renderList(list, depth) {
         var ol = el("ol", { "class": "dnf-field-builder__list", "data-depth": depth });
         if (list.length === 0) {
-            ol.appendChild(el("li", { "class": "dnf-field-builder__empty" }, depth === 1 ? "No fields yet. Add the first one below." : "Add the fields this " + (depth > 1 ? "holds" : "type has") + "."));
+            ol.appendChild(el("li", { "class": "dnf-field-builder__empty" }, esc(depth === 1 ? dnfText("No fields yet. Add the first one below.") : depth > 1 ? dnfText("Add the fields this holds.") : dnfText("Add the fields this type has."))));
         }
         list.forEach(function (field, index) { ol.appendChild(renderField(field, list, index, depth)); });
         return ol;
@@ -124,10 +124,10 @@
 
     function badges(field) {
         var out = [];
-        if (field.required) { out.push("<span class=\"dnf-badge\" data-field-badge>Required</span>"); }
-        if (field.unique) { out.push("<span class=\"dnf-badge\" data-field-badge>Unique</span>"); }
-        if (field.multiple) { out.push("<span class=\"dnf-badge\" data-field-badge>Many</span>"); }
-        if (field.showInList) { out.push("<span class=\"dnf-badge\" data-field-badge>In list</span>"); }
+        if (field.required) { out.push("<span class=\"dnf-badge\" data-field-badge>" + esc(dnfText("Required")) + "</span>"); }
+        if (field.unique) { out.push("<span class=\"dnf-badge\" data-field-badge>" + esc(dnfText("Unique")) + "</span>"); }
+        if (field.multiple) { out.push("<span class=\"dnf-badge\" data-field-badge>" + esc(dnfText("Many")) + "</span>"); }
+        if (field.showInList) { out.push("<span class=\"dnf-badge\" data-field-badge>" + esc(dnfText("In list")) + "</span>"); }
         return out.join("");
     }
 
@@ -138,23 +138,23 @@
         var li = el("li", { "class": "dnf-field-builder__item", "data-open": isOpen ? "true" : null, "data-invalid": problem ? "true" : null, "data-field-id": field.id });
         var row = el("div", { "class": "dnf-field-builder__row" });
         if (!readOnly) {
-            var grip = el("span", { "class": "dnf-field-builder__grip", "title": "Drag to reorder", "aria-hidden": "true" }, icon("grip", "sm"));
+            var grip = el("span", { "class": "dnf-field-builder__grip", "title": dnfText("Drag to reorder"), "aria-hidden": "true" }, icon("grip", "sm"));
             grip.addEventListener("pointerdown", function () { li.setAttribute("draggable", "true"); });
             row.appendChild(grip);
         }
         row.appendChild(el("span", { "class": "dnf-field-builder__type-icon", "aria-hidden": "true" }, icon(info.icon, "sm")));
         var summary = el("button", { "type": "button", "class": "dnf-field-builder__summary", "aria-expanded": isOpen ? "true" : "false" },
-            "<span class=\"dnf-field-builder__name\">" + esc(field.label || field.key || "Untitled") + "</span>" +
+            "<span class=\"dnf-field-builder__name\">" + esc(field.label || field.key || dnfText("Untitled")) + "</span>" +
             "<code class=\"dnf-field-builder__key\">" + esc(field.key) + "</code>" +
             "<span class=\"dnf-field-builder__type-name\">" + esc(info.label) + "</span>" + badges(field));
         summary.addEventListener("click", function () { open[field.id] = !open[field.id]; render(); });
         row.appendChild(summary);
         if (!readOnly) {
             var tools = el("div", { "class": "dnf-field-builder__tools" });
-            tools.appendChild(toolButton("chevron-up", "Move up", index === 0, function () { move(list, index, -1); }));
-            tools.appendChild(toolButton("chevron-down", "Move down", index === list.length - 1, function () { move(list, index, 1); }));
-            tools.appendChild(toolButton("copy", "Duplicate", false, function () { duplicate(list, index); }));
-            tools.appendChild(toolButton("trash", "Remove", false, function () { remove(list, index); }));
+            tools.appendChild(toolButton("chevron-up", dnfText("Move up"), index === 0, function () { move(list, index, -1); }));
+            tools.appendChild(toolButton("chevron-down", dnfText("Move down"), index === list.length - 1, function () { move(list, index, 1); }));
+            tools.appendChild(toolButton("copy", dnfText("Duplicate"), false, function () { duplicate(list, index); }));
+            tools.appendChild(toolButton("trash", dnfText("Remove"), false, function () { remove(list, index); }));
             row.appendChild(tools);
         }
         li.appendChild(row);
@@ -206,7 +206,7 @@
     function duplicate(list, index) {
         var copy = JSON.parse(JSON.stringify(list[index]));
         (function fresh(f) { f.id = newId(); (f.fields || []).forEach(fresh); })(copy);
-        copy.label = (copy.label || copy.key) + " copy";
+        copy.label = dnfText("{0} copy", copy.label || copy.key);
         copy.key = keyFrom(copy.label, list, copy);
         delete copy.unique;
         list.splice(index + 1, 0, copy);
@@ -216,8 +216,8 @@
     function remove(list, index) {
         var field = list[index];
         var ask = window.dnfUI && window.dnfUI.confirm
-            ? window.dnfUI.confirm({ title: "Remove field", text: "Remove \"" + (field.label || field.key) + "\"? Its values are removed from every entry when you save the type.", action: "Remove" })
-            : Promise.resolve(window.confirm("Remove this field?"));
+            ? window.dnfUI.confirm({ title: dnfText("Remove field"), text: dnfText("Remove \"{0}\"? Its values are removed from every entry when you save the type.", field.label || field.key), action: dnfText("Remove") })
+            : Promise.resolve(window.confirm(dnfText("Remove this field?")));
         ask.then(function (ok) {
             if (!ok) { return; }
             list.splice(index, 1);
@@ -232,8 +232,8 @@
     // ---- The "add field" palette --------------------------------------------------------------------------
     function addControl(list, depth) {
         var wrap = el("div", { "class": "dnf-field-builder__add" });
-        var button = el("button", { "type": "button", "class": "dnf-button dnf-button--secondary dnf-button--sm", "aria-expanded": "false" }, icon("plus", "sm") + " Add field");
-        var palette = el("div", { "class": "dnf-field-builder__palette", "hidden": true, "role": "group", "aria-label": "Field types" });
+        var button = el("button", { "type": "button", "class": "dnf-button dnf-button--secondary dnf-button--sm", "aria-expanded": "false" }, icon("plus", "sm") + " " + esc(dnfText("Add field")));
+        var palette = el("div", { "class": "dnf-field-builder__palette", "hidden": true, "role": "group", "aria-label": dnfText("Field types") });
         TYPES.forEach(function (t) {
             if ((t.type === "group" || t.type === "repeater") && depth >= MAX_DEPTH) { return; }
             if (t.type === "relationship" && relations.length === 0) { return; }
@@ -256,13 +256,13 @@
     }
 
     function add(list, info) {
-        var label = "New " + info.label.toLowerCase() + " field";
+        var label = dnfText("New {0} field", info.label.toLowerCase());
         var field = { id: newId(), key: "", label: label, type: info.type };
         field.key = keyFrom(label, list, field);
-        if (info.type === "select") { field.choices = [{ value: "option-1", label: "Option 1" }]; }
+        if (info.type === "select") { field.choices = [{ value: "option-1", label: dnfText("Option {0}", 1) }]; }
         if (info.type === "relationship" && relations.length) { field.relationTo = relations[0].id; }
         if (info.type === "group" || info.type === "repeater") {
-            field.fields = [{ id: newId(), key: "title", label: "Title", type: "text" }];
+            field.fields = [{ id: newId(), key: "title", label: dnfText("Title"), type: "text" }];
         }
         field.isNew = true;
         list.push(field);
@@ -280,7 +280,7 @@
 
         // Label and API name: the name follows the label until it is edited by hand (new fields only).
         var keyInput;
-        panel.appendChild(input("Label", field.label || "", { focus: true, required: true, max: 100 }, function (value) {
+        panel.appendChild(input(dnfText("Label"), field.label || "", { focus: true, required: true, max: 100 }, function (value) {
             field.label = value;
             if (field.isNew && !field.keyEdited) {
                 field.key = keyFrom(value || "field", list, field);
@@ -288,88 +288,88 @@
             }
             refreshSummary(field, list);
         }));
-        var keyField = input("API name", field.key || "", { mono: true, max: 50, hint: "How the API and content lists name the field, e.g. {name} in a link pattern." }, function (value) {
+        var keyField = input(dnfText("API name"), field.key || "", { mono: true, max: 50, keyProblem: true, hint: dnfText("How the API and content lists name the field, e.g. {name} in a link pattern.") }, function (value) {
             field.key = value.trim();
             field.keyEdited = true;
             refreshSummary(field, list);
         });
         keyInput = keyField.querySelector("input");
         panel.appendChild(keyField);
-        panel.appendChild(input("Help text", field.help || "", { span: true, max: 500, hint: "Shown under the field in the entry form." }, function (v) { set(field, "help", v.trim()); }));
+        panel.appendChild(input(dnfText("Help text"), field.help || "", { span: true, max: 500, hint: dnfText("Shown under the field in the entry form.") }, function (v) { set(field, "help", v.trim()); }));
 
         if (t === "text" || t === "textarea" || t === "email" || t === "url" || t === "slug" || t === "number") {
-            panel.appendChild(input("Placeholder", field.placeholder || "", { max: 200 }, function (v) { set(field, "placeholder", v.trim()); }));
+            panel.appendChild(input(dnfText("Placeholder"), field.placeholder || "", { max: 200 }, function (v) { set(field, "placeholder", v.trim()); }));
         }
         if (t === "text" || t === "textarea" || t === "email" || t === "url" || t === "slug" || t === "richText") {
-            panel.appendChild(number("Min length", field.minLength, function (v) { set(field, "minLength", v); }));
-            panel.appendChild(number("Max length", field.maxLength, function (v) { set(field, "maxLength", v); }));
+            panel.appendChild(number(dnfText("Min length"), field.minLength, function (v) { set(field, "minLength", v); }));
+            panel.appendChild(number(dnfText("Max length"), field.maxLength, function (v) { set(field, "maxLength", v); }));
         }
         if (t === "text" || t === "textarea") {
-            panel.appendChild(input("Pattern", field.pattern || "", { mono: true, max: 200, hint: "A regular expression the value must match, e.g. ^[A-Z]{3}-\\d+$" }, function (v) { set(field, "pattern", v); }));
+            panel.appendChild(input(dnfText("Pattern"), field.pattern || "", { mono: true, max: 200, hint: dnfText("A regular expression the value must match, e.g. ^[A-Z]{3}-\\d+$") }, function (v) { set(field, "pattern", v); }));
         }
         if (t === "slug") {
             var texts = list.filter(function (f) { return f.type === "text" && f !== field; });
-            panel.appendChild(select("Generate from", field.slugFrom || "", [{ value: "", label: "Nothing (typed by hand)" }].concat(texts.map(function (f) { return { value: f.key, label: f.label || f.key }; })), function (v) { set(field, "slugFrom", v); }));
+            panel.appendChild(select(dnfText("Generate from"), field.slugFrom || "", [{ value: "", label: dnfText("Nothing (typed by hand)") }].concat(texts.map(function (f) { return { value: f.key, label: f.label || f.key }; })), function (v) { set(field, "slugFrom", v); }));
         }
         if (t === "number" || (t === "array" && field.itemType === "number")) {
-            panel.appendChild(number("Minimum", field.min, function (v) { set(field, "min", v); }, true));
-            panel.appendChild(number("Maximum", field.max, function (v) { set(field, "max", v); }, true));
+            panel.appendChild(number(dnfText("Minimum"), field.min, function (v) { set(field, "min", v); }, true));
+            panel.appendChild(number(dnfText("Maximum"), field.max, function (v) { set(field, "max", v); }, true));
         }
         if (t === "number") {
-            panel.appendChild(number("Decimals shown", field.decimals, function (v) { set(field, "decimals", v); }));
-            panel.appendChild(check("Whole numbers only", field.integer, function (v) { set(field, "integer", v); }));
+            panel.appendChild(number(dnfText("Decimals shown"), field.decimals, function (v) { set(field, "decimals", v); }));
+            panel.appendChild(check(dnfText("Whole numbers only"), field.integer, function (v) { set(field, "integer", v); }));
         }
         if (t === "date") {
-            panel.appendChild(check("With a time of day (UTC)", field.withTime, function (v) { set(field, "withTime", v); }));
+            panel.appendChild(check(dnfText("With a time of day (UTC)"), field.withTime, function (v) { set(field, "withTime", v); }));
         }
         if (t === "select") {
             panel.appendChild(choicesEditor(field));
         }
         if (t === "relationship") {
-            panel.appendChild(select("Links to", field.relationTo || "", relations.map(function (r) { return { value: r.id, label: r.name }; }), function (v) { set(field, "relationTo", v); }));
+            panel.appendChild(select(dnfText("Links to"), field.relationTo || "", relations.map(function (r) { return { value: r.id, label: r.name }; }), function (v) { set(field, "relationTo", v); }));
         }
         if (t === "array") {
-            panel.appendChild(select("Each item is", field.itemType || "text", [{ value: "text", label: "Text" }, { value: "number", label: "Number" }], function (v) { set(field, "itemType", v); render(); }));
+            panel.appendChild(select(dnfText("Each item is"), field.itemType || "text", [{ value: "text", label: dnfText("Text") }, { value: "number", label: dnfText("Number") }], function (v) { set(field, "itemType", v); render(); }));
         }
         if (t === "select" || t === "image" || t === "file" || t === "relationship") {
-            panel.appendChild(check("Allow several", field.multiple, function (v) { set(field, "multiple", v); refreshSummary(field, list); render(); }));
+            panel.appendChild(check(dnfText("Allow several"), field.multiple, function (v) { set(field, "multiple", v); refreshSummary(field, list); render(); }));
         }
         if (t === "array" || t === "repeater" || field.multiple) {
-            panel.appendChild(number(t === "repeater" ? "Min rows" : "Min items", field.minRows, function (v) { set(field, "minRows", v); }));
-            panel.appendChild(number(t === "repeater" ? "Max rows" : "Max items", field.maxRows, function (v) { set(field, "maxRows", v); }));
+            panel.appendChild(number(t === "repeater" ? dnfText("Min rows") : dnfText("Min items"), field.minRows, function (v) { set(field, "minRows", v); }));
+            panel.appendChild(number(t === "repeater" ? dnfText("Max rows") : dnfText("Max items"), field.maxRows, function (v) { set(field, "maxRows", v); }));
         }
 
         // Default value (types with a simple value).
         if (t === "text" || t === "textarea" || t === "email" || t === "url" || t === "slug" || t === "number" || t === "date") {
-            panel.appendChild(input("Default value", field["default"] == null ? "" : String(field["default"]), { max: 500 }, function (v) {
+            panel.appendChild(input(dnfText("Default value"), field["default"] == null ? "" : String(field["default"]), { max: 500 }, function (v) {
                 if (v.trim() === "") { delete field["default"]; } else { field["default"] = t === "number" && !isNaN(Number(v)) ? Number(v) : v; }
                 sync();
             }));
         } else if (t === "boolean") {
-            panel.appendChild(check("On by default", field["default"] === true, function (v) { set(field, "default", v); }));
+            panel.appendChild(check(dnfText("On by default"), field["default"] === true, function (v) { set(field, "default", v); }));
         } else if (t === "select" && !field.multiple) {
-            panel.appendChild(select("Default value", field["default"] || "", [{ value: "", label: "None" }].concat((field.choices || []).map(function (c) { return { value: c.value, label: c.label || c.value }; })), function (v) { set(field, "default", v); }));
+            panel.appendChild(select(dnfText("Default value"), field["default"] || "", [{ value: "", label: dnfText("None") }].concat((field.choices || []).map(function (c) { return { value: c.value, label: c.label || c.value }; })), function (v) { set(field, "default", v); }));
         }
 
         // Flags.
         var flags = el("div", { "class": "dnf-field-builder__flags dnf-form-grid__full" });
         if (t !== "boolean" && t !== "group") {
-            flags.appendChild(check("Required (to publish)", field.required, function (v) { set(field, "required", v); refreshSummary(field, list); }));
+            flags.appendChild(check(dnfText("Required (to publish)"), field.required, function (v) { set(field, "required", v); refreshSummary(field, list); }));
         }
         if (top && (t === "text" || t === "email" || t === "url" || t === "slug" || t === "number")) {
-            flags.appendChild(check("Unique", field.unique, function (v) { set(field, "unique", v); refreshSummary(field, list); }));
+            flags.appendChild(check(dnfText("Unique"), field.unique, function (v) { set(field, "unique", v); refreshSummary(field, list); }));
         }
         if (top && t !== "group" && t !== "repeater" && t !== "richText") {
-            flags.appendChild(check("Show in entry list", field.showInList, function (v) { set(field, "showInList", v); refreshSummary(field, list); }));
+            flags.appendChild(check(dnfText("Show in entry list"), field.showInList, function (v) { set(field, "showInList", v); refreshSummary(field, list); }));
         }
-        flags.appendChild(check("Half width in the form", field.width === "half", function (v) { set(field, "width", v ? "half" : ""); }));
+        flags.appendChild(check(dnfText("Half width in the form"), field.width === "half", function (v) { set(field, "width", v ? "half" : ""); }));
         panel.appendChild(flags);
 
         // Nested fields.
         if (t === "group" || t === "repeater") {
             if (!Array.isArray(field.fields)) { field.fields = []; }
             var nested = el("div", { "class": "dnf-field-builder__nested dnf-form-grid__full" });
-            nested.appendChild(el("p", { "class": "dnf-field-builder__nested-title" }, t === "group" ? "Fields in this group" : "Fields of each row"));
+            nested.appendChild(el("p", { "class": "dnf-field-builder__nested-title" }, esc(t === "group" ? dnfText("Fields in this group") : dnfText("Fields of each row"))));
             nested.appendChild(renderList(field.fields, depth + 1));
             if (!readOnly) { nested.appendChild(addControl(field.fields, depth + 1)); }
             panel.appendChild(nested);
@@ -388,7 +388,7 @@
         var li = root.querySelector("[data-field-id=\"" + field.id + "\"]");
         if (!li) { return; }
         var summary = li.querySelector(".dnf-field-builder__summary");
-        summary.querySelector(".dnf-field-builder__name").textContent = field.label || field.key || "Untitled";
+        summary.querySelector(".dnf-field-builder__name").textContent = field.label || field.key || dnfText("Untitled");
         summary.querySelector(".dnf-field-builder__key").textContent = field.key;
         summary.querySelectorAll("[data-field-badge]").forEach(function (b) { b.remove(); });
         summary.insertAdjacentHTML("beforeend", badges(field));
@@ -408,7 +408,7 @@
         control.value = value;
         control.addEventListener("input", function () { onInput(control.value); });
         wrap.appendChild(control);
-        if (label === "API name") {
+        if (opts.keyProblem) {
             wrap.appendChild(el("span", { "class": "dnf-field__error", "data-key-problem": "", "hidden": true }));
         }
         if (opts.hint) { wrap.appendChild(el("span", { "class": "dnf-field__description" }, esc(opts.hint))); }
@@ -448,15 +448,15 @@
     function choicesEditor(field) {
         if (!Array.isArray(field.choices)) { field.choices = []; }
         var wrap = el("div", { "class": "dnf-field dnf-form-grid__full" });
-        wrap.appendChild(el("span", { "class": "dnf-field__label" }, "Options"));
+        wrap.appendChild(el("span", { "class": "dnf-field__label" }, esc(dnfText("Options"))));
         var rows = el("div", { "class": "dnf-field-builder__options" });
         function draw() {
             rows.innerHTML = "";
             field.choices.forEach(function (choice, i) {
                 var row = el("div", { "class": "dnf-field-builder__option" });
-                var label = el("input", { type: "text", "class": "dnf-input dnf-input--sm", placeholder: "Label", "aria-label": "Option " + (i + 1) + " label", maxlength: "100" });
+                var label = el("input", { type: "text", "class": "dnf-input dnf-input--sm", placeholder: dnfText("Label"), "aria-label": dnfText("Option {0} label", i + 1), maxlength: "100" });
                 label.value = choice.label || "";
-                var value = el("input", { type: "text", "class": "dnf-input dnf-input--sm dnf-input--mono", placeholder: "value", "aria-label": "Option " + (i + 1) + " value", maxlength: "100" });
+                var value = el("input", { type: "text", "class": "dnf-input dnf-input--sm dnf-input--mono", placeholder: dnfText("value"), "aria-label": dnfText("Option {0} value", i + 1), maxlength: "100" });
                 value.value = choice.value || "";
                 label.addEventListener("input", function () {
                     var auto = !choice.value || choice.value === slugValue(choice.label || "");
@@ -467,16 +467,16 @@
                 value.addEventListener("input", function () { choice.value = value.value; sync(); });
                 row.appendChild(label);
                 row.appendChild(value);
-                row.appendChild(toolButton("x", "Remove option", false, function () { field.choices.splice(i, 1); sync(); draw(); }));
+                row.appendChild(toolButton("x", dnfText("Remove option"), false, function () { field.choices.splice(i, 1); sync(); draw(); }));
                 rows.appendChild(row);
             });
         }
         draw();
         wrap.appendChild(rows);
-        var addButton = el("button", { type: "button", "class": "dnf-button dnf-button--ghost dnf-button--sm" }, icon("plus", "sm") + " Add option");
+        var addButton = el("button", { type: "button", "class": "dnf-button dnf-button--ghost dnf-button--sm" }, icon("plus", "sm") + " " + esc(dnfText("Add option")));
         addButton.addEventListener("click", function () {
             var n = field.choices.length + 1;
-            field.choices.push({ value: "option-" + n, label: "Option " + n });
+            field.choices.push({ value: "option-" + n, label: dnfText("Option {0}", n) });
             sync();
             draw();
             var inputs = rows.querySelectorAll("input");

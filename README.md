@@ -170,9 +170,11 @@ token in an `X-CSRF-TOKEN` header.
 Built screens: Dashboard, **Content Manager** (entries of your content types, generated forms, drafts and publishing),
 **Content types** (visual field builder, templates), **Pages** (page tree, settings, SEO, scheduling, permissions) with
 the visual **page builder**, **Media** (upload, download,
-delete and bulk delete; local or S3-compatible storage), Settings, Users, Roles, Audit Logs, Plugins (enable/disable extensions),
-API Tokens, **Providers** (sign in with Google, Microsoft, Apple, GitHub and six more) and **Two-factor
-authentication** (authenticator app, passkeys, email or SMS codes). Remaining planned areas link to documented
+delete and bulk delete; local or S3-compatible storage), **Environment Variables** (API keys and config, secrets encrypted, per environment), Users, Roles, Audit Logs, Plugins (enable/disable extensions),
+API Tokens, **Providers** (sign in with Google, Microsoft, Apple, GitHub and six more), **Two-factor
+authentication** (authenticator app, passkeys, email or SMS codes) and **Internationalization** (the site's
+languages: translated pages and entries under `/de/...`, and the admin in English or one of twenty more languages, per user -
+[internationalization](.docs/features/internationalization.md)). Remaining planned areas link to documented
 placeholders.
 
 ## Extensions

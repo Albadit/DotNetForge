@@ -85,7 +85,7 @@ Data Management (description "Export the CMS data and the media files, keep back
   `dotnetforge-backup-postgresql-<yyyyMMdd-HHmmss>.zip`. Backups are never served by the media route (it only serves
   `MediaFiles` rows). Record + audit `transfer.backup.created`. Toast "Backup stored: <file> (n records)."
 - **Save schedule** → `SaveScheduleAsync`: `Settings` rows `transfer.backup.enabled`, `transfer.backup.interval-hours`,
-  `transfer.backup.keep` (the Settings screen refuses `transfer.` keys); audit `settings.changed` "Backup schedule".
+  `transfer.backup.keep` ([Environment Variables](environment-variables.md) lists `transfer.` keys but refuses to change them); audit `settings.changed` "Backup schedule".
   Off by default (every day, keep 7).
 - **Automatic backups** → `AutomaticBackupService` checks every 5 minutes (first after 1 minute): on, installed, and the
   interval since the last successful backup (manual ones count) has passed → a backup marked `Automatic`; then
@@ -232,7 +232,7 @@ flowchart LR
 
 ## Related pages
 
-[Settings](settings.md), [Audit Logs](audit-logs.md), [Media](media.md) (shares the storage),
+[Environment Variables](environment-variables.md), [Audit Logs](audit-logs.md), [Media](media.md) (shares the storage),
 [API Endpoints](api-endpoints.md) (also uses additional databases).
 
 ## Important implementation details
@@ -241,8 +241,9 @@ flowchart LR
   API token hashes and personal data - not this site's Data Protection keys, so values encrypted with them must be
   renewed after moving to another site: custom API endpoint tokens, the sign-in providers' secrets (re-enter them on
   [Providers](providers.md)), authenticator-app setups ([MFA](../features/mfa.md#storage-secrets-and-transfer)) and
-  webhook signing secrets (nothing is sent until the secret is rotated on [Webhooks](webhooks.md)). A restore into the
-  same site keeps them.
+  webhook signing secrets (nothing is sent until the secret is rotated on [Webhooks](webhooks.md)) and secret
+  environment variables (exported encrypted; enter them again on [Environment Variables](environment-variables.md)).
+  A restore into the same site keeps them.
 - `SystemState` (installed flag, data version) and the transfer history are this site's own and never replaced.
 - Audit log entries are imported with new ids (in their original order); every other key keeps its value.
 - The CMS database is always PostgreSQL; an export made on another database by an earlier build imports when its

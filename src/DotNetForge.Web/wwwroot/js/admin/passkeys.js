@@ -16,7 +16,7 @@
         [signin, register].forEach(function (root) {
             if (!root) { return; }
             var error = root.querySelector("[data-passkey-error]");
-            error.textContent = "This browser can't use passkeys. Use another browser or another way.";
+            error.textContent = dnfText("This browser can't use passkeys. Use another browser or another way.");
             error.hidden = false;
             Array.prototype.forEach.call(root.querySelectorAll("button"), function (b) { b.disabled = true; });
         });
@@ -105,10 +105,10 @@
 
     function failure(error) {
         return error && error.name === "NotAllowedError"
-            ? "The passkey prompt was closed or timed out. Try again."
+            ? dnfText("The passkey prompt was closed or timed out. Try again.")
             : error && error.name === "InvalidStateError"
-                ? "This passkey is already added."
-                : "The passkey didn't work. Try again.";
+                ? dnfText("This passkey is already added.")
+                : dnfText("The passkey didn't work. Try again.");
     }
 
     function wire(root, start, run) {
@@ -125,7 +125,7 @@
             error.hidden = true;
             run().then(function (result) {
                 if (result && result.redirect) { window.location.href = result.redirect; return; }
-                fail(result && result.error ? result.error : "The passkey didn't work. Try again.");
+                fail(result && result.error ? result.error : dnfText("The passkey didn't work. Try again."));
             }).catch(function (e) { fail(failure(e)); });
         });
     }

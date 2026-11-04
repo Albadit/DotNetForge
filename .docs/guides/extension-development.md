@@ -121,6 +121,11 @@ them; a background service should check `IExtensionState.IsEnabledAsync(context.
 `ExtensionContext`: `Id`, `Name`, `Version`, `Type`, `Directory` (read-only!), `Settings`, `GetString`, `GetBool`,
 `GetInt64`, `GetDouble`, `GetStringList`, `GetEnvironmentValue`, `PublicResourceBase`, `AdminResourceBase`.
 
+An API key or URL an admin should be able to set without touching `.env`: read it with `IEnvironmentVariables`
+(`DotNetForge.Sdk`, scoped - inject it into an endpoint or controller) - `await variables.GetAsync("PAYMENT_API_KEY")`
+gives the value for the environment the site runs in, decrypted when it is a secret, or null. The admin sets it on
+**Settings → Global Settings → Environment Variables** ([screen](../pages/environment-variables.md)).
+
 MVC controllers in your assembly work too (attribute routes) and are switched off with the extension like endpoints.
 
 ### Dependencies (NuGet packages and other extensions)
@@ -184,7 +189,9 @@ injecting a service your `ConfigureServices` registered. Sample: `extensions/wid
 Replaces the public site's views: `Views/Page.cshtml` (model `DotNetForge.Shared.Entities.Page`) for content pages
 and `Views/Index.cshtml` (model `List<(string Title, string Slug)>`) for the root when no root page is published. A
 missing one falls back to the built-in view. Extra ViewData: `AppName`, `Menu` (`IReadOnlyList<PublishedPage>`),
-`RouteValues` (dynamic routes). Call `@await Component.InvokeAsync("ExtensionModules", new { page = Model })` where
+`RouteValues` (dynamic routes), and for the request's locale `CurrentPath`, `HomePath` and `Languages`
+(`IReadOnlyList<LanguageLink>`: a language switcher and `hreflang` links - build links from these, not from `/` and
+slugs; [themes → theme views](../features/themes.md#theme-views)). Call `@await Component.InvokeAsync("ExtensionModules", new { page = Model })` where
 modules should appear. The active theme is the default theme (`dotnetforge.theme.default` unless changed)
 when enabled, otherwise the first enabled theme by name ([themes](../features/themes.md)). Sample:
 `extensions/themes/default-theme`.

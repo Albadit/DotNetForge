@@ -58,6 +58,6 @@ public sealed class DashboardController : AdminControllerBase
         var firstName = userId is null
             ? null
             : await _db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.FirstName).FirstOrDefaultAsync();
-        return string.IsNullOrWhiteSpace(firstName) ? User.Identity?.Name ?? "there" : firstName;
+        return string.IsNullOrWhiteSpace(firstName) ? User.Identity?.Name ?? T["there"] : firstName;
     }
 }

@@ -1,3 +1,4 @@
+import { t } from "./i18n.js";
 import { jsx, Fragment, useEffect, useRef, useState } from "./vdom.js";
 import { createDocument } from "../core/doc.js";
 import { normalizeDocument } from "../core/validate.js";
@@ -43,7 +44,7 @@ function Modal({ title, children, onClose, wide, footer }) {
         jsx("div", { ref: ref, class: cls('pe-modal', wide && 'is-wide'), role: "dialog", "aria-modal": "true", "aria-label": title },
             jsx("header", { class: "pe-modal-head" },
                 jsx("h2", null, title),
-                jsx("button", { type: "button", class: "pe-icon-btn", "aria-label": "Close", onClick: onClose },
+                jsx("button", { type: "button", class: "pe-icon-btn", "aria-label": t("Close"), onClick: onClose },
                     jsx(Icon, { name: "close", size: 16 }))),
             jsx("div", { class: "pe-modal-body" }, children),
             footer && jsx("footer", { class: "pe-modal-foot" }, footer))));
@@ -61,7 +62,7 @@ export function Dialogs() {
         case 'shortcuts': return jsx(ShortcutsDialog, { onClose: close });
         case 'files': return jsx(FilesDialog, { onClose: close, onPick: dialog.onPick });
         case 'confirm': return (jsx(Modal, { title: dialog.title, onClose: close, footer: jsx(Fragment, null,
-                jsx("button", { type: "button", class: "pe-btn", onClick: close }, "Cancel"),
+                jsx("button", { type: "button", class: "pe-btn", onClick: close }, t("Cancel")),
                 jsx("button", { type: "button", class: cls('pe-btn', dialog.danger ? 'pe-btn-danger' : 'pe-btn-primary'), autoFocus: true, onClick: () => {
                         close();
                         dialog.onConfirm();
@@ -82,13 +83,13 @@ function Onboarding({ onClose }) {
         onClose();
         void session.save(true);
     };
-    return (jsx(Modal, { title: "Design this page", onClose: onClose, wide: true },
-        jsx("p", { class: "pe-lead" }, "Build the page from sections, grids and components. Nothing changes for visitors until you publish, and you can unpublish at any time to show the page's default view again."),
+    return (jsx(Modal, { title: t("Design this page"), onClose: onClose, wide: true },
+        jsx("p", { class: "pe-lead" }, t("Build the page from sections, grids and components. Nothing changes for visitors until you publish, and you can unpublish at any time to show the page's default view again.")),
         jsx("div", { class: "pe-choices" },
             jsx("button", { type: "button", class: "pe-choice", autoFocus: true, onClick: () => start(createDocument()) },
                 jsx(Icon, { name: "page", size: 24 }),
-                jsx("strong", null, "Start with an empty page"),
-                jsx("span", null, "One empty section. Add content from the Insert panel.")),
+                jsx("strong", null, t("Start with an empty page")),
+                jsx("span", null, t("One empty section. Add content from the Insert panel."))),
             PRESETS.slice(0, 3).map(p => (jsx("button", { key: p.id, type: "button", class: "pe-choice", onClick: () => {
                     const doc = createDocument();
                     const root = doc.nodes[doc.root];
@@ -101,51 +102,47 @@ function Onboarding({ onClose }) {
                     start(normalizeDocument(doc));
                 } },
                 jsx(Icon, { name: p.icon, size: 24 }),
-                jsx("strong", null,
-                    "Start with: ",
-                    p.label),
+                jsx("strong", null, t("Start with: {0}", p.label)),
                 jsx("span", null, p.description)))))));
 }
 function ConflictDialog({ dialog }) {
     const { session } = useEditor();
     const c = dialog.conflict;
-    return (jsx(Modal, { title: "Someone else changed this page", onClose: () => session.dialog.set(null), footer: jsx(Fragment, null,
-            jsx("button", { type: "button", class: "pe-btn", onClick: () => void session.reloadFromServer() }, "Load their version"),
-            jsx("button", { type: "button", class: "pe-btn pe-btn-danger", onClick: () => void session.overwrite() }, "Keep mine and overwrite")) },
+    return (jsx(Modal, { title: t("Someone else changed this page"), onClose: () => session.dialog.set(null), footer: jsx(Fragment, null,
+            jsx("button", { type: "button", class: "pe-btn", onClick: () => void session.reloadFromServer() }, t("Load their version")),
+            jsx("button", { type: "button", class: "pe-btn pe-btn-danger", onClick: () => void session.overwrite() }, t("Keep mine and overwrite"))) },
         jsx("p", null,
             jsx("strong", null, c.savedBy),
-            " saved this page at ",
-            new Date(c.savedOn).toLocaleString(),
-            ", after you started editing."),
-        jsx("p", null, "Loading their version discards your unsaved changes. Keeping yours replaces their changes.")));
+            " " + t("saved this page at {0}, after you started editing.", new Date(c.savedOn).toLocaleString())),
+        jsx("p", null, t("Loading their version discards your unsaved changes. Keeping yours replaces their changes."))));
 }
 // This server keeps no version history: the reference's History dialog and publish note are left out.
 function PublishDialog({ onClose }) {
     const { session } = useEditor();
     const page = useSignal(session.page);
     const [busy, setBusy] = useState(false);
-    return (jsx(Modal, { title: "Publish this page", onClose: onClose, footer: jsx(Fragment, null,
-            jsx("button", { type: "button", class: "pe-btn", onClick: onClose }, "Cancel"),
+    return (jsx(Modal, { title: t("Publish this page"), onClose: onClose, footer: jsx(Fragment, null,
+            jsx("button", { type: "button", class: "pe-btn", onClick: onClose }, t("Cancel")),
             jsx("button", { type: "button", class: "pe-btn pe-btn-primary", disabled: busy, autoFocus: true, onClick: async () => {
                     setBusy(true);
                     await session.publish();
                     setBusy(false);
                     onClose();
-                } }, busy ? 'Publishing…' : 'Publish now')) },
+                } }, busy ? t("Publishing…") : t("Publish now"))) },
         jsx("p", null,
-            "Visitors will see the current draft as soon as you publish.",
-            page?.published ? '' : ' Until then they keep seeing the page as it is now.')));
+            t("Visitors will see the current draft as soon as you publish."),
+            page?.published ? '' : ' ' + t("Until then they keep seeing the page as it is now."))));
 }
 function ShortcutsDialog({ onClose }) {
     const groups = [...new Set(SHORTCUTS.map(s => s.group))];
-    return (jsx(Modal, { title: "Keyboard shortcuts", onClose: onClose, wide: true },
+    return (jsx(Modal, { title: t("Keyboard shortcuts"), onClose: onClose, wide: true },
         jsx("div", { class: "pe-shortcuts" }, groups.map(g => (jsx("div", { key: g },
             jsx("h3", null, g),
             jsx("dl", null, SHORTCUTS.filter(s => s.group === g).map(s => (jsx("div", { key: s.keys, class: "pe-shortcut" },
                 jsx("dt", null,
                     jsx("kbd", null, s.keys)),
                 jsx("dd", null, s.label))))))))),
-        jsx("p", { class: "pe-hint" }, "On a Mac, use \u2318 instead of Ctrl.")));
+        jsx("p", { class: "pe-hint" }, t("On a Mac, use ⌘ instead of Ctrl."))));
 }
 function FilesDialog({ onClose, onPick }) {
     const { session } = useEditor();
@@ -176,19 +173,19 @@ function FilesDialog({ onClose, onPick }) {
             setBusy(false);
         }
     };
-    return (jsx(Modal, { title: "Choose an image", onClose: onClose, wide: true },
+    return (jsx(Modal, { title: t("Choose an image"), onClose: onClose, wide: true },
         jsx("div", { class: "pe-files-bar" },
             jsx("span", { class: "pe-files-path" },
                 jsx(Icon, { name: "folder", size: 16 }),
                 " ",
-                folder || 'Media library'),
+                folder || t("Media library")),
             listing?.parent !== null && listing && jsx("button", { type: "button", class: "pe-btn", onClick: () => load(listing.parent) },
                 jsx(Icon, { name: "up", size: 16 }),
-                " Up"),
+                " " + t("Up")),
             listing?.canUpload && (jsx("label", { class: "pe-btn" },
                 jsx(Icon, { name: "upload", size: 16 }),
                 " ",
-                busy ? 'Uploading…' : 'Upload',
+                busy ? t("Uploading…") : t("Upload"),
                 jsx("input", { type: "file", accept: "image/*", hidden: true, disabled: busy, onChange: e => {
                         const f = e.target.files?.[0];
                         if (f)
@@ -197,7 +194,7 @@ function FilesDialog({ onClose, onPick }) {
         error && jsx("p", { class: "pe-error" }, error),
         !listing && !error && jsx("p", null,
             jsx(Icon, { name: "loader", size: 16, class: "pe-spin" }),
-            " Loading\u2026"),
+            " " + t("Loading…")),
         listing && (jsx("div", { class: "pe-files" },
             listing.folders.map(f => (jsx("button", { key: f, type: "button", class: "pe-file is-folder", onClick: () => load(f) },
                 jsx(Icon, { name: "folder", size: 28 }),
@@ -208,13 +205,13 @@ function FilesDialog({ onClose, onPick }) {
                 } },
                 jsx("img", { src: f.url, alt: "", loading: "lazy" }),
                 jsx("span", null, f.name)))),
-            listing.folders.length + listing.files.length === 0 && jsx("p", { class: "pe-hint" }, "This folder has no images.")))));
+            listing.folders.length + listing.files.length === 0 && jsx("p", { class: "pe-hint" }, t("This folder has no images."))))));
 }
 export function Toasts() {
     const { session } = useEditor();
     const toasts = useSignal(session.toasts);
-    return (jsx("div", { class: "pe-toasts", role: "status", "aria-live": "polite" }, toasts.map(t => (jsx("div", { key: t.id, class: cls('pe-toast', 'is-' + t.kind) },
-        jsx(Icon, { name: t.kind === 'error' ? 'alert' : t.kind === 'success' ? 'check' : 'info', size: 16 }),
-        jsx("span", null, t.text),
-        t.action && jsx("button", { type: "button", class: "pe-btn-text", onClick: t.action.run }, t.action.label))))));
+    return (jsx("div", { class: "pe-toasts", role: "status", "aria-live": "polite" }, toasts.map(toast => (jsx("div", { key: toast.id, class: cls('pe-toast', 'is-' + toast.kind) },
+        jsx(Icon, { name: toast.kind === 'error' ? 'alert' : toast.kind === 'success' ? 'check' : 'info', size: 16 }),
+        jsx("span", null, toast.text),
+        toast.action && jsx("button", { type: "button", class: "pe-btn-text", onClick: toast.action.run }, toast.action.label))))));
 }

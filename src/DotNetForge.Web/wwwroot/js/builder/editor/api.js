@@ -1,3 +1,4 @@
+import { t } from "../ui/i18n.js";
 // The page builder's server API (.docs/features/page-builder.md#api): JSON under /admin/pages/{pageId}/builder/,
 // every POST with the antiforgery token in the X-CSRF-TOKEN header. Errors become ApiError with the server's message.
 class ApiError extends Error {
@@ -28,10 +29,10 @@ class Api {
     try {
       res = await fetch(this.config.base + path, { method, headers, body: payload, credentials: "same-origin" });
     } catch {
-      throw new ApiError(0, "The server could not be reached. Check your connection.");
+      throw new ApiError(0, t("The server could not be reached. Check your connection."));
     }
     if (res.redirected && /\/account\/(login|denied)/.test(res.url)) {
-      throw new ApiError(401, "Your session has expired. Sign in again to continue.");
+      throw new ApiError(401, t("Your session has expired. Sign in again to continue."));
     }
     const text = await res.text();
     let data = void 0;
@@ -44,9 +45,9 @@ class Api {
     }
     if (!res.ok) {
       const message = data && typeof data === "object" && typeof data.message === "string" ? data.message
-        : res.status === 401 ? "Your session has expired. Sign in again to continue."
-        : res.status === 403 ? "You do not have permission to do this."
-        : `The server returned an error (${res.status}).`;
+        : res.status === 401 ? t("Your session has expired. Sign in again to continue.")
+        : res.status === 403 ? t("You do not have permission to do this.")
+        : t("The server returned an error ({0}).", res.status);
       throw new ApiError(res.status, message, data);
     }
     return data;

@@ -62,7 +62,7 @@ public sealed class RolesController : AdminControllerBase
             return View("Edit", NewForm(input));
         }
 
-        TempData["Success"] = $"Created the role '{input.Name!.Trim()}'. Assign it to users on the Users screen.";
+        TempData["Success"] = T["Created the role '{0}'. Assign it to users on the Users screen.", input.Name!.Trim()];
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -86,7 +86,7 @@ public sealed class RolesController : AdminControllerBase
             return form is null ? NotFound() : View(form);
         }
 
-        TempData["Success"] = "Saved. Permission changes apply immediately.";
+        TempData["Success"] = T["Saved. Permission changes apply immediately."];
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -102,7 +102,7 @@ public sealed class RolesController : AdminControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["Success"] = "Duplicated the role. Rename it and adjust its permissions.";
+        TempData["Success"] = T["Duplicated the role. Rename it and adjust its permissions."];
         return RedirectToAction(nameof(Edit), new { id = copyId });
     }
 
@@ -119,7 +119,7 @@ public sealed class RolesController : AdminControllerBase
             return Request.Form["returnTo"] == "list" ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Edit), new { id });
         }
 
-        TempData["Success"] = $"Deleted the role '{name}'.";
+        TempData["Success"] = T["Deleted the role '{0}'.", name];
         return RedirectToAction(nameof(Index));
     }
 
@@ -157,13 +157,13 @@ public sealed class RolesController : AdminControllerBase
         var actorIsSuperAdmin = User.IsInRole(Roles.SuperAdmin);
         var canUpdate = Can(PermissionAreas.Roles, PermissionActions.Update) && (!superAdmin || actorIsSuperAdmin);
         string? readOnly = superAdmin
-            ? "Super Admin always has every permission; it can't be limited."
+            ? T["Super Admin always has every permission; it can't be limited."]
             : !RoleManagementService.HasEditableGrants(role.Name)
-                ? "Public is what site visitors may see; its permissions are fixed."
+                ? T["Public is what site visitors may see; its permissions are fixed."]
                 : !canUpdate
-                    ? "You can view this role but not change it."
+                    ? T["You can view this role but not change it."]
                     : !actorIsSuperAdmin && User.IsInRole(role.Name)
-                        ? "You hold this role, so you can't change its permissions. Ask a Super Admin."
+                        ? T["You hold this role, so you can't change its permissions. Ask a Super Admin."]
                         : null;
 
         HashSet<string> grants;

@@ -133,6 +133,11 @@ public sealed class ContentEntryService
         entry.PublishedById = null;
         entry.HasDraft = true;
         await RemoveValuesAsync(entry.Id, published: true, ct);
+        foreach (var t in await _db.ContentEntryTranslations.Where(t => t.EntryId == entry.Id).ToListAsync(ct))
+        {
+            t.PublishedDataJson = null;
+        }
+
         await _db.SaveChangesAsync(ct);
         await _audit.LogAsync(AuditActions.EntryUnpublished, AuditEntity, entry.Id.ToString(), AuditDisplay(type, entry), cancellationToken: ct);
     }
@@ -174,6 +179,11 @@ public sealed class ContentEntryService
         var entry = NewEntry(type, fields, data, userId, source.SortOrder + 1);
         _db.ContentEntries.Add(entry);
         AddValues(entry, fields, data, published: false);
+        foreach (var t in await _db.ContentEntryTranslations.AsNoTracking().Where(t => t.EntryId == source.Id).ToListAsync(ct))
+        {
+            _db.ContentEntryTranslations.Add(new ContentEntryTranslation { EntryId = entry.Id, LocaleId = t.LocaleId, DataJson = t.DataJson, UpdatedById = userId });
+        }
+
         await _db.SaveChangesAsync(ct);
         await _audit.LogAsync(AuditActions.EntryCreated, AuditEntity, entry.Id.ToString(), AuditDisplay(type, entry), details: $"Duplicate of '{Display(source)}'", cancellationToken: ct);
         return entry;
@@ -182,6 +192,7 @@ public sealed class ContentEntryService
     public async Task DeleteAsync(ContentType type, ContentEntry entry, CancellationToken ct = default)
     {
         await RemoveValuesAsync(entry.Id, published: null, ct);
+        _db.ContentEntryTranslations.RemoveRange(await _db.ContentEntryTranslations.Where(t => t.EntryId == entry.Id).ToListAsync(ct));
         _db.ContentEntries.Remove(entry);
         await _db.SaveChangesAsync(ct);
         await _audit.LogAsync(AuditActions.EntryDeleted, AuditEntity, entry.Id.ToString(), AuditDisplay(type, entry), cancellationToken: ct);
@@ -193,6 +204,7 @@ public sealed class ContentEntryService
         var entries = await _db.ContentEntries.Where(e => e.ContentTypeId == type.Id && ids.Contains(e.Id)).ToListAsync(ct);
         var entryIds = entries.Select(e => e.Id).ToList();
         _db.ContentEntryValues.RemoveRange(await _db.ContentEntryValues.Where(v => entryIds.Contains(v.EntryId)).ToListAsync(ct));
+        _db.ContentEntryTranslations.RemoveRange(await _db.ContentEntryTranslations.Where(t => entryIds.Contains(t.EntryId)).ToListAsync(ct));
         _db.ContentEntries.RemoveRange(entries);
         await _db.SaveChangesAsync(ct);
         foreach (var e in entries)
@@ -224,6 +236,8 @@ public sealed class ContentEntryService
     public async Task DeleteAllAsync(ContentType type, CancellationToken ct = default)
     {
         _db.ContentEntryValues.RemoveRange(await _db.ContentEntryValues.Where(v => v.ContentTypeId == type.Id).ToListAsync(ct));
+        var ids = await _db.ContentEntries.Where(e => e.ContentTypeId == type.Id).Select(e => e.Id).ToListAsync(ct);
+        _db.ContentEntryTranslations.RemoveRange(await _db.ContentEntryTranslations.Where(t => ids.Contains(t.EntryId)).ToListAsync(ct));
         _db.ContentEntries.RemoveRange(await _db.ContentEntries.Where(e => e.ContentTypeId == type.Id).ToListAsync(ct));
     }
 
@@ -251,6 +265,36 @@ public sealed class ContentEntryService
             }
 
             entry.HasDraft = !string.Equals(entry.DataJson, entry.PublishedDataJson, StringComparison.Ordinal);
+        }
+
+        // Translations follow renamed fields and lose removed or no longer translatable ones.
+        var ids = entries.Select(e => e.Id).ToList();
+        foreach (var t in await _db.ContentEntryTranslations.Where(t => ids.Contains(t.EntryId)).ToListAsync(ct))
+        {
+            t.DataJson = EntryTranslations.Keep(after, EntryData.Migrate(before, after, Parse(t.DataJson))).ToString(Formatting.None);
+            if (t.PublishedDataJson is not null)
+            {
+                t.PublishedDataJson = EntryTranslations.Keep(after, EntryData.Migrate(before, after, Parse(t.PublishedDataJson))).ToString(Formatting.None);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Replaces an entry's own values - the working copy, and the published values when it is published - keeping the
+    /// title, search text and value index in step (the default locale changed, .docs/features/internationalization.md#entries).
+    /// Tracked; the caller saves.
+    /// </summary>
+    public async Task ReplaceMainDataAsync(ContentType type, ContentEntry entry, JObject working, JObject? published, CancellationToken ct = default)
+    {
+        var fields = ContentSchema.Parse(type.FieldsJson);
+        await RemoveValuesAsync(entry.Id, published: null, ct);
+        var publishedJson = published?.ToString(Formatting.None);
+        entry.PublishedDataJson = entry.PublishedDataJson is null ? null : publishedJson;
+        Apply(entry, type, fields, working.ToString(Formatting.None), working, entry.UpdatedById);
+        AddValues(entry, fields, working, published: false);
+        if (entry.PublishedDataJson is not null && published is not null)
+        {
+            AddValues(entry, fields, published, published: true);
         }
     }
 
@@ -359,6 +403,12 @@ public sealed class ContentEntryService
         entry.PublishedById = userId;
         entry.HasDraft = !string.Equals(entry.DataJson, json, StringComparison.Ordinal);
         AddValues(entry, fields, data, published: true);
+
+        // Its translations are published with it (.docs/features/internationalization.md#entries).
+        foreach (var t in await _db.ContentEntryTranslations.Where(t => t.EntryId == entry.Id).ToListAsync(ct))
+        {
+            t.PublishedDataJson = t.DataJson;
+        }
     }
 
     private void AddValues(ContentEntry entry, IReadOnlyList<FieldDefinition> fields, JObject data, bool published)

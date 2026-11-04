@@ -13,7 +13,7 @@ DotNetForge CMS is a server-rendered ASP.NET Core MVC content-management system 
 - gates the whole site behind a one-time **setup wizard** that creates the first Super Admin
   ([installation](../features/installation.md));
 - serves an **admin area** at `/admin` (cookie sign-in, role-gated) to manage a **page tree**, upload and delete
-  **media**, view users, roles, audit entries and extensions, edit key/value settings and issue **API tokens**;
+  **media**, view users, roles, audit entries and extensions, manage **environment variables** (secret or config, per environment) and issue **API tokens**;
 - serves a **public site** that resolves any URL to a *live* content page by walking the page tree
   ([content pages and routing](../features/content-pages-and-routing.md)), and serves media files at
   `/media/{id}/{fileName}` ([media storage](../features/media-storage.md));
@@ -27,7 +27,7 @@ DotNetForge CMS is a server-rendered ASP.NET Core MVC content-management system 
 - runs from a **read-only deployment directory**: database rows, uploaded files and the Data Protection key ring all
   live outside it ([deployment](../guides/deployment.md#read-only-deployment-requirements)).
 
-Some of the target product ([product overview](../product.md): i18n, core updates, the marketplace) has data
+Some of the target product ([product overview](../product.md): core updates, the marketplace) has data
 models, contracts or a placeholder screen in place but no behaviour. Each feature document lists its target
 behaviour under **Planned (not implemented)**; the gap is tracked in
 [implementation-status.md](../implementation-status.md). The target architecture is in
@@ -135,8 +135,11 @@ DotNetForge/                         repository root
 │   │   │   └── ApiDocsTransformers.cs  the OpenAPI document: /api/* with the ApiToken scheme and permission keys, the custom endpoints with their own schemes
 │   │   ├── Middleware/
 │   │   │   ├── SecurityHeadersMiddleware.cs  CSP (a nonce'd script-src for the Scalar page only), nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
-│   │   │   └── InstallationMiddleware.cs     redirects to /setup until installed; blocks /setup after
-│   │   ├── Services/                web-host application services (need HttpContext or the DbContext); Mfa/ = two-factor authentication, Webhooks/ = webhooks
+│   │   │   ├── InstallationMiddleware.cs     redirects to /setup until installed; blocks /setup after
+│   │   │   ├── RequestLocaleMiddleware.cs    the request's locale from the URL prefix (/de/about), prefix taken off before routing
+│   │   │   └── AdminLanguageMiddleware.cs    the admin language of an /admin request (after authentication)
+│   │   ├── Services/                web-host application services (need HttpContext or the DbContext); Mfa/ = two-factor authentication, Webhooks/ = webhooks, Localization/ = locales, translated pages, admin language
+│   │   ├── Localization/Admin/      the admin-language catalogs <code>.json (embedded resources AdminText/<code>.json)
 │   │   ├── Authentication/          the built-in OAuth providers: catalog, handler, runtime scheme registry, settings service
 │   │   ├── Controllers/             non-area controllers: public site, media files, account, external sign-in, two-factor step, setup, extension views/resources
 │   │   ├── Components/              public view components (ExtensionModules)
@@ -235,6 +238,13 @@ precompile them).
   `UseAuthentication`, so an uninstalled CMS redirects even API calls to `/setup`.
 - `ExtensionEndpointGateMiddleware` (in `Startup/ExtensionHosting.cs`) runs right after it: an endpoint tagged with
   `ExtensionEndpointMetadata` answers `404` while its extension is not active.
+- `RequestLocaleMiddleware` ([request locale](../features/internationalization.md#request-locale)) runs after
+  `UseStaticFiles` and before `UseRouting`: an enabled locale's prefix (`/de/about`) becomes the request's locale and is
+  taken off the path, so routing never sees it; the default locale's prefix is redirected (301). The admin, the API,
+  sign-in, setup, `/health` and `/media` are never localized (`/de/admin` → 404).
+- `AdminLanguageMiddleware` ([admin language](../features/internationalization.md#admin-language)) runs right after
+  `UseAuthentication` (it needs the user's own choice) and before `UseRateLimiter` / `UseAuthorization`; `/admin`
+  requests only, except the UI docs (`/admin/docs/ui`), which stay English.
 
 #### `src/DotNetForge.Web/Services/` (web host)
 
@@ -246,7 +256,7 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 | `AccountService` | self | scoped | Self-service accounts: registration (also `RegisterExternalAsync`, sign-up through a provider), reset and confirmation links, the template emails (incl. the two-factor **Sign-in code**). | `AccountController`, `AuthService`, `ExternalLoginController`, `MfaService` |
 | `LoginProviders` | self | singleton | The "Sign in with ..." buttons: enabled built-in OAuth providers, then those of active `authentication` extensions (`LoginOption`). | `AccountController`, `ExternalLoginController`, `AuthProvidersController` |
 | `Mfa/MfaService`, `Mfa/MfaSettingsService` (+ `MfaSettings`, `Totp`, `PendingSignIn`, `ISmsSender`/`TwilioSmsSender`) | self / self / `ISmsSender` | scoped (SMS: typed `HttpClient`) | Two-factor authentication: methods (authenticator app, passkeys, email and SMS codes), recovery codes, reset, the `mfa.*` settings and the requirement, the `dnf.mfa` pending sign-in ([MFA](../features/mfa.md)). | `AuthService`, `MfaLoginController`, `SecurityController`, `MfaSettingsController`, `ProfileController`, `UsersController`, `AdminControllerBase` |
-| `AuditService` | `IAuditService` | scoped | Appends an `AuditLogEntry` with the acting user (or `API token {id}` with `UserId = null`), IP and user agent; truncates snapshots to the column lengths; then hands the entry to `AuditEventDispatcher` and `WebhookDispatcher.Raise`. | `AccountController`, `SetupController`, `PagesController`, `SettingsController`, `ApiTokensController`, `MediaService`, `ContentApiController`, the `DotNetForge.Content` services |
+| `AuditService` | `IAuditService` | scoped | Appends an `AuditLogEntry` with the acting user (or `API token {id}` with `UserId = null`), IP and user agent; truncates snapshots to the column lengths; then hands the entry to `AuditEventDispatcher` and `WebhookDispatcher.Raise`. | `AccountController`, `SetupController`, `PagesController`, `EnvironmentVariableService`, `ApiTokensController`, `MediaService`, `ContentApiController`, the `DotNetForge.Content` services |
 | `PageService` | `IPageService` | scoped | Every content-page rule: `ApplyAsync`, `ReorderAsync`, `DeleteAsync` (validate and mutate, **never save**); static `Slugify`, `ToUtc`, `IsDynamic`. | `PagesController`, `ContentApiController` |
 | `MediaService` | self | scoped | Upload rules (`AllowedTypes`, per-kind limits from the Media Library settings, `MaxFilesPerUpload` 10, duplicates), image optimization, queueing videos for compression, generated storage keys, `MediaFile` rows, delete, audit; static `IsInline`, `UrlFor`. | `MediaController`, `ContentController`, `PageBuilderController`, `[MediaUploadLimit]`; statics also by `MediaFilesController` and `Media/Index.cshtml` |
 | `MediaSettingsService` (+ `MediaSettings`, `MediaUploadLimitAttribute`) | self | scoped | The Media Library settings (`Settings` rows `media.*`): read, validate, save + audit; the attribute sizes upload requests to them ([media storage → upload limits](../features/media-storage.md#upload-limits)). | `MediaService`, `MediaSettingsController`, `VideoOptimizationService` |
@@ -259,8 +269,17 @@ Application services that need `HttpContext`, the cookie scheme or the DbContext
 | `Webhooks/WebhookSender` | self | singleton | Sends one delivery attempt: signed `POST` through the named `HttpClient` `"webhooks"` (10 s, no redirects), fills the attempt's log fields. | `WebhookService`, `WebhookDispatcher` |
 | `Webhooks/WebhookDispatcher` (+ `WebhookEvent`) | self + hosted (same instance) | singleton | In-memory queue fed by `AuditService` (`Raise`), pending attempts in `WebhookDeliveries`, retries with backoff, loop guard, 30-day log pruning ([delivery](../features/webhooks.md#delivery)). | `AuditService`; host |
 | `Webhooks/WebhookPayload` | static | - | The JSON body and the audit action → event mapping ([payload](../features/webhooks.md#payload)). | `WebhookService`, `WebhookDispatcher` |
-| `ContentRenderService` | self | scoped | The entries every content list of a layout shows (queries, media, linked entries → item data); flags a missing detail entry | `HomeController`, `PageLayoutViewComponent`, `PageBuilderController` (preview), `ContentController` (list columns) |
+| `ContentRenderService` | self | scoped | The entries every content list of a layout shows (queries, media, linked entries → item data; on a translated request the published translations and prefixed item links); flags a missing detail entry | `HomeController`, `PageLayoutViewComponent`, `PageBuilderController` (preview), `ContentController` (list columns) |
 | `EntryForm` | static | - | Reads the Content Manager's entry form (`f.` + field path) into entry values | `ContentController` |
+| `EnvironmentVariableService` (+ `EnvironmentVariableRow`, `EnvironmentVariableInput`) | self + `IEnvironmentVariables` (Sdk) | scoped | Environment variables (`Setting` rows): list across environments, save (validation, managed prefixes, one value per key and environment, secrets encrypted with Data Protection), delete, the effective decrypted value for the running environment ([Environment Variables](../pages/environment-variables.md)) | `EnvironmentVariablesController`, `SettingsApiController` (same rule inline), extensions |
+| `Localization/LocaleService` (+ `LocaleRow`) | self | scoped | Locale rules: add, update, set default (one transaction, content moved by every `IDefaultLocaleSwap`), delete with translations; audit ([internationalization](../features/internationalization.md#locales)) | `InternationalizationController` |
+| `Localization/LocaleCatalog` (+ `LocaleSet`, `LocaleInfo`) | self | singleton | The locales every request needs, cached 30 s, cleared by `LocaleService` | `RequestLocaleMiddleware`, `PageTranslationService`, `PageBuilderController` |
+| `Localization/RequestLocale` | request feature | - | The request's content locale, the locale set and the UI language; `Url` / `UrlIn` put the prefix on links | `HomeController`, layouts, `ContentRenderService`, `PageTranslationService` |
+| `Localization/PageTranslationService` | self + `IDefaultLocaleSwap` | scoped | Translated pages: public overlay, menu, language links, Translations tab, per-locale builder layouts, default swap | `HomeController`, `PagesController`, `PageBuilderController`, `LocaleService` |
+| `Localization/EntryLocaleSwap` | `IDefaultLocaleSwap` | scoped | Moves entry content on a default switch (`EntryTranslationService.SwapDefaultAsync`) | `LocaleService` |
+| `Localization/AdminTranslations` (+ `AdminCatalog`, `AdminLanguageOption`) | self | singleton | The embedded admin-language catalogs; which languages are offered; RTL | `AdminLanguageService`, `AdminText` |
+| `Localization/AdminText` | self + `DotNetForge.UI.IDnfText` | scoped | The admin text of the request: `T["..."]` in views and `AdminControllerBase`, the script and builder catalogs for the layouts | admin views and controllers, `AdminNavigationService`, the UI tag helpers |
+| `Localization/AdminLanguageService` | self | scoped | Resolves the admin language (user → site setting `i18n.adminLanguage` → English, cached 30 s); saves and audits both | `AdminLanguageMiddleware`, `InternationalizationController`, `ProfileController` |
 
 - **Belongs here:** logic shared by several admin/public controllers that touches EF, storage or HTTP.
 - **Does not belong:** pure rules with no I/O (put them in `Core/Validation` or similar), contracts for extensions
@@ -321,7 +340,7 @@ dialog, rendered by `_AdminLayout` and `_AuthLayout`) and `_ThemeMenu`. `Ui/` ho
 | `Middleware/HtmlMinificationFilter.cs` | MVC result filter, registered only in a Release build: the HTML a view renders goes out minified (`Core/Html/HtmlMinifier`; [development and production builds](../guides/development.md#development-and-production-builds)) |
 | `Middleware/PrecompressedStaticFiles.cs` | `PrecompressedStaticFilesMiddleware` (Release builds only): a static text file is answered with the `.br`/`.gz` copy the publish wrote, if the browser accepts it; `PrecompressedStaticFiles` gives the copy the original's content type and marks it `Content-Encoding` |
 | `Startup/BuildConfiguration.cs` | `IsRelease`: the switch for the Release-only behaviour (minified HTML, precompressed files) |
-| `wwwroot/js/admin/pages.js`, `entries.js`, `content-types.js`, `media.js`, `endpoints.js`, `email-templates.js`, `webhooks.js`, `showcase.js` | their screen only (`@section Scripts`) |
+| `wwwroot/js/admin/pages.js`, `entries.js`, `content-types.js`, `media.js`, `endpoints.js`, `email-templates.js`, `webhooks.js`, `env-vars.js`, `showcase.js` | their screen only (`@section Scripts`) |
 | `wwwroot/js/admin/passkeys.js` | Sign-in security and the two-step verification step |
 | `wwwroot/img/` | `favicon.svg`, `logo-dark.svg` (dark sidebar, auth panel), `logo-mark.svg` (public header, auth on phones), `logo.svg` (light sidebar, README); the icon sprite is the library's |
 | `src/DotNetForge.UI` tag helpers | `@addTagHelper *, DotNetForge.UI` in both `_ViewImports.cshtml` |
@@ -351,7 +370,7 @@ The shared kernel referenced by everything above `Abstractions`.
 
 | Folder | Contents |
 | --- | --- |
-| `Entities/` | `User`, `Role`, `RolePermission`, `UserRole`, `Page`, `MediaFile`, `ApiToken`, `Webhook`, `WebhookDelivery`, `AuditLogEntry`, `InstalledExtension`, `SystemState`, `Setting`, `AuthProvider`, `UserMfaMethod`, `UserRecoveryCode` (`UserMfa.cs`), `ContentType`, `ContentEntry`, `ContentEntryValue` (`StructuredContent.cs`) |
+| `Entities/` | `User`, `Role`, `RolePermission`, `UserRole`, `Page`, `MediaFile`, `ApiToken`, `Webhook`, `WebhookDelivery`, `AuditLogEntry`, `InstalledExtension`, `SystemState`, `Setting`, `AuthProvider`, `UserMfaMethod`, `UserRecoveryCode` (`UserMfa.cs`), `ContentType`, `ContentEntry`, `ContentEntryValue` (`StructuredContent.cs`), `Locale`, `PageTranslation`, `ContentEntryTranslation` (`Localization.cs`) |
 | `Enums/Enums.cs` | `StorageProvider`, `UserStatus`, `ExtensionType`, `ExtensionStatus`, `TokenDuration`, `PageType`, `WebhookOutcome`, `ContentTypeKind` |
 | `Media/MediaUrls.cs` | `MediaUrls.For(id, fileName)` - the `/media/{id}/{name}` path (admin, renderer and API) |
 | `Constants/` | `Roles`, `PermissionAreas`, `PermissionActions`, `PermissionKeys`, `AuditActions`, `WebhookEvents`, `RateLimitPolicies`, `AuthorizationPolicies` |
@@ -360,6 +379,7 @@ The shared kernel referenced by everything above `Abstractions`.
 | `Configuration/SqliteConnectionStrings.cs` | `GetDataSource`, `IsInMemory` - used by `SqliteDatabaseProvider` (additional databases) |
 | `Content/IPageService.cs` | `IPageService`, `PagePosition`, `PageInput` (+ `PageInput.From(page)`) |
 | `Content/PublishedPages.cs` | `PageVisibility.Live` (the public "live" rule), `IPublishedPages`, `PublishedPage` |
+| `Content/LanguageLink.cs` | `LanguageLink`: the current page in one enabled locale (`ViewData["Languages"]` for switchers and `hreflang`) |
 | `Auditing/IAuditService.cs` | `IAuditService.LogAsync` |
 | `Dtos/SetupRequest.cs` | Setup-wizard form model |
 | `Dtos/IAccountFields.cs` | The model of the `_AccountFields` partial (Register and the setup wizard) |
@@ -384,6 +404,8 @@ Pure domain logic with no EF Core.
 | `Content/EntryData.cs` | Entry value validation (draft vs publish), migration after field changes, title, search text, index values | `ContentEntryService` |
 | `Content/ItemData.cs` | Entry → item data a content list binds to; bindable paths | `ContentRenderService`, `PageBuilderController` |
 | `Content/ContentTypeTemplates.cs` | Starter content types | `ContentTypeService`, the new-type screen |
+| `Content/EntryTranslations.cs` | Which fields a localized type translates (top-level text, textarea, rich text, not unique); keep, merge and swap translated values | `EntryTranslationService`, `ContentEntryService`, `ContentRenderService`, `ContentApiService` |
+| `Validation/LocaleCodes.cs` | Locale codes: BCP-47 shape, known to the culture data, canonical case; suggested display names | `LocaleService`, `AdminTranslations` |
 
 #### `src/DotNetForge.Content`
 
@@ -395,21 +417,22 @@ screens and the headless API so both apply the same rules. References `Abstracti
 | `ContentTypeService` | create (from templates, with linked types), update (validated schema, entries migrated in the same save), delete, reorder; saves and audits |
 | `ContentEntryService` | save (draft / publish), publish, unpublish, duplicate, delete, bulk delete, reorder, uniqueness, conflicts (`Version`), value index rows; saves and audits |
 | `ContentQueryService` | search, filters, sorting and paging over the value index (`ContentEntryValues`) |
-| `ContentApiService` | the API's JSON for types and entries (media and relationships resolved) |
+| `ContentApiService` | the API's JSON for types and entries (media and relationships resolved; `?locale=` translations merged) |
+| `EntryTranslationService` | translated entries of localized types: save (draft / publish), read in a locale, move values on a default switch ([internationalization](../features/internationalization.md#entries)) |
 
-All four are scoped, registered in `DependencyRegistration`.
+All five are scoped, registered in `DependencyRegistration`.
 
 #### `src/DotNetForge.Data`
 
 | File | Responsibility |
 | --- | --- |
-| `DotNetForgeDbContext.cs` | The EF Core model: 24 `DbSet`s (incl. `DataProtectionKeys`) and all fluent configuration. Implements `IDataProtectionKeyContext`. Not sealed; a public constructor for tools and tests that only need the model. |
+| `DotNetForgeDbContext.cs` | The EF Core model: 32 `DbSet`s (incl. `DataProtectionKeys`) and all fluent configuration. Implements `IDataProtectionKeyContext`. Not sealed; a public constructor for tools and tests that only need the model. |
 | `Database/` | The database layer ([architecture](../database/architecture.md)): `IDatabaseProvider`, registry, catalog, `QueryRouter`, `DatabaseService`, schema mapping, value coercion. `Providers/<Database>/` holds everything specific to one database, with no code shared between databases: the provider; for SQL databases also the dialect, SQL builder and executor; for PostgreSQL the CMS context `PostgreSqlDbContext` and its migrations; for MongoDB the executor and key generators. |
 | `DatabaseInitializer.cs` | Startup: the PostgreSQL provider's `InitializeSchemaAsync` (migrations), then `DataSeeder.SeedAsync`. |
-| `DataSeeder.cs` | Idempotent seed: six built-in roles + grants, starter page tree, auth-provider catalog, `SystemState` row; one-time updates by `SystemState.SeedVersion` (`UpgradeAsync`). |
+| `DataSeeder.cs` | Idempotent seed: seven built-in roles + grants, starter page tree, auth-provider catalog, English as the default locale, `SystemState` row; one-time updates by `SystemState.SeedVersion` (`UpgradeAsync`). |
 | `InstallationStore.cs` | Transactional create-first-admin + installed flag. |
 | `DesignTimeDbContextFactory.cs` | `PostgreSqlDesignTimeDbContextFactory` for `dotnet ef --context PostgreSqlDbContext`; reads `DATABASE_CONNECTION_STRING` from the process environment only. |
-| `Database/Providers/PostgreSql/Migrations/` | The CMS migrations; the list is in [database.md → Migrations](database.md#migrations) (latest: `AddEndpointDatabase`). |
+| `Database/Providers/PostgreSql/Migrations/` | The CMS migrations; the list is in [database.md → Migrations](database.md#migrations) (latest: `AddEnvironmentVariables`). |
 
 Details: [database.md](database.md).
 
@@ -451,7 +474,7 @@ host because they need the database or MVC. See [extensions](../features/extensi
 The DotNetForge UI component library ([.docs/ui](../ui/README.md)), a Razor class library served under
 `/_content/DotNetForge.UI/`: `Styles/` (the stylesheet sources: Tailwind import, `theme.css`, `tokens.css`,
 `base.css`, `components/*.css`), `DnfTagHelper.cs` (enums `DnfSize`, `DnfTone`, `DnfButtonVariant`, `DnfAssets`, the
-tag helper base class), `Components/` (the `<dnf-*>` tag helpers), `wwwroot/` (`dnf.js`, `dnf-theme.js`,
+tag helper base class), `DnfText.cs` (`IDnfText`: the app's translator for the few texts components write themselves - "Loading", "Never", "5 min ago", "Actions" - English without one), `Components/` (the `<dnf-*>` tag helpers), `wwwroot/` (`dnf.js`, `dnf-theme.js`,
 `icons.svg`, and `dnf.css` - git-ignored build output) and `build/Tailwind.targets` (compiles the stylesheet with the
 Tailwind CSS CLI from `tools/` on every build, [styling → build](../ui/styling.md#build)).
 
@@ -467,7 +490,7 @@ attribute or `data-*` hook is a breaking change for extensions.
 
 The one assembly extensions compile against (references `Abstractions`, `Shared` and `UI`, framework reference to
 ASP.NET Core): `IExtension`, `ExtensionContext`, `ExtensionServiceCollectionExtensions` (`AddMediaStorage`,
-`AddLoginProvider`, `AddAuditEventHandler`) and their contribution records, `IExtensionState`, `IAuditEventHandler` /
+`AddLoginProvider`, `AddAuditEventHandler`) and their contribution records, `IExtensionState`, `IEnvironmentVariables` (`HostContracts.cs`), `IAuditEventHandler` /
 `AuditEvent`, `ExternalLogin.SignInScheme`. Extensions compile against it, so a change is a breaking change for every
 extension ([extensions → Extension SDK](../features/extensions.md#extension-sdk)).
 
@@ -516,10 +539,11 @@ Outside Development `DATABASE_CONNECTION_STRING` and the `STORAGE_S3_*` settings
 | Pages | `Page` | `IPageService`/`PageService`, `PagesController`, `ContentApiController`, `HomeController`, `ScheduledPublishingService` | [Pages](../pages/pages.md), [public site](../pages/public-home.md) |
 | Structured content | `ContentType`, `ContentEntry`, `ContentEntryValue` | `Core/Content`, `DotNetForge.Content`, `ContentController`, `ContentTypesController`, `ContentRenderService`, `EntriesApiController` | [Content Manager](../pages/content-manager.md), [Content types](../pages/content-types.md), `/api/entries` |
 | Media | `MediaFile` (+ objects in `IFileStorage`) | `MediaService`, `MediaController`, `MediaFilesController`, `MediaApiController` (read-only) | [Media](../pages/media.md), `/media/{id}/{fileName}` |
-| Configuration | `Setting` | `SettingsController` | [Settings](../pages/settings.md) |
+| Configuration | `Setting` (environment variables) | `EnvironmentVariableService`, `EnvironmentVariablesController`, `IEnvironmentVariables` (SDK) | [Environment Variables](../pages/environment-variables.md), `GET /api/settings` |
 | Headless API | `ApiToken`, `CustomEndpoint`, `CustomEndpointOperation` | `ApiTokensController`, `ApiEndpointsController`, `ApiDocsController`, `src/DotNetForge.Api`, `DotNetForge.Content/Endpoints`, `src/DotNetForge.Web/ApiDocs` | [API Tokens](../pages/api-tokens.md), [API Endpoints](../pages/api-endpoints.md), [API Docs](../pages/api-docs.md) |
 | Audit | `AuditLogEntry` | `IAuditService`/`AuditService`, `AuditLogsController` | [Audit Logs](../pages/audit-logs.md) |
 | Extensions | `InstalledExtension` (enabled state) | `ExtensionLoader`, `ManifestValidator`, `ExtensionRuntime`, `ExtensionCatalog`, `ExtensionState`, `ExtensionLifecycleService`, `PluginsController`, slot code ([extensions → Where to change things](../features/extensions.md#where-to-change-things)) | [Plugins](../pages/plugins.md), [Extension host](../pages/extension-host.md), [Dashboard](../pages/dashboard.md#widgets) |
+| Internationalization | `Locale`, `PageTranslation`, `ContentEntryTranslation` (+ `User.AdminLanguage`, `ContentType.Localized`) | `src/DotNetForge.Web/Services/Localization/`, `RequestLocaleMiddleware`, `AdminLanguageMiddleware`, `EntryTranslationService`, `Core/Content/EntryTranslations`, `LocaleCodes` | [Internationalization](../pages/internationalization.md), Pages → Translations, the Content Manager's language switcher, `?locale=` on `/api/entries` |
 | Webhooks | `Webhook`, `WebhookDelivery` | `WebhookService`, `WebhookSender`, `WebhookDispatcher`, `WebhookPayload` (`src/DotNetForge.Web/Services/Webhooks/`), `HmacWebhookSigner`, `WebhooksController` | [Webhooks](../pages/webhooks.md) |
 | Platform | `DataProtectionKey` | `AddDataProtection().PersistKeysToDbContext<DotNetForgeDbContext>()` | none |
 

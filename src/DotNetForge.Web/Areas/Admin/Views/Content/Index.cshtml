@@ -1,14 +1,14 @@
 @using DotNetForge.Shared.Enums
 @model ContentManagerViewModel
 @{
-    ViewData["Title"] = "Content Manager";
-    ViewData["Description"] = "Your structured content - blog posts, products, events - kept apart from the pages that show it.";
+    ViewData["Title"] = T["Content Manager"];
+    ViewData["Description"] = T["Your structured content - blog posts, products, events - kept apart from the pages that show it."];
 }
 
 @section Actions {
     @if (Model.CanManageTypes)
     {
-        <a class="dnf-button dnf-button--secondary" href="/admin/content-types"><dnf-icon name="layers" /> Content types</a>
+        <a class="dnf-button dnf-button--secondary" href="/admin/content-types"><dnf-icon name="layers" /> @T["Content types"]</a>
     }
 }
 
@@ -16,34 +16,34 @@
 {
     <section class="dnf-card">
         <div class="dnf-card__body">
-            <dnf-empty-state icon="database" title="Start with a content type"
-                         description="Describe what you publish - a product has a name, a price and pictures - and the Content Manager builds the forms. Then show it on any page with a content list.">
+            <dnf-empty-state icon="database" title="@T["Start with a content type"]"
+                         description="@T["Describe what you publish - a product has a name, a price and pictures - and the Content Manager builds the forms. Then show it on any page with a content list."]">
                 @if (Model.CanManageTypes)
                 {
-                    <a class="dnf-button dnf-button--primary" href="/admin/content-types/new"><dnf-icon name="plus" /> New content type</a>
+                    <a class="dnf-button dnf-button--primary" href="/admin/content-types/new"><dnf-icon name="plus" /> @T["New content type"]</a>
                 }
                 else
                 {
-                    <p class="text-sm text-muted">Ask an administrator to create a content type.</p>
+                    <p class="text-sm text-muted">@T["Ask an administrator to create a content type."]</p>
                 }
             </dnf-empty-state>
         </div>
     </section>
 
     <section class="dnf-card mt-5" aria-labelledby="how-title">
-        <div class="dnf-card__header"><h2 class="dnf-card__title" id="how-title">How it fits together</h2></div>
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="how-title">@T["How it fits together"]</h2></div>
         <ol class="dnf-workflow">
-            <li class="dnf-workflow__step"><dnf-icon name="layers" /><strong class="dnf-workflow__title">Content type</strong><span class="dnf-workflow__text">Define the fields once.</span></li>
-            <li class="dnf-workflow__step"><dnf-icon name="database" /><strong class="dnf-workflow__title">Entries</strong><span class="dnf-workflow__text">Add content with the generated form.</span></li>
-            <li class="dnf-workflow__step"><dnf-icon name="pages" /><strong class="dnf-workflow__title">Page builder</strong><span class="dnf-workflow__text">Add a content list to a page.</span></li>
-            <li class="dnf-workflow__step"><dnf-icon name="link" /><strong class="dnf-workflow__title">Map fields</strong><span class="dnf-workflow__text">Bind heading, image, price to fields.</span></li>
-            <li class="dnf-workflow__step"><dnf-icon name="send" /><strong class="dnf-workflow__title">Publish</strong><span class="dnf-workflow__text">Edits to entries show everywhere at once.</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="layers" /><strong class="dnf-workflow__title">@T["Content type"]</strong><span class="dnf-workflow__text">@T["Define the fields once."]</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="database" /><strong class="dnf-workflow__title">@T["Entries"]</strong><span class="dnf-workflow__text">@T["Add content with the generated form."]</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="pages" /><strong class="dnf-workflow__title">@T["Page builder"]</strong><span class="dnf-workflow__text">@T["Add a content list to a page."]</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="link" /><strong class="dnf-workflow__title">@T["Map fields"]</strong><span class="dnf-workflow__text">@T["Bind heading, image, price to fields."]</span></li>
+            <li class="dnf-workflow__step"><dnf-icon name="send" /><strong class="dnf-workflow__title">@T["Publish"]</strong><span class="dnf-workflow__text">@T["Edits to entries show everywhere at once."]</span></li>
         </ol>
     </section>
 }
 else
 {
-    <section class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-4" aria-label="Content types">
+    <section class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-4" aria-label="@T["Content types"]">
         @foreach (var type in Model.Types)
         {
             var single = type.Kind == ContentTypeKind.Single;
@@ -52,7 +52,7 @@ else
                     <span class="dnf-type-icon" aria-hidden="true"><dnf-icon name="@type.Icon" /></span>
                     <div class="dnf-type-card__title">
                         <h2 class="dnf-card__title"><a href="/admin/content/@type.Slug">@type.Name</a></h2>
-                        <span class="text-xs text-subtle">@(single ? "Single entry" : $"{type.EntryCount} entr{(type.EntryCount == 1 ? "y" : "ies")} · {type.PublishedCount} published")</span>
+                        <span class="text-xs text-subtle">@(single ? T["Single entry"] : type.EntryCount == 1 ? T["1 entry · {0} published", type.PublishedCount] : T["{0} entries · {1} published", type.EntryCount, type.PublishedCount])</span>
                     </div>
                 </div>
                 @if (!string.IsNullOrEmpty(type.Description))
@@ -60,10 +60,10 @@ else
                     <p class="text-sm text-muted">@type.Description</p>
                 }
                 <div class="dnf-type-card__actions">
-                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="/admin/content/@type.Slug">@(single ? "Edit" : "Open")</a>
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="/admin/content/@type.Slug">@(single ? T["Edit"] : T["Open"])</a>
                     @if (!single && Model.CanCreateEntries)
                     {
-                        <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/content/@type.Slug/new"><dnf-icon name="plus" size="Sm" /> New entry</a>
+                        <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/content/@type.Slug/new"><dnf-icon name="plus" size="Sm" /> @T["New entry"]</a>
                     }
                 </div>
             </article>

@@ -71,7 +71,7 @@ public sealed class PublicSiteTests
         });
 
         // The editor of a child page says where its theme comes from.
-        Assert.Contains("Parent's theme", await admin.GetStringAsync($"/admin/pages?selected={teamId}"));
+        Assert.Contains("Parent's theme", System.Net.WebUtility.HtmlDecode(await admin.GetStringAsync($"/admin/pages?selected={teamId}")));
     }
 
     [Fact]

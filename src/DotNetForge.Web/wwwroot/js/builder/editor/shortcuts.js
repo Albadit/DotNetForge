@@ -1,39 +1,40 @@
+import { t } from "../ui/i18n.js";
 const SHORTCUTS = [
-  { group: "General", keys: "Ctrl+S", label: "Save now" },
-  { group: "General", keys: "Ctrl+Z / Ctrl+Shift+Z", label: "Undo / redo" },
-  { group: "General", keys: "Ctrl+P", label: "Preview the draft" },
-  { group: "General", keys: "?", label: "This list" },
-  { group: "General", keys: "Esc", label: "Cancel a drag, stop editing text, select the parent" },
-  { group: "Selection", keys: "Tab / Shift+Tab", label: "Next / previous sibling" },
-  { group: "Selection", keys: "Enter / Shift+Enter", label: "Select the first child (or edit text) / the parent" },
-  { group: "Selection", keys: "Ctrl+A", label: "Select all siblings" },
-  { group: "Edit", keys: "Ctrl+C / Ctrl+X / Ctrl+V", label: "Copy / cut / paste" },
-  { group: "Edit", keys: "Ctrl+D", label: "Duplicate" },
-  { group: "Edit", keys: "Delete", label: "Delete" },
-  { group: "Edit", keys: "Ctrl+G / Ctrl+Alt+G", label: "Group / frame selection (wrap in a container)" },
-  { group: "Edit", keys: "Ctrl+Shift+G", label: "Ungroup (remove the container)" },
-  { group: "Edit", keys: "Ctrl+R", label: "Rename the layer" },
-  { group: "Layout", keys: "Shift+A", label: "Add auto layout (or wrap the selection in one)" },
-  { group: "Layout", keys: "Alt+Shift+A", label: "Remove auto layout (free positioning)" },
-  { group: "Layout", keys: "Alt+A / Alt+D", label: "Align left / right" },
-  { group: "Layout", keys: "Alt+W / Alt+S", label: "Align top / bottom" },
-  { group: "Layout", keys: "Alt+H / Alt+V", label: "Align horizontal / vertical centers" },
-  { group: "Layout", keys: "Shift+H / Shift+V", label: "Flip horizontal / vertical" },
-  { group: "Edit", keys: "Ctrl+Shift+H", label: "Hide or show" },
-  { group: "Edit", keys: "Ctrl+Shift+L", label: "Lock or unlock" },
-  { group: "Arrange", keys: "Arrows", label: "Move one grid cell, 1 px when free, reorder in a stack" },
-  { group: "Arrange", keys: "Shift+Arrows", label: "Move further (2 cells / 10 px)" },
-  { group: "Arrange", keys: "Ctrl+Arrows", label: "Make a grid item wider/narrower, taller/shorter" },
-  { group: "Arrange", keys: "Ctrl+[ / Ctrl+]", label: "Send backward / bring forward (earlier / later in a stack)" },
-  { group: "Arrange", keys: "Ctrl+Shift+[ / Ctrl+Shift+]", label: "Send to back / bring to front" },
-  { group: "View", keys: "1 / 2 / 3", label: "Desktop / tablet / mobile" },
-  { group: "View", keys: "Ctrl+= / Ctrl+- / Ctrl+0 / Shift+1", label: "Zoom in / out / 100% / fit" },
-  { group: "View", keys: "Ctrl+'", label: "Show or hide the grid" }
+  { group: t("General"), keys: "Ctrl+S", label: t("Save now") },
+  { group: t("General"), keys: "Ctrl+Z / Ctrl+Shift+Z", label: t("Undo / redo") },
+  { group: t("General"), keys: "Ctrl+P", label: t("Preview the draft") },
+  { group: t("General"), keys: "?", label: t("This list") },
+  { group: t("General"), keys: "Esc", label: t("Cancel a drag, stop editing text, select the parent") },
+  { group: t("Selection"), keys: "Tab / Shift+Tab", label: t("Next / previous sibling") },
+  { group: t("Selection"), keys: "Enter / Shift+Enter", label: t("Select the first child (or edit text) / the parent") },
+  { group: t("Selection"), keys: "Ctrl+A", label: t("Select all siblings") },
+  { group: t("Edit"), keys: "Ctrl+C / Ctrl+X / Ctrl+V", label: t("Copy / cut / paste") },
+  { group: t("Edit"), keys: "Ctrl+D", label: t("Duplicate") },
+  { group: t("Edit"), keys: "Delete", label: t("Delete") },
+  { group: t("Edit"), keys: "Ctrl+G / Ctrl+Alt+G", label: t("Group / frame selection (wrap in a container)") },
+  { group: t("Edit"), keys: "Ctrl+Shift+G", label: t("Ungroup (remove the container)") },
+  { group: t("Edit"), keys: "Ctrl+R", label: t("Rename the layer") },
+  { group: t("Layout"), keys: "Shift+A", label: t("Add auto layout (or wrap the selection in one)") },
+  { group: t("Layout"), keys: "Alt+Shift+A", label: t("Remove auto layout (free positioning)") },
+  { group: t("Layout"), keys: "Alt+A / Alt+D", label: t("Align left / right") },
+  { group: t("Layout"), keys: "Alt+W / Alt+S", label: t("Align top / bottom") },
+  { group: t("Layout"), keys: "Alt+H / Alt+V", label: t("Align horizontal / vertical centers") },
+  { group: t("Layout"), keys: "Shift+H / Shift+V", label: t("Flip horizontal / vertical") },
+  { group: t("Edit"), keys: "Ctrl+Shift+H", label: t("Hide or show") },
+  { group: t("Edit"), keys: "Ctrl+Shift+L", label: t("Lock or unlock") },
+  { group: t("Arrange"), keys: "Arrows", label: t("Move one grid cell, 1 px when free, reorder in a stack") },
+  { group: t("Arrange"), keys: "Shift+Arrows", label: t("Move further (2 cells / 10 px)") },
+  { group: t("Arrange"), keys: "Ctrl+Arrows", label: t("Make a grid item wider/narrower, taller/shorter") },
+  { group: t("Arrange"), keys: "Ctrl+[ / Ctrl+]", label: t("Send backward / bring forward (earlier / later in a stack)") },
+  { group: t("Arrange"), keys: "Ctrl+Shift+[ / Ctrl+Shift+]", label: t("Send to back / bring to front") },
+  { group: t("View"), keys: "1 / 2 / 3", label: t("Desktop / tablet / mobile") },
+  { group: t("View"), keys: "Ctrl+= / Ctrl+- / Ctrl+0 / Shift+1", label: t("Zoom in / out / 100% / fit") },
+  { group: t("View"), keys: "Ctrl+'", label: t("Show or hide the grid") }
 ];
 function typing(e) {
-  const t = e.target;
-  if (!t) return false;
-  return t.isContentEditable || t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT";
+  const target = e.target;
+  if (!target) return false;
+  return target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT";
 }
 function installShortcuts(session, actions) {
   const handler = (e) => {

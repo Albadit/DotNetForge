@@ -4,10 +4,10 @@
 @{
     var sms = Model.Type == MfaMethodType.Sms;
     ViewData["PageWidth"] = "medium";
-    ViewData["Title"] = sms ? "Check your phone" : "Check your email";
+    ViewData["Title"] = sms ? T["Check your phone"] : T["Check your email"];
     ViewData["Description"] = sms
-        ? $"We texted a 6-digit code to {MfaService.MaskPhone(Model.Target)}."
-        : $"We emailed a 6-digit code to {Model.Target}.";
+        ? T["We texted a 6-digit code to {0}.", MfaService.MaskPhone(Model.Target)]
+        : T["We emailed a 6-digit code to {0}.", Model.Target];
 }
 
 <form method="post" action="/admin/profile/security/code" class="dnf-form dnf-form--narrow">
@@ -18,20 +18,20 @@
     <section class="dnf-card" aria-labelledby="code-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="code-title">Enter the code</h2>
-                <p class="dnf-card__description">It works for @MfaService.CodeLifetime.TotalMinutes.ToString("0") minutes.</p>
+                <h2 class="dnf-card__title" id="code-title">@T["Enter the code"]</h2>
+                <p class="dnf-card__description">@T["It works for {0} minutes.", MfaService.CodeLifetime.TotalMinutes.ToString("0")]</p>
             </div>
         </div>
         <div class="dnf-card__body dnf-stack">
             <dnf-validation-summary />
             <div class="dnf-field">
-                <label class="dnf-field__label" for="code">6-digit code</label>
+                <label class="dnf-field__label" for="code">@T["6-digit code"]</label>
                 <input id="code" name="code" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" autofocus class="dnf-input dnf-input--code" />
             </div>
         </div>
         <div class="dnf-card__footer">
-            <a class="dnf-button dnf-button--secondary" href="/admin/profile/security">Cancel</a>
-            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Turn on</button>
+            <a class="dnf-button dnf-button--secondary" href="/admin/profile/security">@T["Cancel"]</a>
+            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> @T["Turn on"]</button>
         </div>
     </section>
 </form>

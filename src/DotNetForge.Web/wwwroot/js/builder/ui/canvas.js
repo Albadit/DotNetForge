@@ -3,6 +3,7 @@
  * with an interaction layer on top (so clicks select instead of following
  * links) and the overlay that draws selection, handles, grid and guides.
  */
+import { t } from "./i18n.js";
 import { jsx, useEffect, useLayoutEffect, useRef, useState } from "./vdom.js";
 import { displayName } from "../core/doc.js";
 import { gridPlacementAt, layoutAt } from "../core/responsive.js";
@@ -62,7 +63,7 @@ export function CanvasView() {
     const left = Math.max(24, (size.w - stageW) / 2);
     return (jsx("div", { class: cls('pe-canvas-area', 'bp-' + bp), ref: area },
         jsx("div", { class: "pe-stage", ref: stage, style: { width: stageW + 'px', height: stageH + 'px', left: left + 'px' } },
-            jsx("iframe", { ref: iframe, class: "pe-frame", title: "Page being edited", style: { width: deviceWidth + 'px', height: stageH / zoom + 'px', transform: `scale(${zoom})` } }),
+            jsx("iframe", { ref: iframe, class: "pe-frame", title: t("Page being edited"), style: { width: deviceWidth + 'px', height: stageH / zoom + 'px', transform: `scale(${zoom})` } }),
             jsx("div", { class: "pe-interaction", style: { pointerEvents: editing ? 'none' : 'auto', cursor: canvas.busy ? 'grabbing' : 'default' }, onPointerDown: canvas.onPointerDown, onPointerMove: canvas.onPointerMove, onPointerUp: canvas.onPointerUp, onPointerLeave: canvas.onPointerLeave, onWheel: canvas.onWheel, onDblClick: e => {
                     // Figma: each double-click goes one layer deeper; on the deepest one, text is edited.
                     const p = canvas.toCanvas(e.clientX, e.clientY);
@@ -81,13 +82,13 @@ export function CanvasView() {
             jsx(Overlay, null)),
         !ready && !error && (jsx("div", { class: "pe-canvas-loading", role: "status" },
             jsx(Icon, { name: "loader", size: 16, class: "pe-spin" }),
-            " Loading the page\u2026")),
+            " " + t("Loading the page…"))),
         error && (jsx("div", { class: "pe-canvas-error", role: "alert" },
             jsx(Icon, { name: "alert", size: 16 }),
             jsx("div", null,
-                jsx("strong", null, "The canvas could not be opened."),
+                jsx("strong", null, t("The canvas could not be opened.")),
                 jsx("p", null, error),
-                jsx("button", { type: "button", class: "pe-btn", onClick: () => canvas.load() }, "Try again")))),
+                jsx("button", { type: "button", class: "pe-btn", onClick: () => canvas.load() }, t("Try again"))))),
         jsx("div", { class: "pe-device-label" },
             deviceWidth,
             " px \u00B7 ",
@@ -235,20 +236,20 @@ function TextToolbar({ id }) {
         } },
         jsx(Icon, { name: icon, size: 16 })));
     const isText = session.store.doc.nodes[id]?.type === 'button';
-    return (jsx("div", { class: "pe-text-toolbar", style: { left: s.x + 'px', top: Math.max(4, s.y - 40) + 'px' }, role: "toolbar", "aria-label": "Text formatting" },
-        !isText && btn('bold', 'Bold (Ctrl+B)', () => inline.format('bold')),
-        !isText && btn('italic', 'Italic (Ctrl+I)', () => inline.format('italic')),
-        !isText && btn('underline', 'Underline (Ctrl+U)', () => inline.format('underline')),
-        !isText && btn('strike', 'Strikethrough', () => inline.format('strikeThrough')),
-        !isText && btn('link', 'Link (Ctrl+K)', () => inline.link()),
+    return (jsx("div", { class: "pe-text-toolbar", style: { left: s.x + 'px', top: Math.max(4, s.y - 40) + 'px' }, role: "toolbar", "aria-label": t("Text formatting") },
+        !isText && btn('bold', t("Bold (Ctrl+B)"), () => inline.format('bold')),
+        !isText && btn('italic', t("Italic (Ctrl+I)"), () => inline.format('italic')),
+        !isText && btn('underline', t("Underline (Ctrl+U)"), () => inline.format('underline')),
+        !isText && btn('strike', t("Strikethrough"), () => inline.format('strikeThrough')),
+        !isText && btn('link', t("Link (Ctrl+K)"), () => inline.link()),
         rich && jsx("span", { class: "pe-tt-sep" }),
-        rich && btn('list', 'Bulleted list', () => inline.format('insertUnorderedList')),
-        rich && btn('listOrdered', 'Numbered list', () => inline.format('insertOrderedList')),
-        rich && btn('heading', 'Subheading', () => inline.format('formatBlock', 'h3')),
-        rich && btn('text', 'Paragraph', () => inline.format('formatBlock', 'p')),
+        rich && btn('list', t("Bulleted list"), () => inline.format('insertUnorderedList')),
+        rich && btn('listOrdered', t("Numbered list"), () => inline.format('insertOrderedList')),
+        rich && btn('heading', t("Subheading"), () => inline.format('formatBlock', 'h3')),
+        rich && btn('text', t("Paragraph"), () => inline.format('formatBlock', 'p')),
         jsx("span", { class: "pe-tt-sep" }),
         jsx("button", { type: "button", class: "pe-tt-done", onPointerDown: e => {
                 e.preventDefault();
                 inline.commit();
-            } }, "Done")));
+            } }, t("Done"))));
 }

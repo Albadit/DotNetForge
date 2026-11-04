@@ -47,7 +47,8 @@
         if (value) { item.setAttribute("data-collapsed", "true"); } else { item.removeAttribute("data-collapsed"); }
         if (button) {
             button.setAttribute("aria-expanded", value ? "false" : "true");
-            button.setAttribute("aria-label", (value ? "Show the pages under " : "Hide the pages under ") + (title ? title.textContent : ""));
+            var name = title ? title.textContent : "";
+            button.setAttribute("aria-label", value ? dnfText("Show the pages under {0}", name) : dnfText("Hide the pages under {0}", name));
         }
         if (value) { collapsed[id] = true; } else { delete collapsed[id]; }
     }
@@ -62,9 +63,8 @@
         if (!collapseAll) { return; }
         collapseAll.hidden = toggles.length === 0;
         var anyOpen = toggles.some(function (b) { return b.closest(".dnf-tree__item").getAttribute("data-collapsed") !== "true"; });
-        var label = anyOpen ? "Close all" : "Open all";
-        collapseAll.setAttribute("aria-label", label + " pages");
-        collapseAll.setAttribute("data-tooltip", label);
+        collapseAll.setAttribute("aria-label", anyOpen ? dnfText("Close all pages") : dnfText("Open all pages"));
+        collapseAll.setAttribute("data-tooltip", anyOpen ? dnfText("Close all") : dnfText("Open all"));
         var use = collapseAll.querySelector("use");
         if (use) { use.setAttribute("href", use.getAttribute("href").replace(/#.*$/, anyOpen ? "#chevrons-down-up" : "#chevrons-up-down")); }
     }
@@ -242,8 +242,8 @@
             // The server explains rejected moves (duplicate slug, cycle) in { error }; a permission refusal redirects
             // to the access-denied page, so it gets the generic message.
             return res.json().catch(function () { return {}; }).then(function (body) {
-                fail(body && body.error ? body.error : "Could not save the new order.");
+                fail(body && body.error ? body.error : dnfText("Could not save the new order."));
             });
-        }).catch(function () { fail("Could not save the new order."); });
+        }).catch(function () { fail(dnfText("Could not save the new order.")); });
     }
 })();

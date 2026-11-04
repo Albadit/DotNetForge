@@ -54,7 +54,7 @@ messages.
 ## Data used by the page
 
 `Settings` rows `users.signUps`, `users.defaultRole`, `users.emailConfirmation`, `users.resetPasswordUrl`,
-`users.confirmationRedirectUrl` (listed on [Settings](settings.md), but only editable here); `Roles`; whether SMTP is
+`users.confirmationRedirectUrl` (listed on [Environment Variables](environment-variables.md), but only editable here); `Roles`; whether SMTP is
 configured (`IEmailSettingsSource` - [Email Configuration](email-configuration.md)).
 
 ## State
@@ -112,7 +112,7 @@ flowchart LR
 
 ## Related pages
 
-[Sign in](login.md), [self-service account screens](account-self-service.md), [Settings](settings.md),
+[Sign in](login.md), [self-service account screens](account-self-service.md), [Environment Variables](environment-variables.md),
 [Roles](roles.md), [Users](users.md).
 
 ## Important implementation details

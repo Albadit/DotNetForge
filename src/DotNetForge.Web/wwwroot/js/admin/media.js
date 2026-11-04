@@ -237,9 +237,9 @@
         function problem(file) {
             var dot = file.name.lastIndexOf(".");
             var ext = dot >= 0 ? file.name.substring(dot).toLowerCase() : "";
-            if (accept.length && accept.indexOf(ext) < 0) { return "Type not allowed"; }
+            if (accept.length && accept.indexOf(ext) < 0) { return dnfText("Type not allowed"); }
             var max = limitFor(ext);
-            if (max && file.size > max) { return "Too large (max " + size(max) + ")"; }
+            if (max && file.size > max) { return dnfText("Too large (max {0})", size(max)); }
             return null;
         }
 
@@ -278,7 +278,7 @@
                 var remove = document.createElement("button");
                 remove.type = "button";
                 remove.className = "dnf-button dnf-button--secondary dnf-button--icon-only dnf-button--sm dnf-upload-item__remove";
-                remove.setAttribute("aria-label", "Remove " + file.name);
+                remove.setAttribute("aria-label", dnfText("Remove {0}", file.name));
                 remove.appendChild(icon("remove"));
                 remove.addEventListener("click", function () {
                     chosen.splice(index, 1);
@@ -322,7 +322,7 @@
             if (!button) { return; }
             var id = button.getAttribute("data-folder-edit");
             var path = button.getAttribute("data-folder-path");
-            dialog.querySelector(".dnf-dialog__title").textContent = "Edit folder " + path;
+            dialog.querySelector(".dnf-dialog__title").textContent = dnfText("Edit folder {0}", path);
             rename.action = "/admin/media/folders/" + id + "/rename";
             rename.elements.name.value = button.getAttribute("data-folder-name");
             move.action = "/admin/media/folders/" + id + "/move";
@@ -410,20 +410,21 @@
             var box = el("div", "dnf-media-preview__fallback");
             box.appendChild(icon("file"));
             box.appendChild(el("strong", null, card.getAttribute("data-preview-name")));
-            box.appendChild(el("span", "text-sm text-muted", note || "No preview for this kind of file. Download it, or open it in a new tab."));
+            box.appendChild(el("span", "text-sm text-muted", note || dnfText("No preview for this kind of file. Download it, or open it in a new tab.")));
             return box;
         }
 
         function zipListing(card) {
             var box = el("div", "dnf-media-preview__zip");
-            box.appendChild(el("p", "text-sm text-muted", "Reading the archive…"));
+            box.appendChild(el("p", "text-sm text-muted", dnfText("Reading the archive…")));
             fetch("/admin/media/" + card.getAttribute("data-preview") + "/zip", { credentials: "same-origin", headers: { "Accept": "application/json" } })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (current !== card) { return; }
                     box.textContent = "";
                     if (data.error) { box.appendChild(fallback(card, data.error)); return; }
-                    box.appendChild(el("p", "text-sm text-muted", data.total + (data.total === 1 ? " item" : " items") + (data.total > data.entries.length ? ", the first " + data.entries.length + " listed" : "")));
+                    var count = data.total === 1 ? dnfText("1 item") : dnfText("{0} items", data.total);
+                    box.appendChild(el("p", "text-sm text-muted", data.total > data.entries.length ? dnfText("{0}, the first {1} listed", count, data.entries.length) : count));
                     var list = el("ul", "dnf-media-preview__entries");
                     data.entries.forEach(function (entry) {
                         var row = el("li", "dnf-media-preview__entry");
@@ -434,7 +435,7 @@
                     });
                     box.appendChild(list);
                 })
-                .catch(function () { if (current === card) { box.textContent = ""; box.appendChild(fallback(card, "The archive couldn't be read. Download it instead.")); } });
+                .catch(function () { if (current === card) { box.textContent = ""; box.appendChild(fallback(card, dnfText("The archive couldn't be read. Download it instead."))); } });
             return box;
         }
 
@@ -513,7 +514,7 @@
             var head = el("thead");
             var headRow = el("tr");
             var corner = el("th");
-            corner.appendChild(el("span", "sr-only", "Row"));
+            corner.appendChild(el("span", "sr-only", dnfText("Row")));
             headRow.appendChild(corner);
             for (var c = 0; c < columns; c++) { headRow.appendChild(el("th", null, columnName(c))); }
             head.appendChild(headRow);
@@ -536,7 +537,7 @@
             var panel = el("div");
             function select(index, buttons) {
                 panel.textContent = "";
-                panel.appendChild(sheets[index].rows.length ? drawSheet(sheets[index]) : el("p", "dnf-media-preview__note", "This sheet is empty."));
+                panel.appendChild(sheets[index].rows.length ? drawSheet(sheets[index]) : el("p", "dnf-media-preview__note", dnfText("This sheet is empty.")));
                 buttons.forEach(function (button, i) { button.setAttribute("aria-pressed", i === index ? "true" : "false"); });
             }
             var buttons = sheets.map(function (sheet, index) {
@@ -548,7 +549,7 @@
             if (sheets.length > 1) {
                 var tabs = el("div", "dnf-segmented dnf-media-preview__sheet-tabs");
                 tabs.setAttribute("role", "group");
-                tabs.setAttribute("aria-label", "Sheets");
+                tabs.setAttribute("aria-label", dnfText("Sheets"));
                 buttons.forEach(function (button) { tabs.appendChild(button); });
                 parent.appendChild(tabs);
             }
@@ -586,24 +587,24 @@
                 surface.appendChild(node);
             });
             figure.appendChild(surface);
-            figure.appendChild(el("figcaption", "text-xs text-muted", "Slide " + number + " of " + total));
+            figure.appendChild(el("figcaption", "text-xs text-muted", dnfText("Slide {0} of {1}", number, total)));
             return figure;
         }
 
         function documentPreview(card) {
             var box = el("div", "dnf-media-preview__document");
-            box.appendChild(el("p", "text-sm text-muted", "Opening the document…"));
+            box.appendChild(el("p", "text-sm text-muted", dnfText("Opening the document…")));
             fetch("/admin/media/" + card.getAttribute("data-preview") + "/document", { credentials: "same-origin", headers: { "Accept": "application/json" } })
                 .then(function (r) { if (!r.ok) { throw new Error(); } return r.json(); })
                 .then(function (data) {
                     if (current !== card) { return; }
                     box.textContent = "";
                     if (data.error) { box.appendChild(fallback(card, data.error)); return; }
-                    if (data.partial) { box.appendChild(el("p", "dnf-media-preview__note", "Part of this file isn't shown here, such as charts or very long content. Download it to see everything.")); }
+                    if (data.partial) { box.appendChild(el("p", "dnf-media-preview__note", dnfText("Part of this file isn't shown here, such as charts or very long content. Download it to see everything."))); }
                     if (data.kind === "document") {
                         var page = el("div", "dnf-media-preview__page");
                         drawBlocks(data.blocks, page);
-                        if (!data.blocks.length) { page.appendChild(el("p", "text-muted", "This document is empty.")); }
+                        if (!data.blocks.length) { page.appendChild(el("p", "text-muted", dnfText("This document is empty."))); }
                         box.appendChild(page);
                     } else if (data.kind === "spreadsheet") {
                         drawSheets(data.sheets, box);
@@ -615,7 +616,7 @@
                         box.appendChild(slides);
                     }
                 })
-                .catch(function () { if (current === card) { box.textContent = ""; box.appendChild(fallback(card, "This file couldn't be opened here. Download it instead.")); } });
+                .catch(function () { if (current === card) { box.textContent = ""; box.appendChild(fallback(card, dnfText("This file couldn't be opened here. Download it instead."))); } });
             return box;
         }
 
@@ -719,7 +720,7 @@
             opener.addEventListener("click", function () {
                 var checked = Array.prototype.slice.call(document.querySelectorAll("[data-select-item]:checked"));
                 var folders = checked.filter(function (box) { return box.name === "folderIds"; }).map(function (box) { return box.value; });
-                picker.open(folders, here, checked.length === 1 ? "1 item selected" : checked.length + " items selected");
+                picker.open(folders, here, checked.length === 1 ? dnfText("1 item selected") : dnfText("{0} items selected", checked.length));
             });
         }
         // One file or folder, from its ⋯ menu, whatever else is selected.

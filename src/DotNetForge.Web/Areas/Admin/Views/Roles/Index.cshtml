@@ -1,7 +1,7 @@
 @model List<RolesController.RoleListItem>
 @{
-    ViewData["Title"] = "Roles";
-    ViewData["Description"] = "Roles bundle permissions; every user gets theirs from the roles assigned to them. Built-in roles can't be renamed or deleted.";
+    ViewData["Title"] = T["Roles"];
+    ViewData["Description"] = T["Roles bundle permissions; every user gets theirs from the roles assigned to them. Built-in roles can't be renamed or deleted."];
     var canCreate = ViewData["CanCreate"] as bool? == true;
     var canDelete = ViewData["CanDelete"] as bool? == true;
 }
@@ -9,31 +9,31 @@
 @section Actions {
     @if (canCreate)
     {
-        <a class="dnf-button dnf-button--primary" href="/admin/roles/create"><dnf-icon name="plus" /> Create role</a>
+        <a class="dnf-button dnf-button--primary" href="/admin/roles/create"><dnf-icon name="plus" /> @T["Create role"]</a>
     }
 }
 
 <section class="dnf-card" aria-labelledby="roles-title" data-collection>
     <div class="dnf-card__header">
         <div>
-            <h2 class="dnf-card__title" id="roles-title">All roles</h2>
-            <p class="dnf-card__description" data-collection-count>@Model.Count total</p>
+            <h2 class="dnf-card__title" id="roles-title">@T["All roles"]</h2>
+            <p class="dnf-card__description" data-collection-count>@T["{0} total", Model.Count]</p>
         </div>
-        <div class="dnf-segmented" role="group" aria-label="Filter roles" data-js-only hidden>
-            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="" aria-pressed="true">All</button>
-            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="built-in" aria-pressed="false">Built-in</button>
-            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="custom" aria-pressed="false">Custom</button>
+        <div class="dnf-segmented" role="group" aria-label="@T["Filter roles"]" data-js-only hidden>
+            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="" aria-pressed="true">@T["All"]</button>
+            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="built-in" aria-pressed="false">@T["Built-in"]</button>
+            <button type="button" class="dnf-segmented__item" data-collection-filter="kind" data-value="custom" aria-pressed="false">@T["Custom"]</button>
         </div>
     </div>
     <div class="dnf-table dnf-table--stack">
         <table class="dnf-table__table">
             <thead>
                 <tr>
-                    <th scope="col" data-sort="text">Role</th>
-                    <th scope="col">Type</th>
-                    <th scope="col" data-sort="number">Users</th>
-                    <th scope="col" data-sort="number">Permissions</th>
-                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
+                    <th scope="col" data-sort="text">@T["Role"]</th>
+                    <th scope="col">@T["Type"]</th>
+                    <th scope="col" data-sort="number">@T["Users"]</th>
+                    <th scope="col" data-sort="number">@T["Permissions"]</th>
+                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">@T["Actions"]</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -45,50 +45,50 @@
                                 <span class="dnf-list__icon dnf-list__icon--primary size-10" aria-hidden="true"><dnf-icon name="shield" size="Sm" /></span>
                                 <span>
                                     <a class="dnf-table__primary" href="/admin/roles/@role.Id">@role.Name</a>
-                                    <span class="dnf-table__secondary">@(string.IsNullOrWhiteSpace(role.Description) ? "No description" : role.Description)</span>
+                                    <span class="dnf-table__secondary">@(string.IsNullOrWhiteSpace(role.Description) ? T["No description"] : role.Description)</span>
                                 </span>
                             </div>
                         </td>
-                        <td data-label="Type">
+                        <td data-label="@T["Type"]">
                             @if (role.IsBuiltIn)
                             {
-                                <dnf-badge tone="Primary"><dnf-icon name="lock" size="Sm" /> Built-in</dnf-badge>
+                                <dnf-badge tone="Primary"><dnf-icon name="lock" size="Sm" /> @T["Built-in"]</dnf-badge>
                             }
                             else
                             {
-                                <dnf-badge>Custom</dnf-badge>
+                                <dnf-badge>@T["Custom"]</dnf-badge>
                             }
                         </td>
-                        <td data-label="Users">@role.Users</td>
-                        <td data-label="Permissions">@role.Permissions</td>
+                        <td data-label="@T["Users"]">@role.Users</td>
+                        <td data-label="@T["Permissions"]">@role.Permissions</td>
                         <td class="dnf-table__cell--actions">
-                            <dnf-dropdown label="Actions for @role.Name">
-                                <dnf-dropdown-link href="/admin/roles/@role.Id" icon="pencil">Edit</dnf-dropdown-link>
+                            <dnf-dropdown label="@T["Actions for {0}", role.Name]">
+                                <dnf-dropdown-link href="/admin/roles/@role.Id" icon="pencil">@T["Edit"]</dnf-dropdown-link>
                                 @if (canCreate)
                                 {
-                                    <dnf-dropdown-post action="/admin/roles/@role.Id/duplicate" icon="copy">Duplicate</dnf-dropdown-post>
+                                    <dnf-dropdown-post action="/admin/roles/@role.Id/duplicate" icon="copy">@T["Duplicate"]</dnf-dropdown-post>
                                 }
                                 @if (canDelete && !role.IsBuiltIn)
                                 {
                                     <dnf-dropdown-separator />
                                     @if (role.Users > 0)
                                     {
-                                        <dnf-dropdown-note>In use by @role.Users @(role.Users == 1 ? "user" : "users") - can't be deleted</dnf-dropdown-note>
+                                        <dnf-dropdown-note>@(role.Users == 1 ? T["In use by 1 user - can't be deleted"] : T["In use by {0} users - can't be deleted", role.Users])</dnf-dropdown-note>
                                     }
                                     else
                                     {
                                         <dnf-dropdown-post action="/admin/roles/@role.Id/delete" icon="trash" danger="true" field-returnTo="list"
-                                                   confirm="Delete the role '@role.Name'? This can't be undone." confirm-title="Delete role" confirm-action="Delete role">Delete</dnf-dropdown-post>
+                                                   confirm="@T["Delete the role '{0}'? This can't be undone.", role.Name]" confirm-title="@T["Delete role"]" confirm-action="@T["Delete role"]">@T["Delete"]</dnf-dropdown-post>
                                     }
                                 }
                             </dnf-dropdown>
                         </td>
                     </tr>
                 }
-                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="5">No role matches the filter.</td></tr>
+                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="5">@T["No role matches the filter."]</td></tr>
                 @if (Model.Count == 0)
                 {
-                    <tr class="dnf-table__empty"><td colspan="5">No roles yet.</td></tr>
+                    <tr class="dnf-table__empty"><td colspan="5">@T["No roles yet."]</td></tr>
                 }
             </tbody>
         </table>

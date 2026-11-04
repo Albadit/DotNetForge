@@ -123,7 +123,7 @@ public sealed class WebhooksController : AdminControllerBase
             return View(Editor(webhook, input));
         }
 
-        TempData["Success"] = $"Saved '{input.Name?.Trim()}'.";
+        TempData["Success"] = T["Saved '{0}'.", input.Name?.Trim()];
         return RedirectToAction(nameof(Index));
     }
 
@@ -144,7 +144,7 @@ public sealed class WebhooksController : AdminControllerBase
     {
         // DeleteAsync writes the webhook.deleted audit entry.
         var name = await _webhooks.DeleteAsync(id, HttpContext.RequestAborted);
-        TempData[name is null ? "Error" : "Success"] = name is null ? "The webhook no longer exists." : $"Deleted '{name}' and its delivery log.";
+        TempData[name is null ? "Error" : "Success"] = name is null ? T["The webhook no longer exists."] : T["Deleted '{0}' and its delivery log.", name];
         return RedirectToAction(nameof(Index));
     }
 
@@ -187,11 +187,11 @@ public sealed class WebhooksController : AdminControllerBase
 
         if (delivery.Outcome == WebhookOutcome.Success)
         {
-            TempData["Success"] = $"Test delivered: {delivery.ResponseStatusCode} in {delivery.ResponseTimeMs} ms.";
+            TempData["Success"] = T["Test delivered: {0} in {1} ms.", delivery.ResponseStatusCode, delivery.ResponseTimeMs];
         }
         else
         {
-            TempData["Error"] = "Test failed: " + delivery.Detail;
+            TempData["Error"] = T["Test failed: {0}", delivery.Detail];
         }
 
         return Back(id, returnTo);
@@ -223,7 +223,7 @@ public sealed class WebhooksController : AdminControllerBase
             return NotFound();
         }
 
-        TempData["Success"] = enabled ? "Enabled: it fires again for its events." : "Disabled: it no longer fires, and pending retries are cancelled.";
+        TempData["Success"] = enabled ? T["Enabled: it fires again for its events."] : T["Disabled: it no longer fires, and pending retries are cancelled."];
         return Back(id, returnTo);
     }
 

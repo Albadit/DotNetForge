@@ -9,8 +9,9 @@
  * alignment box and gap become column/row settings in a grid; position
  * fields are cells in a grid parent and pixels in a free one.
  */
+import { t } from "./i18n.js";
 import { jsx, Fragment, useEffect, useRef, useState } from "./vdom.js";
-import { componentDef, BREAKPOINT_LABELS } from "../core/schema.js";
+import { componentDef } from "../core/schema.js";
 import { freePlacementAt, gridPlacementAt, layoutAt, merged } from "../core/responsive.js";
 import { gridItemsAt, moveGridItem, resetBreakpoint, setFlag, setPlacement, updateLayout, updateStyle } from "../core/commands.js";
 import { Icon } from "./icons.js";
@@ -63,12 +64,10 @@ export function DesignTab({ ids, node }) {
         hasOverrides && (jsx("div", { class: "pe-reset-bp" },
             jsx("button", { type: "button", class: "pe-btn-text", onClick: () => resetBreakpoint(session.store, ids, bp, ['style', 'layout', 'place']) },
                 jsx(Icon, { name: "restore", size: 14 }),
-                " Reset all ",
-                BREAKPOINT_LABELS[bp].toLowerCase(),
-                " changes"))),
+                " " + (bp === 'tablet' ? t("Reset all tablet changes") : t("Reset all mobile changes"))))),
         node.locked && jsx("div", { class: "pe-note" },
             jsx(Icon, { name: "lock", size: 14 }),
-            " Locked. Unlock it in the layers panel to change it."),
+            " " + t("Locked. Unlock it in the layers panel to change it.")),
         parent && jsx(PositionSection, { node: node, parent: parent, bp: bp, ids: ids }),
         jsx(LayoutSection, { node: node, parent: parent, bp: bp, ids: ids }),
         jsx(AppearanceSection, { node: node, ids: ids, bp: bp }),
@@ -85,11 +84,9 @@ function BreakpointBanner({ bp }) {
     return (jsx("div", { class: cls('pe-bp-banner', 'is-' + bp) },
         jsx(Icon, { name: bp === 'tablet' ? 'tablet' : 'mobile', size: 16 }),
         jsx("span", null,
-            "Editing ",
-            jsx("strong", null, BREAKPOINT_LABELS[bp]),
-            ": changes apply below ",
-            bp === 'tablet' ? bps.tablet : bps.mobile,
-            "px.")));
+            t("Editing") + " ",
+            jsx("strong", null, bp === 'tablet' ? t("Tablet") : t("Mobile")),
+            t(": changes apply below {0}px.", bp === 'tablet' ? bps.tablet : bps.mobile))));
 }
 /** Three icon buttons in one segmented box; clicking the active one clears it. */
 function IconGroup({ value, options, onChange, disabled, title }) {
@@ -100,14 +97,14 @@ function IconGroup({ value, options, onChange, disabled, title }) {
 const Span2 = ({ children }) => jsx("div", { class: "pe-span2" }, children);
 /* ------------------------------------------------------------------ position */
 const H_ALIGN = [
-    { value: 'start', icon: 'alignLeft', title: 'Align left' },
-    { value: 'center', icon: 'alignCenterH', title: 'Align horizontal centers' },
-    { value: 'end', icon: 'alignRight', title: 'Align right' },
+    { value: 'start', icon: 'alignLeft', title: t("Align left") },
+    { value: 'center', icon: 'alignCenterH', title: t("Align horizontal centers") },
+    { value: 'end', icon: 'alignRight', title: t("Align right") },
 ];
 const V_ALIGN = [
-    { value: 'start', icon: 'alignTop', title: 'Align top' },
-    { value: 'center', icon: 'alignCenterV', title: 'Align vertical centers' },
-    { value: 'end', icon: 'alignBottom', title: 'Align bottom' },
+    { value: 'start', icon: 'alignTop', title: t("Align top") },
+    { value: 'center', icon: 'alignCenterV', title: t("Align vertical centers") },
+    { value: 'end', icon: 'alignBottom', title: t("Align bottom") },
 ];
 function PositionSection({ node, parent, bp, ids }) {
     const { session, canvas } = useEditor();
@@ -137,7 +134,7 @@ function PositionSection({ node, parent, bp, ids }) {
         // axis stretches across it (the renderer ignores alignSelf then), so there is nothing to align - not in
         // the reference, where the alignment silently turned "Fill" into a content-sized layer.
         const fills = effective(node, bp, pl.direction === 'row' ? 'height' : 'width')?.mode === 'fill';
-        const cross = { value: fills ? undefined : alignSelf, set: (x) => setStyle({ alignSelf: x }), disabled: disabled || fills, title: fills ? `It fills the page ${pl.direction === 'row' ? 'height' : 'width'}. Choose Fixed or Hug ${pl.direction === 'row' ? 'height' : 'width'} to align it.` : undefined };
+        const cross = { value: fills ? undefined : alignSelf, set: (x) => setStyle({ alignSelf: x }), disabled: disabled || fills, title: fills ? (pl.direction === 'row' ? t("It fills the page height. Choose Fixed or Hug height to align it.") : t("It fills the page width. Choose Fixed or Hug width to align it.")) : undefined };
         h = pl.direction === 'row' ? none : cross;
         v = pl.direction === 'row' ? cross : none;
     }
@@ -162,16 +159,16 @@ function PositionSection({ node, parent, bp, ids }) {
         h = { value: undefined, set: x => alignLayers(session, canvas, ids, edge(x ?? 'start', true)), disabled };
         v = { value: undefined, set: x => alignLayers(session, canvas, ids, edge(x ?? 'start', false)), disabled };
     }
-    return (jsx(Section, { id: "position", title: "Position" },
-        jsx(Row, { label: "Alignment", override: alignOverride, onReset: () => setStyle({ alignSelf: undefined, justifySelf: undefined }) },
+    return (jsx(Section, { id: "position", title: t("Position") },
+        jsx(Row, { label: t("Alignment"), override: alignOverride, onReset: () => setStyle({ alignSelf: undefined, justifySelf: undefined }) },
             jsx(IconGroup, { value: h.value, options: H_ALIGN, disabled: h.disabled, title: h.title, onChange: h.set }),
             jsx(IconGroup, { value: v.value, options: V_ALIGN, disabled: v.disabled, title: v.title, onChange: v.set })),
         pl.mode === 'free' && jsx(FreePosition, { node: node, bp: bp, disabled: disabled }),
         (pl.mode === 'stack' || pl.mode === 'grid') && jsx(MeasuredPosition, { node: node, parent: parent }),
         pl.mode === 'grid' && jsx(GridPosition, { node: node, parent: parent, bp: bp, disabled: disabled }),
-        jsx(Row, { label: "Rotation", override: bp !== 'base' && (rotation.value !== undefined || flip.value !== undefined), onReset: () => setStyle({ rotation: undefined, flip: undefined }) },
-            jsx(NumberField, { icon: "rotate", title: "Rotation", value: rotation.value, placeholder: rotation.inherited ?? 0, unit: "\u00B0", min: -360, max: 360, disabled: disabled, onChange: (n, m) => setStyle({ rotation: n }, m) }),
-            jsx("div", { class: cls('pe-seg', disabled && 'is-disabled'), role: "group", "aria-label": "Rotate and flip" }, [['rotate90', 'Rotate 90°', rotate90], ['flipH', 'Flip horizontal (Shift+H)', () => mirror(true)], ['flipV', 'Flip vertical (Shift+V)', () => mirror(false)]].map(([icon, label, run]) => (jsx("button", { key: icon, type: "button", class: "pe-seg-btn", title: label, "aria-label": label, disabled: disabled, onClick: run },
+        jsx(Row, { label: t("Rotation"), override: bp !== 'base' && (rotation.value !== undefined || flip.value !== undefined), onReset: () => setStyle({ rotation: undefined, flip: undefined }) },
+            jsx(NumberField, { icon: "rotate", title: t("Rotation"), value: rotation.value, placeholder: rotation.inherited ?? 0, unit: "\u00B0", min: -360, max: 360, disabled: disabled, onChange: (n, m) => setStyle({ rotation: n }, m) }),
+            jsx("div", { class: cls('pe-seg', disabled && 'is-disabled'), role: "group", "aria-label": t("Rotate and flip") }, [['rotate90', t("Rotate 90°"), rotate90], ['flipH', t("Flip horizontal (Shift+H)"), () => mirror(true)], ['flipV', t("Flip vertical (Shift+V)"), () => mirror(false)]].map(([icon, label, run]) => (jsx("button", { key: icon, type: "button", class: "pe-seg-btn", title: label, "aria-label": label, disabled: disabled, onClick: run },
                 jsx(Icon, { name: icon, size: 16 }))))))));
 }
 /** X/Y of a stack or grid child: shown greyed out, as Figma does for children of auto layout. */
@@ -181,17 +178,17 @@ function MeasuredPosition({ node, parent }) {
     const box = canvas.frame?.layoutTargetOf(parent.id)?.getBoundingClientRect();
     const x = r && box ? Math.round(r.x - box.left) : undefined;
     const y = r && box ? Math.round(r.y - box.top) : undefined;
-    return (jsx(Row, { label: "Position" },
-        jsx(NumberField, { label: "X", title: "X position (set by the stack)", value: x, disabled: true, onChange: () => undefined }),
-        jsx(NumberField, { label: "Y", title: "Y position (set by the stack)", value: y, disabled: true, onChange: () => undefined })));
+    return (jsx(Row, { label: t("Position") },
+        jsx(NumberField, { label: "X", title: t("X position (set by the stack)"), value: x, disabled: true, onChange: () => undefined }),
+        jsx(NumberField, { label: "Y", title: t("Y position (set by the stack)"), value: y, disabled: true, onChange: () => undefined })));
 }
 function FreePosition({ node, bp, disabled }) {
     const { session } = useEditor();
     const f = freePlacementAt(node, bp);
     const set = (patch, merge) => setPlacement(session.store, node.id, bp, patch, merge);
-    return (jsx(Row, { label: "Position", override: bp !== 'base' && !!node.place?.[bp], onReset: () => resetBreakpoint(session.store, [node.id], bp, ['place']) },
-        jsx(NumberField, { label: "X", title: "X position", value: f.x, min: -2000, max: 10000, decimals: 0, disabled: disabled, onChange: (n, m) => n !== undefined && set({ x: n }, m) }),
-        jsx(NumberField, { label: "Y", title: "Y position", value: f.y, min: -2000, max: 20000, decimals: 0, disabled: disabled, onChange: (n, m) => n !== undefined && set({ y: n }, m) })));
+    return (jsx(Row, { label: t("Position"), override: bp !== 'base' && !!node.place?.[bp], onReset: () => resetBreakpoint(session.store, [node.id], bp, ['place']) },
+        jsx(NumberField, { label: "X", title: t("X position"), value: f.x, min: -2000, max: 10000, decimals: 0, disabled: disabled, onChange: (n, m) => n !== undefined && set({ x: n }, m) }),
+        jsx(NumberField, { label: "Y", title: t("Y position"), value: f.y, min: -2000, max: 20000, decimals: 0, disabled: disabled, onChange: (n, m) => n !== undefined && set({ y: n }, m) })));
 }
 function GridPosition({ node, parent, bp, disabled }) {
     const { session } = useEditor();
@@ -204,13 +201,13 @@ function GridPosition({ node, parent, bp, disabled }) {
     const set = (patch) => moveGridItem(store, node.id, bp, { col: cur.col, row: cur.row, colSpan: cur.colSpan, rowSpan: cur.rowSpan, ...patch });
     const override = bp !== 'base' && !!node.place?.[bp];
     return (jsx(Fragment, null,
-        jsx(Row, { label: "Column span", label2: "Row span", override: override, onReset: () => resetBreakpoint(store, [node.id], bp, ['place']) },
-            jsx(NumberField, { icon: "gapH", title: "Column span", value: cur.colSpan, min: 1, max: cols, decimals: 0, disabled: disabled, onChange: n => n && set({ colSpan: n }) }),
-            jsx(NumberField, { icon: "gapV", title: "Row span", value: cur.rowSpan, min: 1, max: 200, decimals: 0, disabled: disabled, onChange: n => n && set({ rowSpan: n }) })),
-        jsx(Row, { label: "Column", label2: "Row" },
-            jsx(NumberField, { label: "C", title: "Column", value: cur.col, min: 1, max: cols, decimals: 0, disabled: disabled, onChange: n => n && set({ col: n }) }),
-            jsx(NumberField, { label: "R", title: "Row", value: cur.row, min: 1, max: 1000, decimals: 0, disabled: disabled, onChange: n => n && set({ row: n }) })),
-        g.auto && jsx("div", { class: "pe-hint pe-row-hint" }, "Placed automatically. Change a value or drag it to place it exactly.")));
+        jsx(Row, { label: t("Column span"), label2: t("Row span"), override: override, onReset: () => resetBreakpoint(store, [node.id], bp, ['place']) },
+            jsx(NumberField, { icon: "gapH", title: t("Column span"), value: cur.colSpan, min: 1, max: cols, decimals: 0, disabled: disabled, onChange: n => n && set({ colSpan: n }) }),
+            jsx(NumberField, { icon: "gapV", title: t("Row span"), value: cur.rowSpan, min: 1, max: 200, decimals: 0, disabled: disabled, onChange: n => n && set({ rowSpan: n }) })),
+        jsx(Row, { label: t("Column"), label2: t("Row") },
+            jsx(NumberField, { label: t("C"), title: t("Column"), value: cur.col, min: 1, max: cols, decimals: 0, disabled: disabled, onChange: n => n && set({ col: n }) }),
+            jsx(NumberField, { label: t("R"), title: t("Row"), value: cur.row, min: 1, max: 1000, decimals: 0, disabled: disabled, onChange: n => n && set({ row: n }) })),
+        g.auto && jsx("div", { class: "pe-hint pe-row-hint" }, t("Placed automatically. Change a value or drag it to place it exactly."))));
 }
 /* ------------------------------------------------------------------ layout */
 /** The auto layout section's header button: the frame's flow, shown on (Figma). */
@@ -228,29 +225,29 @@ function LayoutSection({ node, parent, bp, ids }) {
     const switchFlow = (flow) => setFlow(session, canvas, node.id, flow);
     const flow = l.mode === 'stack' ? (l.direction === 'row' ? 'stack-row' : 'stack-col') : (l.mode ?? 'free');
     const auto = isContainer && l.mode !== 'free';
-    const title = auto ? 'Auto layout' : 'Layout';
+    const title = auto ? t("Auto layout") : t("Layout");
     const guessed = isContainer && !auto ? guessFlow(session, node.id) : 'stack-col';
     const showsClip = isContainer || node.type === 'image' || node.type === 'video' || node.type === 'module';
     const overflow = effective(node, bp, 'overflow');
     return (jsx(Section, { id: "layout", title: title, actions: isContainer && (jsx(Fragment, null,
-            !auto && jsx(IconButton, { icon: "resizeToFit", title: "Resize to fit", disabled: disabled, onClick: () => resizeToFit(session, node.id) }),
+            !auto && jsx(IconButton, { icon: "resizeToFit", title: t("Resize to fit"), disabled: disabled, onClick: () => resizeToFit(session, node.id) }),
             auto
-                ? jsx(IconButton, { icon: AUTO_ICON[flow + (l.wrap ? '-wrap' : '')] ?? AUTO_ICON[flow], title: "Remove auto layout (Alt+Shift+A)", on: true, disabled: disabled, onClick: () => switchFlow('free') })
-                : jsx(IconButton, { icon: guessed === 'stack-row' ? 'alAddH' : 'alAddV', title: "Add auto layout (Shift+A)", disabled: disabled, onClick: () => switchFlow(guessed) }))) },
-        isContainer && (jsx(Row, { label: "Flow", override: ov('mode', 'direction', 'wrap'), onReset: () => set({ mode: undefined, direction: undefined, wrap: undefined }) },
-            jsx("div", { class: "pe-span2 pe-seg pe-flow", role: "radiogroup", "aria-label": "Flow" }, [['free', 'free', 'Freeform'], ['stack-col', 'flowDown', 'Vertical'], ['stack-row', 'flowRight', 'Horizontal'], ['grid', 'flowGrid', 'Grid']].map(([value, icon, label]) => (jsx("button", { key: value, type: "button", role: "radio", "aria-checked": flow === value, class: cls('pe-seg-btn', flow === value && 'is-on'), title: label, "aria-label": label, disabled: disabled, onClick: () => switchFlow(value) },
+                ? jsx(IconButton, { icon: AUTO_ICON[flow + (l.wrap ? '-wrap' : '')] ?? AUTO_ICON[flow], title: t("Remove auto layout (Alt+Shift+A)"), on: true, disabled: disabled, onClick: () => switchFlow('free') })
+                : jsx(IconButton, { icon: guessed === 'stack-row' ? 'alAddH' : 'alAddV', title: t("Add auto layout (Shift+A)"), disabled: disabled, onClick: () => switchFlow(guessed) }))) },
+        isContainer && (jsx(Row, { label: t("Flow"), override: ov('mode', 'direction', 'wrap'), onReset: () => set({ mode: undefined, direction: undefined, wrap: undefined }) },
+            jsx("div", { class: "pe-span2 pe-seg pe-flow", role: "radiogroup", "aria-label": t("Flow") }, [['free', 'free', t("Freeform")], ['stack-col', 'flowDown', t("Vertical")], ['stack-row', 'flowRight', t("Horizontal")], ['grid', 'flowGrid', t("Grid")]].map(([value, icon, label]) => (jsx("button", { key: value, type: "button", role: "radio", "aria-checked": flow === value, class: cls('pe-seg-btn', flow === value && 'is-on'), title: label, "aria-label": label, disabled: disabled, onClick: () => switchFlow(value) },
                 jsx(Icon, { name: icon, size: 16 }))))),
-            jsx(IconButton, { icon: "wrapText", title: "Wrap", on: l.mode === 'stack' && !!l.wrap, disabled: disabled || l.mode !== 'stack', onClick: () => set({ wrap: !l.wrap }) }))),
+            jsx(IconButton, { icon: "wrapText", title: t("Wrap"), on: l.mode === 'stack' && !!l.wrap, disabled: disabled || l.mode !== 'stack', onClick: () => set({ wrap: !l.wrap }) }))),
         parent && TEXT_RESIZE.has(node.type) && layoutAt(parent, bp).mode !== 'free' && jsx(TextResizing, { node: node, ids: ids, bp: bp, disabled: disabled }),
         parent && jsx(SizeRows, { node: node, parent: parent, bp: bp, ids: ids, disabled: disabled }),
         isContainer && l.mode === 'stack' && jsx(StackRows, { l: l, explicit: explicit, set: set, ov: ov, disabled: disabled }),
         isContainer && l.mode === 'grid' && jsx(GridRows, { node: node, l: l, explicit: explicit, set: set, ov: ov, disabled: disabled }),
-        isContainer && l.mode === 'free' && (jsx(Row, { label: "Height", override: ov('height'), onReset: () => set({ height: undefined }) },
-            jsx(NumberField, { icon: "padV", title: "Height of the free area", value: explicit.height, placeholder: l.height, min: 0, max: 10000, decimals: 0, disabled: disabled, onChange: (n, m) => set({ height: n }, m) }))),
+        isContainer && l.mode === 'free' && (jsx(Row, { label: t("Height"), override: ov('height'), onReset: () => set({ height: undefined }) },
+            jsx(NumberField, { icon: "padV", title: t("Height of the free area"), value: explicit.height, placeholder: l.height, min: 0, max: 10000, decimals: 0, disabled: disabled, onChange: (n, m) => set({ height: n }, m) }))),
         jsx(SpacingRows, { node: node, bp: bp, setStyle: setStyle, disabled: disabled, kind: "padding" }),
         showsClip && (jsx("div", { class: "pe-row pe-check-row" },
-            jsx(Toggle, { checked: overflow === 'hidden' || overflow === 'clip', label: "Clip content", disabled: disabled, onChange: on => setStyle({ overflow: on ? 'hidden' : undefined }) }),
-            overflow === 'auto' && jsx("span", { class: "pe-hint" }, "Scrolls")))));
+            jsx(Toggle, { checked: overflow === 'hidden' || overflow === 'clip', label: t("Clip content"), disabled: disabled, onChange: on => setStyle({ overflow: on ? 'hidden' : undefined }) }),
+            overflow === 'auto' && jsx("span", { class: "pe-hint" }, t("Scrolls"))))));
 }
 const TEXT_RESIZE = new Set(['heading', 'text', 'button', 'links']);
 /** Figma's text resizing: Auto width, Auto height (wraps, fills the width) or Fixed size. */
@@ -270,9 +267,9 @@ function TextResizing({ node, ids, bp, disabled }) {
             setStyle({ width: { mode: 'fixed', value: Math.round(r?.w ?? 240) }, height: { mode: 'fixed', value: Math.round(r?.h ?? 40) } });
         }
     };
-    const options = [['width', 'textResizeW', 'Auto width'], ['height', 'textResizeH', 'Auto height'], ['fixed', 'textResizeFixed', 'Fixed size']];
-    return (jsx(Row, { label: "Resizing" },
-        jsx("div", { class: "pe-span2 pe-seg", role: "radiogroup", "aria-label": "Text resizing" }, options.map(([value, icon, label]) => (jsx("button", { key: value, type: "button", role: "radio", "aria-checked": mode === value, class: cls('pe-seg-btn', mode === value && 'is-on'), title: label, "aria-label": label, disabled: disabled, onClick: () => choose(value) },
+    const options = [['width', 'textResizeW', t("Auto width")], ['height', 'textResizeH', t("Auto height")], ['fixed', 'textResizeFixed', t("Fixed size")]];
+    return (jsx(Row, { label: t("Resizing") },
+        jsx("div", { class: "pe-span2 pe-seg", role: "radiogroup", "aria-label": t("Text resizing") }, options.map(([value, icon, label]) => (jsx("button", { key: value, type: "button", role: "radio", "aria-checked": mode === value, class: cls('pe-seg-btn', mode === value && 'is-on'), title: label, "aria-label": label, disabled: disabled, onClick: () => choose(value) },
             jsx(Icon, { name: icon, size: 16 })))))));
 }
 function SizeRows({ node, parent, bp, ids, disabled }) {
@@ -284,9 +281,9 @@ function SizeRows({ node, parent, bp, ids, disabled }) {
         // In a free container the size is part of the placement.
         const f = freePlacementAt(node, bp);
         const set = (patch, merge) => setPlacement(session.store, node.id, bp, patch, merge);
-        return (jsx(Row, { label: "Dimensions" },
-            jsx(NumberField, { label: "W", title: "Width", value: f.w, min: 1, max: 10000, decimals: 0, disabled: disabled, onChange: (n, m) => n && set({ w: n }, m) }),
-            jsx(NumberField, { label: "H", title: "Height", value: f.h, min: 1, max: 20000, decimals: 0, disabled: disabled, onChange: (n, m) => n && set({ h: n }, m) })));
+        return (jsx(Row, { label: t("Dimensions") },
+            jsx(NumberField, { label: t("W"), title: t("Width"), value: f.w, min: 1, max: 10000, decimals: 0, disabled: disabled, onChange: (n, m) => n && set({ w: n }, m) }),
+            jsx(NumberField, { label: t("H"), title: t("Height"), value: f.h, min: 1, max: 20000, decimals: 0, disabled: disabled, onChange: (n, m) => n && set({ h: n }, m) })));
     }
     const rect = canvas.rectOfNode(node.id);
     const sizes = ['width', 'height'].map(axis => ({ axis, ...styleValue(node, bp, axis) }));
@@ -316,22 +313,21 @@ function SizeRows({ node, parent, bp, ids, disabled }) {
         const raw = modeOf(s);
         const cur = { ...raw, mode: effectiveMode(s.axis, raw.mode) };
         const actual = rect ? Math.round(s.axis === 'width' ? rect.w : rect.h) : undefined;
-        const word = s.axis === 'width' ? 'width' : 'height';
         const w = s.axis === 'width';
         const menu = [
-            { label: `Fixed ${word}` + (actual !== undefined ? ` (${cur.mode === 'fixed' ? cur.value : actual})` : ''), icon: w ? 'fixedW' : 'fixedH', checked: cur.mode === 'fixed', run: () => setStyle({ [s.axis]: { mode: 'fixed', value: cur.mode === 'fixed' ? cur.value : actual ?? (w ? 240 : 120) } }) },
+            { label: (w ? t("Fixed width") : t("Fixed height")) + (actual !== undefined ? ` (${cur.mode === 'fixed' ? cur.value : actual})` : ''), icon: w ? 'fixedW' : 'fixedH', checked: cur.mode === 'fixed', run: () => setStyle({ [s.axis]: { mode: 'fixed', value: cur.mode === 'fixed' ? cur.value : actual ?? (w ? 240 : 120) } }) },
         ];
         if (canHug)
-            menu.push({ label: 'Hug contents', icon: w ? 'hugW' : 'hugH', checked: cur.mode === 'hug', run: () => setStyle({ [s.axis]: { mode: 'hug' } }) });
+            menu.push({ label: t("Hug contents"), icon: w ? 'hugW' : 'hugH', checked: cur.mode === 'hug', run: () => setStyle({ [s.axis]: { mode: 'hug' } }) });
         if (canFill)
             // Fill on the cross axis clears an alignment, which would otherwise be kept but unused.
-            menu.push({ label: 'Fill container', icon: w ? 'fillW' : 'fillH', checked: cur.mode === 'fill', run: () => setStyle(pl.mode === 'stack' && s.axis === (pl.direction === 'row' ? 'height' : 'width') ? { [s.axis]: { mode: 'fill' }, alignSelf: undefined } : { [s.axis]: { mode: 'fill' } }) });
-        menu.push('sep', { label: `Add min ${word}…`, icon: w ? 'minW' : 'minH', run: () => setLimits(x => ({ ...x, [s.axis]: true })) }, { label: `Add max ${word}…`, icon: w ? 'maxW' : 'maxH', run: () => setLimits(x => ({ ...x, [s.axis]: true })) });
+            menu.push({ label: t("Fill container"), icon: w ? 'fillW' : 'fillH', checked: cur.mode === 'fill', run: () => setStyle(pl.mode === 'stack' && s.axis === (pl.direction === 'row' ? 'height' : 'width') ? { [s.axis]: { mode: 'fill' }, alignSelf: undefined } : { [s.axis]: { mode: 'fill' } }) });
+        menu.push('sep', { label: w ? t("Add min width…") : t("Add min height…"), icon: w ? 'minW' : 'minH', run: () => setLimits(x => ({ ...x, [s.axis]: true })) }, { label: w ? t("Add max width…") : t("Add max height…"), icon: w ? 'maxW' : 'maxH', run: () => setLimits(x => ({ ...x, [s.axis]: true })) });
         if (s.value !== undefined && bp !== 'base')
-            menu.push('sep', { label: 'Use the larger screen\'s size', icon: 'restore', run: () => setStyle({ [s.axis]: undefined }) });
+            menu.push('sep', { label: t("Use the larger screen's size"), icon: 'restore', run: () => setStyle({ [s.axis]: undefined }) });
         // Always the pixel size; the mode after it, as Figma's "6360 Hug".
-        const suffix = cur.mode === 'hug' ? 'Hug' : cur.mode === 'fill' ? 'Fill' : cur.mode === 'percent' ? (cur.value ?? 100) + '%' : cur.mode === 'auto' ? 'Auto' : undefined;
-        return (jsx(NumberField, { key: s.axis, label: w ? 'W' : 'H', title: w ? 'Width' : 'Height', menu: isText ? undefined : menu, disabled: disabled, value: cur.mode === 'fixed' ? cur.value : actual, suffix: suffix, min: 0, max: 10000, decimals: 0, onChange: (n, m) => n !== undefined && setStyle({ [s.axis]: { mode: 'fixed', value: n } }, m) }));
+        const suffix = cur.mode === 'hug' ? t("Hug") : cur.mode === 'fill' ? t("Fill") : cur.mode === 'percent' ? (cur.value ?? 100) + '%' : cur.mode === 'auto' ? t("Auto") : undefined;
+        return (jsx(NumberField, { key: s.axis, label: w ? t("W") : t("H"), title: w ? t("Width") : t("Height"), menu: isText ? undefined : menu, disabled: disabled, value: cur.mode === 'fixed' ? cur.value : actual, suffix: suffix, min: 0, max: 10000, decimals: 0, onChange: (n, m) => n !== undefined && setStyle({ [s.axis]: { mode: 'fixed', value: n } }, m) }));
     };
     const limitRow = (axis) => {
         const minKey = axis === 'width' ? 'minWidth' : 'minHeight';
@@ -340,18 +336,18 @@ function SizeRows({ node, parent, bp, ids, disabled }) {
         const max = styleValue(node, bp, maxKey);
         if (!limits[axis] && min.value === undefined && max.value === undefined && min.inherited === undefined && max.inherited === undefined)
             return null;
-        return (jsx(Row, { key: axis, label: axis === 'width' ? 'Min width' : 'Min height', label2: axis === 'width' ? 'Max width' : 'Max height' },
-            jsx(NumberField, { label: "Min", value: min.value, placeholder: min.inherited ?? '-', min: 0, max: 4000, decimals: 0, disabled: disabled, onChange: (n, m) => setStyle({ [minKey]: n }, m) }),
-            jsx(NumberField, { label: "Max", value: max.value, placeholder: max.inherited ?? '-', min: 0, max: 4000, decimals: 0, disabled: disabled, onChange: (n, m) => setStyle({ [maxKey]: n }, m) }),
-            jsx(IconButton, { icon: "minus", title: `Remove ${axis} limits`, disabled: disabled, onClick: () => {
+        return (jsx(Row, { key: axis, label: axis === 'width' ? t("Min width") : t("Min height"), label2: axis === 'width' ? t("Max width") : t("Max height") },
+            jsx(NumberField, { label: t("Min"), value: min.value, placeholder: min.inherited ?? '-', min: 0, max: 4000, decimals: 0, disabled: disabled, onChange: (n, m) => setStyle({ [minKey]: n }, m) }),
+            jsx(NumberField, { label: t("Max"), value: max.value, placeholder: max.inherited ?? '-', min: 0, max: 4000, decimals: 0, disabled: disabled, onChange: (n, m) => setStyle({ [maxKey]: n }, m) }),
+            jsx(IconButton, { icon: "minus", title: axis === 'width' ? t("Remove width limits") : t("Remove height limits"), disabled: disabled, onClick: () => {
                     setLimits(x => ({ ...x, [axis]: false }));
                     setStyle({ [minKey]: undefined, [maxKey]: undefined });
                 } })));
     };
     return (jsx(Fragment, null,
-        jsx(Row, { label: allFixed ? 'Dimensions' : 'Resizing', override: bp !== 'base' && sizes.some(s => s.value !== undefined), onReset: () => setStyle({ width: undefined, height: undefined }) },
+        jsx(Row, { label: allFixed ? t("Dimensions") : t("Resizing"), override: bp !== 'base' && sizes.some(s => s.value !== undefined), onReset: () => setStyle({ width: undefined, height: undefined }) },
             sizes.map(field),
-            jsx(IconButton, { icon: "lockRatio", title: ratioOn ? 'Unlock aspect ratio' : 'Lock aspect ratio', on: ratioOn, disabled: disabled || (!ratioOn && !rect), onClick: () => {
+            jsx(IconButton, { icon: "lockRatio", title: ratioOn ? t("Unlock aspect ratio") : t("Lock aspect ratio"), on: ratioOn, disabled: disabled || (!ratioOn && !rect), onClick: () => {
                     if (ratioOn)
                         setStyle({ aspectRatio: undefined });
                     else if (rect && rect.h > 0)
@@ -367,23 +363,29 @@ function StackRows({ l, explicit, set, ov, disabled }) {
     const autoGap = DISTRIBUTED.has(justify);
     const gapMenu = [
         { label: String(l.gap ?? 0), checked: !autoGap, run: () => set({ justify: 'start' }) },
-        { label: 'Auto', checked: autoGap, run: () => set({ justify: 'between' }) },
+        { label: t("Auto"), checked: autoGap, run: () => set({ justify: 'between' }) },
     ];
-    return (jsx(Row, { label: "Alignment", label2: "Gap", override: ov('align', 'justify', 'gap'), onReset: () => set({ align: undefined, justify: undefined, gap: undefined }) },
+    return (jsx(Row, { label: t("Alignment"), label2: t("Gap"), override: ov('align', 'justify', 'gap'), onReset: () => set({ align: undefined, justify: undefined, gap: undefined }) },
         jsx(AlignBox, { direction: l.direction ?? 'column', wrap: !!l.wrap, align: align, justify: justify, disabled: disabled, onChange: (a, j) => set({ align: a, justify: j }), onToggleAuto: () => set({ justify: autoGap ? 'start' : 'between' }) }),
-        jsx(NumberField, { icon: l.direction === 'row' ? 'gapH' : 'gapV', title: l.direction === 'row' ? 'Horizontal gap between objects' : 'Vertical gap between objects', value: autoGap ? undefined : explicit.gap, text: autoGap ? 'Auto' : undefined, placeholder: l.gap ?? 0, min: 0, max: 400, decimals: 0, menu: gapMenu, disabled: disabled, words: { auto: () => set({ justify: 'between' }) }, onChange: (n, m) => set(autoGap ? { gap: n, justify: 'start' } : { gap: n }, m) }),
-        jsx(PopoverButton, { icon: "sliders", title: "Auto layout settings" },
-            jsx(Row, { label: "Spacing" },
+        jsx(NumberField, { icon: l.direction === 'row' ? 'gapH' : 'gapV', title: l.direction === 'row' ? t("Horizontal gap between objects") : t("Vertical gap between objects"), value: autoGap ? undefined : explicit.gap, text: autoGap ? t("Auto") : undefined, placeholder: l.gap ?? 0, min: 0, max: 400, decimals: 0, menu: gapMenu, disabled: disabled, words: { auto: () => set({ justify: 'between' }) }, onChange: (n, m) => set(autoGap ? { gap: n, justify: 'start' } : { gap: n }, m) }),
+        jsx(PopoverButton, { icon: "sliders", title: t("Auto layout settings") },
+            jsx(Row, { label: t("Spacing") },
                 jsx(Span2, null,
-                    jsx(SelectField, { value: justify, disabled: disabled, options: [{ value: 'start', label: 'Packed' }, { value: 'center', label: 'Packed, centered' }, { value: 'end', label: 'Packed at the end' }, { value: 'between', label: 'Space between' }, { value: 'around', label: 'Space around' }, { value: 'evenly', label: 'Space evenly' }], onChange: x => x && set({ justify: x }) }))),
+                    jsx(SelectField, { value: justify, disabled: disabled, options: [{ value: 'start', label: t("Packed") }, { value: 'center', label: t("Packed, centered") }, { value: 'end', label: t("Packed at the end") }, { value: 'between', label: t("Space between") }, { value: 'around', label: t("Space around") }, { value: 'evenly', label: t("Space evenly") }], onChange: x => x && set({ justify: x }) }))),
             jsx("div", { class: "pe-row pe-check-row" },
-                jsx(Toggle, { checked: align === 'stretch', label: "Stretch children to fill", disabled: disabled, onChange: on => set({ align: on ? 'stretch' : 'start' }) })),
+                jsx(Toggle, { checked: align === 'stretch', label: t("Stretch children to fill"), disabled: disabled, onChange: on => set({ align: on ? 'stretch' : 'start' }) })),
             l.direction === 'row' && (jsx("div", { class: "pe-row pe-check-row" },
-                jsx(Toggle, { checked: align === 'baseline', label: "Align text baseline", disabled: disabled, onChange: on => set({ align: on ? 'baseline' : 'start' }) }))))));
+                jsx(Toggle, { checked: align === 'baseline', label: t("Align text baseline"), disabled: disabled, onChange: on => set({ align: on ? 'baseline' : 'start' }) }))))));
 }
 const POS = ['start', 'center', 'end'];
-const ROW_NAMES = ['top', '', 'bottom'];
-const COL_NAMES = ['left', 'center', 'right'];
+/** The names of the alignment box's cells, row by row (top, middle, bottom), and of its bands. */
+const CELL_NAMES = [
+    [t("Align top left"), t("Align top center"), t("Align top right")],
+    [t("Align left"), t("Align center"), t("Align right")],
+    [t("Align bottom left"), t("Align bottom center"), t("Align bottom right")],
+];
+const COL_BANDS = [t("Align left"), t("Align center"), t("Align right")];
+const ROW_BANDS = [t("Align top"), t("Align center"), t("Align bottom")];
 /** The 16px mark of a packed stack (measured from Figma). */
 function markBars(kind, p) {
     const i = POS.indexOf(p);
@@ -421,12 +423,12 @@ function AlignBox({ direction, wrap, align, justify, onChange, onToggleAuto, dis
     if (distributed) {
         // Three choices on the cross axis: columns for a vertical stack, rows otherwise.
         const vertical = kind === 'v';
-        return (jsx("div", { class: cls('pe-abox', 'is-spread', disabled && 'is-disabled'), role: "radiogroup", "aria-label": "Alignment", onDblClick: () => !disabled && onToggleAuto() },
+        return (jsx("div", { class: cls('pe-abox', 'is-spread', disabled && 'is-disabled'), role: "radiogroup", "aria-label": t("Alignment"), onDblClick: () => !disabled && onToggleAuto() },
             jsx("div", { class: "pe-abox-grid" }, dots),
             POS.map((p, i) => {
                 const on = cross === p;
                 const shown = on || hover === p;
-                const name = 'Align ' + (vertical ? COL_NAMES[i] : ROW_NAMES[i] || 'center');
+                const name = vertical ? COL_BANDS[i] : ROW_BANDS[i];
                 return (jsx("button", { key: p, type: "button", role: "radio", "aria-checked": on, "aria-label": name, title: name, disabled: disabled, class: cls('pe-abox-band', vertical ? 'is-col' : 'is-row', on && 'is-on'), style: vertical ? { left: [0, 35, 69][i] + 'px' } : { top: [0, 15, 31][i] + 'px' }, onPointerEnter: () => setHover(p), onPointerLeave: () => setHover(null), onClick: () => onChange(p, justify) }, shown && jsx("span", { class: "pe-abox-strip" },
                     jsx(Bars, { bars: spreadBars(vertical, p, vertical ? 46 : 104) }))));
             })));
@@ -440,62 +442,62 @@ function AlignBox({ direction, wrap, align, justify, onChange, onToggleAuto, dis
             const on = cross === a && main === j;
             const key = r + ':' + c;
             const shown = on || hover === key;
-            const name = 'Align ' + [ROW_NAMES[r], r === 1 && c === 1 ? 'center' : COL_NAMES[c]].filter(Boolean).join(' ');
+            const name = CELL_NAMES[r][c];
             cells.push(jsx("button", { key: key, type: "button", role: "radio", "aria-checked": on, "aria-label": name, title: name, disabled: disabled, class: cls('pe-abox-cell', on && 'is-on'), style: { gridRow: r + 1, gridColumn: c + 1 }, onPointerEnter: () => setHover(key), onPointerLeave: () => setHover(null), onClick: () => onChange(a, j) }, shown && jsx("span", { class: "pe-abox-mark" },
                 jsx(Bars, { bars: markBars(kind, kind === 'w' ? j : a) }))));
         }
     }
     // Double-click switches between packed and space between, as in Figma.
-    return (jsx("div", { class: cls('pe-abox', disabled && 'is-disabled'), role: "radiogroup", "aria-label": "Alignment", onDblClick: () => !disabled && onToggleAuto() },
+    return (jsx("div", { class: cls('pe-abox', disabled && 'is-disabled'), role: "radiogroup", "aria-label": t("Alignment"), onDblClick: () => !disabled && onToggleAuto() },
         jsx("div", { class: "pe-abox-grid" }, dots),
         jsx("div", { class: "pe-abox-grid pe-abox-cells" }, cells)));
 }
 /** Figma's grid rows: the Grid box (counts and picker) beside the two gaps; our own row options behind the sliders. */
 function GridRows({ node, l, explicit, set, ov, disabled }) {
-    return (jsx(Row, { label: "Grid", label2: "Gap", className: "pe-grid-row", override: ov('columns', 'rows', 'colSizes', 'rowSizes', 'colGap', 'rowGap'), onReset: () => set({ columns: undefined, rows: undefined, colSizes: undefined, rowSizes: undefined, colGap: undefined, rowGap: undefined }) },
+    return (jsx(Row, { label: t("Grid"), label2: t("Gap"), className: "pe-grid-row", override: ov('columns', 'rows', 'colSizes', 'rowSizes', 'colGap', 'rowGap'), onReset: () => set({ columns: undefined, rows: undefined, colSizes: undefined, rowSizes: undefined, colGap: undefined, rowGap: undefined }) },
         jsx(GridBox, { node: node, l: l, set: set, disabled: disabled }),
         jsx("div", { class: "pe-grid-gaps" },
-            jsx(NumberField, { icon: "gapH", title: "Gap between columns", value: explicit.colGap, placeholder: l.colGap, min: 0, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => set({ colGap: n }, m) }),
-            jsx(NumberField, { icon: "gapV", title: "Gap between rows", value: explicit.rowGap, placeholder: l.rowGap, min: 0, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => set({ rowGap: n }, m) })),
-        jsx(PopoverButton, { icon: "sliders", title: "Grid options" },
-            jsx(Row, { label: "Row height", override: ov('rowHeight'), onReset: () => set({ rowHeight: undefined }) },
-                jsx(NumberField, { icon: "padV", title: "Smallest row height (rows that hug)", value: explicit.rowHeight, placeholder: l.rowHeight, min: 4, max: 600, decimals: 0, disabled: disabled, onChange: (n, m) => set({ rowHeight: n }, m) }),
-                jsx(SelectField, { value: l.rowMode ?? 'auto', disabled: disabled, title: "Row height", options: [{ value: 'auto', label: 'At least' }, { value: 'fixed', label: 'Exactly' }], onChange: x => x && set({ rowMode: x }) })),
+            jsx(NumberField, { icon: "gapH", title: t("Gap between columns"), value: explicit.colGap, placeholder: l.colGap, min: 0, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => set({ colGap: n }, m) }),
+            jsx(NumberField, { icon: "gapV", title: t("Gap between rows"), value: explicit.rowGap, placeholder: l.rowGap, min: 0, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => set({ rowGap: n }, m) })),
+        jsx(PopoverButton, { icon: "sliders", title: t("Grid options") },
+            jsx(Row, { label: t("Row height"), override: ov('rowHeight'), onReset: () => set({ rowHeight: undefined }) },
+                jsx(NumberField, { icon: "padV", title: t("Smallest row height (rows that hug)"), value: explicit.rowHeight, placeholder: l.rowHeight, min: 4, max: 600, decimals: 0, disabled: disabled, onChange: (n, m) => set({ rowHeight: n }, m) }),
+                jsx(SelectField, { value: l.rowMode ?? 'auto', disabled: disabled, title: t("Row height"), options: [{ value: 'auto', label: t("At least") }, { value: 'fixed', label: t("Exactly") }], onChange: x => x && set({ rowMode: x }) })),
             jsx("div", { class: "pe-row pe-check-row" },
-                jsx(Toggle, { checked: l.compact !== false, label: "Float items up into gaps", disabled: disabled, onChange: on => set({ compact: on }) })))));
+                jsx(Toggle, { checked: l.compact !== false, label: t("Float items up into gaps"), disabled: disabled, onChange: on => set({ compact: on }) })))));
 }
 /** Padding as Figma shows it: horizontal and vertical, or all four sides (left, top / right, bottom). */
 function SpacingRows({ node, bp, setStyle, disabled, kind }) {
     const [individual, setIndividual] = useState(false);
     const v = styleValue(node, bp, kind);
     const box = (v.value ?? v.inherited);
-    const [t, r, b, l] = box ?? [0, 0, 0, 0];
+    const [tp, r, b, l] = box ?? [0, 0, 0, 0];
     const explicit = v.value;
     const min = 0;
-    const label = 'Padding';
-    const asymmetric = t !== b || l !== r;
+    const label = t("Padding");
+    const asymmetric = tp !== b || l !== r;
     const showAll = individual || asymmetric;
     const write = (next, m) => setStyle({ [kind]: next }, m);
-    const field = (side, name, icon) => (jsx(NumberField, { icon: icon, title: label + ' ' + name.toLowerCase(), value: explicit ? explicit[side] : undefined, placeholder: (box ?? [0, 0, 0, 0])[side], min: min, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => {
+    const field = (side, title, icon) => (jsx(NumberField, { icon: icon, title: title, value: explicit ? explicit[side] : undefined, placeholder: (box ?? [0, 0, 0, 0])[side], min: min, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => {
             const next = [...(box ?? [0, 0, 0, 0])];
             next[side] = n ?? 0;
             write(next, m);
         } }));
     const override = bp !== 'base' && v.value !== undefined;
-    const toggle = jsx(IconButton, { icon: "corners", title: 'Individual ' + kind, on: showAll, disabled: disabled || asymmetric, onClick: () => setIndividual(!individual) });
+    const toggle = jsx(IconButton, { icon: "corners", title: t("Individual padding"), on: showAll, disabled: disabled || asymmetric, onClick: () => setIndividual(!individual) });
     if (showAll) {
         return (jsx(Fragment, null,
             jsx(Row, { label: label, override: override, onReset: () => setStyle({ [kind]: undefined }) },
-                field(3, 'Left', 'padLeft'),
-                field(0, 'Top', 'padTop'),
+                field(3, t("Padding left"), 'padLeft'),
+                field(0, t("Padding top"), 'padTop'),
                 toggle),
             jsx(Row, null,
-                field(1, 'Right', 'padRight'),
-                field(2, 'Bottom', 'padBottom'))));
+                field(1, t("Padding right"), 'padRight'),
+                field(2, t("Padding bottom"), 'padBottom'))));
     }
     return (jsx(Row, { label: label, override: override, onReset: () => setStyle({ [kind]: undefined }) },
-        jsx(NumberField, { icon: "padH", title: 'Horizontal ' + kind, value: explicit ? explicit[3] : undefined, placeholder: l, min: min, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => write([t, n ?? 0, b, n ?? 0], m) }),
-        jsx(NumberField, { icon: "padV", title: 'Vertical ' + kind, value: explicit ? explicit[0] : undefined, placeholder: t, min: min, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => write([n ?? 0, r, n ?? 0, l], m) }),
+        jsx(NumberField, { icon: "padH", title: t("Horizontal padding"), value: explicit ? explicit[3] : undefined, placeholder: l, min: min, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => write([tp, n ?? 0, b, n ?? 0], m) }),
+        jsx(NumberField, { icon: "padV", title: t("Vertical padding"), value: explicit ? explicit[0] : undefined, placeholder: tp, min: min, max: 400, decimals: 0, disabled: disabled, onChange: (n, m) => write([n ?? 0, r, n ?? 0, l], m) }),
         toggle));
 }
 /* ------------------------------------------------------------------ appearance */
@@ -514,18 +516,18 @@ function AppearanceSection({ node, ids, bp }) {
             next[i] = n ?? 0;
             setStyle({ radius: next }, m);
         } }));
-    return (jsx(Section, { id: "appearance", title: "Appearance", actions: jsx(IconButton, { icon: node.hidden ? 'eyeOff' : 'eye', title: node.hidden ? 'Show' : 'Hide', on: !!node.hidden, onClick: () => setFlag(session.store, ids, 'hidden', !node.hidden) }) },
-        jsx(Row, { label: "Opacity", label2: "Corner radius", override: bp !== 'base' && (opacity.value !== undefined || radius.value !== undefined), onReset: () => setStyle({ opacity: undefined, radius: undefined }) },
-            jsx(NumberField, { icon: "opacity", title: "Opacity", value: opacity.value === undefined ? undefined : Math.round(opacity.value * 100), placeholder: opacity.inherited === undefined ? 100 : Math.round(opacity.inherited * 100), unit: "%", min: 0, max: 100, decimals: 0, disabled: disabled, onChange: (n, m) => setStyle({ opacity: n === undefined ? undefined : n / 100 }, m) }),
-            jsx(NumberField, { icon: "radius", title: "Corner radius", value: !uneven && radius.value ? radius.value[0] : undefined, text: uneven ? 'Mixed' : undefined, placeholder: rv ? rv[0] : 0, min: 0, max: 1000, decimals: 0, disabled: disabled, onChange: (n, m) => setStyle({ radius: n === undefined ? undefined : [n, n, n, n] }, m) }),
-            jsx(IconButton, { icon: "corners", title: "Individual corners", on: showCorners, disabled: disabled || uneven, onClick: () => setCorners(!corners) })),
+    return (jsx(Section, { id: "appearance", title: t("Appearance"), actions: jsx(IconButton, { icon: node.hidden ? 'eyeOff' : 'eye', title: node.hidden ? t("Show") : t("Hide"), on: !!node.hidden, onClick: () => setFlag(session.store, ids, 'hidden', !node.hidden) }) },
+        jsx(Row, { label: t("Opacity"), label2: t("Corner radius"), override: bp !== 'base' && (opacity.value !== undefined || radius.value !== undefined), onReset: () => setStyle({ opacity: undefined, radius: undefined }) },
+            jsx(NumberField, { icon: "opacity", title: t("Opacity"), value: opacity.value === undefined ? undefined : Math.round(opacity.value * 100), placeholder: opacity.inherited === undefined ? 100 : Math.round(opacity.inherited * 100), unit: "%", min: 0, max: 100, decimals: 0, disabled: disabled, onChange: (n, m) => setStyle({ opacity: n === undefined ? undefined : n / 100 }, m) }),
+            jsx(NumberField, { icon: "radius", title: t("Corner radius"), value: !uneven && radius.value ? radius.value[0] : undefined, text: uneven ? t("Mixed") : undefined, placeholder: rv ? rv[0] : 0, min: 0, max: 1000, decimals: 0, disabled: disabled, onChange: (n, m) => setStyle({ radius: n === undefined ? undefined : [n, n, n, n] }, m) }),
+            jsx(IconButton, { icon: "corners", title: t("Individual corners"), on: showCorners, disabled: disabled || uneven, onClick: () => setCorners(!corners) })),
         showCorners && (jsx(Fragment, null,
             jsx(Row, null,
-                cornerField(0, 'Top left', '↖'),
-                cornerField(1, 'Top right', '↗')),
+                cornerField(0, t("Top left"), '↖'),
+                cornerField(1, t("Top right"), '↗')),
             jsx(Row, null,
-                cornerField(3, 'Bottom left', '↙'),
-                cornerField(2, 'Bottom right', '↘'))))));
+                cornerField(3, t("Bottom left"), '↙'),
+                cornerField(2, t("Bottom right"), '↘'))))));
 }
 /* ------------------------------------------------------------------ typography */
 function TypographySection({ node, ids, bp }) {
@@ -535,45 +537,55 @@ function TypographySection({ node, ids, bp }) {
     const disabled = !!node.locked;
     const isText = TEXT_TYPES.has(node.type);
     const align = (s('textAlign').value ?? s('textAlign').inherited);
-    return (jsx(Section, { id: isText ? 'typography' : 'typography-container', title: "Typography" },
-        jsx(Row, { override: ov('fontFamily'), onReset: () => setStyle({ fontFamily: undefined }), label: isText ? undefined : 'Text inside' },
+    return (jsx(Section, { id: isText ? 'typography' : 'typography-container', title: t("Typography") },
+        jsx(Row, { override: ov('fontFamily'), onReset: () => setStyle({ fontFamily: undefined }), label: isText ? undefined : t("Text inside") },
             jsx(Span2, null,
-                jsx(SelectField, { value: s('fontFamily').value, placeholder: fontLabel(s('fontFamily').inherited), disabled: disabled, title: "Font family", options: [{ value: 'inherit', label: 'Site font' }, { value: 'sans', label: 'Sans serif' }, { value: 'serif', label: 'Serif' }, { value: 'mono', label: 'Monospace' }], onChange: v => setStyle({ fontFamily: v }) }))),
+                jsx(SelectField, { value: s('fontFamily').value, placeholder: fontLabel(s('fontFamily').inherited), disabled: disabled, title: t("Font family"), options: [{ value: 'inherit', label: t("Site font") }, { value: 'sans', label: t("Sans serif") }, { value: 'serif', label: t("Serif") }, { value: 'mono', label: t("Monospace") }], onChange: v => setStyle({ fontFamily: v }) }))),
         jsx(Row, { override: ov('fontWeight', 'fontSize'), onReset: () => setStyle({ fontWeight: undefined, fontSize: undefined }) },
-            jsx(SelectField, { value: s('fontWeight').value, placeholder: weightLabel(s('fontWeight').inherited), disabled: disabled, title: "Font weight", options: WEIGHTS.map(([v, l]) => ({ value: v, label: l })), onChange: v => setStyle({ fontWeight: v }) }),
-            jsx(NumberField, { title: "Font size", value: s('fontSize').value, placeholder: s('fontSize').inherited ?? 'Auto', min: 6, max: 400, decimals: 1, disabled: disabled, onChange: (v, m) => setStyle({ fontSize: v }, m) })),
-        jsx(Row, { label: "Line height", label2: "Letter spacing", override: ov('lineHeight', 'letterSpacing'), onReset: () => setStyle({ lineHeight: undefined, letterSpacing: undefined }) },
-            jsx(NumberField, { icon: "padV", title: "Line height", value: s('lineHeight').value, placeholder: s('lineHeight').inherited ?? 'Auto', min: 0.5, max: 4, step: 0.05, disabled: disabled, onChange: (v, m) => setStyle({ lineHeight: v }, m) }),
-            jsx(NumberField, { icon: "padH", title: "Letter spacing", value: s('letterSpacing').value, placeholder: s('letterSpacing').inherited ?? 0, unit: "px", min: -10, max: 40, step: 0.1, decimals: 1, disabled: disabled, onChange: (v, m) => setStyle({ letterSpacing: v }, m) })),
-        jsx(Row, { label: "Alignment", override: ov('textAlign', 'textTransform', 'fontStyle'), onReset: () => setStyle({ textAlign: undefined, textTransform: undefined, fontStyle: undefined }) },
-            jsx("div", { class: "pe-span2 pe-seg", role: "radiogroup", "aria-label": "Text alignment" }, [['left', 'textLeft', 'Align left'], ['center', 'textCenter', 'Align center'], ['right', 'textRight', 'Align right'], ['justify', 'textJustify', 'Justify']].map(([v, icon, title]) => (jsx("button", { key: v, type: "button", role: "radio", "aria-checked": align === v, class: cls('pe-seg-btn', align === v && 'is-on'), title: title, "aria-label": title, disabled: disabled, onClick: () => setStyle({ textAlign: v }) },
+            jsx(SelectField, { value: s('fontWeight').value, placeholder: weightLabel(s('fontWeight').inherited), disabled: disabled, title: t("Font weight"), options: WEIGHTS.map(([v, l]) => ({ value: v, label: l })), onChange: v => setStyle({ fontWeight: v }) }),
+            jsx(NumberField, { title: t("Font size"), value: s('fontSize').value, placeholder: s('fontSize').inherited ?? t("Auto"), min: 6, max: 400, decimals: 1, disabled: disabled, onChange: (v, m) => setStyle({ fontSize: v }, m) })),
+        jsx(Row, { label: t("Line height"), label2: t("Letter spacing"), override: ov('lineHeight', 'letterSpacing'), onReset: () => setStyle({ lineHeight: undefined, letterSpacing: undefined }) },
+            jsx(NumberField, { icon: "padV", title: t("Line height"), value: s('lineHeight').value, placeholder: s('lineHeight').inherited ?? t("Auto"), min: 0.5, max: 4, step: 0.05, disabled: disabled, onChange: (v, m) => setStyle({ lineHeight: v }, m) }),
+            jsx(NumberField, { icon: "padH", title: t("Letter spacing"), value: s('letterSpacing').value, placeholder: s('letterSpacing').inherited ?? 0, unit: "px", min: -10, max: 40, step: 0.1, decimals: 1, disabled: disabled, onChange: (v, m) => setStyle({ letterSpacing: v }, m) })),
+        jsx(Row, { label: t("Alignment"), override: ov('textAlign', 'textTransform', 'fontStyle'), onReset: () => setStyle({ textAlign: undefined, textTransform: undefined, fontStyle: undefined }) },
+            jsx("div", { class: "pe-span2 pe-seg", role: "radiogroup", "aria-label": t("Text alignment") }, [['left', 'textLeft', t("Align left")], ['center', 'textCenter', t("Align center")], ['right', 'textRight', t("Align right")], ['justify', 'textJustify', t("Justify")]].map(([v, icon, title]) => (jsx("button", { key: v, type: "button", role: "radio", "aria-checked": align === v, class: cls('pe-seg-btn', align === v && 'is-on'), title: title, "aria-label": title, disabled: disabled, onClick: () => setStyle({ textAlign: v }) },
                 jsx(Icon, { name: icon, size: 16 }))))),
-            jsx(PopoverButton, { icon: "sliders", title: "Type settings" },
-                jsx(Row, { label: "Case" },
+            jsx(PopoverButton, { icon: "sliders", title: t("Type settings") },
+                jsx(Row, { label: t("Case") },
                     jsx(Span2, null,
-                        jsx(SelectField, { value: s('textTransform').value, placeholder: caseLabel(s('textTransform').inherited), disabled: disabled, options: [{ value: 'none', label: 'As typed' }, { value: 'uppercase', label: 'UPPERCASE' }, { value: 'lowercase', label: 'lowercase' }, { value: 'capitalize', label: 'Capitalize Words' }], onChange: v => setStyle({ textTransform: v }) }))),
+                        jsx(SelectField, { value: s('textTransform').value, placeholder: caseLabel(s('textTransform').inherited), disabled: disabled, options: [{ value: 'none', label: t("As typed") }, { value: 'uppercase', label: t("UPPERCASE") }, { value: 'lowercase', label: t("lowercase") }, { value: 'capitalize', label: t("Capitalize Words") }], onChange: v => setStyle({ textTransform: v }) }))),
                 jsx("div", { class: "pe-row pe-check-row" },
-                    jsx(Toggle, { checked: (s('fontStyle').value ?? s('fontStyle').inherited) === 'italic', label: "Italic", disabled: disabled, onChange: on => setStyle({ fontStyle: on ? 'italic' : 'normal' }) })))),
-        !TEXT_FILL.has(node.type) && (jsx(Row, { label: "Text color", override: ov('color'), onReset: () => setStyle({ color: undefined }) },
+                    jsx(Toggle, { checked: (s('fontStyle').value ?? s('fontStyle').inherited) === 'italic', label: t("Italic"), disabled: disabled, onChange: on => setStyle({ fontStyle: on ? 'italic' : 'normal' }) })))),
+        !TEXT_FILL.has(node.type) && (jsx(Row, { label: t("Text color"), override: ov('color'), onReset: () => setStyle({ color: undefined }) },
             jsx(Span2, null,
-                jsx(ColorField, { value: s('color').value, placeholder: s('color').inherited ?? 'Inherited', disabled: disabled, onChange: (v, m) => setStyle({ color: v }, m) }))))));
+                jsx(ColorField, { value: s('color').value, placeholder: s('color').inherited ?? t("Inherited"), disabled: disabled, onChange: (v, m) => setStyle({ color: v }, m) }))))));
 }
-const WEIGHTS = [['100', 'Thin'], ['200', 'Extra light'], ['300', 'Light'], ['400', 'Regular'], ['500', 'Medium'], ['600', 'Semi bold'], ['700', 'Bold'], ['800', 'Extra bold'], ['900', 'Black']];
-const fontLabel = (v) => ({ inherit: 'Site font', sans: 'Sans serif', serif: 'Serif', mono: 'Monospace' }[v ?? 'inherit'] ?? 'Site font');
-const weightLabel = (v) => WEIGHTS.find(w => w[0] === v)?.[1] ?? 'Regular';
-const caseLabel = (v) => ({ none: 'As typed', uppercase: 'UPPERCASE', lowercase: 'lowercase', capitalize: 'Capitalize Words' }[v ?? 'none'] ?? 'As typed');
+const WEIGHTS = [['100', t("Thin")], ['200', t("Extra light")], ['300', t("Light")], ['400', t("Regular")], ['500', t("Medium")], ['600', t("Semi bold")], ['700', t("Bold")], ['800', t("Extra bold")], ['900', t("Black")]];
+const fontLabel = (v) => ({ inherit: t("Site font"), sans: t("Sans serif"), serif: t("Serif"), mono: t("Monospace") }[v ?? 'inherit'] ?? t("Site font"));
+const weightLabel = (v) => WEIGHTS.find(w => w[0] === v)?.[1] ?? t("Regular");
+const caseLabel = (v) => ({ none: t("As typed"), uppercase: t("UPPERCASE"), lowercase: t("lowercase"), capitalize: t("Capitalize Words") }[v ?? 'none'] ?? t("As typed"));
 /* ------------------------------------------------------------------ fill, stroke, effects */
 /** Figma's eye on a fill or stroke: kept, not drawn. Below desktop it can also show one that desktop hides. */
 function paintVisibility(node, bp, key, setStyle) {
     const hidden = effective(node, bp, key) === 'hidden';
     return { hidden, toggle: () => setStyle({ [key]: hidden ? (bp === 'base' ? undefined : 'visible') : 'hidden' }) };
 }
+/** The show, hide and remove buttons' titles of a paint row, by its kind. */
+function paintTitles(kind) {
+    switch (kind) {
+        case 'fill': return { show: t("Show fill"), hide: t("Hide fill"), remove: t("Remove fill") };
+        case 'image': return { show: t("Show image"), hide: t("Hide image"), remove: t("Remove image") };
+        case 'stroke': return { show: t("Show stroke"), hide: t("Hide stroke"), remove: t("Remove stroke") };
+        default: return { show: t("Show text color"), hide: t("Hide text color"), remove: t("Remove text color") };
+    }
+}
 /** One paint row as in Figma: the color (or image) box, then show/hide and remove. */
 function PaintRow({ children, label, override, onReset, hidden, onToggle, onRemove, kind, disabled }) {
+    const titles = paintTitles(kind);
     return (jsx(Row, { className: cls('pe-paint-row', hidden && 'is-hidden'), label: label, override: override, onReset: onReset },
         children,
-        onToggle ? jsx(IconButton, { icon: hidden ? 'eyeOff' : 'eye', title: (hidden ? 'Show ' : 'Hide ') + kind, disabled: disabled, onClick: onToggle }) : jsx("span", null),
-        onRemove ? jsx(IconButton, { icon: "minus", title: 'Remove ' + kind, disabled: disabled, onClick: onRemove }) : jsx("span", null)));
+        onToggle ? jsx(IconButton, { icon: hidden ? 'eyeOff' : 'eye', title: hidden ? titles.show : titles.hide, disabled: disabled, onClick: onToggle }) : jsx("span", null),
+        onRemove ? jsx(IconButton, { icon: "minus", title: titles.remove, disabled: disabled, onClick: onRemove }) : jsx("span", null)));
 }
 function FillSection({ node, ids, bp }) {
     const setStyle = useStyleSetter(ids, bp);
@@ -588,14 +600,14 @@ function FillSection({ node, ids, bp }) {
     const ov = (k) => bp !== 'base' && styleValue(node, bp, k).value !== undefined;
     const eye = paintVisibility(node, bp, 'fillHidden', setStyle);
     const addMenu = [
-        { label: textFill ? 'Background color' : 'Color', icon: 'fill', disabled: hasBg, run: () => setStyle({ background: '#ffffff' }) },
-        { label: 'Image', icon: 'image', disabled: hasImg, run: () => setStyle({ bgImage: '', bgSize: 'cover', bgPosition: 'center', bgRepeat: 'no-repeat' }) },
+        { label: textFill ? t("Background color") : t("Color"), icon: 'fill', disabled: hasBg, run: () => setStyle({ background: '#ffffff' }) },
+        { label: t("Image"), icon: 'image', disabled: hasImg, run: () => setStyle({ bgImage: '', bgSize: 'cover', bgPosition: 'center', bgRepeat: 'no-repeat' }) },
     ];
     const empty = !textFill && !hasBg && !hasImg && !adding;
-    return (jsx(Section, { id: "fill", title: "Fill", empty: empty, actions: jsx(AddButton, { title: "Add fill", items: addMenu, disabled: disabled, onOpen: () => setAdding(false) }) },
+    return (jsx(Section, { id: "fill", title: t("Fill"), empty: empty, actions: jsx(AddButton, { title: t("Add fill"), items: addMenu, disabled: disabled, onOpen: () => setAdding(false) }) },
         textFill && (jsx(PaintRow, { kind: "text color", override: ov('color'), onReset: () => setStyle({ color: undefined }), disabled: disabled },
-            jsx(ColorField, { value: color.value, placeholder: color.inherited ?? 'Inherited', disabled: disabled, onChange: (v, m) => setStyle({ color: v }, m) }))),
-        hasBg && (jsx(PaintRow, { kind: "fill", label: textFill ? 'Background' : undefined, override: ov('background') || ov('fillHidden'), onReset: () => setStyle({ background: undefined, fillHidden: undefined }), hidden: eye.hidden, onToggle: eye.toggle, onRemove: () => setStyle({ background: undefined, ...(hasImg ? {} : { fillHidden: undefined }) }), disabled: disabled },
+            jsx(ColorField, { value: color.value, placeholder: color.inherited ?? t("Inherited"), disabled: disabled, onChange: (v, m) => setStyle({ color: v }, m) }))),
+        hasBg && (jsx(PaintRow, { kind: "fill", label: textFill ? t("Background") : undefined, override: ov('background') || ov('fillHidden'), onReset: () => setStyle({ background: undefined, fillHidden: undefined }), hidden: eye.hidden, onToggle: eye.toggle, onRemove: () => setStyle({ background: undefined, ...(hasImg ? {} : { fillHidden: undefined }) }), disabled: disabled },
             jsx(ColorField, { value: bg.value, placeholder: bg.inherited, disabled: disabled, onChange: (v, m) => setStyle({ background: v }, m) }))),
         (hasImg || img.value === '') && (jsx(ImageFillRow, { node: node, bp: bp, setStyle: setStyle, disabled: disabled, hidden: eye.hidden, onToggle: eye.toggle, onRemove: () => setStyle({ bgImage: undefined, bgSize: undefined, bgPosition: undefined, bgRepeat: undefined, ...(hasBg ? {} : { fillHidden: undefined }) }) }))));
 }
@@ -607,18 +619,20 @@ function ImageFillRow({ node, bp, setStyle, disabled, hidden, onToggle, onRemove
     return (jsx(PaintRow, { kind: "image", override: bp !== 'base' && img.value !== undefined, onReset: () => setStyle({ bgImage: undefined }), hidden: hidden, onToggle: onToggle, onRemove: onRemove, disabled: disabled },
         jsx("div", { class: "pe-fill-image" },
             jsx("span", { class: "pe-fill-thumb", style: src ? { backgroundImage: `url("${src.replace(/"/g, '%22')}")` } : undefined }),
-            jsx("span", { class: "pe-fill-name" }, src ? src.split('/').pop() : 'Image'),
-            jsx(PopoverButton, { icon: "sliders", title: "Image fill", wide: true },
+            jsx("span", { class: "pe-fill-name" }, src ? src.split('/').pop() : t("Image")),
+            jsx(PopoverButton, { icon: "sliders", title: t("Image fill"), wide: true },
                 jsx(ImageInput, { value: src, disabled: disabled, preview: true, onChange: v => setStyle({ bgImage: v }) }),
-                jsx(Row, { label: "Fit", label2: "Position" },
-                    jsx(SelectField, { value: size, placeholder: "Original", disabled: disabled, options: [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }, { value: 'auto', label: 'Original size' }], onChange: v => setStyle({ bgSize: v }) }),
-                    jsx(SelectField, { value: position, placeholder: "Top left", disabled: disabled, options: ['center', 'top', 'bottom', 'left', 'right'].map(v => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), onChange: v => setStyle({ bgPosition: v }) })),
-                jsx(Row, { label: "Repeat" },
+                jsx(Row, { label: t("Fit"), label2: t("Position") },
+                    jsx(SelectField, { value: size, placeholder: t("Original"), disabled: disabled, options: [{ value: 'cover', label: t("Fill") }, { value: 'contain', label: t("Fit") }, { value: 'auto', label: t("Original size") }], onChange: v => setStyle({ bgSize: v }) }),
+                    jsx(SelectField, { value: position, placeholder: t("Top left"), disabled: disabled, options: [['center', t("Center")], ['top', t("Top")], ['bottom', t("Bottom")], ['left', t("Left")], ['right', t("Right")]].map(([v, label]) => ({ value: v, label })), onChange: v => setStyle({ bgPosition: v }) })),
+                jsx(Row, { label: t("Repeat") },
                     jsx(Span2, null,
-                        jsx(SelectField, { value: effective(node, bp, 'bgRepeat'), placeholder: "Repeat", disabled: disabled, options: [{ value: 'no-repeat', label: 'Once' }, { value: 'repeat', label: 'Tile' }, { value: 'repeat-x', label: 'Tile across' }, { value: 'repeat-y', label: 'Tile down' }], onChange: v => setStyle({ bgRepeat: v }) })))))));
+                        jsx(SelectField, { value: effective(node, bp, 'bgRepeat'), placeholder: t("Repeat"), disabled: disabled, options: [{ value: 'no-repeat', label: t("Once") }, { value: 'repeat', label: t("Tile") }, { value: 'repeat-x', label: t("Tile across") }, { value: 'repeat-y', label: t("Tile down") }], onChange: v => setStyle({ bgRepeat: v }) })))))));
 }
 const STROKE_RESET = { borderWidth: undefined, borderColor: undefined, borderStyle: undefined, borderSides: undefined, strokeAlign: undefined, strokeHidden: undefined };
 const SIDES = ['top', 'right', 'bottom', 'left'];
+/** The stroke styles and their names. */
+const STROKE_STYLES = { solid: t("Solid"), dashed: t("Dashed"), dotted: t("Dotted"), double: t("Double") };
 /** Which of Figma's "individual strokes" choices a set of side weights is. */
 function sideOf(sides) {
     if (!sides)
@@ -649,34 +663,34 @@ function StrokeSection({ node, ids, bp }) {
         else
             setStyle({ borderSides: SIDES.map(x => (x === next ? n : 0)) });
     };
-    const sideMenu = [['all', 'All', 'strokeSides'], ['top', 'Top', 'strokeTop'], ['bottom', 'Bottom', 'strokeBottom'], ['left', 'Left', 'strokeLeft'], ['right', 'Right', 'strokeRight'], ['custom', 'Custom', 'strokeSides']]
+    const sideMenu = [['all', t("All"), 'strokeSides'], ['top', t("Top"), 'strokeTop'], ['bottom', t("Bottom"), 'strokeBottom'], ['left', t("Left"), 'strokeLeft'], ['right', t("Right"), 'strokeRight'], ['custom', t("Custom"), 'strokeSides']]
         .map(([v, label, icon]) => ({ label, icon, checked: side === v, run: () => setSide(v) }));
-    const sideField = (i, name, icon) => (jsx(NumberField, { icon: icon, title: name + ' stroke', value: sides?.[i], min: 0, max: 40, decimals: 1, disabled: disabled, onChange: (v, m) => {
+    const sideField = (i, title, icon) => (jsx(NumberField, { icon: icon, title: title, value: sides?.[i], min: 0, max: 40, decimals: 1, disabled: disabled, onChange: (v, m) => {
             const next = [...(sides ?? [0, 0, 0, 0])];
             next[i] = v ?? 0;
             setStyle({ borderSides: next }, m);
         } }));
     // One weight for all sides, for the single side shown, or (custom) per side below.
     const setWeight = (v, m) => setStyle(sides ? { borderSides: sides.map(x => (x > 0 ? v ?? 0 : 0)) } : { borderWidth: v }, m);
-    return (jsx(Section, { id: "stroke", title: "Stroke", empty: !has, actions: jsx(IconButton, { icon: "plus", title: "Add stroke", disabled: disabled || has, onClick: () => setStyle({ borderWidth: 1, borderStyle: 'solid', borderColor: '#000000' }) }) },
+    return (jsx(Section, { id: "stroke", title: t("Stroke"), empty: !has, actions: jsx(IconButton, { icon: "plus", title: t("Add stroke"), disabled: disabled || has, onClick: () => setStyle({ borderWidth: 1, borderStyle: 'solid', borderColor: '#000000' }) }) },
         jsx(PaintRow, { kind: "stroke", override: ov, onReset: () => setStyle(STROKE_RESET), hidden: eye.hidden, onToggle: eye.toggle, onRemove: () => setStyle(STROKE_RESET), disabled: disabled },
             jsx(ColorField, { value: color.value, placeholder: color.inherited ?? '#000000', disabled: disabled, onChange: (v, m) => setStyle({ borderColor: v }, m) })),
-        jsx(Row, { label: "Position", label2: "Weight" },
-            jsx(SelectField, { value: sides ? 'inside' : align, disabled: disabled || !!sides, title: sides ? 'Strokes on single sides are drawn inside' : 'Stroke position', options: [{ value: 'inside', label: 'Inside' }, { value: 'center', label: 'Center' }, { value: 'outside', label: 'Outside' }], onChange: v => setStyle({ strokeAlign: v === 'inside' && bp === 'base' ? undefined : v }) }),
+        jsx(Row, { label: t("Position"), label2: t("Weight") },
+            jsx(SelectField, { value: sides ? 'inside' : align, disabled: disabled || !!sides, title: sides ? t("Strokes on single sides are drawn inside") : t("Stroke position"), options: [{ value: 'inside', label: t("Inside") }, { value: 'center', label: t("Center") }, { value: 'outside', label: t("Outside") }], onChange: v => setStyle({ strokeAlign: v === 'inside' && bp === 'base' ? undefined : v }) }),
             jsx("div", { class: "pe-stroke-weight" },
-                jsx(NumberField, { icon: "strokeWeight", title: "Stroke weight", value: side === 'custom' ? undefined : weight, text: side === 'custom' ? 'Mixed' : undefined, min: 0, max: 40, decimals: 1, disabled: disabled, onChange: setWeight }),
-                jsx(PopoverButton, { icon: "sliders", title: "Stroke settings" },
-                    jsx(Row, { label: "Style" },
+                jsx(NumberField, { icon: "strokeWeight", title: t("Stroke weight"), value: side === 'custom' ? undefined : weight, text: side === 'custom' ? t("Mixed") : undefined, min: 0, max: 40, decimals: 1, disabled: disabled, onChange: setWeight }),
+                jsx(PopoverButton, { icon: "sliders", title: t("Stroke settings") },
+                    jsx(Row, { label: t("Style") },
                         jsx(Span2, null,
-                            jsx(SelectField, { value: style.value, placeholder: (style.inherited ?? 'solid').replace(/^./, c => c.toUpperCase()), disabled: disabled, options: ['solid', 'dashed', 'dotted', 'double'].map(v => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), onChange: v => setStyle({ borderStyle: v }) }))))),
+                            jsx(SelectField, { value: style.value, placeholder: STROKE_STYLES[style.inherited ?? 'solid'] ?? (style.inherited ?? 'solid').replace(/^./, c => c.toUpperCase()), disabled: disabled, options: Object.entries(STROKE_STYLES).map(([v, label]) => ({ value: v, label })), onChange: v => setStyle({ borderStyle: v }) }))))),
             jsx(SideButton, { items: sideMenu, on: side !== 'all', icon: side === 'all' || side === 'custom' ? 'strokeSides' : 'stroke' + side[0].toUpperCase() + side.slice(1), disabled: disabled })),
         side === 'custom' && (jsx(Fragment, null,
             jsx(Row, null,
-                sideField(3, 'Left', 'strokeLeft'),
-                sideField(0, 'Top', 'strokeTop')),
+                sideField(3, t("Left stroke"), 'strokeLeft'),
+                sideField(0, t("Top stroke"), 'strokeTop')),
             jsx(Row, null,
-                sideField(1, 'Right', 'strokeRight'),
-                sideField(2, 'Bottom', 'strokeBottom'))))));
+                sideField(1, t("Right stroke"), 'strokeRight'),
+                sideField(2, t("Bottom stroke"), 'strokeBottom'))))));
 }
 /** Figma's "Individual strokes" button: a menu of All / one side / Custom. */
 function SideButton({ items, on, icon, disabled }) {
@@ -684,12 +698,12 @@ function SideButton({ items, on, icon, disabled }) {
     const ref = useRef(null);
     useDismiss(ref, open, () => setOpen(false));
     return (jsx("div", { class: "pe-pop-wrap", ref: ref },
-        jsx(IconButton, { icon: icon, title: "Individual strokes", on: on || open, disabled: disabled, onClick: () => setOpen(!open) }),
+        jsx(IconButton, { icon: icon, title: t("Individual strokes"), on: on || open, disabled: disabled, onClick: () => setOpen(!open) }),
         open && jsx(DropMenu, { items: items, onClose: () => setOpen(false), align: "right" })));
 }
 const SHADOW_OPTIONS = [
-    { value: 'sm', label: 'Drop shadow · small' }, { value: 'md', label: 'Drop shadow · medium' }, { value: 'lg', label: 'Drop shadow · large' }, { value: 'xl', label: 'Drop shadow · extra large' },
-    { value: 'dim', label: 'Darken image' }, { value: 'fade', label: 'Dark fade at the bottom' }, { value: 'custom', label: 'Custom shadow' },
+    { value: 'sm', label: t("Drop shadow · small") }, { value: 'md', label: t("Drop shadow · medium") }, { value: 'lg', label: t("Drop shadow · large") }, { value: 'xl', label: t("Drop shadow · extra large") },
+    { value: 'dim', label: t("Darken image") }, { value: 'fade', label: t("Dark fade at the bottom") }, { value: 'custom', label: t("Custom shadow") },
 ];
 function EffectsSection({ node, ids, bp }) {
     const setStyle = useStyleSetter(ids, bp);
@@ -699,22 +713,22 @@ function EffectsSection({ node, ids, bp }) {
     const has = cur !== undefined && cur !== 'none';
     const custom = cur && typeof cur === 'object' ? cur : null;
     const setCustom = (patch, m) => custom && setStyle({ shadow: { ...custom, ...patch } }, m);
-    return (jsx(Section, { id: "effects", title: "Effects", empty: !has, actions: jsx(IconButton, { icon: "plus", title: "Add effect", disabled: disabled || has, onClick: () => setStyle({ shadow: 'md' }) }) },
+    return (jsx(Section, { id: "effects", title: t("Effects"), empty: !has, actions: jsx(IconButton, { icon: "plus", title: t("Add effect"), disabled: disabled || has, onClick: () => setStyle({ shadow: 'md' }) }) },
         jsx(Row, { override: bp !== 'base' && shadow.value !== undefined, onReset: () => setStyle({ shadow: undefined }) },
             jsx(Span2, null,
                 jsx(SelectField, { value: typeof cur === 'string' ? cur : custom ? 'custom' : undefined, disabled: disabled, options: SHADOW_OPTIONS, onChange: v => v && setStyle({ shadow: v === 'custom' ? { x: 0, y: 4, blur: 16, spread: 0, color: 'rgba(0,0,0,0.25)' } : v }) })),
-            jsx(IconButton, { icon: "minus", title: "Remove effect", disabled: disabled, onClick: () => setStyle({ shadow: bp === 'base' ? undefined : 'none' }) })),
+            jsx(IconButton, { icon: "minus", title: t("Remove effect"), disabled: disabled, onClick: () => setStyle({ shadow: bp === 'base' ? undefined : 'none' }) })),
         custom && (jsx(Fragment, null,
             jsx(Row, { label: "X", label2: "Y" },
                 jsx(NumberField, { label: "X", value: custom.x, min: -200, max: 200, decimals: 0, disabled: disabled, onChange: (v, m) => setCustom({ x: v ?? 0 }, m) }),
                 jsx(NumberField, { label: "Y", value: custom.y, min: -200, max: 200, decimals: 0, disabled: disabled, onChange: (v, m) => setCustom({ y: v ?? 0 }, m) })),
-            jsx(Row, { label: "Blur", label2: "Spread" },
-                jsx(NumberField, { icon: "blend", title: "Blur", value: custom.blur, min: 0, max: 400, decimals: 0, disabled: disabled, onChange: (v, m) => setCustom({ blur: v ?? 0 }, m) }),
-                jsx(NumberField, { icon: "padH", title: "Spread", value: custom.spread, min: -200, max: 200, decimals: 0, disabled: disabled, onChange: (v, m) => setCustom({ spread: v ?? 0 }, m) })),
-            jsx(Row, { label: "Color" },
+            jsx(Row, { label: t("Blur"), label2: t("Spread") },
+                jsx(NumberField, { icon: "blend", title: t("Blur"), value: custom.blur, min: 0, max: 400, decimals: 0, disabled: disabled, onChange: (v, m) => setCustom({ blur: v ?? 0 }, m) }),
+                jsx(NumberField, { icon: "padH", title: t("Spread"), value: custom.spread, min: -200, max: 200, decimals: 0, disabled: disabled, onChange: (v, m) => setCustom({ spread: v ?? 0 }, m) })),
+            jsx(Row, { label: t("Color") },
                 jsx(Span2, null,
                     jsx(ColorField, { value: custom.color, disabled: disabled, onChange: (v, m) => v && setCustom({ color: v }, m) })),
-                jsx(IconButton, { icon: "square", title: "Inner shadow", on: !!custom.inset, disabled: disabled, onClick: () => setCustom({ inset: !custom.inset }) }))))));
+                jsx(IconButton, { icon: "square", title: t("Inner shadow"), on: !!custom.inset, disabled: disabled, onClick: () => setCustom({ inset: !custom.inset }) }))))));
 }
 /** The "+" of a section, with a menu when there is more than one kind to add. */
 function AddButton({ title, items, disabled, onOpen }) {

@@ -69,7 +69,7 @@ Effects: a method turned off stops counting at sign-in at once (its users' rows 
 ## Data used by the page
 
 `Settings` rows `mfa.authenticatorApp`, `mfa.passkeys`, `mfa.email`, `mfa.sms`, `mfa.requirement` (missing or
-unreadable → default: on, on, off, off, `Optional`; the [Settings](settings.md) screen refuses to change them);
+unreadable → default: on, on, off, off, `Optional`; [Environment Variables](environment-variables.md) lists them but refuses to change them);
 `UserMfaMethods`, `Roles`, `UserRoles` for the counts; `SMTP_*` (`IEmailSettingsSource`) and `TWILIO_*`
 (`AppEnvironment.Sms`) for availability.
 

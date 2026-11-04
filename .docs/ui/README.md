@@ -112,6 +112,13 @@ Applies to every Dnf tag helper (`DnfTagHelper` in `src/DotNetForge.UI/DnfTagHel
 
 Every other component is markup with classes.
 
+**Component texts.** The few texts the tag helpers write themselves - the spinner's "Loading", the timestamp's "Never"
+and relative dates ("just now", "5 min ago", "yesterday"...), the dropdown's "Actions" - go through `DnfText.For(ViewContext)`
+(`src/DotNetForge.UI/DnfText.cs`), which asks the request's `IDnfText` service. An app that shows its UI in other
+languages registers one (the CMS registers its admin text, so components follow the
+[admin language](../features/internationalization.md#admin-language)); without one they stay English. An explicit
+attribute (`label`, `empty`) always wins. Scripts: [`dnfText`](behaviours.md#text-windowdnftext).
+
 ## States
 
 State is an attribute, never a class, so the CSS, the markup and `dnf.js` share one vocabulary. Each attribute below

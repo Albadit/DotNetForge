@@ -32,6 +32,9 @@ public static class AuditActions
     public const string RoleChanged = "role.changed";
     public const string PermissionChanged = "permission.changed";
     public const string SettingsChanged = "settings.changed";
+
+    /// <summary>An environment variable was deleted (Settings → Environment Variables).</summary>
+    public const string SettingsDeleted = "settings.deleted";
     public const string TransferExported = "transfer.exported";
     public const string TransferImported = "transfer.imported";
     public const string BackupCreated = "transfer.backup.created";
@@ -83,4 +86,25 @@ public static class AuditActions
 
     /// <summary>An administrator removed every second factor of a user (lost phone).</summary>
     public const string MfaReset = "user.mfa.reset";
+
+    /// <summary>A locale was added (.docs/features/internationalization.md).</summary>
+    public const string LocaleCreated = "locale.created";
+
+    /// <summary>A locale's display name or enabled state changed.</summary>
+    public const string LocaleUpdated = "locale.updated";
+
+    /// <summary>A locale and its translations were deleted.</summary>
+    public const string LocaleDeleted = "locale.deleted";
+
+    /// <summary>Another locale became the default (its translations became the main values).</summary>
+    public const string LocaleDefaultChanged = "locale.default.changed";
+
+    /// <summary>A content page's translation was saved or published.</summary>
+    public const string ContentTranslated = "content.translated";
+
+    /// <summary>An entry's translation was saved.</summary>
+    public const string EntryTranslated = "entry.translated";
+
+    /// <summary>The admin language (the site's, or a user's own) changed.</summary>
+    public const string AdminLanguageChanged = "settings.adminlanguage.changed";
 }

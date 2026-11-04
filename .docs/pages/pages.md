@@ -22,8 +22,8 @@ what each role may change differs (see [Permissions](#permissions)). Rules for c
 | Breadcrumbs | **Main** › **Pages** |
 | Old addresses | `GET /admin/content?selected={id}` and `GET /admin/content/{id}/builder` answer **301** to `/admin/pages?selected={id}` and `/admin/pages/{id}/builder` (`ContentController.Index` / `LegacyBuilder`): `/admin/content` is now the [Content Manager](content-manager.md) of structured content |
 | Parent | Admin area (no parent screen) |
-| Child screens / tabs | the page editor's tabs **Page settings**, **SEO**, **Theme**, **Permissions**, **Layout** ([page editor](#page-editor)); the [page builder](page-builder.md) opens from the Layout tab |
-| Deep link | `/admin/pages?selected=<pageId>`, a tab with `#page`, `#seo`, `#theme`, `#permissions` or `#layout` |
+| Child screens / tabs | the page editor's tabs **Page settings**, **SEO**, **Theme**, **Permissions**, **Layout** and - with a second enabled locale - **Translations** ([page editor](#page-editor)); the [page builder](page-builder.md) opens from the Layout tab, a translation's builder (`/admin/pages/{id}/translations/{locale}/builder`) from the Translations tab |
+| Deep link | `/admin/pages?selected=<pageId>`, a tab with `#page`, `#seo`, `#theme`, `#permissions`, `#layout` or `#translations` |
 | Linked from | [Dashboard](dashboard.md) (**Pages** card - a link only for users who may open this screen -, **New page** quick action posts to `create`); the [public content page](public-page.md) alert ("Design it in Pages (Layout tab)"); the [public home](public-home.md) empty state (**Open Pages**) |
 
 ## Relevant source files
@@ -44,6 +44,7 @@ src/DotNetForge.UI/wwwroot/dnf.js                                   confirm dial
 src/DotNetForge.Web/Views/Shared/_Feedback.cshtml                    toast region (TempData["Success"]) + confirm <dialog>
 src/DotNetForge.Web/wwwroot/css/admin/content.css                     .dnf-content-manager (+ __tree, __search), .dnf-tree (+ __item, __row, __link, __toggle, __action), .dnf-search-preview, .dnf-layout-status
 src/DotNetForge.Shared/Entities/Content.cs       Page entity
+src/DotNetForge.Web/Services/Localization/PageTranslationService.cs   Translations tab: ForPageAsync (rows), ApplyTextsAsync (save)
 ```
 
 Components, toasts and the confirm dialog: [design system](../architecture/design-system.md#components),
@@ -131,12 +132,12 @@ POST + antiforgery.
 copies the page's settings, SEO, theme (with its **Use this theme for child pages too** switch), page type and
 layout (published and draft) and its view/edit grants, titles it "<title> (copy)" with a short free slug among the siblings (`about-copy`, `about-copy-2`, ...; the root page
 copies as `home-copy`), places it right below the original (later siblings move down) and leaves it switched off.
-Child pages are not copied. Audit `content.created` with details "Duplicate of '<title>'"; toast, then the copy is
-selected.
+The copy keeps the page's translations (texts and layouts). Child pages are not copied. Audit `content.created` with
+details "Duplicate of '<title>'"; toast, then the copy is selected.
 
 ### Page editor
 
-`_PageForm.cshtml`, `form#pageForm`: one form in five tabs (`data-tabs`, `dnf.js`). The tab is kept in the URL hash and
+`_PageForm.cshtml`, `form#pageForm`: one form in five tabs - six with **Translations** (`data-tabs`, `dnf.js`). The tab is kept in the URL hash and
 in a hidden `tab` field, so saving returns to the same tab (`/admin/pages?selected={id}#seo`). Without JavaScript the
 five panels are shown one below the other.
 
@@ -147,6 +148,7 @@ five panels are shown one below the other.
 | **Theme** | Site theme (default) or one installed theme extension for this page; not enabled themes are marked and fall back to the site theme. On a child page whose parent hands a theme down, the first option reads **Parent's theme** - "Follows <Theme>, which "<Parent>" hands down to its child pages." - instead of **Site theme**. With theme extensions installed, a switch **Use this theme for child pages too** ("Child pages without a theme of their own follow this page's theme, down to the next page that picks its own."); it is saved only together with a theme of the page's own ([theme inheritance](../features/themes.md#theme-inheritance)) |
 | **Permissions** | a role table: **View** (no box = everyone; else only those roles - `Public` = everyone, `Authenticated` = any signed-in user) and **Edit** (extra roles that may edit this page; not for `Public` / `Authenticated`); a **Users** table: per user View and Edit = *Not set* / *Allow* / *Block* (a block wins over the user's roles), added with the last row's user picker, removed with the bin button (JS) or by setting both to *Not set*. Super Admins (the role and its users) are not listed - they always have full access. Read-only without `update` on every page. Rules: [page permissions](../features/content-pages-and-routing.md#page-permissions) |
 | **Layout** | the layout's status (none / draft / published, unpublished changes), **Open page builder** ([page builder](page-builder.md)), **Preview draft** |
+| **Translations** | only while at least one enabled locale besides the default exists: per locale (name and `/de/` badge) **Title**, **Meta title**, **Meta description** - all optional, the placeholders show the page's own title and description ("Defaults to the translated title" for the meta title); the locale's layout status ("Own layout, published …" with "· unpublished changes", "A draft layout, not published: visitors see the main layout." or "Shows the main layout. Open the builder to translate it (it starts as a copy)."), **Edit <locale> layout** (when the user may edit the layout) and **Preview** (when the locale has a layout or draft). "Texts are saved with Save; translated layouts are published from the page builder, like the main layout." Rules: [internationalization → content pages](../features/internationalization.md#content-pages) |
 
 The publishing card (Published, Show in menu, schedule, **Save changes**) and the delete card stay beside
 every tab; **Save changes** saves all tabs at once.
@@ -159,7 +161,8 @@ every tab; **Save changes** saves all tabs at once.
   "None (top level)").
 - **Output:** `POST /admin/pages/update/{id}` bound to `PageInput`, plus `viewRoles` / `editRoles` (role ids),
   `userPermissions[i].UserId` / `.View` / `.Edit` (`allow`, `block` or empty), `permissionsShown` (only when the
-  Permissions tab is editable) and `tab` (**Save changes**).
+  Permissions tab is editable), `translations[i].LocaleId` / `.Title` / `.MetaTitle` / `.MetaDescription` (Translations
+  tab) and `tab` (**Save changes**).
 - **Header:** the card title is the page title ("Untitled page" when empty) with a status badge (Published /
   Disabled, same rule as the tree dot).
 - **Conditional UI (`pages.js`):** fields with `data-when-type` show only when **Page type** matches
@@ -239,7 +242,10 @@ sequenceDiagram
    schedule order, redirect/file requirements). The form is `novalidate`, so the browser does not block a submit.
 4. **Service:** `IPageService.ApplyAsync` (implemented by `PageService`).
 5. **Data:** every `PageInput` field; slug normalized by `Slugify`; schedule dates treated as UTC.
-6. **Backend:** `UpdatedDate` set, one save; audit entry in a second save.
+6. **Backend:** the Translations tab's texts are applied by `PageTranslationService.ApplyTextsAsync` (lengths: title and
+   meta title 300, meta description 1000 - "<locale>: the title and meta title can be at most 300 characters, the
+   meta description 1000."; one `content.translated` audit entry per changed locale); `UpdatedDate` set, one save;
+   audit entry in a second save.
 7. **Result:** redirect with `TempData["Success"]` = `Saved '<title>'.`, shown as a success toast by the layout.
 8. **Errors:** validation or missing publish permission → same screen with the message in `<dnf-validation-summary />` and the
    posted input; missing page → 404; no edit permission → `/account/denied`; DB exceptions → global error page.
@@ -253,7 +259,7 @@ sequenceDiagram
    equal slugs or two `[...]` pages under the new parent.
 3. **Call:** `PagesController.Delete(id)` → `IPageService.DeleteAsync(page)`.
 4. **Backend:** all direct children get `ParentPageId = <deleted page's parent>` and a new `UpdatedDate`; the page
-   is removed; one save; audit `content.deleted`.
+   and its translations are removed; one save; audit `content.deleted`.
 5. **Result:** redirect to `/admin/pages` (nothing selected), success toast `Deleted '<title>'.`.
 6. **Errors:** a clash re-renders the screen (status 200) with the page still selected and
    `Can't delete: its child pages would move up a level and clash. <conflict>` in the editor's `<dnf-validation-summary />`;

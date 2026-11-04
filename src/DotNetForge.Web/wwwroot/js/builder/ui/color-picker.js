@@ -4,6 +4,7 @@
  * eyedropper (where the browser has one), hex + opacity, then the colors used
  * on this page and the site's theme colors.
  */
+import { t } from "./i18n.js";
 import { jsx, useEffect, useLayoutEffect, useRef, useState } from "./vdom.js";
 import { Icon } from "./icons.js";
 import { cls, useEditor } from "./hooks.js";
@@ -78,8 +79,8 @@ export function ColorPicker({ value, anchor, onChange, onClose }) {
     }, []);
     useEffect(() => {
         const down = (e) => {
-            const t = e.target;
-            if (!ref.current?.contains(t) && !anchor?.contains(t))
+            const clicked = e.target;
+            if (!ref.current?.contains(clicked) && !anchor?.contains(clicked))
                 onClose();
         };
         // Escape closes only the picker (captured first, so the editor's Escape shortcut does not also select the
@@ -135,26 +136,26 @@ export function ColorPicker({ value, anchor, onChange, onClose }) {
     const used = pageColors(session.store.doc.nodes);
     const swatch = (color, title) => (jsx("button", { key: color, type: "button", title: title, "aria-label": title, class: cls('pe-cp-swatch', value === color && 'is-on'), onClick: () => onChange(color) },
         jsx("span", { style: { background: color } })));
-    return (jsx("div", { ref: ref, class: "pe-cp", role: "dialog", "aria-label": "Color", style: pos ? { left: pos.left + 'px', top: pos.top + 'px' } : { visibility: 'hidden' } },
+    return (jsx("div", { ref: ref, class: "pe-cp", role: "dialog", "aria-label": t("Color"), style: pos ? { left: pos.left + 'px', top: pos.top + 'px' } : { visibility: 'hidden' } },
         jsx("header", { class: "pe-cp-head" },
-            jsx("span", { class: "pe-cp-tab" }, "Custom"),
-            jsx("button", { type: "button", class: "pe-icon-btn is-sm", title: "Close", "aria-label": "Close", onClick: onClose },
+            jsx("span", { class: "pe-cp-tab" }, t("Custom")),
+            jsx("button", { type: "button", class: "pe-icon-btn is-sm", title: t("Close"), "aria-label": t("Close"), onClick: onClose },
                 jsx(Icon, { name: "close", size: 16 }))),
         jsx("div", { class: "pe-cp-sv", style: { background: pure }, onPointerDown: e => drag(e, (x, y) => emit({ ...hsv, s: x, v: 1 - y })) },
             jsx("span", { class: "pe-cp-knob", style: { left: hsv.s * 100 + '%', top: (1 - hsv.v) * 100 + '%', background: solid } })),
         jsx("div", { class: "pe-cp-sliders" },
-            jsx("button", { type: "button", class: "pe-icon-btn is-sm", title: "Pick a color from the screen", "aria-label": "Eyedropper", disabled: !eyedropper, onClick: () => void pick() },
+            jsx("button", { type: "button", class: "pe-icon-btn is-sm", title: t("Pick a color from the screen"), "aria-label": t("Eyedropper"), disabled: !eyedropper, onClick: () => void pick() },
                 jsx(Icon, { name: "eyedropper", size: 16 })),
             jsx("div", { class: "pe-cp-bars" },
-                jsx("div", { class: "pe-cp-hue", role: "slider", "aria-label": "Hue", "aria-valuemin": 0, "aria-valuemax": 360, "aria-valuenow": Math.round(hsv.h), onPointerDown: e => drag(e, x => emit({ ...hsv, h: x * 359.9 })) },
+                jsx("div", { class: "pe-cp-hue", role: "slider", "aria-label": t("Hue"), "aria-valuemin": 0, "aria-valuemax": 360, "aria-valuenow": Math.round(hsv.h), onPointerDown: e => drag(e, x => emit({ ...hsv, h: x * 359.9 })) },
                     jsx("span", { class: "pe-cp-knob", style: { left: (hsv.h / 360) * 100 + '%', background: pure } })),
-                jsx("div", { class: "pe-cp-alpha", role: "slider", "aria-label": "Opacity", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(hsv.a * 100), onPointerDown: e => drag(e, x => emit({ ...hsv, a: Math.round(x * 100) / 100 })) },
+                jsx("div", { class: "pe-cp-alpha", role: "slider", "aria-label": t("Opacity"), "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(hsv.a * 100), onPointerDown: e => drag(e, x => emit({ ...hsv, a: Math.round(x * 100) / 100 })) },
                     jsx("span", { class: "pe-cp-alpha-fill", style: { background: `linear-gradient(90deg, transparent, ${solid})` } }),
                     jsx("span", { class: "pe-cp-knob", style: { left: hsv.a * 100 + '%', background: solid } })))),
         jsx("div", { class: "pe-cp-values" },
             jsx(FormatButton, { format: format, onChange: setFormat }),
             jsx(ValueFields, { format: format, hsv: hsv, onChange: emit }),
-            jsx("label", { class: "pe-cp-pct is-scrub", title: "Opacity: drag left or right, or click to type", onPointerDown: e => {
+            jsx("label", { class: "pe-cp-pct is-scrub", title: t("Opacity: drag left or right, or click to type"), onPointerDown: e => {
                     if (document.activeElement === pct.current)
                         return;
                     scrubValue(e, Math.round(hsv.a * 100), n => emit({ ...hsv, a: Math.min(100, Math.max(0, Math.round(n))) / 100 }), () => {
@@ -162,17 +163,17 @@ export function ColorPicker({ value, anchor, onChange, onClose }) {
                         pct.current?.select();
                     });
                 } },
-                jsx("input", { ref: pct, class: "pe-cp-input", "aria-label": "Opacity", value: Math.round(hsv.a * 100), key: 'a' + Math.round(hsv.a * 100), onKeyDown: e => e.key === 'Enter' && e.target.blur(), onBlur: e => {
+                jsx("input", { ref: pct, class: "pe-cp-input", "aria-label": t("Opacity"), value: Math.round(hsv.a * 100), key: 'a' + Math.round(hsv.a * 100), onKeyDown: e => e.key === 'Enter' && e.target.blur(), onBlur: e => {
                         const n = parseFloat(e.target.value);
                         if (Number.isFinite(n))
                             emit({ ...hsv, a: Math.min(100, Math.max(0, n)) / 100 });
                     } }),
                 jsx("span", { class: "pe-cp-unit" }, "%"))),
         used.length > 0 && (jsx("section", { class: "pe-cp-group" },
-            jsx("h3", null, "On this page"),
+            jsx("h3", null, t("On this page")),
             jsx("div", { class: "pe-cp-grid" }, used.map(c => swatch(c, c))))),
         jsx("section", { class: "pe-cp-group" },
-            jsx("h3", null, "Site colors"),
+            jsx("h3", null, t("Site colors")),
             jsx("div", { class: "pe-cp-grid" }, THEME_COLORS.map(c => swatch(`var(--dnn-color-${c})`, c))))));
 }
 const FORMATS = ['Hex', 'RGB', 'CSS', 'HSL', 'HSB'];
@@ -182,7 +183,7 @@ function FormatButton({ format, onChange }) {
     const ref = useRef(null);
     useDismiss(ref, open, () => setOpen(false));
     return (jsx("div", { class: "pe-cp-format", ref: ref },
-        jsx("button", { type: "button", class: "pe-cp-format-btn", "aria-haspopup": "menu", "aria-expanded": open, title: "Color format", onClick: () => setOpen(!open) },
+        jsx("button", { type: "button", class: "pe-cp-format-btn", "aria-haspopup": "menu", "aria-expanded": open, title: t("Color format"), onClick: () => setOpen(!open) },
             format,
             jsx(Icon, { name: "chevronDown", size: 12 })),
         open && jsx(DropMenu, { items: FORMATS.map(f => ({ label: f, checked: f === format, run: () => onChange(f) })), onClose: () => setOpen(false) })));
@@ -203,28 +204,28 @@ function ValueFields({ format, hsv, onChange }) {
     if (format === 'Hex' || format === 'CSS') {
         const text = format === 'Hex' ? hex6(rgb) : cssOf(rgb);
         return (jsx("input", { class: cls('pe-cp-input', format === 'Hex' && 'is-mono'), "aria-label": format, value: text, key: format + text, onKeyDown: e => e.key === 'Enter' && e.target.blur(), onBlur: e => {
-                const t = e.target.value;
-                const c = format === 'Hex' ? parseColor(parseInput(t, hsv.a) ?? undefined) : parseColor(t);
+                const typed = e.target.value;
+                const c = format === 'Hex' ? parseColor(parseInput(typed, hsv.a) ?? undefined) : parseColor(typed);
                 if (c)
                     onChange(toHsv(format === 'Hex' ? { ...c, a: hsv.a } : c));
             } }));
     }
     if (format === 'RGB') {
         return (jsx("div", { class: "pe-cp-channels" },
-            jsx(Channel, { label: "Red", value: rgb.r, max: 255, onChange: n => fromRgb(n, rgb.g, rgb.b) }),
-            jsx(Channel, { label: "Green", value: rgb.g, max: 255, onChange: n => fromRgb(rgb.r, n, rgb.b) }),
-            jsx(Channel, { label: "Blue", value: rgb.b, max: 255, onChange: n => fromRgb(rgb.r, rgb.g, n) })));
+            jsx(Channel, { label: t("Red"), value: rgb.r, max: 255, onChange: n => fromRgb(n, rgb.g, rgb.b) }),
+            jsx(Channel, { label: t("Green"), value: rgb.g, max: 255, onChange: n => fromRgb(rgb.r, n, rgb.b) }),
+            jsx(Channel, { label: t("Blue"), value: rgb.b, max: 255, onChange: n => fromRgb(rgb.r, rgb.g, n) })));
     }
     if (format === 'HSL') {
         const hsl = toHsl(rgb);
         const set = (h, sat, l) => onChange({ ...toHsv(fromHsl(h, sat, l, hsv.a)), h });
         return (jsx("div", { class: "pe-cp-channels" },
-            jsx(Channel, { label: "Hue", value: hsv.h, max: 360, onChange: n => set(n, hsl.s, hsl.l) }),
-            jsx(Channel, { label: "Saturation", value: hsl.s, max: 100, onChange: n => set(hsv.h, n, hsl.l) }),
-            jsx(Channel, { label: "Lightness", value: hsl.l, max: 100, onChange: n => set(hsv.h, hsl.s, n) })));
+            jsx(Channel, { label: t("Hue"), value: hsv.h, max: 360, onChange: n => set(n, hsl.s, hsl.l) }),
+            jsx(Channel, { label: t("Saturation"), value: hsl.s, max: 100, onChange: n => set(hsv.h, n, hsl.l) }),
+            jsx(Channel, { label: t("Lightness"), value: hsl.l, max: 100, onChange: n => set(hsv.h, hsl.s, n) })));
     }
     return (jsx("div", { class: "pe-cp-channels" },
-        jsx(Channel, { label: "Hue", value: hsv.h, max: 360, onChange: n => onChange({ ...hsv, h: n }) }),
-        jsx(Channel, { label: "Saturation", value: hsv.s * 100, max: 100, onChange: n => onChange({ ...hsv, s: n / 100 }) }),
-        jsx(Channel, { label: "Brightness", value: hsv.v * 100, max: 100, onChange: n => onChange({ ...hsv, v: n / 100 }) })));
+        jsx(Channel, { label: t("Hue"), value: hsv.h, max: 360, onChange: n => onChange({ ...hsv, h: n }) }),
+        jsx(Channel, { label: t("Saturation"), value: hsv.s * 100, max: 100, onChange: n => onChange({ ...hsv, s: n / 100 }) }),
+        jsx(Channel, { label: t("Brightness"), value: hsv.v * 100, max: 100, onChange: n => onChange({ ...hsv, v: n / 100 }) })));
 }

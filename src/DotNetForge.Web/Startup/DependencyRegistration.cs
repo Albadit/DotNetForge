@@ -27,6 +27,7 @@ using DotNetForge.Web.ApiDocs;
 using DotNetForge.Web.Authentication;
 using DotNetForge.Web.Middleware;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Localization;
 using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -158,6 +159,21 @@ public static class DependencyRegistration
         services.AddScoped<MediaFolderService>();
         // Media Library settings: upload limits and optimization (image re-encoding, ffmpeg video compression).
         services.AddScoped<MediaSettingsService>();
+        // Environment Variables (.docs/pages/environment-variables.md); extensions read them through IEnvironmentVariables.
+        services.AddScoped<EnvironmentVariableService>();
+        services.AddScoped<DotNetForge.Sdk.IEnvironmentVariables>(sp => sp.GetRequiredService<EnvironmentVariableService>());
+        // Internationalization (.docs/features/internationalization.md): the cached locales every request resolves
+        // against, and the locale rules.
+        services.AddSingleton<LocaleCatalog>();
+        services.AddScoped<LocaleService>();
+        // The admin language: the shipped catalogs, the setting and user choice, and the text of a request.
+        services.AddSingleton<AdminTranslations>();
+        services.AddScoped<AdminLanguageService>();
+        services.AddScoped<AdminText>();
+        services.AddScoped<DotNetForge.UI.IDnfText>(sp => sp.GetRequiredService<AdminText>());
+        // Translated pages; also moves page content when the default locale changes (IDefaultLocaleSwap).
+        services.AddScoped<PageTranslationService>();
+        services.AddScoped<IDefaultLocaleSwap>(sp => sp.GetRequiredService<PageTranslationService>());
         services.AddScoped<MediaExportService>();
         services.AddSingleton<Ffmpeg>();
         services.AddSingleton<VideoOptimizationQueue>();
@@ -170,6 +186,9 @@ public static class DependencyRegistration
         services.AddScoped<ContentTypeService>();
         services.AddScoped<ContentEntryService>();
         services.AddScoped<ContentQueryService>();
+        // Translated entries; also moves entry content when the default locale changes (IDefaultLocaleSwap).
+        services.AddScoped<EntryTranslationService>();
+        services.AddScoped<IDefaultLocaleSwap, EntryLocaleSwap>();
         services.AddScoped<ContentRenderService>();
         services.AddScoped<ContentApiService>();
         // Custom API endpoints (.docs/features/custom-endpoints.md).

@@ -5,7 +5,11 @@
     var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
     // Top-level live pages marked "display in menu" (HomeController); the current one is highlighted.
     var menu = ViewData["Menu"] as IReadOnlyList<PublishedPage> ?? Array.Empty<PublishedPage>();
-    var current = Context.Request.Path.Value?.TrimEnd('/') is { Length: > 0 } path ? path : "/";
+    // The page's path in the request's locale (/de/about), set with Menu; the plain path where no controller set it.
+    var current = ViewData["CurrentPath"] as string ?? (Context.Request.Path.Value?.TrimEnd('/') is { Length: > 0 } path ? path : "/");
+    // This page in every enabled locale (.docs/features/internationalization.md#public-site): switcher and hreflang.
+    var languages = ViewData["Languages"] as IReadOnlyList<LanguageLink> ?? Array.Empty<LanguageLink>();
+    var home = DotNetForge.Web.Services.Localization.RequestLocale.Of(Context).Url("/");
     // The Admin link only for signed-in users who may enter the admin; visitors don't see it.
     var canEnterAdmin = User.Identity?.IsAuthenticated == true && Roles.CanEnterAdmin(User.FindAll(ClaimTypes.Role).Select(c => c.Value));
     var title = ViewData["Title"] as string;
@@ -16,7 +20,7 @@
     var fullWidth = ViewData["FullWidth"] as bool? == true;
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@(DotNetForge.Web.Services.Localization.RequestLocale.Of(Context).UiLanguage)">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -34,6 +38,10 @@
     {
         <meta name="robots" content="noindex" />
     }
+    @foreach (var language in languages)
+    {
+        <link rel="alternate" hreflang="@language.Code" href="@($"{Context.Request.Scheme}://{Context.Request.Host}{language.Url}")" />
+    }
     @if (!string.IsNullOrWhiteSpace(title))
     {
         <meta property="og:title" content="@title" />
@@ -50,18 +58,23 @@
     <script src="~/_content/DotNetForge.UI/dnf-theme.js" asp-append-version="true"></script>
     <link rel="stylesheet" href="~/_content/DotNetForge.UI/dnf.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @if (languages.Count > 1)
+    {
+        <script src="~/js/site/language-switch.js" asp-append-version="true" defer></script>
+    }
 </head>
 @*
     The built-in public layout (.docs/architecture/design-system.md#public-fallback): used for the site root, content
     pages and the error page while no theme extension is enabled. An enabled theme replaces these views entirely.
     Styles: the Dnf components (dnf.css) plus /css/site.css. No dnf.js: nothing here needs a behaviour (no toasts, no
-    theme menu); dnf-theme.js still applies a saved light/dark choice.
+    theme menu); dnf-theme.js still applies a saved light/dark choice, and js/site/language-switch.js runs the language
+    select when the site has several languages.
 *@
 <body class="dnf-site">
     <a class="dnf-skip-link" href="#main">Skip to content</a>
     <header class="dnf-site__header">
         <div class="dnf-site__wrap">
-            <a class="dnf-site__brand" href="/">
+            <a class="dnf-site__brand" href="@home">
                 <img src="~/img/logo-mark.svg" alt="" width="28" height="28" />
                 <span>@appName</span>
             </a>
@@ -74,6 +87,27 @@
                         <a href="@item.Path" aria-current="@(active ? "page" : null)">@item.Title</a>
                     }
                 </nav>
+            }
+            @if (languages.Count > 1)
+            {
+                @* A select that opens the page in the chosen language (js/site/language-switch.js); links without JavaScript. *@
+                <div class="dnf-site__languages">
+                    <label class="sr-only" for="site-language">Language</label>
+                    <select id="site-language" class="dnf-select dnf-select--sm dnf-select--auto dnf-js-only" data-language-switch>
+                        @foreach (var language in languages)
+                        {
+                            <option value="@language.Url" lang="@language.Code" selected="@(language.Current ? "selected" : null)">@language.Name</option>
+                        }
+                    </select>
+                    <noscript>
+                        <nav aria-label="Language">
+                            @foreach (var language in languages)
+                            {
+                                <a href="@language.Url" hreflang="@language.Code" lang="@language.Code" aria-current="@(language.Current ? "true" : null)">@language.Name</a>
+                            }
+                        </nav>
+                    </noscript>
+                </div>
             }
             @if (canEnterAdmin)
             {

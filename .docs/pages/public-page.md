@@ -12,7 +12,7 @@ Rules: [content pages and routing](../features/content-pages-and-routing.md); th
 | Item | Value |
 | --- | --- |
 | Route | fallback `{*path:nonfile}` → `HomeController.RenderPage` (any path without a file extension not matched by another route, including routes mapped by enabled extensions) |
-| Route parameters | the URL segments; values captured by `[name]` slugs appear as `RouteValues` |
+| Route parameters | the URL segments; values captured by `[name]` slugs appear as `RouteValues`. Under an enabled locale's prefix (`/de/about`) the same page in that locale - the prefix is taken off before routing ([request locale](../features/internationalization.md#request-locale)) |
 | Query parameters | none used |
 | Navigation entry | the header menu (pages marked "display in menu"); links on the [public home](public-home.md) list; direct URLs |
 
@@ -38,10 +38,12 @@ src/DotNetForge.Web/Middleware/SecurityHeadersMiddleware.cs   CSP and other secu
 _Layout
 ├── <title> "<MetaTitle or Title> · <APP_NAME>"
 ├── <meta name="description">        only when MetaDescription is set (ViewData["MetaDescription"])
-├── <link rel="canonical">           only when CanonicalUrl is set (ViewData["CanonicalUrl"])
+├── <link rel="canonical">           only when CanonicalUrl is set (ViewData["CanonicalUrl"]; never on a translation)
+├── <link rel="alternate" hreflang>  one per enabled locale (ViewData["Languages"]), absolute URLs
 ├── "Skip to content" link
-├── header.dnf-site__header: logo mark + <APP_NAME> (→ /)
+├── header.dnf-site__header: logo mark + <APP_NAME> (→ / or /de)
 │   ├── nav.dnf-site__nav "Site": a link per Menu page    only when ViewData["Menu"] has pages; the current one aria-current="page"
+│   ├── nav.dnf-site__languages "Language": this page in every enabled locale   only with more than one; the current one aria-current="true"
 │   └── [Admin →] (/admin)                           only for signed-in users who may enter the admin (Roles.CanEnterAdmin)
 ├── main#main.dnf-site__main
 │   └── article.dnf-site__article
@@ -70,8 +72,10 @@ layout: `ViewData["Title"]` (`MetaTitle`, else `Title`), `ViewData["MetaDescript
 A theme view also gets `Extension`, `Settings`, `ResourceBase` (`/ext/{id}/resources`) ([themes](../features/themes.md)).
 
 The header (`_Layout`) shows `nav.dnf-site__nav` (`aria-label="Site"`) with one link per `Menu` page when there is one;
-the link whose path equals the request path (trailing slash trimmed, case-insensitive) gets `aria-current="page"`
-(bold). **Admin →** is rendered only for a signed-in user with a role that may enter the admin
+the link whose path equals `ViewData["CurrentPath"]` (the request path in its locale, trailing slash trimmed,
+case-insensitive) gets `aria-current="page"` (bold). In another locale (`/de/about`) the page shows its translated
+title, SEO texts and layout where set, the menu its translated titles under the prefix
+([internationalization → public site](../features/internationalization.md#public-site)); `<html lang>` is the locale. **Admin →** is rendered only for a signed-in user with a role that may enter the admin
 (`Roles.CanEnterAdmin`: any role except the site-only ones); anonymous visitors and site-only users don't see it.
 
 The **No content yet** `<dnf-alert>` (Info tone, `role="status"`) is always shown in the built-in view; its text links the
@@ -91,7 +95,8 @@ throws is replaced by "<name> could not be displayed.".
 3. Walk segments from the root level: exact slug (case-insensitive) first, else the `[...]` sibling; capture dynamic
    values.
 4. Any segment without a match → `404` (empty body).
-5. Load the matched (deepest) page in full by id (second query) and render `Page` through `ThemedViewAsync` with the
+5. Load the matched (deepest) page in full by id (second query); in another locale overlay its translation
+   (`PageTranslationService.TranslateAsync`); render `Page` through `ThemedViewAsync` with the
    theme the page asks for (`ThemeResolver.PageThemeIdAsync`: its own `ThemeId`, else one a parent hands down -
    [theme inheritance](../features/themes.md#theme-inheritance)): the active theme's `Views/Page.cshtml` when it has
    one, else the built-in view.
@@ -138,7 +143,7 @@ Not applicable (a page always has a title).
 
 ## User interactions
 
-Links only: brand (`/`), the menu pages, **Admin** (`/admin`, admin users only), the "Pages" link in the alert (`/admin/pages?selected={id}#layout`) and the
+Links only: brand (`/`, or the locale's root), the menu pages, the language links, **Admin** (`/admin`, admin users only), the "Pages" link in the alert (`/admin/pages?selected={id}#layout`) and the
 "Skip to content" link. No scripts beyond `dnf-theme.js` (no `dnf.js`).
 
 ## Dependencies

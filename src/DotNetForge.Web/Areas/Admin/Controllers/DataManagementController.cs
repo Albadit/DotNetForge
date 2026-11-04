@@ -2,6 +2,7 @@ using DotNetForge.Data;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Localization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -126,7 +127,7 @@ public sealed class DataManagementController : AdminControllerBase
         var outcome = await _transfer.CreateBackupAsync(CurrentUserId, automatic: false, HttpContext.RequestAborted);
         if (outcome.Succeeded)
         {
-            TempData["Success"] = $"Backup stored: {outcome.Record!.FileName} ({outcome.Record.RecordCount:N0} records).";
+            TempData["Success"] = T["Backup stored: {0} ({1} records).", outcome.Record!.FileName, outcome.Record.RecordCount.ToString("N0")];
         }
         else
         {
@@ -149,7 +150,7 @@ public sealed class DataManagementController : AdminControllerBase
             return View(nameof(Index), await BuildAsync());
         }
 
-        TempData["Success"] = enabled ? $"Automatic backups every {Describe(intervalHours)}, keeping {keep}." : "Automatic backups are off.";
+        TempData["Success"] = enabled ? T["Automatic backups every {0}, keeping {1}.", Describe(T, intervalHours), keep] : T["Automatic backups are off."];
         return RedirectToAction(nameof(Index));
     }
 
@@ -167,7 +168,7 @@ public sealed class DataManagementController : AdminControllerBase
         // OpenBackupAsync writes the BackupDownloaded audit entry.
         if (await _transfer.OpenBackupAsync(id, disposition.ToString(), HttpContext.RequestAborted) is not { } backup)
         {
-            TempData["Error"] = "That backup no longer exists.";
+            TempData["Error"] = T["That backup no longer exists."];
             return RedirectToAction(nameof(Index));
         }
 
@@ -186,11 +187,11 @@ public sealed class DataManagementController : AdminControllerBase
         // DeleteBackupAsync writes the BackupDeleted audit entry.
         if (await _transfer.DeleteBackupAsync(id, HttpContext.RequestAborted))
         {
-            TempData["Success"] = "Backup deleted.";
+            TempData["Success"] = T["Backup deleted."];
         }
         else
         {
-            TempData["Error"] = "That backup no longer exists.";
+            TempData["Error"] = T["That backup no longer exists."];
         }
 
         return RedirectToAction(nameof(Index));
@@ -206,7 +207,7 @@ public sealed class DataManagementController : AdminControllerBase
         }
 
         // RestoreAsync writes the BackupRestored audit entry (also when refused).
-        return await FinishReplaceAsync(await _transfer.RestoreAsync(id, CurrentUserId, HttpContext.RequestAborted), "Restored");
+        return await FinishReplaceAsync(await _transfer.RestoreAsync(id, CurrentUserId, HttpContext.RequestAborted), restored: true);
     }
 
     [HttpPost("import")]
@@ -222,11 +223,11 @@ public sealed class DataManagementController : AdminControllerBase
 
         if (file is null || file.Length == 0)
         {
-            ModelState.AddModelError(string.Empty, "Choose an export file (.zip).");
+            ModelState.AddModelError(string.Empty, T["Choose an export file (.zip)."]);
         }
         else if (!confirm)
         {
-            ModelState.AddModelError(string.Empty, "Confirm that all current data is replaced.");
+            ModelState.AddModelError(string.Empty, T["Confirm that all current data is replaced."]);
         }
 
         if (!ModelState.IsValid)
@@ -243,14 +244,14 @@ public sealed class DataManagementController : AdminControllerBase
             return View(nameof(Index), await BuildAsync());
         }
 
-        return await FinishReplaceAsync(outcome, "Imported");
+        return await FinishReplaceAsync(outcome, restored: false);
     }
 
     /// <summary>
     /// After a replace the signed-in account may not exist any more (or have other roles): sign out, so the next
     /// sign-in uses an account of the imported data.
     /// </summary>
-    private async Task<IActionResult> FinishReplaceAsync(DatabaseTransferService.TransferOutcome outcome, string verb)
+    private async Task<IActionResult> FinishReplaceAsync(DatabaseTransferService.TransferOutcome outcome, bool restored)
     {
         if (!outcome.Succeeded)
         {
@@ -259,8 +260,11 @@ public sealed class DataManagementController : AdminControllerBase
         }
 
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        TempData["Success"] = $"{verb} {outcome.Record!.FileName} ({outcome.Record.RecordCount:N0} records). " +
-            "Sign in with an account from that data. The previous data was backed up first.";
+        var file = outcome.Record!.FileName;
+        var records = outcome.Record.RecordCount.ToString("N0");
+        TempData["Success"] = restored
+            ? T["Restored {0} ({1} records). Sign in with an account from that data. The previous data was backed up first.", file, records]
+            : T["Imported {0} ({1} records). Sign in with an account from that data. The previous data was backed up first.", file, records];
         return Redirect("/login");
     }
 
@@ -283,11 +287,11 @@ public sealed class DataManagementController : AdminControllerBase
         };
     }
 
-    /// <summary>"6 hours", "day", "week" - for the schedule select and toasts.</summary>
-    public static string Describe(int hours) => hours switch
+    /// <summary>"6 hours", "day", "week" - for the schedule select and toasts, in the admin language.</summary>
+    public static string Describe(AdminText t, int hours) => hours switch
     {
-        24 => "day",
-        168 => "week",
-        _ => hours + " hours",
+        24 => t[AdminText.Key("day")],
+        168 => t[AdminText.Key("week")],
+        _ => t[AdminText.Key("{0} hours"), hours],
     };
 }

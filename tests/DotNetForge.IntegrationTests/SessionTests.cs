@@ -241,13 +241,13 @@ public sealed class SessionTests
         using var factory = new DotNetForgeWebFactory();
         await factory.InstallAsync();
         var admin = await factory.SignInAsync();
-        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/admin/settings")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/admin/environment-variables")).StatusCode);
 
         var commands = new List<string>();
         using var subscription = DiagnosticListener.AllListeners.Subscribe(new CommandObserver(commands));
         for (var i = 0; i < 3; i++)
         {
-            Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/admin/settings")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/admin/environment-variables")).StatusCode);
         }
 
         lock (commands)

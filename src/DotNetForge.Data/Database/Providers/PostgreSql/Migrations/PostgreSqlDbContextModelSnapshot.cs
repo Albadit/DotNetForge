@@ -243,6 +243,41 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.ToTable("ContentEntries");
                 });
 
+            modelBuilder.Entity("DotNetForge.Shared.Entities.ContentEntryTranslation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LocaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PublishedDataJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocaleId");
+
+                    b.HasIndex("EntryId", "LocaleId")
+                        .IsUnique();
+
+                    b.ToTable("ContentEntryTranslations");
+                });
+
             modelBuilder.Entity("DotNetForge.Shared.Entities.ContentEntryValue", b =>
                 {
                     b.Property<Guid>("Id")
@@ -314,6 +349,9 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
 
                     b.Property<int>("Kind")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("Localized")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -568,6 +606,46 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.ToTable("InstalledExtensions");
                 });
 
+            modelBuilder.Entity("DotNetForge.Shared.Entities.Locale", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasFilter("\"IsDefault\"");
+
+                    b.ToTable("Locales");
+                });
+
             modelBuilder.Entity("DotNetForge.Shared.Entities.MediaFile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -800,6 +878,64 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.ToTable("PagePermissions");
                 });
 
+            modelBuilder.Entity("DotNetForge.Shared.Entities.PageTranslation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DraftLayoutJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("DraftUpdatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DraftUpdatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DraftVersion")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LayoutJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LayoutPublishedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LocaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MetaDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("MetaTitle")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocaleId");
+
+                    b.HasIndex("PageId", "LocaleId")
+                        .IsUnique();
+
+                    b.ToTable("PageTranslations");
+                });
+
             modelBuilder.Entity("DotNetForge.Shared.Entities.PageUserPermission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -887,18 +1023,41 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("");
+
+                    b.Property<bool>("IsSecret")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Value")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Key")
+                    b.HasIndex("Key", "Environment")
                         .IsUnique();
 
                     b.ToTable("Settings");
@@ -1003,6 +1162,10 @@ namespace DotNetForge.Data.Database.Providers.PostgreSql.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("AdminLanguage")
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("timestamp with time zone");

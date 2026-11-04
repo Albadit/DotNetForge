@@ -1,61 +1,61 @@
 @model List<AuditLogEntry>
 @{
-    ViewData["Title"] = "Audit Logs";
-    ViewData["Description"] = "The 100 most recent actions. Entries are append-only: they can't be edited or deleted.";
+    ViewData["Title"] = T["Audit Logs"];
+    ViewData["Description"] = T["The 100 most recent actions. Entries are append-only: they can't be edited or deleted."];
     var areas = Model.Select(e => e.Action.Split('.')[0]).Distinct().Order().ToList();
 }
 
 <section class="dnf-card" aria-labelledby="audit-title" data-collection data-page-size="25">
     <div class="dnf-card__header">
         <div>
-            <h2 class="dnf-card__title" id="audit-title">Activity</h2>
-            <p class="dnf-card__description" data-collection-count>@Model.Count total</p>
+            <h2 class="dnf-card__title" id="audit-title">@T["Activity"]</h2>
+            <p class="dnf-card__description" data-collection-count>@T["{0} total", Model.Count]</p>
         </div>
     </div>
     <div class="dnf-toolbar" data-js-only hidden>
         <div class="dnf-toolbar__search dnf-input-group">
             <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
-            <label class="sr-only" for="audit-search">Search activity</label>
-            <input id="audit-search" type="search" class="dnf-input dnf-input--sm" placeholder="Search user, action, entity or IP" data-collection-search />
+            <label class="sr-only" for="audit-search">@T["Search activity"]</label>
+            <input id="audit-search" type="search" class="dnf-input dnf-input--sm" placeholder="@T["Search user, action, entity or IP"]" data-collection-search />
         </div>
-        <label class="sr-only" for="audit-area">Area</label>
+        <label class="sr-only" for="audit-area">@T["Area"]</label>
         <select id="audit-area" class="dnf-select dnf-select--sm" data-collection-filter="area">
-            <option value="">All areas</option>
+            <option value="">@T["All areas"]</option>
             @foreach (var area in areas)
             {
                 <option value="@area">@area</option>
             }
         </select>
-        <label class="sr-only" for="audit-result">Result</label>
+        <label class="sr-only" for="audit-result">@T["Result"]</label>
         <select id="audit-result" class="dnf-select dnf-select--sm" data-collection-filter="result">
-            <option value="">Any result</option>
-            <option value="ok">Succeeded</option>
-            <option value="fail">Failed</option>
+            <option value="">@T["Any result"]</option>
+            <option value="ok">@T["Succeeded"]</option>
+            <option value="fail">@T["Failed"]</option>
         </select>
     </div>
     <div class="dnf-table dnf-table--stack">
         <table class="dnf-table__table">
             <thead>
                 <tr>
-                    <th scope="col" data-sort="date">When</th>
-                    <th scope="col" data-sort="text">Action</th>
-                    <th scope="col" data-sort="text">User</th>
-                    <th scope="col">Entity</th>
-                    <th scope="col">Result</th>
-                    <th scope="col">IP address</th>
+                    <th scope="col" data-sort="date">@T["When"]</th>
+                    <th scope="col" data-sort="text">@T["Action"]</th>
+                    <th scope="col" data-sort="text">@T["User"]</th>
+                    <th scope="col">@T["Entity"]</th>
+                    <th scope="col">@T["Result"]</th>
+                    <th scope="col">@T["IP address"]</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var entry in Model)
                 {
                     <tr data-item data-area="@entry.Action.Split('.')[0]" data-result="@(entry.Success ? "ok" : "fail")">
-                        <td data-label="When" data-sort-value="@entry.Timestamp.ToString("O")" class="text-nowrap"><dnf-timestamp value="@entry.Timestamp" /></td>
-                        <td data-label="Action">
-                            <span class="dnf-table__primary">@AuditPresentation.Label(entry.Action)</span>
+                        <td data-label="@T["When"]" data-sort-value="@entry.Timestamp.ToString("O")" class="text-nowrap"><dnf-timestamp value="@entry.Timestamp" /></td>
+                        <td data-label="@T["Action"]">
+                            <span class="dnf-table__primary">@T[AuditPresentation.Label(entry.Action)]</span>
                             <code class="dnf-table__secondary">@entry.Action</code>
                         </td>
-                        <td data-label="User">@(entry.UserDisplaySnapshot ?? "System")</td>
-                        <td data-label="Entity">
+                        <td data-label="@T["User"]">@(entry.UserDisplaySnapshot ?? T["System"])</td>
+                        <td data-label="@T["Entity"]">
                             @if (entry.EntityType is null)
                             {
                                 <span class="text-subtle">-</span>
@@ -65,23 +65,23 @@
                                 <span class="text-muted">@entry.EntityType</span> @entry.EntityDisplaySnapshot
                             }
                         </td>
-                        <td data-label="Result">
+                        <td data-label="@T["Result"]">
                             @if (entry.Success)
                             {
-                                <dnf-badge tone="Success" dot="true">Succeeded</dnf-badge>
+                                <dnf-badge tone="Success" dot="true">@T["Succeeded"]</dnf-badge>
                             }
                             else
                             {
-                                <dnf-badge tone="Danger" dot="true">Failed</dnf-badge>
+                                <dnf-badge tone="Danger" dot="true">@T["Failed"]</dnf-badge>
                             }
                         </td>
-                        <td data-label="IP address" class="text-muted font-mono text-sm">@entry.IpAddress</td>
+                        <td data-label="@T["IP address"]" class="text-muted font-mono text-sm">@entry.IpAddress</td>
                     </tr>
                 }
-                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="6">No entry matches the search or filters.</td></tr>
+                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="6">@T["No entry matches the search or filters."]</td></tr>
                 @if (Model.Count == 0)
                 {
-                    <tr class="dnf-table__empty"><td colspan="6">No audit entries yet.</td></tr>
+                    <tr class="dnf-table__empty"><td colspan="6">@T["No audit entries yet."]</td></tr>
                 }
             </tbody>
         </table>

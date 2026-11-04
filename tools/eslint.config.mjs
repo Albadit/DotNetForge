@@ -17,7 +17,8 @@ export default [
   {
     // Plain scripts: each screen's script, the UI library and extension scripts.
     files: ["src/**/*.js", "extensions/**/*.js"],
-    languageOptions: { sourceType: "script", globals: globals.browser },
+    // dnfText: the admin text lookup dnf.js defines (.docs/features/internationalization.md#admin-language).
+    languageOptions: { sourceType: "script", globals: { ...globals.browser, dnfText: "readonly" } },
   },
   {
     // The page builder: ES modules.

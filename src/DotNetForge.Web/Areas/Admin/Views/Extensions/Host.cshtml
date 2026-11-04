@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = ViewData["Title"] as string ?? "Extension";
+    ViewData["Title"] = ViewData["Title"] as string ?? T["Extension"];
     var extId = ViewData["ExtensionId"] as string ?? "";
 }
 @* The extension ships its own full HTML document, so it is isolated in an iframe; the admin shell around it comes from

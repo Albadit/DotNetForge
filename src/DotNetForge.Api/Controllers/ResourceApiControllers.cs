@@ -86,7 +86,10 @@ public sealed class RolesApiController : ApiControllerBase
     }
 }
 
-/// <summary>GET /api/settings - lists global settings (settings.read).</summary>
+/// <summary>
+/// GET /api/settings - the environment variables of the environment the site runs in (settings.read): per key its own
+/// value for this environment, else the one for all environments; a secret is listed without its value.
+/// </summary>
 [Route("api/settings")]
 [Tags("Settings")]
 public sealed class SettingsApiController : ApiControllerBase
@@ -99,10 +102,11 @@ public sealed class SettingsApiController : ApiControllerBase
     [RequireApiPermission(PermissionKeys.SettingsRead)]
     public async Task<IActionResult> Get()
     {
-        var settings = await _db.Settings
-            .AsNoTracking()
-            .Select(s => new { s.Key, s.Value })
-            .ToListAsync();
+        // The query filter leaves this environment's rows and the all-environments ones.
+        var rows = await _db.Settings.AsNoTracking().OrderBy(s => s.Key).ToListAsync();
+        var settings = rows.GroupBy(s => s.Key, StringComparer.Ordinal)
+            .Select(g => g.OrderByDescending(s => s.Environment.Length).First())
+            .Select(s => new { s.Key, Value = s.IsSecret ? null : s.Value, Secret = s.IsSecret });
 
         return Ok(settings);
     }

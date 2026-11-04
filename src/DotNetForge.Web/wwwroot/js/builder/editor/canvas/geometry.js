@@ -104,8 +104,8 @@ function findDropTarget(frame, doc, bp, q) {
     const node = doc.nodes[id];
     if (!node) break;
     if (!excluded.has(id) && !node.locked && node.children && canContain(node.type, q.type)) {
-      const t = targetIn(frame, doc, bp, id, q);
-      if (t) return t;
+      const found = targetIn(frame, doc, bp, id, q);
+      if (found) return found;
     }
     id = node.parent;
   }

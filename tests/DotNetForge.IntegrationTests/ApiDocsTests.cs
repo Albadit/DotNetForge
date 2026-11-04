@@ -53,7 +53,7 @@ public sealed class ApiDocsTests
             Assert.Contains($"href=\"{href}\"", dashboard);
         }
 
-        foreach (var href in new[] { "/admin/content", "/admin/pages", "/admin/content-types", "/admin/media", "/admin/users", "/admin/settings", "/admin/plugins" })
+        foreach (var href in new[] { "/admin/content", "/admin/pages", "/admin/content-types", "/admin/media", "/admin/users", "/admin/environment-variables", "/admin/plugins" })
         {
             Assert.DoesNotContain($"href=\"{href}\"", dashboard);
         }

@@ -13,7 +13,7 @@ description: >-
 
 Read first: `.docs/architecture/pages.md` (pattern, layouts, conventions), `.docs/architecture/design-system.md`
 (how screens use the UI: layouts, feedback, building a screen), `.docs/ui/README.md` (components, tag helpers, states;
-the component reference in the in-app UI docs, `/admin/docs/ui`, source in `src/DotNetForge.Web/Areas/Admin/Views/UiDocs/Components/`) and the screen's doc in `.docs/pages/` if it exists. Model screens: `PagesController` (forms + service + audit), `ContentController` (forms generated from data, JSON for pickers), `SettingsController` (simple upsert),
+the component reference in the in-app UI docs, `/admin/docs/ui`, source in `src/DotNetForge.Web/Areas/Admin/Views/UiDocs/Components/`) and the screen's doc in `.docs/pages/` if it exists. Model screens: `PagesController` (forms + service + audit), `ContentController` (forms generated from data, JSON for pickers), `EnvironmentVariablesController` (list + add/edit form + service with rules),
 `UsersController` / `RolesController` (list + edit form + service with rules, `[RequirePermission]` per action).
 
 ## Steps
@@ -41,7 +41,7 @@ the component reference in the in-app UI docs, `/admin/docs/ui`, source in `src/
    `Forbid()` when they fail. Validate string lengths before saving. On validation failure: `ModelState.AddModelError(string.Empty, msg)` and re-render the
    same view with a model built by a shared private `Build...Async` helper.
 5. **View** - `src/DotNetForge.Web/Areas/Admin/Views/<Name>/Index.cshtml`, built from the DotNetForge UI library
-   (`.docs/architecture/design-system.md#building-a-screen`; model: `Settings/Index.cshtml`, `Users/Index.cshtml`):
+   (`.docs/architecture/design-system.md#building-a-screen`; model: `EnvironmentVariables/Index.cshtml`, `Users/Index.cshtml`):
    - `ViewData["Title"]` (the only `<h1>`, tab title, last breadcrumb), optional `ViewData["Description"]`; header
      buttons in `@section Actions { }` (primary last).
    - Content in `dnf-card`s (`dnf-card__header` / `dnf-card__body`). Lists: `<div class="dnf-card" data-collection>` >

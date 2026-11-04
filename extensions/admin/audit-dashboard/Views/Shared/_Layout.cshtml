@@ -5,7 +5,7 @@
     // extension's own files (Views/Resources) in ViewData["ResourceBase"].
     var resourceBase = ViewData["ResourceBase"] as string ?? string.Empty;
 }<!doctype html>
-<html lang="en">
+<html lang="@(System.Globalization.CultureInfo.CurrentUICulture.Name is { Length: > 0 } lang ? lang : "en")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

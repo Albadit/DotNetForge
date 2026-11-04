@@ -8,18 +8,19 @@
     var fields = ContentSchema.Parse(input.FieldsJson);
     var titleCandidates = fields.Where(f => f.Type is FieldTypes.Text or FieldTypes.Slug or FieldTypes.Email).ToList();
     var titleKey = ContentSchema.TitleKey(fields, input.TitleField);
-    ViewData["Title"] = string.IsNullOrWhiteSpace(input.Name) ? "Content type" : input.Name;
-    ViewData["Description"] = $"{fields.Count} field{(fields.Count == 1 ? "" : "s")} · {Model.EntryCount} entr{(Model.EntryCount == 1 ? "y" : "ies")} · API /api/entries/{input.Slug}";
+    ViewData["Title"] = string.IsNullOrWhiteSpace(input.Name) ? T["Content type"] : input.Name;
+    ViewData["Description"] = (fields.Count == 1 ? T["1 field"] : T["{0} fields", fields.Count]) + " · "
+        + (Model.EntryCount == 1 ? T["1 entry"] : T["{0} entries", Model.EntryCount]) + " · API /api/entries/" + input.Slug;
     var readOnly = !Model.CanSave;
     var relations = Newtonsoft.Json.JsonConvert.SerializeObject(Model.RelationTargets.Select(t => new { id = t.Id, name = t.Name }));
 }
 
 @section Actions {
-    <a class="dnf-button dnf-button--secondary" href="/admin/content-types"><dnf-icon name="chevron-left" /> All types</a>
-    <a class="dnf-button dnf-button--secondary" href="/admin/content/@input.Slug"><dnf-icon name="database" /> Entries</a>
+    <a class="dnf-button dnf-button--secondary" href="/admin/content-types"><dnf-icon name="chevron-left" /> @T["All types"]</a>
+    <a class="dnf-button dnf-button--secondary" href="/admin/content/@input.Slug"><dnf-icon name="database" /> @T["Entries"]</a>
     @if (!readOnly)
     {
-        <button type="submit" form="typeForm" class="dnf-button dnf-button--primary"><dnf-icon name="save" /> Save content type</button>
+        <button type="submit" form="typeForm" class="dnf-button dnf-button--primary"><dnf-icon name="save" /> @T["Save content type"]</button>
     }
 }
 
@@ -29,20 +30,20 @@
         <dnf-validation-summary />
         @if (readOnly)
         {
-            <dnf-alert tone="Info" title="View only">You can see this content type but not change it.</dnf-alert>
+            <dnf-alert tone="Info" title="@T["View only"]">@T["You can see this content type but not change it."]</dnf-alert>
         }
         @if (Model.EntryCount > 0 && !readOnly)
         {
-            <dnf-alert tone="Info" title="This type has entries">
-                Renaming a field's API name keeps its values. Removing a field removes its values from every entry when you save.
+            <dnf-alert tone="Info" title="@T["This type has entries"]">
+                @T["Renaming a field's API name keeps its values. Removing a field removes its values from every entry when you save."]
             </dnf-alert>
         }
 
         <section class="dnf-card" aria-labelledby="fields-title">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="fields-title">Fields</h2>
-                    <p class="dnf-card__description">Drag to reorder. Groups and repeaters hold fields of their own. The entry form is generated from this list.</p>
+                    <h2 class="dnf-card__title" id="fields-title">@T["Fields"]</h2>
+                    <p class="dnf-card__description">@T["Drag to reorder. Groups and repeaters hold fields of their own. The entry form is generated from this list."]</p>
                 </div>
             </div>
             <div class="dnf-card__body">
@@ -61,12 +62,12 @@
                     }
                 </div>
                 <noscript>
-                    <p class="text-sm text-muted">The visual field builder needs JavaScript. You can still edit the fields as JSON below.</p>
+                    <p class="text-sm text-muted">@T["The visual field builder needs JavaScript. You can still edit the fields as JSON below."]</p>
                 </noscript>
                 <details data-schema-json>
-                    <summary class="cursor-pointer text-sm text-muted">Fields as JSON <span class="text-subtle text-xs">(for developers; the builder keeps it in sync)</span></summary>
+                    <summary class="cursor-pointer text-sm text-muted">@T["Fields as JSON"] <span class="text-subtle text-xs">@T["(for developers; the builder keeps it in sync)"]</span></summary>
                     <textarea id="FieldsJson" name="FieldsJson" rows="16" class="dnf-textarea dnf-textarea--mono mt-2 text-xs" spellcheck="false" readonly="@(readOnly ? "readonly" : null)"
-                              aria-label="Fields as JSON" data-schema-source>@input.FieldsJson</textarea>
+                              aria-label="@T["Fields as JSON"]" data-schema-source>@input.FieldsJson</textarea>
                 </details>
             </div>
         </section>
@@ -74,23 +75,23 @@
 
     <aside class="dnf-split__aside">
         <fieldset class="dnf-card" disabled="@(readOnly ? "disabled" : null)">
-            <div class="dnf-card__header"><h2 class="dnf-card__title">Settings</h2></div>
+            <div class="dnf-card__header"><h2 class="dnf-card__title">@T["Settings"]</h2></div>
             <div class="dnf-card__body dnf-stack">
                 <div class="dnf-field">
-                    <label class="dnf-field__label" for="Name">Name<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                    <label class="dnf-field__label" for="Name">@T["Name"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                     <input id="Name" name="Name" class="dnf-input" value="@input.Name" maxlength="100" required />
                 </div>
                 <div class="dnf-field">
-                    <label class="dnf-field__label" for="Slug">API id<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                    <label class="dnf-field__label" for="Slug">@T["API id"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                     <input id="Slug" name="Slug" value="@input.Slug" maxlength="64" class="dnf-input dnf-input--mono" required aria-describedby="slug-hint" />
-                    <span class="dnf-field__description" id="slug-hint">Lower-case letters, digits and hyphens. Used in /api/entries/<span class="font-mono">@input.Slug</span> and the admin URL.</span>
+                    <span class="dnf-field__description" id="slug-hint">@T["Lower-case letters, digits and hyphens. Used in"] /api/entries/<span class="font-mono">@input.Slug</span> @T["and the admin URL."]</span>
                 </div>
                 <div class="dnf-field">
-                    <label class="dnf-field__label" for="Description">Description<span class="dnf-field__optional">optional</span></label>
+                    <label class="dnf-field__label" for="Description">@T["Description"]<span class="dnf-field__optional">@T["optional"]</span></label>
                     <textarea id="Description" name="Description" class="dnf-textarea" rows="2" maxlength="500">@input.Description</textarea>
                 </div>
                 <div class="dnf-field">
-                    <label class="dnf-field__label" for="Icon">Icon</label>
+                    <label class="dnf-field__label" for="Icon">@T["Icon"]</label>
                     <select id="Icon" name="Icon" class="dnf-select">
                         @foreach (var icon in ContentTypeService.Icons)
                         {
@@ -99,42 +100,50 @@
                     </select>
                 </div>
                 <fieldset class="dnf-fieldset">
-                    <legend class="dnf-fieldset__legend">Holds</legend>
+                    <legend class="dnf-fieldset__legend">@T["Holds"]</legend>
                     <div class="dnf-choice-cards">
                         <label class="dnf-choice-card">
                             <input type="radio" class="dnf-radio" name="Kind" value="Collection" checked="@(input.Kind == ContentTypeKind.Collection ? "checked" : null)" />
-                            <span>Many entries</span>
+                            <span>@T["Many entries"]</span>
                         </label>
                         <label class="dnf-choice-card">
                             <input type="radio" class="dnf-radio" name="Kind" value="Single" checked="@(input.Kind == ContentTypeKind.Single ? "checked" : null)" />
-                            <span>One entry</span>
+                            <span>@T["One entry"]</span>
                         </label>
                     </div>
                 </fieldset>
                 <div class="dnf-field">
-                    <label class="dnf-field__label" for="TitleField">Title field</label>
+                    <label class="dnf-field__label" for="TitleField">@T["Title field"]</label>
                     <select id="TitleField" name="TitleField" class="dnf-select" data-title-field aria-describedby="title-hint">
                         @foreach (var f in titleCandidates)
                         {
                             <option value="@f.Key" selected="@(f.Key == titleKey ? "selected" : null)">@f.Label (@f.Key)</option>
                         }
                     </select>
-                    <span class="dnf-field__description" id="title-hint">Names an entry in lists, pickers and the browser tab of a detail page.</span>
+                    <span class="dnf-field__description" id="title-hint">@T["Names an entry in lists, pickers and the browser tab of a detail page."]</span>
                 </div>
                 <label class="dnf-switch-row">
                     <span class="dnf-check__text">
-                        <span>Drafts</span>
-                        <span class="dnf-check__description">On: changes are saved as a draft until someone publishes them. Off: saving publishes.</span>
+                        <span>@T["Drafts"]</span>
+                        <span class="dnf-check__description">@T["On: changes are saved as a draft until someone publishes them. Off: saving publishes."]</span>
                     </span>
                     @* The checkbox first: a bound bool takes the first posted value. *@
                     <input type="checkbox" class="dnf-switch" role="switch" name="Drafts" value="true" checked="@(input.Drafts ? "checked" : null)" />
                     <input type="hidden" name="Drafts" value="false" />
                 </label>
+                <label class="dnf-switch-row">
+                    <span class="dnf-check__text">
+                        <span>@T["Localized"]</span>
+                        <span class="dnf-check__description">@T["Entries can be translated into the site's other languages (Settings › Internationalization): their text, long text and rich text fields get a value per language; every other field is shared. Off: translations are kept but not shown."]</span>
+                    </span>
+                    <input type="checkbox" class="dnf-switch" role="switch" name="Localized" value="true" checked="@(input.Localized ? "checked" : null)" />
+                    <input type="hidden" name="Localized" value="false" />
+                </label>
             </div>
             @if (!readOnly)
             {
                 <div class="dnf-card__footer">
-                    <button type="submit" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="save" /> Save content type</button>
+                    <button type="submit" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="save" /> @T["Save content type"]</button>
                 </div>
             }
         </fieldset>
@@ -142,20 +151,20 @@
         @if (Model.CanDelete)
         {
             <section class="dnf-card dnf-card--danger" aria-labelledby="delete-title">
-                <div class="dnf-card__header"><h2 class="dnf-card__title" id="delete-title">Delete content type</h2></div>
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="delete-title">@T["Delete content type"]</h2></div>
                 <div class="dnf-card__body dnf-stack dnf-stack--sm">
                     <p class="text-sm text-muted">
-                        @(Model.EntryCount > 0 ? $"Its {Model.EntryCount} entr{(Model.EntryCount == 1 ? "y" : "ies")} are deleted with it." : "It has no entries.")
-                        Content lists on pages that show it become empty.
+                        @(Model.EntryCount == 0 ? T["It has no entries."] : Model.EntryCount == 1 ? T["Its 1 entry are deleted with it."] : T["Its {0} entries are deleted with it.", Model.EntryCount])
+                        @T["Content lists on pages that show it become empty."]
                     </p>
                     @if (Model.EntryCount > 0)
                     {
                         <input type="hidden" name="withEntries" value="true" form="deleteTypeForm" />
                     }
                     <button type="submit" form="deleteTypeForm" class="dnf-button dnf-button--danger-soft dnf-button--full-width"
-                            data-confirm="Delete '@input.Name'@(Model.EntryCount > 0 ? $" and its {Model.EntryCount} entries" : "")? This can't be undone."
-                            data-confirm-title="Delete content type" data-confirm-action="Delete">
-                        <dnf-icon name="trash" /> Delete content type
+                            data-confirm="@(Model.EntryCount > 0 ? T["Delete '{0}' and its {1} entries? This can't be undone.", input.Name, Model.EntryCount] : T["Delete '{0}'? This can't be undone.", input.Name])"
+                            data-confirm-title="@T["Delete content type"]" data-confirm-action="@T["Delete"]">
+                        <dnf-icon name="trash" /> @T["Delete content type"]
                     </button>
                 </div>
             </section>

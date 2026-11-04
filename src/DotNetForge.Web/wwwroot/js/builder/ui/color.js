@@ -64,10 +64,10 @@ export function fromHsv(c) {
  * Typing six digits keeps the current opacity. Undefined clears; null is invalid.
  */
 export function parseInput(text, alpha = 1) {
-    const t = text.trim();
-    if (t === '')
+    const trimmed = text.trim();
+    if (trimmed === '')
         return undefined;
-    const hex = HEX.exec(t);
+    const hex = HEX.exec(trimmed);
     if (hex) {
         const c = fromHex(hex[1]);
         return hexOf(hex[1].length === 3 || hex[1].length === 6 ? { ...c, a: alpha } : c);

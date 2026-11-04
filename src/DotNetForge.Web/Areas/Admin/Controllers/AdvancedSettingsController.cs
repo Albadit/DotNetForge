@@ -63,7 +63,7 @@ public sealed class AdvancedSettingsController : AdminControllerBase
             return View(nameof(Index), await BuildAsync(input));
         }
 
-        TempData["Success"] = "Advanced user settings saved.";
+        TempData["Success"] = T["Advanced user settings saved."];
         return RedirectToAction(nameof(Index));
     }
 

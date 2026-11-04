@@ -30,9 +30,12 @@ public sealed partial class EntriesApiController : ApiControllerBase
     private readonly ContentEntryService _entries;
     private readonly ContentQueryService _query;
     private readonly ContentApiService _json;
+    private readonly EntryTranslationService _translations;
 
-    public EntriesApiController(ContentTypeService types, ContentEntryService entries, ContentQueryService query, ContentApiService json)
+    public EntriesApiController(ContentTypeService types, ContentEntryService entries, ContentQueryService query, ContentApiService json,
+        EntryTranslationService translations)
     {
+        _translations = translations;
         _types = types;
         _entries = entries;
         _query = query;
@@ -68,12 +71,19 @@ public sealed partial class EntriesApiController : ApiControllerBase
     /// </summary>
     [HttpGet("/api/entries/{type}")]
     [RequireApiPermission(PermissionKeys.EntriesRead)]
-    public async Task<IActionResult> List(string type, string? q, string? sort, int page = 1, int pageSize = 20, int depth = 1, string? status = null)
+    public async Task<IActionResult> List(string type, string? q, string? sort, int page = 1, int pageSize = 20, int depth = 1, string? status = null,
+        string? locale = null)
     {
         var contentType = await _types.FindAsync(type, HttpContext.RequestAborted);
         if (contentType is null)
         {
             return NotFoundJson(type);
+        }
+
+        var (inLocale, localeError) = await LocaleAsync(locale);
+        if (localeError is not null)
+        {
+            return localeError;
         }
 
         var drafts = status == "draft";
@@ -112,7 +122,7 @@ public sealed partial class EntriesApiController : ApiControllerBase
             Page = page,
             PageSize = Math.Clamp(pageSize, 1, MaxPageSize),
         }, HttpContext.RequestAborted);
-        var items = await _json.EntriesJsonAsync(contentType, result.Items, published: !drafts, Math.Clamp(depth, 0, 1), HttpContext.RequestAborted);
+        var items = await _json.EntriesJsonAsync(contentType, result.Items, published: !drafts, Math.Clamp(depth, 0, 1), HttpContext.RequestAborted, inLocale);
         if (contentType.Kind == ContentTypeKind.Single)
         {
             return items.Count == 0 ? NotFoundJson(type) : Json(new JObject { ["data"] = items[0] });
@@ -128,12 +138,18 @@ public sealed partial class EntriesApiController : ApiControllerBase
     /// <summary>GET /api/entries/{type}/{idOrSlug} - one published entry by id, or by the value of its slug field.</summary>
     [HttpGet("/api/entries/{type}/{idOrSlug}")]
     [RequireApiPermission(PermissionKeys.EntriesRead)]
-    public async Task<IActionResult> Get(string type, string idOrSlug, int depth = 1, string? status = null)
+    public async Task<IActionResult> Get(string type, string idOrSlug, int depth = 1, string? status = null, string? locale = null)
     {
         var contentType = await _types.FindAsync(type, HttpContext.RequestAborted);
         if (contentType is null)
         {
             return NotFoundJson(type);
+        }
+
+        var (inLocale, localeError) = await LocaleAsync(locale);
+        if (localeError is not null)
+        {
+            return localeError;
         }
 
         var drafts = status == "draft";
@@ -159,7 +175,7 @@ public sealed partial class EntriesApiController : ApiControllerBase
             return NotFound(new { error = $"No entry '{idOrSlug}' in '{type}'." });
         }
 
-        var items = await _json.EntriesJsonAsync(contentType, new[] { entry }, published: !drafts, Math.Clamp(depth, 0, 1), HttpContext.RequestAborted);
+        var items = await _json.EntriesJsonAsync(contentType, new[] { entry }, published: !drafts, Math.Clamp(depth, 0, 1), HttpContext.RequestAborted, inLocale);
         return Json(new JObject { ["data"] = items[0] });
     }
 
@@ -196,7 +212,7 @@ public sealed partial class EntriesApiController : ApiControllerBase
     /// <summary>PUT /api/entries/{type}/{id} - replaces an entry's values.</summary>
     [HttpPut("/api/entries/{type}/{id:guid}")]
     [RequireApiPermission(PermissionKeys.EntriesUpdate)]
-    public async Task<IActionResult> Update(string type, Guid id, [FromBody] EntryWrite body)
+    public async Task<IActionResult> Update(string type, Guid id, [FromBody] EntryWrite body, string? locale = null)
     {
         var contentType = await _types.FindAsync(type, HttpContext.RequestAborted);
         var entry = contentType is null ? null : await _entries.FindAsync(contentType, id, HttpContext.RequestAborted);
@@ -205,7 +221,65 @@ public sealed partial class EntriesApiController : ApiControllerBase
             return NotFound(new { error = $"No entry '{id}' in '{type}'." });
         }
 
-        return await SaveAsync(contentType, entry, body, created: false);
+        var (inLocale, localeError) = await LocaleAsync(locale);
+        if (localeError is not null)
+        {
+            return localeError;
+        }
+
+        return inLocale is { IsDefault: false }
+            ? await TranslateAsync(contentType, entry, inLocale, body)
+            : await SaveAsync(contentType, entry, body, created: false);
+    }
+
+    /// <summary>
+    /// PUT ...?locale=de: saves the entry's translatable values in that locale (.docs/features/internationalization.md#entries)
+    /// - a localized type only; <c>publish: true</c> (or a type without drafts) publishes the translation too.
+    /// </summary>
+    private async Task<IActionResult> TranslateAsync(ContentType type, ContentEntry entry, Locale locale, EntryWrite body)
+    {
+        if (!type.Localized)
+        {
+            return BadRequest(new { error = $"'{type.Slug}' is not localized: turn on Localized on its content type to translate its entries." });
+        }
+
+        if (body.Data.ValueKind != JsonValueKind.Object)
+        {
+            return BadRequest(new { error = "Send the values as an object: { \"data\": { ... } }." });
+        }
+
+        var publish = body.Publish || !type.Drafts;
+        if (publish && !HasPermission(PermissionKeys.EntriesPublish))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = $"Missing required permission '{PermissionKeys.EntriesPublish}'." });
+        }
+
+        var errors = await _translations.SaveAsync(type, entry, locale, (JObject)JToken.Parse(body.Data.GetRawText()), publish, null, HttpContext.RequestAborted);
+        if (errors.Count > 0)
+        {
+            return BadRequest(new { error = "The translation is not valid.", errors = errors.Select(e => new { path = e.Path, message = e.Message }) });
+        }
+
+        var json = await _json.EntriesJsonAsync(type, new[] { entry }, published: false, 0, HttpContext.RequestAborted, locale);
+        return Json(new JObject { ["data"] = json[0] });
+    }
+
+    /// <summary>The <c>?locale=</c> of a request: null when absent; a 400 naming the valid codes when unknown or disabled.</summary>
+    private async Task<(Locale? Locale, IActionResult? Error)> LocaleAsync(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return (null, null);
+        }
+
+        var locale = await _translations.FindLocaleAsync(code, HttpContext.RequestAborted);
+        if (locale is not null)
+        {
+            return (locale, null);
+        }
+
+        var valid = (await _translations.LocalesAsync(HttpContext.RequestAborted)).Select(l => l.Code);
+        return (null, BadRequest(new { error = $"Unknown or disabled locale '{code}'. Enabled locales other than the default: {string.Join(", ", valid)}." }));
     }
 
     /// <summary>POST /api/entries/{type}/{id}/publish - publishes the saved values.</summary>

@@ -31,6 +31,9 @@ public class User
 
     public DateTime? LastLoginDate { get; set; }
 
+    /// <summary>The admin UI language this user chose (a locale code); null = the site's admin language.</summary>
+    public string? AdminLanguage { get; set; }
+
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public string DisplayName =>

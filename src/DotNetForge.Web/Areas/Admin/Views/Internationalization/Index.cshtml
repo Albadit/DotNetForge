@@ -1,0 +1,116 @@
+@using DotNetForge.Web.Services.Localization
+@model InternationalizationController.InternationalizationViewModel
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = T["Internationalization"];
+    ViewData["Description"] = T["The languages of the site. The default locale is the main content and the fallback of every missing translation; other enabled locales are published under their code (/de/about)."];
+    string Pages(int n) => n == 1 ? T["1 page"] : T["{0} pages", n];
+    string Entries(int n) => n == 1 ? T["1 entry"] : T["{0} entries", n];
+    string Usage(LocaleRow l) => l.Pages + l.Entries == 0 ? T["No translations"] : Pages(l.Pages) + ", " + Entries(l.Entries);
+}
+
+@section Actions {
+    @if (Model.CanEdit)
+    {
+        <a class="dnf-button dnf-button--primary" href="/admin/internationalization/add"><dnf-icon name="plus" /> @T["Add locale"]</a>
+    }
+}
+
+<div class="dnf-stack">
+    <section class="dnf-card" aria-labelledby="locales-title">
+        <div class="dnf-card__header">
+            <div>
+                <h2 class="dnf-card__title" id="locales-title">@T["Locales"]</h2>
+                <p class="dnf-card__description">@T["{0} total · {1} enabled", Model.Locales.Count, Model.Locales.Count(l => l.Enabled)]</p>
+            </div>
+        </div>
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">@T["Locale"]</th>
+                        <th scope="col">@T["URL"]</th>
+                        <th scope="col">@T["Status"]</th>
+                        <th scope="col">@T["Translations"]</th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">@T["Actions"]</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in Model.Locales)
+                    {
+                        <tr>
+                            <td class="dnf-table__cell--lead">
+                                <a class="dnf-table__primary" href="/admin/internationalization/@l.Id">@l.DisplayName</a>
+                                <span class="dnf-table__secondary"><code>@l.Code</code></span>
+                            </td>
+                            <td data-label="@T["URL"]"><code>@(l.IsDefault ? "/" : "/" + l.Code + "/")</code></td>
+                            <td data-label="@T["Status"]">
+                                <span class="dnf-cluster">
+                                    @if (l.IsDefault)
+                                    {
+                                        <dnf-badge tone="Primary">@T["Default"]</dnf-badge>
+                                    }
+                                    <dnf-badge tone="@(l.Enabled ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(l.Enabled ? T["Enabled"] : T["Disabled"])</dnf-badge>
+                                </span>
+                            </td>
+                            <td data-label="@T["Translations"]" class="text-muted">@(l.IsDefault ? T["Main content"] : Usage(l))</td>
+                            <td class="dnf-table__cell--actions">
+                                <dnf-dropdown label="@T["Actions for {0}", l.DisplayName]">
+                                    <dnf-dropdown-link href="/admin/internationalization/@l.Id" icon="pencil">@(Model.CanEdit ? T["Edit"] : T["View"])</dnf-dropdown-link>
+                                    @if (Model.CanEdit && !l.IsDefault)
+                                    {
+                                        <dnf-dropdown-post action="/admin/internationalization/@l.Id/default" icon="star"
+                                                           confirm="@T["Make {0} the default locale? Its translations become the main content (unprefixed URLs, the fallback of every missing translation), and the current main content becomes the translations of the previous default. Content not yet translated into {0} shows the current text until it is.", l.DisplayName]"
+                                                           confirm-title="@T["Change the default locale"]" confirm-action="@T["Make default"]">@T["Set as default"]</dnf-dropdown-post>
+                                        @if (l.Enabled)
+                                        {
+                                            <dnf-dropdown-post action="/admin/internationalization/@l.Id/disable" icon="power"
+                                                               confirm="@(l.Pages + l.Entries > 0 ? T["{0} has translations ({1}). Disabled, they are kept but no longer shown or offered; /{2}/ URLs answer 404 until you enable it again.", l.DisplayName, Usage(l), l.Code] : null)"
+                                                               confirm-title="@T["Disable locale"]" confirm-action="@T["Disable"]">@T["Disable"]</dnf-dropdown-post>
+                                        }
+                                        else
+                                        {
+                                            <dnf-dropdown-post action="/admin/internationalization/@l.Id/enable" icon="power">@T["Enable"]</dnf-dropdown-post>
+                                        }
+                                        <dnf-dropdown-separator />
+                                        <dnf-dropdown-post action="/admin/internationalization/@l.Id/delete" icon="trash" danger="true"
+                                                           confirm="@(l.Pages + l.Entries > 0 ? T["Delete {0} ({1})? Its translations ({2}) are deleted too; that content shows the default locale's text.", l.DisplayName, l.Code, Usage(l)] : T["Delete {0} ({1})? It has no translations.", l.DisplayName, l.Code])"
+                                                           confirm-title="@T["Delete locale"]" confirm-action="@T["Delete"]">@T["Delete"]</dnf-dropdown-post>
+                                    }
+                                </dnf-dropdown>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    @* The language of the admin itself - separate from the site's locales: it changes no content. *@
+    <form method="post" action="/admin/internationalization/admin-language" class="dnf-card" aria-labelledby="admin-language-title">
+        @Html.AntiForgeryToken()
+        <div class="dnf-card__header">
+            <div>
+                <h2 class="dnf-card__title" id="admin-language-title">@T["Admin language"]</h2>
+                <p class="dnf-card__description">@T["The language of the admin screens for every user who has not chosen their own on Profile. It changes no content."]</p>
+            </div>
+        </div>
+        <div class="dnf-card__body">
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="language">@T["Language"]</label>
+                <select id="language" name="language" class="dnf-select" disabled="@(Model.CanEdit ? null : "disabled")">
+                    @foreach (var language in Model.AdminLanguages)
+                    {
+                        <option value="@language.Code" lang="@language.Code" selected="@(language.Code == Model.AdminLanguage ? "selected" : null)">@language.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        @if (Model.CanEdit)
+        {
+            <div class="dnf-card__footer">
+                <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> @T["Save admin language"]</button>
+            </div>
+        }
+    </form>
+</div>

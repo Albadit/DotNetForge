@@ -13,7 +13,7 @@
         var isFirst = previous is null || DotNetForge.Web.Services.PageService.IsHome(previous.Slug);
         var isLast = ReferenceEquals(node, Model[Model.Count - 1]);
         var isSelected = selectedId == node.Id;
-        var (dot, status) = node.Published ? ("dnf-status-dot--success", "Published") : ("dnf-status-dot--danger", "Disabled");
+        var (dot, status) = node.Published ? ("dnf-status-dot--success", T["Published"]) : ("dnf-status-dot--danger", T["Disabled"]);
         var hasChildren = node.Children.Count > 0;
         <li class="dnf-tree__item" draggable="@(canMove ? "true" : "false")" data-id="@node.Id" data-tree-item data-tree-home="@(isHome ? "true" : null)"
             data-search="@node.Title @node.Slug">
@@ -22,7 +22,7 @@
                 <span class="dnf-tree__toggle-slot">
                     @if (hasChildren)
                     {
-                        <button type="button" class="dnf-tree__toggle" aria-expanded="true" aria-label="Hide the pages under @node.Title"
+                        <button type="button" class="dnf-tree__toggle" aria-expanded="true" aria-label="@T["Hide the pages under {0}", node.Title]"
                                 data-tree-toggle data-js-only hidden>
                             <dnf-icon name="chevron-down" size="Sm" />
                         </button>
@@ -36,40 +36,40 @@
                     <span class="dnf-tree__slug">/@node.Slug.TrimStart('/')</span>
                 </a>
                 @* Row actions in one ⋯ menu (opens in the top layer, so the tree's scroll area never clips it). *@
-                <dnf-dropdown class="dnf-tree__action" label="Actions for @node.Title">
+                <dnf-dropdown class="dnf-tree__action" label="@T["Actions for {0}", node.Title]">
                     @if (node.ViewUrl is not null)
                     {
-                        <dnf-dropdown-link href="@node.ViewUrl" icon="eye" new-tab="true">View on site</dnf-dropdown-link>
+                        <dnf-dropdown-link href="@node.ViewUrl" icon="eye" new-tab="true">@T["View on site"]</dnf-dropdown-link>
                     }
                     else
                     {
-                        <dnf-dropdown-note>@node.NotOnSite</dnf-dropdown-note>
+                        <dnf-dropdown-note>@T[node.NotOnSite ?? ""]</dnf-dropdown-note>
                     }
                     <dnf-dropdown-separator />
                     @if (!isHome)
                     {
-                        <dnf-dropdown-post action="/admin/pages/create?parent=@node.Id" icon="plus">Add child page</dnf-dropdown-post>
+                        <dnf-dropdown-post action="/admin/pages/create?parent=@node.Id" icon="plus">@T["Add child page"]</dnf-dropdown-post>
                     }
-                    <dnf-dropdown-post action="/admin/pages/duplicate/@node.Id" icon="copy">Duplicate</dnf-dropdown-post>
+                    <dnf-dropdown-post action="/admin/pages/duplicate/@node.Id" icon="copy">@T["Duplicate"]</dnf-dropdown-post>
                     @* The reorder without dragging, for touch screens and keyboards (pages.js). *@
                     @if (canMove)
                     {
-                        <dnf-dropdown-button icon="arrow-right" data-page-move data-js-only hidden>Move…</dnf-dropdown-button>
+                        <dnf-dropdown-button icon="arrow-right" data-page-move data-js-only hidden>@T["Move…"]</dnf-dropdown-button>
                     }
                     @if (canMove && !isFirst)
                     {
-                        <dnf-dropdown-button icon="chevron-up" data-tree-move="up" data-js-only hidden>Move up</dnf-dropdown-button>
+                        <dnf-dropdown-button icon="chevron-up" data-tree-move="up" data-js-only hidden>@T["Move up"]</dnf-dropdown-button>
                     }
                     @if (canMove && !isLast)
                     {
-                        <dnf-dropdown-button icon="chevron-down" data-tree-move="down" data-js-only hidden>Move down</dnf-dropdown-button>
+                        <dnf-dropdown-button icon="chevron-down" data-tree-move="down" data-js-only hidden>@T["Move down"]</dnf-dropdown-button>
                     }
                     @if (node.CanDelete)
                     {
                         <dnf-dropdown-separator />
                         <dnf-dropdown-post action="/admin/pages/delete/@node.Id" icon="trash" danger="true"
-                                   confirm="Delete '@node.Title'?@(hasChildren ? " Its child pages move up a level." : "")"
-                                   confirm-title="Delete page" confirm-action="Delete page">Delete</dnf-dropdown-post>
+                                   confirm="@(T["Delete '{0}'?", node.Title])@(hasChildren ? " " + T["Its child pages move up a level."] : "")"
+                                   confirm-title="@T["Delete page"]" confirm-action="@T["Delete page"]">@T["Delete"]</dnf-dropdown-post>
                     }
                 </dnf-dropdown>
             </div>

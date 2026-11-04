@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using DotNetForge.Abstractions.Authorization;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Localization;
 using DotNetForge.Web.Services.Mfa;
 using DotNetForge.Web.Startup;
 using Microsoft.AspNetCore.Authorization;
@@ -20,6 +21,12 @@ public abstract class AdminControllerBase : Controller
 {
     protected Guid? CurrentUserId =>
         Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : null;
+
+    /// <summary>
+    /// Text in the admin language for toasts and form errors: <c>T["Saved."]</c>, <c>T["{0} deleted.", name]</c>
+    /// (.docs/features/internationalization.md#admin-language).
+    /// </summary>
+    protected AdminText T => HttpContext.RequestServices.GetRequiredService<AdminText>();
 
     /// <summary>
     /// While Two-factor authentication is required for admin users (.docs/features/mfa.md#requirement), someone who

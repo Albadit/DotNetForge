@@ -79,7 +79,7 @@ every queued video to "as uploaded" on its next run ([videos](../features/media-
 `Settings` rows `media.maxImageMb`, `media.maxVideoMb`, `media.maxOtherMb`, `media.optimizeImages`,
 `media.imageMaxWidth`, `media.imageMaxHeight`, `media.imageQuality`, `media.convertToWebP`, `media.compressVideos`,
 `media.videoResolution`, `media.videoCrf` (a missing or unreadable row means the default; they are also listed on
-[Settings](settings.md), which refuses to change them: "'media.…' is managed on Media Library; change it there."); `MediaFiles` for the Storage card; `FFMPEG_PATH` (`AppEnvironment.FfmpegPath`,
+[Environment Variables](environment-variables.md) as "Managed on Media Library", which refuses to change them: "'media.…' is managed on Media Library; change it there."); `MediaFiles` for the Storage card; `FFMPEG_PATH` (`AppEnvironment.FfmpegPath`,
 [configuration](../features/configuration.md#video-compression)) through `Ffmpeg`.
 
 | Setting | Default |
@@ -161,7 +161,7 @@ flowchart LR
 
 [Media](media.md) (the Upload dialog shows these limits; badges show what optimization saved),
 [Content Manager](content-manager.md) and [page builder](page-builder.md) (their uploads follow the same limits),
-[Settings](settings.md), [Data Management](data-management.md#media-export) (downloads the files).
+[Environment Variables](environment-variables.md), [Data Management](data-management.md#media-export) (downloads the files).
 
 ## Important implementation details
 

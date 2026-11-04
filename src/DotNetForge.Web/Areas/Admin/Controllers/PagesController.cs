@@ -6,6 +6,7 @@ using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Areas.Admin.Models;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Localization;
 using DotNetForge.Web.Startup;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,17 +26,19 @@ public sealed class PagesController : AdminControllerBase
 {
     private const string Area = PermissionAreas.CollectionTypes;
 
-    private static readonly HashSet<string> Tabs = new(StringComparer.Ordinal) { "page", "seo", "theme", "permissions", "layout" };
+    private static readonly HashSet<string> Tabs = new(StringComparer.Ordinal) { "page", "seo", "theme", "permissions", "layout", "translations" };
 
     private readonly DotNetForgeDbContext _db;
     private readonly IPageService _pages;
     private readonly IAuditService _audit;
     private readonly PagePermissionService _pagePermissions;
     private readonly ExtensionCatalog _extensions;
+    private readonly PageTranslationService _translations;
 
     public PagesController(DotNetForgeDbContext db, IPageService pages, IAuditService audit, PagePermissionService pagePermissions,
-        ExtensionCatalog extensions)
+        ExtensionCatalog extensions, PageTranslationService translations)
     {
+        _translations = translations;
         _db = db;
         _pages = pages;
         _audit = audit;
@@ -113,12 +116,12 @@ public sealed class PagesController : AdminControllerBase
     [HttpPost("update/{id:guid}")]
     [ValidateAntiForgeryToken]
     /// <summary>
-    /// Saves the page form - all tabs at once: page settings, SEO, theme and (for users with <c>update</c> on every
-    /// page) the page's permissions. <paramref name="permissionsShown"/> is posted only when the Permissions tab was
-    /// editable, so an empty role list means "no grants" rather than "not shown".
+    /// Saves the page form - all tabs at once: page settings, SEO, theme, the translations' texts and (for users with
+    /// <c>update</c> on every page) the page's permissions. <paramref name="permissionsShown"/> is posted only when the
+    /// Permissions tab was editable, so an empty role list means "no grants" rather than "not shown".
     /// </summary>
     public async Task<IActionResult> Update(Guid id, PageInput form, List<Guid>? viewRoles, List<Guid>? editRoles, bool permissionsShown,
-        List<UserPermissionInput>? userPermissions, string? tab)
+        List<UserPermissionInput>? userPermissions, List<PageTranslationInput>? translations, string? tab)
     {
         var page = await _db.Pages.FirstOrDefaultAsync(p => p.Id == id);
         if (page is null)
@@ -133,9 +136,9 @@ public sealed class PagesController : AdminControllerBase
 
         var themeId = string.IsNullOrWhiteSpace(form.ThemeId) ? null : form.ThemeId.Trim();
         var error = ChangesPublishing(page, form) && !Can(Area, PermissionActions.Publish)
-            ? "You don't have permission to publish, unpublish or schedule pages."
+            ? T["You don't have permission to publish, unpublish or schedule pages."]
             : themeId is not null && themeId != page.ThemeId && !_extensions.Installed().Any(e => e.Manifest?.Type == "theme" && e.Manifest.Id == themeId)
-                ? "That theme is not installed."
+                ? T["That theme is not installed."]
                 : await _pages.ApplyAsync(page, form, HttpContext.RequestAborted);
         if (error is null && permissionsShown && CanManagePermissions)
         {
@@ -144,6 +147,11 @@ public sealed class PagesController : AdminControllerBase
                 .Select(u => new PageUserGrant(u.UserId!.Value, Rule(u.View), Rule(u.Edit)))
                 .ToList();
             error = await _pagePermissions.SaveAsync(page, viewRoles ?? new(), editRoles ?? new(), users, CurrentUserId, HttpContext.RequestAborted);
+        }
+
+        if (error is null && translations is { Count: > 0 })
+        {
+            error = await _translations.ApplyTextsAsync(page, translations, CurrentUserId, HttpContext.RequestAborted);
         }
 
         if (error is not null)
@@ -156,7 +164,7 @@ public sealed class PagesController : AdminControllerBase
         page.UpdatedDate = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         await _audit.LogAsync(AuditActions.ContentUpdated, "Page", page.Id.ToString(), page.Title);
-        TempData["Success"] = $"Saved '{page.Title}'.";
+        TempData["Success"] = T["Saved '{0}'.", page.Title];
         return RedirectToAction(nameof(Index), null, new { selected = id }, Tabs.Contains(tab ?? "") ? tab : null);
     }
 
@@ -240,6 +248,26 @@ public sealed class PagesController : AdminControllerBase
             DraftUpdatedById = source.DraftUpdatedById,
         };
         _db.Pages.Add(copy);
+        // The copy keeps the page's translations (.docs/features/internationalization.md#content-pages).
+        foreach (var t in await _db.PageTranslations.AsNoTracking().Where(t => t.PageId == source.Id).ToListAsync())
+        {
+            _db.PageTranslations.Add(new PageTranslation
+            {
+                PageId = copy.Id,
+                LocaleId = t.LocaleId,
+                Title = t.Title,
+                MetaTitle = t.MetaTitle,
+                MetaDescription = t.MetaDescription,
+                LayoutJson = t.LayoutJson,
+                LayoutPublishedDate = t.LayoutPublishedDate,
+                DraftLayoutJson = t.DraftLayoutJson,
+                DraftVersion = t.DraftLayoutJson is null ? null : Guid.NewGuid(),
+                DraftUpdatedDate = t.DraftUpdatedDate,
+                DraftUpdatedById = t.DraftUpdatedById,
+                UpdatedById = CurrentUserId,
+            });
+        }
+
         await _db.SaveChangesAsync();
         await _audit.LogAsync(AuditActions.ContentCreated, "Page", copy.Id.ToString(), copy.Title, details: $"Duplicate of '{source.Title}'");
 
@@ -251,10 +279,10 @@ public sealed class PagesController : AdminControllerBase
             grantError = await _pagePermissions.SaveAsync(copy, grants.View, grants.Edit, grants.Users, CurrentUserId, HttpContext.RequestAborted);
         }
 
-        TempData["Success"] = $"Duplicated '{source.Title}'. The copy is switched off until you publish it.";
+        TempData["Success"] = T["Duplicated '{0}'. The copy is switched off until you publish it.", source.Title];
         if (grantError is not null)
         {
-            TempData["Error"] = "The copy's permissions could not be copied: " + grantError + " Set them on its Permissions tab.";
+            TempData["Error"] = T["The copy's permissions could not be copied: {0} Set them on its Permissions tab.", grantError];
         }
 
         return RedirectToAction(nameof(Index), new { selected = copy.Id });
@@ -286,7 +314,7 @@ public sealed class PagesController : AdminControllerBase
 
         await _db.SaveChangesAsync();
         await _audit.LogAsync(AuditActions.ContentDeleted, "Page", id.ToString(), page.Title);
-        TempData["Success"] = $"Deleted '{page.Title}'.";
+        TempData["Success"] = T["Deleted '{0}'.", page.Title];
         return RedirectToAction(nameof(Index));
     }
 
@@ -337,8 +365,8 @@ public sealed class PagesController : AdminControllerBase
 
         await _db.SaveChangesAsync();
         await _audit.LogAsync(AuditActions.ContentReordered, "Page", id.ToString(), page.Title);
-        var parent = parentId is null ? "Root" : await _db.Pages.Where(p => p.Id == parentId).Select(p => p.Title).FirstAsync();
-        TempData["Success"] = $"Moved '{page.Title}' to {parent}.";
+        var parent = parentId is null ? T["Root"] : await _db.Pages.Where(p => p.Id == parentId).Select(p => p.Title).FirstAsync();
+        TempData["Success"] = T["Moved '{0}' to {1}.", page.Title, parent];
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
@@ -407,6 +435,7 @@ public sealed class PagesController : AdminControllerBase
                 LayoutPublishedDate = selectedPage.LayoutPublishedDate,
                 DraftUpdatedDate = selectedPage.DraftUpdatedDate,
                 CanEditLayout = await CanEditPageAsync(selectedPage),
+                Translations = await _translations.ForPageAsync(selectedPage.Id, HttpContext.RequestAborted),
             };
         }
 
@@ -474,15 +503,15 @@ public sealed class PagesController : AdminControllerBase
         var note = parentNote;
         if (note is null && parentPath == "/")
         {
-            note = "Not on the site: pages under the home page have no URL.";
+            note = AdminText.Key("Not on the site: pages under the home page have no URL.");
         }
         else if (note is null && slug.StartsWith('[') && slug.EndsWith(']'))
         {
-            note = "Not on the site as one page: its URL has a dynamic part.";
+            note = AdminText.Key("Not on the site as one page: its URL has a dynamic part.");
         }
         else if (note is null && !node.Published)
         {
-            note = "Not on the site: this page is disabled.";
+            note = AdminText.Key("Not on the site: this page is disabled.");
         }
         else if (note is null)
         {
@@ -492,7 +521,7 @@ public sealed class PagesController : AdminControllerBase
         node.ViewUrl = path;
         node.NotOnSite = path is null ? note : null;
         // Children inherit why their parent is off the site (a disabled parent hides them too).
-        var childNote = path is null ? (note == "Not on the site: this page is disabled." ? "Not on the site: a parent page is disabled." : note) : null;
+        var childNote = path is null ? (note == "Not on the site: this page is disabled." ? AdminText.Key("Not on the site: a parent page is disabled.") : note) : null;
         foreach (var child in node.Children)
         {
             SetViewUrls(child, path ?? parentPath, childNote);

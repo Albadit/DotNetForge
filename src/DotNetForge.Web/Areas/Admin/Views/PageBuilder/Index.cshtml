@@ -1,7 +1,7 @@
 @model PageBuilderController.BuilderViewModel
 @{
     Layout = null;
-    var api = $"/admin/pages/{Model.PageId}/builder/";
+    var api = Model.Api;
 }
 @*
     The page builder (.docs/pages/page-builder.md): a full-screen editor outside the admin shell. Everything is built
@@ -9,12 +9,17 @@
     (data-* attributes) and the antiforgery token for its API calls. No inline script or style (CSP).
 *@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@T.Language.Code" dir="@(T.Language.RightToLeft ? "rtl" : "ltr")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>Edit layout · @Model.Title · DotNetForge</title>
+    @if (T.BuilderJson.Length > 0)
+    {
+        @* The editor's text in the admin language (wwwroot/js/builder/ui/i18n.js). *@
+        <meta name="dnf-text" content="@T.BuilderJson" />
+    }
+    <title>@T["Edit layout"] · @Model.Title · DotNetForge</title>
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="~/builder/editor.css" asp-append-version="true" />
     @* The --dnn-color-* variables, for the colour picker's "Site colors" swatches. *@
@@ -23,16 +28,16 @@
     <script type="module" src="~/js/builder/main.js" asp-append-version="true"></script>
 </head>
 <body>
-    <h1 class="pe-sr-only">Page builder: @Model.Title</h1>
+    <h1 class="pe-sr-only">@T["Page builder: {0}", Model.Title]</h1>
     @Html.AntiForgeryToken()
     <div id="pe-editor-root" class="pe-host"
          data-api="@api"
          data-page-id="@Model.PageId"
          data-canvas-url="@(api)canvas"
          data-preview-url="@(api)preview"
-         data-back-url="/admin/pages?selected=@Model.PageId#layout"
+         data-back-url="@Model.BackUrl"
          data-can-upload="@(ViewData["CanUpload"] as bool? == true ? "true" : "false")">
-        <noscript>The page builder needs JavaScript. <a href="/admin/pages?selected=@Model.PageId">Back to Pages</a></noscript>
+        <noscript>@T["The page builder needs JavaScript."] <a href="/admin/pages?selected=@Model.PageId">@T["Back to Pages"]</a></noscript>
     </div>
 </body>
 </html>

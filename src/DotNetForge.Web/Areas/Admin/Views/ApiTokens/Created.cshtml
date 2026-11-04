@@ -1,22 +1,21 @@
 @model CreatedTokenViewModel
 @{
-    ViewData["Title"] = "Token created";
-    ViewData["Description"] = $"'{Model.Name}' is ready to use.";
+    ViewData["Title"] = T["Token created"];
+    ViewData["Description"] = T["'{0}' is ready to use.", Model.Name];
     var origin = $"{Context.Request.Scheme}://{Context.Request.Host}";
     var apiBaseUrl = $"{origin}/api";
     var exampleUrl = $"{origin}/api/content/pages";
 }
 
 <div class="dnf-stack dnf-stack--lg max-w-(--dnf-form-max)">
-    <dnf-alert tone="Warning" title="Copy the token now">
-        This is the only time it is shown. Only a hash is stored, so it can't be displayed again - if you lose it, revoke it
-        and create a new one.
+    <dnf-alert tone="Warning" title="@T["Copy the token now"]">
+        @T["This is the only time it is shown. Only a hash is stored, so it can't be displayed again - if you lose it, revoke it and create a new one."]
     </dnf-alert>
 
     <section class="dnf-card dnf-card--accent" aria-labelledby="token-title">
-        <div class="dnf-card__header"><h2 class="dnf-card__title" id="token-title">Your token</h2></div>
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="token-title">@T["Your token"]</h2></div>
         <div class="dnf-card__body">
-            <pre class="dnf-code-block" id="token-value">@Model.Plaintext<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#token-text" data-js-only hidden><dnf-icon name="copy" size="Sm" /> Copy</button></pre>
+            <pre class="dnf-code-block" id="token-value">@Model.Plaintext<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#token-text" data-js-only hidden><dnf-icon name="copy" size="Sm" /> @T["Copy"]</button></pre>
             <span id="token-text" hidden>@Model.Plaintext</span>
         </div>
     </section>
@@ -24,23 +23,23 @@
     <section class="dnf-card" aria-labelledby="usage-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="usage-title">How to use it</h2>
-                <p class="dnf-card__description">Send it in an <code>Authorization: Bearer</code> header.</p>
+                <h2 class="dnf-card__title" id="usage-title">@T["How to use it"]</h2>
+                <p class="dnf-card__description">@T["Send it in an"] <code>Authorization: Bearer</code> @T["header."]</p>
             </div>
         </div>
         <div class="dnf-card__body dnf-stack">
             <dl class="dnf-description-list">
-                <dt>API URL</dt>
+                <dt>@T["API URL"]</dt>
                 <dd><a href="@apiBaseUrl" target="_blank" rel="noopener"><code>@apiBaseUrl</code></a></dd>
             </dl>
             <div class="dnf-stack dnf-stack--sm">
-                <span class="dnf-field__label">Example request</span>
-                <pre class="dnf-code-block">curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#curl-text" data-js-only hidden><dnf-icon name="copy" size="Sm" /> Copy</button></pre>
+                <span class="dnf-field__label">@T["Example request"]</span>
+                <pre class="dnf-code-block">curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#curl-text" data-js-only hidden><dnf-icon name="copy" size="Sm" /> @T["Copy"]</button></pre>
                 <span id="curl-text" hidden>curl -H "Authorization: Bearer @Model.Plaintext" @exampleUrl</span>
             </div>
         </div>
         <div class="dnf-card__footer">
-            <a class="dnf-button dnf-button--primary" href="/admin/api-tokens">Done</a>
+            <a class="dnf-button dnf-button--primary" href="/admin/api-tokens">@T["Done"]</a>
         </div>
     </section>
 </div>

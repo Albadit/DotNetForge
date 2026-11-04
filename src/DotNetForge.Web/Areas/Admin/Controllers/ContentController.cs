@@ -35,10 +35,12 @@ public sealed class ContentController : AdminControllerBase
     private readonly ContentQueryService _query;
     private readonly ContentRenderService _render;
     private readonly MediaService _media;
+    private readonly EntryTranslationService _translations;
 
     public ContentController(DotNetForgeDbContext db, ContentTypeService types, ContentEntryService entries, ContentQueryService query,
-        ContentRenderService render, MediaService media)
+        ContentRenderService render, MediaService media, EntryTranslationService translations)
     {
+        _translations = translations;
         _db = db;
         _types = types;
         _entries = entries;
@@ -156,7 +158,7 @@ public sealed class ContentController : AdminControllerBase
         }
 
         var count = await _entries.DeleteManyAsync(contentType, ids, HttpContext.RequestAborted);
-        TempData["Success"] = count == 1 ? "Deleted 1 entry." : $"Deleted {count} entries.";
+        TempData["Success"] = count == 1 ? T["Deleted 1 entry."] : T["Deleted {0} entries.", count];
         return Redirect($"/admin/content/{contentType.Slug}");
     }
 
@@ -216,8 +218,112 @@ public sealed class ContentController : AdminControllerBase
             return Forbid();
         }
 
-        return View(await BuildFormAsync(contentType, ContentSchema.Parse(contentType.FieldsJson), entry,
-            ContentEntryService.Parse(entry.DataJson), null, conflict: false));
+        var model = await BuildFormAsync(contentType, ContentSchema.Parse(contentType.FieldsJson), entry,
+            ContentEntryService.Parse(entry.DataJson), null, conflict: false);
+        await AddLanguagesAsync(model, contentType, entry, current: null);
+        return View(model);
+    }
+
+    /// <summary>
+    /// An entry's translation into another enabled locale (.docs/features/internationalization.md#entries): the form with
+    /// only the translatable fields (text, long text, rich text) and the translation's working values. Localized types only.
+    /// </summary>
+    [HttpGet("{type}/{id:guid}/translations/{locale}")]
+    public async Task<IActionResult> Translate(string type, Guid id, string locale)
+    {
+        var (contentType, entry, target) = await LoadTranslationAsync(type, id, locale);
+        if (contentType is null || entry is null || target is null)
+        {
+            return NotFound();
+        }
+
+        var row = await _translations.FindAsync(entry.Id, target.Id, HttpContext.RequestAborted);
+        return View("Edit", await TranslationFormAsync(contentType, entry, target, ContentEntryService.Parse(row?.DataJson), row, null));
+    }
+
+    /// <summary>Saves a translation (<c>intent=publish</c> publishes it, which needs <c>publish</c>; a type without drafts always does).</summary>
+    [HttpPost("{type}/{id:guid}/translations/{locale}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveTranslation(string type, Guid id, string locale, string? intent)
+    {
+        var (contentType, entry, target) = await LoadTranslationAsync(type, id, locale);
+        if (contentType is null || entry is null || target is null)
+        {
+            return NotFound();
+        }
+
+        if (!CanModify(Area, PermissionActions.Update, PermissionActions.UpdateOwn, entry.CreatedById))
+        {
+            return Forbid();
+        }
+
+        var fields = EntryTranslations.Fields(ContentSchema.Parse(contentType.FieldsJson));
+        var input = EntryForm.Read(fields, Request.Form);
+        var publish = intent == "publish" || !contentType.Drafts;
+        var row = await _translations.FindAsync(entry.Id, target.Id, HttpContext.RequestAborted);
+        if (publish && !Can(Area, PermissionActions.Publish))
+        {
+            if (!contentType.Drafts)
+            {
+                return Forbid();
+            }
+
+            ModelState.AddModelError(string.Empty, T["You don't have permission to publish entries. Save a draft instead."]);
+            return View("Edit", await TranslationFormAsync(contentType, entry, target, input, row, null));
+        }
+
+        var errors = await _translations.SaveAsync(contentType, entry, target, input, publish, CurrentUserId, HttpContext.RequestAborted);
+        if (errors.Count > 0)
+        {
+            foreach (var e in errors.Select(e => e.Message).Distinct())
+            {
+                ModelState.AddModelError(string.Empty, e);
+            }
+
+            return View("Edit", await TranslationFormAsync(contentType, entry, target, input, row, errors));
+        }
+
+        TempData["Success"] = publish ? T["Published the {0} translation.", target.DisplayName] : T["Saved a draft of the {0} translation.", target.DisplayName];
+        return Redirect($"/admin/content/{contentType.Slug}/{entry.Id}/translations/{target.Code}");
+    }
+
+    /// <summary>A localized type, its entry and an enabled locale other than the default; nulls when any is missing.</summary>
+    private async Task<(ContentType? Type, ContentEntry? Entry, Locale? Locale)> LoadTranslationAsync(string type, Guid id, string code)
+    {
+        var contentType = await _types.FindAsync(type, HttpContext.RequestAborted);
+        var entry = contentType is { Localized: true } ? await _entries.FindAsync(contentType, id, HttpContext.RequestAborted) : null;
+        var locale = entry is null ? null : await _translations.FindLocaleAsync(code, HttpContext.RequestAborted);
+        return locale is { IsDefault: false } ? (contentType, entry, locale) : (null, null, null);
+    }
+
+    private async Task<EntryEditViewModel> TranslationFormAsync(ContentType type, ContentEntry entry, Locale locale, JObject values,
+        ContentEntryTranslation? row, IReadOnlyList<FieldError>? errors)
+    {
+        var fields = EntryTranslations.Fields(ContentSchema.Parse(type.FieldsJson));
+        var model = await BuildFormAsync(type, fields, entry, values, errors, conflict: false);
+        model.TranslationCode = locale.Code;
+        model.TranslationName = locale.DisplayName;
+        model.TranslationPublished = row is null ? null : row.PublishedDataJson is not null;
+        model.TranslationHasDraft = row is not null && row.DataJson != row.PublishedDataJson;
+        await AddLanguagesAsync(model, type, entry, locale);
+        return model;
+    }
+
+    /// <summary>The language switcher of a localized type's entry: the main values, then each enabled locale.</summary>
+    private async Task AddLanguagesAsync(EntryEditViewModel model, ContentType type, ContentEntry entry, Locale? current)
+    {
+        var locales = type.Localized ? await _translations.LocalesAsync(HttpContext.RequestAborted) : Array.Empty<Locale>();
+        if (locales.Count == 0)
+        {
+            return;
+        }
+
+        var main = await _db.Locales.AsNoTracking().FirstOrDefaultAsync(l => l.IsDefault, HttpContext.RequestAborted);
+        var translated = await _db.ContentEntryTranslations.AsNoTracking().Where(t => t.EntryId == entry.Id).Select(t => t.LocaleId).ToListAsync(HttpContext.RequestAborted);
+        var url = $"/admin/content/{type.Slug}/{entry.Id}";
+        model.Languages = new[] { new EntryLanguage(main?.Code ?? "en", main?.DisplayName ?? T["Main"], url, current is null, true) }
+            .Concat(locales.Select(l => new EntryLanguage(l.Code, l.DisplayName, $"{url}/translations/{l.Code}", current?.Id == l.Id, translated.Contains(l.Id))))
+            .ToList();
     }
 
     /// <summary>
@@ -266,7 +372,7 @@ public sealed class ContentController : AdminControllerBase
         {
             if (contentType.Drafts)
             {
-                ModelState.AddModelError(string.Empty, "You don't have permission to publish entries. Save a draft instead.");
+                ModelState.AddModelError(string.Empty, T["You don't have permission to publish entries. Save a draft instead."]);
                 return View("Edit", await BuildFormAsync(contentType, fields, entry, input, null, conflict: false, baseVersion));
             }
 
@@ -277,7 +383,7 @@ public sealed class ContentController : AdminControllerBase
         var result = await _entries.SaveAsync(contentType, entry, input, publish, force ? null : baseVersion, CurrentUserId, HttpContext.RequestAborted);
         if (result.Conflict)
         {
-            ModelState.AddModelError(string.Empty, "Someone else saved this entry while you were editing it. Your changes are below: save again to overwrite theirs, or reload to see them.");
+            ModelState.AddModelError(string.Empty, T["Someone else saved this entry while you were editing it. Your changes are below: save again to overwrite theirs, or reload to see them."]);
             return View("Edit", await BuildFormAsync(contentType, fields, entry, input, null, conflict: true, entry!.Version));
         }
 
@@ -291,7 +397,7 @@ public sealed class ContentController : AdminControllerBase
             return View("Edit", await BuildFormAsync(contentType, fields, entry, input, result.Errors, conflict: false, baseVersion));
         }
 
-        TempData["Success"] = publish ? $"Published '{ContentEntryService.Display(result.Entry!)}'." : $"Saved a draft of '{ContentEntryService.Display(result.Entry!)}'.";
+        TempData["Success"] = publish ? T["Published '{0}'.", ContentEntryService.Display(result.Entry!)] : T["Saved a draft of '{0}'.", ContentEntryService.Display(result.Entry!)];
         return Redirect($"/admin/content/{contentType.Slug}/{result.Entry!.Id}");
     }
 
@@ -313,11 +419,11 @@ public sealed class ContentController : AdminControllerBase
         var errors = await _entries.PublishAsync(contentType!, entry, CurrentUserId, HttpContext.RequestAborted);
         if (errors.Count > 0)
         {
-            TempData["Error"] = "Can't publish yet: " + string.Join(" ", errors.Select(e => e.Message).Distinct().Take(3));
+            TempData["Error"] = T["Can't publish yet: {0}", string.Join(" ", errors.Select(e => e.Message).Distinct().Take(3))];
         }
         else
         {
-            TempData["Success"] = $"Published '{ContentEntryService.Display(entry)}'.";
+            TempData["Success"] = T["Published '{0}'.", ContentEntryService.Display(entry)];
         }
 
         return Redirect(returnTo == "list" ? $"/admin/content/{contentType!.Slug}" : $"/admin/content/{contentType!.Slug}/{entry.Id}");
@@ -339,7 +445,7 @@ public sealed class ContentController : AdminControllerBase
         }
 
         await _entries.UnpublishAsync(contentType!, entry, HttpContext.RequestAborted);
-        TempData["Success"] = $"Unpublished '{ContentEntryService.Display(entry)}'. It is no longer on the site or in the API.";
+        TempData["Success"] = T["Unpublished '{0}'. It is no longer on the site or in the API.", ContentEntryService.Display(entry)];
         return Redirect(returnTo == "list" ? $"/admin/content/{contentType!.Slug}" : $"/admin/content/{contentType!.Slug}/{entry.Id}");
     }
 
@@ -359,7 +465,7 @@ public sealed class ContentController : AdminControllerBase
         }
 
         var copy = await _entries.DuplicateAsync(contentType, entry, CurrentUserId, HttpContext.RequestAborted);
-        TempData["Success"] = $"Copied '{ContentEntryService.Display(entry)}'. The copy is a draft.";
+        TempData["Success"] = T["Copied '{0}'. The copy is a draft.", ContentEntryService.Display(entry)];
         return Redirect($"/admin/content/{contentType.Slug}/{copy.Id}");
     }
 
@@ -379,7 +485,7 @@ public sealed class ContentController : AdminControllerBase
         }
 
         await _entries.DeleteAsync(contentType, entry, HttpContext.RequestAborted);
-        TempData["Success"] = $"Deleted '{ContentEntryService.Display(entry)}'.";
+        TempData["Success"] = T["Deleted '{0}'.", ContentEntryService.Display(entry)];
         return Redirect($"/admin/content/{contentType.Slug}");
     }
 
@@ -414,12 +520,12 @@ public sealed class ContentController : AdminControllerBase
     {
         if (!Can(PermissionAreas.Media, PermissionActions.Create))
         {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You don't have permission to upload files." });
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = T["You don't have permission to upload files."] });
         }
 
         if (file is null)
         {
-            return BadRequest(new { message = "Choose a file to upload." });
+            return BadRequest(new { message = T["Choose a file to upload."] });
         }
 
         var (stored, error) = await _media.UploadAsync(file, isPublic, CurrentUserId, reuseDuplicate: true, ct: HttpContext.RequestAborted);

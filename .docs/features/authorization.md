@@ -86,7 +86,7 @@ screen; on an action it adds to the controller's requirement (both must pass).
 | Screen / endpoint | Requires | Defaults: Super Admin · Admin · Developer · Editor · Author |
 | --- | --- | :-: |
 | Dashboard, enabled admin extension tabs and `/admin/ext/{id}/resources`, module placeholders | `AdminArea` only | ✔ ✔ ✔ ✔ ✔ |
-| Profile and [Sign-in security](../pages/sign-in-security.md) `/admin/profile/security/*` (the user's own account and second factors only) | `AdminArea` only | ✔ ✔ ✔ ✔ ✔ |
+| Profile (incl. the own admin language `POST /admin/profile/language`) and [Sign-in security](../pages/sign-in-security.md) `/admin/profile/security/*` (the user's own account and second factors only) | `AdminArea` only | ✔ ✔ ✔ ✔ ✔ |
 | Pages (every screen and action) | `Collection types` / `read` on `PagesController` | ✔ ✔ ✘ ✔ ✔ |
 | Pages: create page `POST /admin/pages/create` | `Collection types` / `create` (`Can`) | ✔ ✔ ✘ ✔ ✔ |
 | Pages: update page `POST /admin/pages/update/{id}` | `update`, or `update.own` on own pages (`CanModify`) | ✔ ✔ ✘ ✔ own |
@@ -99,14 +99,16 @@ screen; on an action it adds to the controller's requirement (both must pass).
 | Content Manager: publish, unpublish (also every save of a type without drafts) | + `publish` | ✔ ✔ ✘ ✔ ✘ |
 | Content Manager: delete, bulk delete | `delete`, or `delete.own` on own entries (bulk: every selected one) | ✔ ✔ ✘ ✔ own |
 | Content Manager: reorder entries | `update` | ✔ ✔ ✘ ✔ ✘ |
+| Content Manager: save an entry's translation `POST /admin/content/{type}/{id}/translations/{locale}` | `update`, or `update.own` on own entries (+ `publish` to publish it) | ✔ ✔ ✘ ✔ own |
 | Content types: list and builder / create / save / delete | `Content types` / `read` / + `create` / + `update` / + `delete` | ✔ ✔ ✘ ✘ ✘ |
 | Media (every screen and action) | `Media` / `read` on `MediaController` | ✔ ✔ ✘ ✔ ✔ |
 | Media: upload `POST /admin/media/upload` | `Media` / `create` | ✔ ✔ ✘ ✔ ✔ |
 | Media: make private/public `POST /admin/media/visibility/{id}` | `update`, or `update.own` on own files | ✔ ✔ ✘ ✔ own |
 | Media: delete `POST /admin/media/delete/{id}` and `delete-selected` | `delete`, or `delete.own` on own files; selected folders `delete` | ✔ ✔ ✘ ✔ own |
 | Media: move `POST /admin/media/move-selected` | files `update`, or `update.own` on own files; selected folders `update` | ✔ ✔ ✘ ✔ own |
-| Settings `GET /admin/settings` / save `POST /admin/settings/save` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
+| [Environment Variables](../pages/environment-variables.md) `GET /admin/environment-variables` / add, edit, save, delete `GET .../new`, `GET .../{id}`, `POST .../save`, `POST .../{id}/delete` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | Media Library settings `GET` / save `POST /admin/media-settings` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
+| [Internationalization](../pages/internationalization.md) `GET /admin/internationalization[/{id}]` / Add locale `GET /admin/internationalization/add` and every POST (locales, site admin language) | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | [Providers](../pages/providers.md) `GET /admin/providers`, `GET /admin/providers/{key}` / save `POST /admin/providers/{key}` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | [Two-factor authentication](../pages/mfa.md) `GET` / save `POST /admin/mfa` | `Settings` / `read` / + `update` | ✔ ✔ ✘ ✘ ✘ |
 | API Tokens list / create / revoke | `API` / `read` / + `create` / + `delete` | ✔ ✔ ✔ ✘ ✘ |

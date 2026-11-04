@@ -53,13 +53,13 @@ token from a signed-in **Super Admin** uses the admin session with every permiss
 | GET | `/api/media` | `media.read` | `[{ id, fileName, contentType, sizeBytes, isPublic, uploadedDate }]` newest first | `MediaApiController.Get` |
 | GET | `/api/users` | `users.read` | `[{ id, email, firstName, lastName, status, lastLoginDate }]` | `UsersApiController.Get` |
 | GET | `/api/roles` | `roles.read` | `[{ id, name, description, isBuiltIn, users }]` | `RolesApiController.Get` |
-| GET | `/api/settings` | `settings.read` | `[{ key, value }]` - all settings | `SettingsApiController.Get` |
-| GET | `/api/content-types` | `schema.read` | `{ data: [type] }` - every content type with its field definitions ([below](#structured-content)) | `EntriesApiController.GetTypes` |
+| GET | `/api/settings` | `settings.read` | `[{ key, value, secret }]` - the [environment variables](../pages/environment-variables.md) of the environment the site runs in, one per key (its own value over the all-environments one); `value` is `null` for a secret | `SettingsApiController.Get` |
+| GET | `/api/content-types` | `schema.read` | `{ data: [type] }` - every content type with its field definitions ([below](#structured-content)); a type is `{ id, name, slug, kind, description, titleField, drafts, localized, fields, updatedAt }` (`localized`: its entries can be [translated](#translations)) | `EntriesApiController.GetTypes` |
 | GET | `/api/content-types/{type}` | `schema.read` | `{ data: type }` by API id; `404 { error }` | `EntriesApiController.GetType` |
 | GET | `/api/entries/{type}` | `entries.read` | `{ data: [entry], meta: { total, page, pageSize, pageCount } }`; a single type: `{ data: entry }` | `EntriesApiController.List` |
 | GET | `/api/entries/{type}/{idOrSlug}` | `entries.read` | `{ data: entry }` by id, or by the value of the type's slug field (published only) | `EntriesApiController.Get` |
 | POST | `/api/entries/{type}` | `entries.create` (+ `entries.publish` to publish) | `201 { data: entry }`; `400 { error, errors: [{ path, message }] }` | `EntriesApiController.Create` |
-| PUT | `/api/entries/{type}/{id}` | `entries.update` (+ `entries.publish` to publish) | `200 { data: entry }`; `409 { error, version }` on a stale `version`; `400` as above | `EntriesApiController.Update` |
+| PUT | `/api/entries/{type}/{id}` | `entries.update` (+ `entries.publish` to publish) | `200 { data: entry }`; `409 { error, version }` on a stale `version`; `400` as above; with `?locale=` the [translation](#translations) | `EntriesApiController.Update` |
 | POST | `/api/entries/{type}/{id}/publish` | `entries.publish` | `200 { data: entry }`; `400 { error, errors }` when a required value is missing | `EntriesApiController.Publish` |
 | POST | `/api/entries/{type}/{id}/unpublish` | `entries.publish` | `200 { data: entry }` | `EntriesApiController.Unpublish` |
 | DELETE | `/api/entries/{type}/{id}` | `entries.delete` | `204`; `400` for a single type's entry | `EntriesApiController.Delete` |
@@ -119,12 +119,25 @@ in published reads); missing ones are dropped (a single reference becomes `null`
 | `page`, `pageSize` | page (from 1) and size (1-100, default 20) |
 | `depth` | `0` or `1` |
 | `status=draft` | the working copies, drafts included - needs `entries.update` too (else `403`) |
+| `locale` | an enabled locale's code (`de`): a localized type's values in that locale, untranslated values falling back to the entry's own; every entry gets `"locale"`. Also on `GET /api/entries/{type}/{idOrSlug}`. Unknown or disabled → `400` ([translations](#translations)) |
 
 **Writes**: body `{ "data": { field: value }, "publish": false, "version": "…" }`. Values use the stored formats
 (references as ids, rich text as blocks or plain text); unknown keys are dropped. `publish: true` (or a type without
 drafts) also needs `entries.publish`. `version` (update only) is the entry's `version` as read: a newer save in between
 answers `409`. A single type's entry is updated with `PUT`; `POST` to a single type answers `400`. Write responses
 return the working copy with `depth=0`.
+
+### Translations
+
+Entries of a **localized** content type have their text fields per locale
+([internationalization → entries](internationalization.md#entries)). `GET ...?locale=de` reads them in German (the
+published translations; with `status=draft` the working copies), linked entries too, with `title` recomputed and
+`"locale": "de"` on every entry. `PUT /api/entries/{type}/{id}?locale=de` writes the **translation** instead of the
+entry: `data` holds the translated values (only the type's translatable fields are kept, empty ones fall back),
+`publish: true` (or a type without drafts) also publishes it and needs `entries.publish`; `version` is not checked.
+A type that is not localized answers `400`, invalid values `400 { error: "The translation is not valid.", errors }`.
+Search, filters, sort and the slug lookup use the entry's own (default-locale) values. With the default locale's code
+a read returns the entries' own values (still marked `"locale"`) and a `PUT` is the normal update. Content pages (`/api/content/pages`) have no locale parameter.
 
 ## Rate limiting
 

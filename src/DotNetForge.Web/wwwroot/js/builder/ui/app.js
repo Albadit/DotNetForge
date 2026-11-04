@@ -1,4 +1,5 @@
 /** The editor's layout: top bar, layers/insert on the left, canvas, inspector on the right. */
+import { t } from "./i18n.js";
 import { jsx, useEffect, useState } from "./vdom.js";
 import { Icon } from "./icons.js";
 import { Actions } from "../editor/actions.js";
@@ -55,7 +56,7 @@ function Resizer({ side, width, onWidth }) {
         el.addEventListener('pointermove', move);
         el.addEventListener('pointerup', up);
     };
-    return (jsx("div", { class: cls('pe-resizer', 'is-' + side), role: "separator", "aria-orientation": "vertical", "aria-label": (side === 'left' ? 'Layers' : 'Properties') + ' panel width', "aria-valuenow": width, "aria-valuemin": min, "aria-valuemax": max, title: "Drag to resize, double-click to reset", onPointerDown: e => down(e), onDblClick: () => {
+    return (jsx("div", { class: cls('pe-resizer', 'is-' + side), role: "separator", "aria-orientation": "vertical", "aria-label": side === 'left' ? t("Layers panel width") : t("Properties panel width"), "aria-valuenow": width, "aria-valuemin": min, "aria-valuemax": max, title: t("Drag to resize, double-click to reset"), onPointerDown: e => down(e), onDblClick: () => {
             onWidth(def);
             save(def);
         } }));
@@ -90,37 +91,37 @@ export function App({ ctx, onClose }) {
     if (status === 'loading') {
         return jsx("div", { class: "pe-app pe-app-loading", role: "status" },
             jsx(Icon, { name: "loader", size: 22, class: "pe-spin" }),
-            " Opening the editor\u2026");
+            " " + t("Opening the editor…"));
     }
     if (status === 'error') {
         return (jsx("div", { class: "pe-app pe-app-loading", role: "alert" },
             jsx(Icon, { name: "alert", size: 22 }),
             jsx("div", null,
-                jsx("strong", null, "The editor could not be opened."),
+                jsx("strong", null, t("The editor could not be opened.")),
                 jsx("p", null, loadError),
-                jsx("button", { type: "button", class: "pe-btn", onClick: onClose }, "Close"),
-                jsx("button", { type: "button", class: "pe-btn pe-btn-primary", onClick: () => void session.load() }, "Try again"))));
+                jsx("button", { type: "button", class: "pe-btn", onClick: onClose }, t("Close")),
+                jsx("button", { type: "button", class: "pe-btn pe-btn-primary", onClick: () => void session.load() }, t("Try again")))));
     }
     return (jsx(EditorContext.Provider, { value: ctx },
         jsx("div", { class: cls('pe-app', !leftOpen && 'no-left'), style: { gridTemplateColumns: `${leftOpen ? leftWidth : 0}px minmax(0, 1fr) ${rightWidth}px` } },
             jsx(TopBar, { actions: actions, onClose: onClose }),
-            jsx("aside", { class: "pe-left", "aria-label": "Layers and components" },
+            jsx("aside", { class: "pe-left", "aria-label": t("Layers and components") },
                 jsx("div", { class: "pe-tabs pe-left-tabs", role: "tablist" },
                     jsx("button", { type: "button", role: "tab", "aria-selected": leftTab === 'layers', class: cls('pe-tab', leftTab === 'layers' && 'is-on'), onClick: () => session.leftTab.set('layers') },
                         jsx(Icon, { name: "layers", size: 16 }),
-                        " Layers"),
+                        " " + t("Layers")),
                     caps.editLayout && (jsx("button", { type: "button", role: "tab", "aria-selected": leftTab === 'insert', class: cls('pe-tab', leftTab === 'insert' && 'is-on'), onClick: () => session.leftTab.set('insert') },
                         jsx(Icon, { name: "plus", size: 16 }),
-                        " Insert")),
-                    jsx("button", { type: "button", class: "pe-icon-btn pe-collapse", title: "Hide panel", "aria-label": "Hide left panel", onClick: () => setLeftOpen(false) },
+                        " " + t("Insert"))),
+                    jsx("button", { type: "button", class: "pe-icon-btn pe-collapse", title: t("Hide panel"), "aria-label": t("Hide left panel"), onClick: () => setLeftOpen(false) },
                         jsx(Icon, { name: "chevronLeft", size: 16 }))),
                 leftTab === 'insert' && caps.editLayout ? jsx(InsertPanel, null) : jsx(LayersPanel, null),
                 jsx(Resizer, { side: "left", width: leftWidth, onWidth: setLeftWidth })),
-            !leftOpen && jsx("button", { type: "button", class: "pe-reopen is-left", "aria-label": "Show left panel", onClick: () => setLeftOpen(true) },
+            !leftOpen && jsx("button", { type: "button", class: "pe-reopen is-left", "aria-label": t("Show left panel"), onClick: () => setLeftOpen(true) },
                 jsx(Icon, { name: "sidebar", size: 16 })),
             jsx("main", { class: "pe-center" },
                 jsx(CanvasView, null)),
-            jsx("aside", { class: "pe-right", "aria-label": "Properties" },
+            jsx("aside", { class: "pe-right", "aria-label": t("Properties") },
                 jsx(Resizer, { side: "right", width: rightWidth, onWidth: setRightWidth }),
                 jsx(Inspector, null)),
             jsx(ContextMenu, { actions: actions }),

@@ -2,53 +2,53 @@
 @model DashboardViewModel
 @inject AdminNavigationService Navigation
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = T["Dashboard"];
     var nav = await Navigation.BuildAsync(Context, "Dashboard");
 }
 
 <div class="dnf-stack dnf-stack--lg">
     <section class="dnf-dashboard-hero" aria-labelledby="welcome">
         <div>
-            <h2 class="dnf-dashboard-hero__title" id="welcome">Welcome back, @Model.Greeting</h2>
-            <p class="dnf-dashboard-hero__text">Manage your pages, media and extensions from here.</p>
+            <h2 class="dnf-dashboard-hero__title" id="welcome">@T["Welcome back, {0}", Model.Greeting]</h2>
+            <p class="dnf-dashboard-hero__text">@T["Manage your pages, media and extensions from here."]</p>
         </div>
         <div class="dnf-button-group">
             @if (Model.CanCreatePages)
             {
                 <form method="post" action="/admin/pages/create" class="inline">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="plus" /> New page</button>
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="plus" /> @T["New page"]</button>
                 </form>
             }
             @if (Model.CanUpload)
             {
-                <a class="dnf-button dnf-button--secondary" href="/admin/media#upload"><dnf-icon name="upload" /> Upload media</a>
+                <a class="dnf-button dnf-button--secondary" href="/admin/media#upload"><dnf-icon name="upload" /> @T["Upload media"]</a>
             }
             @if (nav.Allows("/admin/api-tokens"))
             {
-                <a class="dnf-button dnf-button--secondary" href="/admin/api-tokens/create"><dnf-icon name="key" /> New API token</a>
+                <a class="dnf-button dnf-button--secondary" href="/admin/api-tokens/create"><dnf-icon name="key" /> @T["New API token"]</a>
             }
         </div>
     </section>
 
     <div class="dnf-grid dnf-grid--cols-4">
-        <dnf-stat-card icon="pages" label="Pages" value="@Model.Pages.ToString()" href="@(nav.Allows("/admin/pages") ? "/admin/pages" : null)" />
-        <dnf-stat-card icon="image" label="Media files" value="@Model.Media.ToString()" href="@(nav.Allows("/admin/media") ? "/admin/media" : null)" />
+        <dnf-stat-card icon="pages" label="@T["Pages"]" value="@Model.Pages.ToString()" href="@(nav.Allows("/admin/pages") ? "/admin/pages" : null)" />
+        <dnf-stat-card icon="image" label="@T["Media files"]" value="@Model.Media.ToString()" href="@(nav.Allows("/admin/media") ? "/admin/media" : null)" />
         @if (nav.Allows("/admin/users"))
         {
-            <dnf-stat-card icon="users" label="Users" value="@Model.Users.ToString()" href="/admin/users" />
+            <dnf-stat-card icon="users" label="@T["Users"]" value="@Model.Users.ToString()" href="/admin/users" />
         }
         else
         {
-            <dnf-stat-card icon="users" label="Users" value="@Model.Users.ToString()" />
+            <dnf-stat-card icon="users" label="@T["Users"]" value="@Model.Users.ToString()" />
         }
         @if (nav.Allows("/admin/plugins"))
         {
-            <dnf-stat-card icon="puzzle" label="Enabled extensions" value="@Model.Extensions.ToString()" href="/admin/plugins" />
+            <dnf-stat-card icon="puzzle" label="@T["Enabled extensions"]" value="@Model.Extensions.ToString()" href="/admin/plugins" />
         }
         else
         {
-            <dnf-stat-card icon="puzzle" label="Enabled extensions" value="@Model.Extensions.ToString()" />
+            <dnf-stat-card icon="puzzle" label="@T["Enabled extensions"]" value="@Model.Extensions.ToString()" />
         }
     </div>
 
@@ -56,17 +56,17 @@
         <section class="dnf-card" aria-labelledby="activity-title">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="activity-title">Recent activity</h2>
-                    <p class="dnf-card__description">The latest actions.</p>
+                    <h2 class="dnf-card__title" id="activity-title">@T["Recent activity"]</h2>
+                    <p class="dnf-card__description">@T["The latest actions."]</p>
                 </div>
                 @if (nav.Allows("/admin/audit-logs"))
                 {
-                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/audit-logs">View all <dnf-icon name="chevron-right" size="Sm" /></a>
+                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/audit-logs">@T["View all"] <dnf-icon name="chevron-right" size="Sm" /></a>
                 }
             </div>
             @if (Model.RecentActivity.Count == 0)
             {
-                <dnf-empty-state icon="activity" title="No activity yet" description="Sign-ins, content changes and uploads appear here." compact="true" />
+                <dnf-empty-state icon="activity" title="@T["No activity yet"]" description="@T["Sign-ins, content changes and uploads appear here."]" compact="true" />
             }
             else
             {
@@ -77,17 +77,17 @@
                             <span class="dnf-list__icon dnf-list__icon--round@(entry.Success ? null : " dnf-list__icon--danger")"><dnf-icon name="@AuditPresentation.Icon(entry.Action)" size="Sm" /></span>
                             <div class="grow min-w-0">
                                 <div class="font-medium">
-                                    @AuditPresentation.Label(entry.Action)
+                                    @T[AuditPresentation.Label(entry.Action)]
                                     @if (!string.IsNullOrEmpty(entry.EntityDisplaySnapshot))
                                     {
                                         <span class="text-muted">· @entry.EntityDisplaySnapshot</span>
                                     }
                                 </div>
-                                <div class="text-xs text-muted">@(entry.UserDisplaySnapshot ?? "System")</div>
+                                <div class="text-xs text-muted">@(entry.UserDisplaySnapshot ?? T["System"])</div>
                             </div>
                             @if (!entry.Success)
                             {
-                                <dnf-badge tone="Danger">Failed</dnf-badge>
+                                <dnf-badge tone="Danger">@T["Failed"]</dnf-badge>
                             }
                             <dnf-timestamp value="@entry.Timestamp" class="text-xs text-muted text-nowrap" />
                         </li>
@@ -98,23 +98,23 @@
 
         <div class="dnf-stack">
             <section class="dnf-card" aria-labelledby="glance-title">
-                <div class="dnf-card__header"><h2 class="dnf-card__title" id="glance-title">At a glance</h2></div>
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="glance-title">@T["At a glance"]</h2></div>
                 <div class="dnf-card__body">
                     <dl class="dnf-description-list">
-                        <dt>Roles</dt><dd>@Model.Roles</dd>
-                        <dt>Active API tokens</dt><dd>@Model.ApiTokens</dd>
-                        <dt>Webhooks</dt><dd>@Model.Webhooks</dd>
-                        <dt>Audit entries</dt><dd>@Model.AuditEntries</dd>
+                        <dt>@T["Roles"]</dt><dd>@Model.Roles</dd>
+                        <dt>@T["Active API tokens"]</dt><dd>@Model.ApiTokens</dd>
+                        <dt>@T["Webhooks"]</dt><dd>@Model.Webhooks</dd>
+                        <dt>@T["Audit entries"]</dt><dd>@Model.AuditEntries</dd>
                     </dl>
                 </div>
             </section>
             <section class="dnf-card" aria-labelledby="system-title">
-                <div class="dnf-card__header"><h2 class="dnf-card__title" id="system-title">System</h2></div>
+                <div class="dnf-card__header"><h2 class="dnf-card__title" id="system-title">@T["System"]</h2></div>
                 <div class="dnf-card__body">
                     <dl class="dnf-description-list">
-                        <dt>CMS version</dt><dd><dnf-badge tone="Primary">v@(Model.CmsVersion)</dnf-badge></dd>
-                        <dt>Installed</dt><dd><dnf-timestamp value="@Model.InstalledAtUtc" absolute="true" empty="-" /></dd>
-                        <dt>Modes</dt><dd>Traditional · Headless · Hybrid</dd>
+                        <dt>@T["CMS version"]</dt><dd><dnf-badge tone="Primary">v@(Model.CmsVersion)</dnf-badge></dd>
+                        <dt>@T["Installed"]</dt><dd><dnf-timestamp value="@Model.InstalledAtUtc" absolute="true" empty="-" /></dd>
+                        <dt>@T["Modes"]</dt><dd>@T["Traditional · Headless · Hybrid"]</dd>
                     </dl>
                 </div>
             </section>

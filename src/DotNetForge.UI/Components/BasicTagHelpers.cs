@@ -382,8 +382,8 @@ public sealed class DnfSpinnerTagHelper : DnfTagHelper
     /// <summary><c>Sm</c>, <c>Md</c> (default) or <c>Lg</c>; <c>Xl</c> renders as <c>Lg</c>.</summary>
     public DnfSize Size { get; set; } = DnfSize.Md;
 
-    /// <summary>Announced to screen readers while it spins.</summary>
-    public string Label { get; set; } = "Loading";
+    /// <summary>Announced to screen readers while it spins; "Loading" (in the UI language) when not set.</summary>
+    public string? Label { get; set; }
 
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
@@ -391,7 +391,8 @@ public sealed class DnfSpinnerTagHelper : DnfTagHelper
         output.TagMode = TagMode.StartTagAndEndTag;
         SetClasses(output, Size switch { DnfSize.Sm => "dnf-spinner dnf-spinner--sm", DnfSize.Lg or DnfSize.Xl => "dnf-spinner dnf-spinner--lg", _ => "dnf-spinner" });
         output.Attributes.SetAttribute("role", "status");
-        output.Attributes.SetAttribute("aria-label", Label);
+        var t = DnfText.For(ViewContext);
+        output.Attributes.SetAttribute("aria-label", Label ?? t("Loading"));
     }
 }
 
@@ -445,11 +446,15 @@ public sealed class DnfAvatarTagHelper : DnfTagHelper
 [HtmlTargetElement("dnf-timestamp", TagStructure = TagStructure.WithoutEndTag)]
 public sealed class DnfTimestampTagHelper : TagHelper
 {
+    [ViewContext]
+    [HtmlAttributeNotBound]
+    public Microsoft.AspNetCore.Mvc.Rendering.ViewContext? ViewContext { get; set; }
+
     /// <summary>The UTC date; local dates are converted.</summary>
     public DateTime? Value { get; set; }
 
-    /// <summary>Text when <see cref="Value"/> is null.</summary>
-    public string Empty { get; set; } = "Never";
+    /// <summary>Text when <see cref="Value"/> is null; "Never" (in the UI language) when not set.</summary>
+    public string? Empty { get; set; }
 
     /// <summary>Show the full date and time instead of a relative time.</summary>
     public bool Absolute { get; set; }
@@ -457,11 +462,12 @@ public sealed class DnfTimestampTagHelper : TagHelper
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
         output.TagMode = TagMode.StartTagAndEndTag;
+        var t = DnfText.For(ViewContext);
         if (Value is not { } value)
         {
             output.TagName = "span";
             DnfTagHelper.SetClasses(output, "text-subtle");
-            output.Content.SetContent(Empty);
+            output.Content.SetContent(Empty ?? t("Never"));
             return;
         }
 
@@ -469,24 +475,28 @@ public sealed class DnfTimestampTagHelper : TagHelper
         output.TagName = "time";
         output.Attributes.SetAttribute("datetime", utc.ToString("O", CultureInfo.InvariantCulture));
         output.Attributes.SetAttribute("title", utc.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture));
-        output.Content.SetContent(Absolute ? Format(utc) : Relative(utc, DateTime.UtcNow));
+        output.Content.SetContent(Absolute ? Format(utc) : Relative(utc, DateTime.UtcNow, t));
     }
 
-    /// <summary>"just now", "12 min ago", "3 h ago", "yesterday", "4 days ago", then "3 Oct 2026" (also future).</summary>
-    public static string Relative(DateTime utc, DateTime nowUtc)
+    /// <summary>
+    /// "just now", "12 min ago", "3 h ago", "yesterday", "4 days ago", then "3 Oct 2026" (also future); the words through
+    /// <paramref name="t"/> (<see cref="DnfText"/>), English without it.
+    /// </summary>
+    public static string Relative(DateTime utc, DateTime nowUtc, Func<string, string>? t = null)
     {
+        t ??= text => text;
         var delta = nowUtc - utc;
         var future = delta < TimeSpan.Zero;
         var span = future ? -delta : delta;
-        string Ago(string amount) => future ? $"in {amount}" : $"{amount} ago";
+        string Fill(string text, int amount) => text.Replace("{0}", amount.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
 
         return span switch
         {
-            { TotalSeconds: < 45 } => future ? "in a moment" : "just now",
-            { TotalMinutes: < 60 } => Ago($"{Math.Max(1, (int)Math.Round(span.TotalMinutes))} min"),
-            { TotalHours: < 24 } => Ago($"{(int)Math.Round(span.TotalHours)} h"),
-            { TotalDays: < 2 } => future ? "tomorrow" : "yesterday",
-            { TotalDays: < 7 } => Ago($"{(int)span.TotalDays} days"),
+            { TotalSeconds: < 45 } => future ? t("in a moment") : t("just now"),
+            { TotalMinutes: < 60 } => Fill(future ? t("in {0} min") : t("{0} min ago"), Math.Max(1, (int)Math.Round(span.TotalMinutes))),
+            { TotalHours: < 24 } => Fill(future ? t("in {0} h") : t("{0} h ago"), (int)Math.Round(span.TotalHours)),
+            { TotalDays: < 2 } => future ? t("tomorrow") : t("yesterday"),
+            { TotalDays: < 7 } => Fill(future ? t("in {0} days") : t("{0} days ago"), (int)span.TotalDays),
             _ => utc.ToString("d MMM yyyy", CultureInfo.InvariantCulture),
         };
     }

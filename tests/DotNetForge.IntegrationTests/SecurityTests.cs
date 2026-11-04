@@ -162,7 +162,7 @@ public sealed class SecurityTests
         await factory.CreateUserAsync("editor@example.com", "Edit0rPass1", Roles.Editor);
         var editor = await factory.SignInAsync("editor@example.com", "Edit0rPass1");
 
-        var response = await editor.GetAsync("/admin/settings");
+        var response = await editor.GetAsync("/admin/environment-variables");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains("/account/denied", response.Headers.Location?.OriginalString);

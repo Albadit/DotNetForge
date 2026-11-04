@@ -40,7 +40,7 @@
                     input.checked = false;
                     input.setAttribute("form", form || ownForm);
                     input.disabled = inside || id === current;
-                    option.querySelector("[data-move-note]").textContent = inside ? "Can't go inside itself" : id === current ? "Already here" : "";
+                    option.querySelector("[data-move-note]").textContent = inside ? dnfText("Can't go inside itself") : id === current ? dnfText("Already here") : "";
                 });
                 submit.disabled = true;
                 submit.setAttribute("form", form || ownForm);

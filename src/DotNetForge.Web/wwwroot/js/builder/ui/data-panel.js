@@ -4,6 +4,7 @@
  * binding of an element's props to fields of the entry it shows ("Image ← Product image"). Everything here edits the
  * document; the entries themselves are fetched by editor/content.js and previewed on the canvas.
  */
+import { t } from "./i18n.js";
 import { jsx, useEffect, useState } from "./vdom.js";
 import { Icon } from "./icons.js";
 import { NumberField, Row, Section, Segmented, SelectField, TextField, Toggle } from "./fields.js";
@@ -12,7 +13,7 @@ import { setBindings, updateLayout, updateProps } from "../core/commands.js";
 import { layoutAt } from "../core/responsive.js";
 import { BINDABLE_TYPES, FILTER_OPS } from "../core/validate.js";
 
-const OP_LABELS = { eq: "is", neq: "is not", contains: "contains", gt: "is more than", gte: "is at least", lt: "is less than", lte: "is at most", empty: "is empty", notEmpty: "is not empty" };
+const OP_LABELS = { eq: t("is"), neq: t("is not"), contains: t("contains"), gt: t("is more than"), gte: t("is at least"), lt: t("is less than"), lte: t("is at most"), empty: t("is empty"), notEmpty: t("is not empty") };
 
 /** Which field kinds suit a prop type, best first: the binding menu lists those first. */
 const KINDS = {
@@ -39,72 +40,72 @@ export function DataPanel({ node }) {
   useEffect(() => { void content.loadTypes(); }, []);
   const disabled = !caps.editLayout || !!node.locked;
   const p = node.props;
-  const type = types?.find((t) => t.id === p.source);
+  const type = types?.find((ty) => ty.id === p.source);
   const set = (patch) => updateProps(store, node.id, patch);
   const shown = data?.[node.id];
 
   if (types === null) {
-    return jsx("div", { class: "pe-hint pe-data-loading" }, "Loading content types…");
+    return jsx("div", { class: "pe-hint pe-data-loading" }, t("Loading content types…"));
   }
   if (types.length === 0) {
-    return jsx(Section, { title: "Content" },
-      jsx("div", { class: "pe-note" }, jsx(Icon, { name: "database", size: 16 }), " There are no content types yet."),
-      jsx("div", { class: "pe-hint" }, "A content list shows entries of a content type - products, blog posts, events. Create one, add entries, then come back."),
-      jsx("a", { class: "pe-btn", href: "/admin/content-types/new", target: "_blank", rel: "noopener" }, jsx(Icon, { name: "plus", size: 16 }), " New content type"));
+    return jsx(Section, { title: t("Content") },
+      jsx("div", { class: "pe-note" }, jsx(Icon, { name: "database", size: 16 }), " " + t("There are no content types yet.")),
+      jsx("div", { class: "pe-hint" }, t("A content list shows entries of a content type - products, blog posts, events. Create one, add entries, then come back.")),
+      jsx("a", { class: "pe-btn", href: "/admin/content-types/new", target: "_blank", rel: "noopener" }, jsx(Icon, { name: "plus", size: 16 }), " " + t("New content type")));
   }
 
   // On a detail page (its URL has a [param] segment) one entry means the one the URL names.
   const urlParam = /\[([a-z][a-z0-9_-]*)\]/.exec(session.page.value?.url ?? "")?.[1];
   const chooseType = (id) => {
-    const next = types.find((t) => t.id === id);
+    const next = types.find((ty) => ty.id === id);
     const route = p.mode === "single" && urlParam && !p.routeParam ? { routeParam: urlParam } : {};
     set({ source: id ?? "", filters: [], sortField: "", entry: "", columns: [], ...route });
     if (next) autoBind(session, node, next);
   };
 
   return jsx("div", { class: "pe-data" },
-    jsx(Section, { title: "Content" },
-      jsx(Row, { label: "Content type", wide: true },
-        jsx(SelectField, { value: p.source || undefined, placeholder: "Choose what to show", disabled, options: types.map((t) => ({ value: t.id, label: t.name })), onChange: chooseType })),
+    jsx(Section, { title: t("Content") },
+      jsx(Row, { label: t("Content type"), wide: true },
+        jsx(SelectField, { value: p.source || undefined, placeholder: t("Choose what to show"), disabled, options: types.map((ty) => ({ value: ty.id, label: ty.name })), onChange: chooseType })),
       type && jsx(StatusLine, { type, shown, loading, error, mode: p.mode })),
-    type && jsx(Section, { title: "Entries" },
-      jsx(Row, { label: "Show", wide: true },
-        jsx(Segmented, { value: p.mode, disabled, options: [{ value: "list", label: "Many" }, { value: "single", label: "One" }],
+    type && jsx(Section, { title: t("Entries") },
+      jsx(Row, { label: t("Show"), wide: true },
+        jsx(Segmented, { value: p.mode, disabled, options: [{ value: "list", label: t("Many") }, { value: "single", label: t("One") }],
           onChange: (v) => set({ mode: v, limit: v === "single" ? 1 : Math.max(p.limit, 6), ...(v === "single" && urlParam && !p.routeParam && !p.entry ? { routeParam: urlParam } : {}) }) })),
       p.mode === "single"
         ? jsx(SingleEntry, { node, type, disabled, set, targets })
         : [
           jsx(Filters, { key: "f", filters: p.filters ?? [], type, disabled, onChange: (filters) => set({ filters }), latest: () => session.store.doc.nodes[node.id]?.props.filters ?? [] }),
-          jsx(Row, { key: "s", label: "Sort by", label2: "Order" },
+          jsx(Row, { key: "s", label: t("Sort by"), label2: t("Order") },
             jsx(SelectField, { value: p.sortField ?? "", disabled, options: type.sorts.map((s) => ({ value: s.key, label: s.label })), onChange: (v) => set({ sortField: v ?? "" }) }),
-            jsx(Segmented, { value: p.sortDir, disabled, options: [{ value: "asc", label: "A→Z", title: "Ascending" }, { value: "desc", label: "Z→A", title: "Descending" }], onChange: (v) => set({ sortDir: v }) })),
-          jsx(Row, { key: "l", label: "Items" },
-            jsx(NumberField, { value: p.limit, min: 1, max: 100, decimals: 0, disabled, title: "How many entries (per page with pagination)", onChange: (v, m) => v && updateProps(store, node.id, { limit: v }, m) })),
+            jsx(Segmented, { value: p.sortDir, disabled, options: [{ value: "asc", label: "A→Z", title: t("Ascending") }, { value: "desc", label: "Z→A", title: t("Descending") }], onChange: (v) => set({ sortDir: v }) })),
+          jsx(Row, { key: "l", label: t("Items") },
+            jsx(NumberField, { value: p.limit, min: 1, max: 100, decimals: 0, disabled, title: t("How many entries (per page with pagination)"), onChange: (v, m) => v && updateProps(store, node.id, { limit: v }, m) })),
           jsx(Row, { key: "pg", label: "" },
-            jsx(Toggle, { checked: p.paginate === true, disabled, label: "Pages (Previous / Next links)", onChange: (v) => set({ paginate: v }) }))
+            jsx(Toggle, { checked: p.paginate === true, disabled, label: t("Pages (Previous / Next links)"), onChange: (v) => set({ paginate: v }) }))
         ]),
     type && jsx(Display, { node, type, disabled }),
     type && jsx(ItemLink, { node, type, disabled, targets, set }),
-    type && jsx(Section, { title: "Texts" },
-      jsx(Row, { label: "When nothing matches", wide: true },
+    type && jsx(Section, { title: t("Texts") },
+      jsx(Row, { label: t("When nothing matches"), wide: true },
         jsx(TextField, { value: p.emptyText, maxLength: 300, disabled: !caps.editContent, onChange: (v) => set({ emptyText: v }) })),
-      p.paginate && jsx(Row, { label: "Previous", label2: "Next" },
+      p.paginate && jsx(Row, { label: t("Previous"), label2: t("Next") },
         jsx(TextField, { value: p.prevLabel, maxLength: 60, disabled: !caps.editContent, onChange: (v) => set({ prevLabel: v }) }),
         jsx(TextField, { value: p.nextLabel, maxLength: 60, disabled: !caps.editContent, onChange: (v) => set({ nextLabel: v }) }))),
-    type && jsx(Section, { title: "Fields" },
-      jsx("div", { class: "pe-hint" }, "Select an element inside the item (the first copy on the canvas) to choose which field it shows. The others are copies of it, one per entry."),
-      jsx("button", { type: "button", class: "pe-btn", disabled, onClick: () => autoBind(session, node, type, true) }, jsx(Icon, { name: "bind", size: 16 }), " Map fields automatically")));
+    type && jsx(Section, { title: t("Fields") },
+      jsx("div", { class: "pe-hint" }, t("Select an element inside the item (the first copy on the canvas) to choose which field it shows. The others are copies of it, one per entry.")),
+      jsx("button", { type: "button", class: "pe-btn", disabled, onClick: () => autoBind(session, node, type, true) }, jsx(Icon, { name: "bind", size: 16 }), " " + t("Map fields automatically"))));
 }
 
 function StatusLine({ type, shown, loading, error, mode }) {
   const count = shown?.total ?? 0;
   return jsx("div", { class: "pe-data-status" },
     error ? jsx("div", { class: "pe-note" }, jsx(Icon, { name: "alert", size: 16 }), " ", error)
-      : loading ? jsx("div", { class: "pe-hint" }, "Loading entries…")
-        : jsx("div", { class: "pe-hint" }, type.published === 0
-          ? "No published entries yet: the canvas shows the bare design. "
-          : mode === "single" ? "Showing one of " + type.published + " published entries. " : count + " of " + type.published + " published entries match. ",
-          jsx("a", { href: "/admin/content/" + type.slug, target: "_blank", rel: "noopener" }, "Manage " + type.name)));
+      : loading ? jsx("div", { class: "pe-hint" }, t("Loading entries…"))
+        : jsx("div", { class: "pe-hint" }, (type.published === 0
+          ? t("No published entries yet: the canvas shows the bare design.")
+          : mode === "single" ? t("Showing one of {0} published entries.", type.published) : t("{0} of {1} published entries match.", count, type.published)) + " ",
+          jsx("a", { href: "/admin/content/" + type.slug, target: "_blank", rel: "noopener" }, t("Manage {0}", type.name))));
 }
 
 function SingleEntry({ node, type, disabled, set, targets }) {
@@ -118,24 +119,24 @@ function SingleEntry({ node, type, disabled, set, targets }) {
     session.api.contentEntries(type.id, "").then((list) => live && setEntries(list)).catch(() => live && setEntries([]));
     return () => { live = false; };
   }, [type.id, source]);
-  const params = [...new Set(targets.map((t) => t.param))];
+  const params = [...new Set(targets.map((ty) => ty.param))];
   return [
-    jsx(Row, { key: "w", label: "Which entry", wide: true },
+    jsx(Row, { key: "w", label: t("Which entry"), wide: true },
       jsx(SelectField, { value: source, disabled, options: [
-        { value: "url", label: "The one named in the page URL" },
-        { value: "fixed", label: "A specific entry" },
-        { value: "first", label: "The first that matches" },
+        { value: "url", label: t("The one named in the page URL") },
+        { value: "fixed", label: t("A specific entry") },
+        { value: "first", label: t("The first that matches") },
       ], onChange: (v) => set(v === "url" ? { routeParam: params[0] ?? "slug", entry: "" } : v === "fixed" ? { routeParam: "", entry: "" } : { routeParam: "", entry: "" }) })),
     source === "url" && [
-      jsx(Row, { key: "rp", label: "URL part", label2: "Matches field" },
-        jsx(TextField, { value: p.routeParam, mono: true, disabled, placeholder: "slug", validate: (v) => (/^[a-z][a-z0-9_-]*$/.test(v) ? null : "Lower-case letters, digits, - and _."), onChange: (v) => set({ routeParam: v }) }),
-        jsx(SelectField, { value: p.routeField || "slug", disabled, options: [{ value: "$id", label: "Entry id" }, ...type.filters.filter((f) => f.key !== "$title").map((f) => ({ value: f.key, label: f.label }))], onChange: (v) => set({ routeField: v ?? "slug" }) })),
-      jsx("div", { key: "rh", class: "pe-hint" }, "Put this list on a page whose slug is ", jsx("code", { class: "pe-code" }, "[" + (p.routeParam || "slug") + "]"),
-        " (e.g. /products/[" + (p.routeParam || "slug") + "]). Visitors to /products/red-chair see the entry whose field is red-chair; an unknown one is a 404. The editor previews the first entry.")
+      jsx(Row, { key: "rp", label: t("URL part"), label2: t("Matches field") },
+        jsx(TextField, { value: p.routeParam, mono: true, disabled, placeholder: "slug", validate: (v) => (/^[a-z][a-z0-9_-]*$/.test(v) ? null : t("Lower-case letters, digits, - and _.")), onChange: (v) => set({ routeParam: v }) }),
+        jsx(SelectField, { value: p.routeField || "slug", disabled, options: [{ value: "$id", label: t("Entry id") }, ...type.filters.filter((f) => f.key !== "$title").map((f) => ({ value: f.key, label: f.label }))], onChange: (v) => set({ routeField: v ?? "slug" }) })),
+      jsx("div", { key: "rh", class: "pe-hint" }, t("Put this list on a page whose slug is") + " ", jsx("code", { class: "pe-code" }, "[" + (p.routeParam || "slug") + "]"),
+        " " + t("(e.g. /products/[{0}]). Visitors to /products/red-chair see the entry whose field is red-chair; an unknown one is a 404. The editor previews the first entry.", p.routeParam || "slug"))
     ],
-    source === "fixed" && jsx(Row, { key: "e", label: "Entry", wide: true },
-      entries === null ? jsx("div", { class: "pe-hint" }, "Loading…")
-        : jsx(SelectField, { value: p.entry || undefined, placeholder: "Choose an entry", disabled, options: entries.map((e) => ({ value: e.id, label: e.title + (e.published ? "" : " (draft)") })), onChange: (v) => set({ entry: v ?? "" }) })),
+    source === "fixed" && jsx(Row, { key: "e", label: t("Entry"), wide: true },
+      entries === null ? jsx("div", { class: "pe-hint" }, t("Loading…"))
+        : jsx(SelectField, { value: p.entry || undefined, placeholder: t("Choose an entry"), disabled, options: entries.map((e) => ({ value: e.id, label: e.published ? e.title : t("{0} (draft)", e.title) })), onChange: (v) => set({ entry: v ?? "" }) })),
     source === "first" && jsx(Filters, { key: "f", filters: p.filters ?? [], type, disabled, onChange: (filters) => set({ filters }) })
   ];
 }
@@ -143,24 +144,24 @@ function SingleEntry({ node, type, disabled, set, targets }) {
 function Filters({ filters, type, disabled, onChange, latest }) {
   const latestFilters = () => latest?.() ?? filters;
   const update = (i, patch) => onChange(filters.map((f, j) => (j === i ? { ...f, ...patch } : f)));
-  return jsx(Row, { label: "Filters", wide: true },
+  return jsx(Row, { label: t("Filters"), wide: true },
     jsx("div", { class: "pe-filters" },
-      filters.length === 0 && jsx("div", { class: "pe-hint" }, "Every published entry. Add a filter to narrow it down."),
+      filters.length === 0 && jsx("div", { class: "pe-hint" }, t("Every published entry. Add a filter to narrow it down.")),
       filters.map((f, i) => {
         const field = type.filters.find((x) => x.key === f.field);
         const noValue = f.op === "empty" || f.op === "notEmpty";
         return jsx("div", { key: i, class: "pe-filter" },
-          jsx(SelectField, { value: f.field, disabled, title: "Field", options: type.filters.map((x) => ({ value: x.key, label: x.label })), onChange: (v) => update(i, { field: v, value: "" }) }),
-          jsx(SelectField, { value: f.op, disabled, title: "Condition", options: FILTER_OPS.map((op) => ({ value: op, label: OP_LABELS[op] })), onChange: (v) => update(i, { op: v }) }),
+          jsx(SelectField, { value: f.field, disabled, title: t("Field"), options: type.filters.map((x) => ({ value: x.key, label: x.label })), onChange: (v) => update(i, { field: v, value: "" }) }),
+          jsx(SelectField, { value: f.op, disabled, title: t("Condition"), options: FILTER_OPS.map((op) => ({ value: op, label: OP_LABELS[op] })), onChange: (v) => update(i, { op: v }) }),
           !noValue && (field?.choices?.length
-            ? jsx(SelectField, { value: f.value || undefined, disabled, placeholder: "Choose", title: "Value", options: field.choices.map((c) => ({ value: c.value, label: c.label })), onChange: (v) => update(i, { value: v ?? "" }) })
+            ? jsx(SelectField, { value: f.value || undefined, disabled, placeholder: t("Choose"), title: t("Value"), options: field.choices.map((c) => ({ value: c.value, label: c.label })), onChange: (v) => update(i, { value: v ?? "" }) })
             : field?.type === "boolean"
-              ? jsx(SelectField, { value: f.value || undefined, disabled, placeholder: "Choose", title: "Value", options: [{ value: "true", label: "Yes" }, { value: "false", label: "No" }], onChange: (v) => update(i, { value: v ?? "" }) })
-              : jsx(TextField, { value: f.value, disabled, maxLength: 200, ariaLabel: "Value", placeholder: field?.type === "date" ? "YYYY-MM-DD" : field?.type === "relationship" ? "Entry id" : "Value", onChange: (v) => update(i, { value: v }) })),
-          jsx("button", { type: "button", class: "pe-icon-btn", title: "Remove filter", disabled, onClick: () => onChange(filters.filter((_, j) => j !== i)) }, jsx(Icon, { name: "trash", size: 16 })));
+              ? jsx(SelectField, { value: f.value || undefined, disabled, placeholder: t("Choose"), title: t("Value"), options: [{ value: "true", label: t("Yes") }, { value: "false", label: t("No") }], onChange: (v) => update(i, { value: v ?? "" }) })
+              : jsx(TextField, { value: f.value, disabled, maxLength: 200, ariaLabel: t("Value"), placeholder: field?.type === "date" ? "YYYY-MM-DD" : field?.type === "relationship" ? t("Entry id") : t("Value"), onChange: (v) => update(i, { value: v }) })),
+          jsx("button", { type: "button", class: "pe-icon-btn", title: t("Remove filter"), disabled, onClick: () => onChange(filters.filter((_, j) => j !== i)) }, jsx(Icon, { name: "trash", size: 16 })));
       }),
       jsx("button", { type: "button", class: "pe-btn", disabled: disabled || filters.length >= 10, onClick: () => onChange([...latestFilters(), { field: type.filters[0]?.key ?? "$title", op: "eq", value: "" }]) },
-        jsx(Icon, { name: "plus", size: 16 }), " Add filter")));
+        jsx(Icon, { name: "plus", size: 16 }), " " + t("Add filter"))));
 }
 
 /** Grid, list, carousel or table: sets the list's layout (the item copies are its children) and view. */
@@ -182,45 +183,45 @@ function Display({ node, type, disabled }) {
   // Read the stored list at click time: two quick clicks must not both start from the same render.
   const latest = () => session.store.doc.nodes[node.id]?.props.columns ?? [];
   const setColumns = (next) => updateProps(store, node.id, { columns: next });
-  return jsx(Section, { title: "Display" },
-    jsx(Row, { label: "Look", wide: true },
+  return jsx(Section, { title: t("Display") },
+    jsx(Row, { label: t("Look"), wide: true },
       jsx(Segmented, { value: current, disabled, onChange: choose, options: [
-        { value: "grid", icon: "cards", title: "Grid" },
-        { value: "list", icon: "rows", title: "List" },
-        { value: "carousel", icon: "carousel", title: "Carousel" },
-        { value: "table", icon: "table", title: "Table" },
+        { value: "grid", icon: "cards", title: t("Grid") },
+        { value: "list", icon: "rows", title: t("List") },
+        { value: "carousel", icon: "carousel", title: t("Carousel") },
+        { value: "table", icon: "table", title: t("Table") },
       ] })),
-    current === "grid" && jsx(Row, { label: "Columns", label2: bp === "base" ? "Desktop" : bp === "tablet" ? "Tablet" : "Mobile" },
-      jsx(NumberField, { value: layout.columns ?? 3, min: 1, max: 12, decimals: 0, disabled, title: "Columns on this device", onChange: (v, m) => v && updateLayout(store, node.id, bp, { columns: v }, m) })),
-    current !== "table" && jsx("div", { class: "pe-hint" }, "Design one item - its picture, title, price - in the layers below the list; every entry repeats it. Gaps and columns per device are in the Design tab."),
-    current === "table" && jsx(Row, { label: "Columns", wide: true },
+    current === "grid" && jsx(Row, { label: t("Columns"), label2: bp === "base" ? t("Desktop") : bp === "tablet" ? t("Tablet") : t("Mobile") },
+      jsx(NumberField, { value: layout.columns ?? 3, min: 1, max: 12, decimals: 0, disabled, title: t("Columns on this device"), onChange: (v, m) => v && updateLayout(store, node.id, bp, { columns: v }, m) })),
+    current !== "table" && jsx("div", { class: "pe-hint" }, t("Design one item - its picture, title, price - in the layers below the list; every entry repeats it. Gaps and columns per device are in the Design tab.")),
+    current === "table" && jsx(Row, { label: t("Columns"), wide: true },
       jsx("div", { class: "pe-filters" },
-        columns.length === 0 && jsx("div", { class: "pe-hint" }, "Shows the title. Add the columns you want; the first one links to the entry."),
+        columns.length === 0 && jsx("div", { class: "pe-hint" }, t("Shows the title. Add the columns you want; the first one links to the entry.")),
         columns.map((c, i) => jsx("div", { key: i, class: "pe-filter" },
-          jsx(SelectField, { value: c.field, disabled, title: "Field", options: type.fields.filter((f) => f.kind !== "rich").map((f) => ({ value: f.path, label: f.label })), onChange: (v) => setColumns(columns.map((x, j) => (j === i ? { field: v, label: x.label || labelOf(type, v) } : x))) }),
-          jsx(TextField, { value: c.label, disabled, maxLength: 100, ariaLabel: "Column heading", placeholder: "Heading", onChange: (v) => setColumns(columns.map((x, j) => (j === i ? { ...x, label: v } : x))) }),
-          jsx("button", { type: "button", class: "pe-icon-btn", title: "Remove column", disabled, onClick: () => setColumns(columns.filter((_, j) => j !== i)) }, jsx(Icon, { name: "trash", size: 16 })))),
+          jsx(SelectField, { value: c.field, disabled, title: t("Field"), options: type.fields.filter((f) => f.kind !== "rich").map((f) => ({ value: f.path, label: f.label })), onChange: (v) => setColumns(columns.map((x, j) => (j === i ? { field: v, label: x.label || labelOf(type, v) } : x))) }),
+          jsx(TextField, { value: c.label, disabled, maxLength: 100, ariaLabel: t("Column heading"), placeholder: t("Heading"), onChange: (v) => setColumns(columns.map((x, j) => (j === i ? { ...x, label: v } : x))) }),
+          jsx("button", { type: "button", class: "pe-icon-btn", title: t("Remove column"), disabled, onClick: () => setColumns(columns.filter((_, j) => j !== i)) }, jsx(Icon, { name: "trash", size: 16 })))),
         jsx("button", { type: "button", class: "pe-btn", disabled: disabled || columns.length >= 12, onClick: () => {
           const current = latest();
           const used = new Set(current.map((c) => c.field));
           const next = type.fields.find((f) => !used.has(f.path) && f.kind !== "rich" && f.path !== "$url") ?? type.fields[0];
           if (current.length < 12) setColumns([...current, { field: next.path, label: next.label }]);
-        } }, jsx(Icon, { name: "plus", size: 16 }), " Add column"))));
+        } }, jsx(Icon, { name: "plus", size: 16 }), " " + t("Add column")))));
 }
 
 function ItemLink({ node, type, disabled, targets, set }) {
   const p = node.props;
   const fieldKeys = new Set(type.fields.map((f) => f.path));
-  return jsx(Section, { title: "Item link" },
-    targets.length > 0 && jsx(Row, { label: "Detail page", wide: true },
-      jsx(SelectField, { value: targets.some((t) => t.pattern === p.itemUrl) ? p.itemUrl : undefined, placeholder: "Choose a page…", disabled,
-        options: targets.map((t) => ({ value: t.pattern, label: t.label })), onChange: (v) => set({ itemUrl: v ?? "" }) })),
-    jsx(Row, { label: "Link pattern", wide: true },
+  return jsx(Section, { title: t("Item link") },
+    targets.length > 0 && jsx(Row, { label: t("Detail page"), wide: true },
+      jsx(SelectField, { value: targets.some((ty) => ty.pattern === p.itemUrl) ? p.itemUrl : undefined, placeholder: t("Choose a page…"), disabled,
+        options: targets.map((ty) => ({ value: ty.pattern, label: ty.label })), onChange: (v) => set({ itemUrl: v ?? "" }) })),
+    jsx(Row, { label: t("Link pattern"), wide: true },
       jsx(TextField, { value: p.itemUrl, mono: true, disabled, maxLength: 300, placeholder: "/products/{slug}", onChange: (v) => set({ itemUrl: v.trim() }) })),
     jsx("div", { class: cls("pe-hint", unknownPlaceholder(p.itemUrl, fieldKeys) && "is-warning") },
       unknownPlaceholder(p.itemUrl, fieldKeys)
-        ? "\"{" + unknownPlaceholder(p.itemUrl, fieldKeys) + "}\" is not a field of " + type.name + "."
-        : "Each entry's link: {field} is replaced by the entry's value. Bind a button or image link to \"Item link\" to use it."));
+        ? t('"{0}" is not a field of {1}.', "{" + unknownPlaceholder(p.itemUrl, fieldKeys) + "}", type.name)
+        : t("Each entry's link: {field} is replaced by the entry's value. Bind a button or image link to \"Item link\" to use it.")));
 }
 
 function unknownPlaceholder(pattern, keys) {
@@ -245,27 +246,27 @@ export function BindingRow({ node, prop, def, children }) {
   const caps = useSignal(session.caps);
   useEffect(() => { void content.loadTypes(); }, []);
   const list = content.listOf(node.id);
-  const type = list && types?.find((t) => t.id === list.props.source);
+  const type = list && types?.find((ty) => ty.id === list.props.source);
   if (!list || !BINDABLE_TYPES.has(def.type)) return children;
   const template = node.bind?.[prop] ?? "";
   const exact = /^\{([^{}]+)\}$/.exec(template);
   const disabled = !caps.editLayout || !!node.locked;
-  const set = (value) => setBindings(session.store, { [node.id]: { [prop]: value } }, value ? "Bind " + def.label : "Unbind " + def.label);
+  const set = (value) => setBindings(session.store, { [node.id]: { [prop]: value } }, value ? t("Bind {0}", def.label) : t("Unbind {0}", def.label));
   const fields = type ? orderFields(type.fields, def.type) : [];
   const custom = template && !exact;
   const options = [
-    { value: "", label: "Fixed value (not from content)" },
+    { value: "", label: t("Fixed value (not from content)") },
     ...fields.map((f) => ({ value: "{" + f.path + "}", label: f.label })),
-    { value: "custom", label: "Text with fields…" },
+    { value: "custom", label: t("Text with fields…") },
   ];
   return jsx("div", { class: cls("pe-binding", template && "is-bound") },
-    jsx(Row, { label: jsx("span", { class: "pe-binding-label" }, jsx(Icon, { name: "bind", size: 14 }), " ", def.label, template ? " · from content" : ""), wide: true },
-      jsx(SelectField, { value: custom ? "custom" : template, disabled: disabled || !type, title: def.label + " comes from", options,
+    jsx(Row, { label: jsx("span", { class: "pe-binding-label" }, jsx(Icon, { name: "bind", size: 14 }), " ", def.label, template ? " · " + t("from content") : ""), wide: true },
+      jsx(SelectField, { value: custom ? "custom" : template, disabled: disabled || !type, title: t("{0} comes from", def.label), options,
         onChange: (v) => set(v === "custom" ? (template || "{" + (fields[0]?.path ?? "$title") + "}") : v ?? "") }),
-      !type && jsx("div", { class: "pe-hint" }, "Choose the list's content type first."),
-      (custom || (template && def.type !== "image")) && jsx(TextField, { value: template, mono: true, disabled, maxLength: 300, placeholder: "From {price} USD",
-        validate: (v) => (v.includes("{") ? null : "Put a field in braces, e.g. {name}."), onChange: set }),
-      template && fields.length > 0 && jsx("div", { class: "pe-hint" }, "Fields: ", fields.slice(0, 8).map((f) => "{" + f.path + "}").join(" "))),
+      !type && jsx("div", { class: "pe-hint" }, t("Choose the list's content type first.")),
+      (custom || (template && def.type !== "image")) && jsx(TextField, { value: template, mono: true, disabled, maxLength: 300, placeholder: t("From {price} USD"),
+        validate: (v) => (v.includes("{") ? null : t("Put a field in braces, e.g. {name}.")), onChange: set }),
+      template && fields.length > 0 && jsx("div", { class: "pe-hint" }, t("Fields:") + " ", fields.slice(0, 8).map((f) => "{" + f.path + "}").join(" "))),
     !template && children);
 }
 
@@ -319,5 +320,5 @@ function autoBind(session, list, type, force = false) {
     for (const c of n.children ?? []) walk(c);
   };
   for (const c of list.children ?? []) walk(c);
-  if (Object.keys(patches).length) setBindings(session.store, patches, "Map fields");
+  if (Object.keys(patches).length) setBindings(session.store, patches, t("Map fields"));
 }

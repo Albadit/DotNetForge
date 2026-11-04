@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Localization;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -64,9 +65,13 @@ public sealed class PageLayoutViewComponent : ViewComponent
             return new HtmlContentViewComponentResult(HtmlString.Empty);
         }
 
+        // A translation's layout has its own stylesheet: the published one under the locale's prefix (/de/page-css/...),
+        // the draft through the locale's builder route.
+        var locale = RequestLocale.Of(HttpContext);
         var pageCss = draft
-            ? $"/admin/pages/{page.Id}/builder/draft.css?v={rendered.CssHash}"
-            : $"/page-css/{page.Id}.css?v={rendered.CssHash}";
+            ? (locale.IsTranslation ? $"/admin/pages/{page.Id}/translations/{locale.Locale.Code}/builder" : $"/admin/pages/{page.Id}/builder")
+              + $"/draft.css?v={rendered.CssHash}"
+            : locale.Url($"/page-css/{page.Id}.css") + $"?v={rendered.CssHash}";
         html.AppendHtml($"<link rel=\"stylesheet\" href=\"{WebUtility.HtmlEncode(pageCss)}\" />");
         html.AppendHtml(rendered.Html);
         return new HtmlContentViewComponentResult(html);

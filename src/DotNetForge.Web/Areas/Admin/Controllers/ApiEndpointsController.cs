@@ -76,7 +76,7 @@ public sealed class ApiEndpointsController : AdminControllerBase
         var endpoint = await _endpoints.DeleteAsync(id, HttpContext.RequestAborted);
         if (endpoint is not null)
         {
-            TempData["Success"] = $"Deleted '{endpoint.Name}'.";
+            TempData["Success"] = T["Deleted '{0}'.", endpoint.Name];
         }
 
         return Redirect("/admin/api-endpoints");
@@ -93,7 +93,7 @@ public sealed class ApiEndpointsController : AdminControllerBase
             return NotFound();
         }
 
-        TempData["Success"] = $"New token for '{endpoint.Name}'. The old one no longer works.";
+        TempData["Success"] = T["New token for '{0}'. The old one no longer works.", endpoint.Name];
         return Redirect($"/admin/api-endpoints/{endpoint.Id}");
     }
 
@@ -154,7 +154,7 @@ public sealed class ApiEndpointsController : AdminControllerBase
             return View("Edit", EditModel(id, input, existing is null ? null : _endpoints.TokenOf(existing), existing, saved));
         }
 
-        TempData["Success"] = id is null ? $"Created '{endpoint.Name}'." : $"Saved '{endpoint.Name}'.";
+        TempData["Success"] = id is null ? T["Created '{0}'.", endpoint.Name] : T["Saved '{0}'.", endpoint.Name];
         return Redirect($"/admin/api-endpoints/{endpoint.Id}");
     }
 

@@ -54,7 +54,7 @@ New content type (h1)
     │         open field: its settings (+ nested field list for a group / repeater)
     │         [Add field] → palette of the 16 field types
     │         ▸ Fields as JSON (the posted textarea)
-    └── aside: card "Settings" (Name*, API id*, Description, Icon, Holds: Many entries | One entry, Title field, Drafts) [Save content type]
+    └── aside: card "Settings" (Name*, API id*, Description, Icon, Holds: Many entries | One entry, Title field, Drafts, Localized) [Save content type]
                card "Delete content type" [Delete content type]
 ```
 
@@ -95,8 +95,11 @@ after every change; without JavaScript the JSON is edited directly (a `<noscript
 
 ### Save a type
 
-1. **Save content type** posts Name, Slug (API id), Description, Icon, Kind, Drafts, TitleField, FieldsJson
-   (`Content types` / `update`).
+1. **Save content type** posts Name, Slug (API id), Description, Icon, Kind, Drafts, Localized, TitleField, FieldsJson
+   (`Content types` / `update`). **Localized** (off for new types; only on this editor): "Entries can be translated
+   into the site's other languages (Settings › Internationalization): their text, long text and rich text fields get a
+   value per language; every other field is shared. Off: translations are kept but not shown."
+   ([internationalization → entries](../features/internationalization.md#entries)).
 2. `ContentTypeService.UpdateAsync` checks the name (required, ≤ 100), the API id (`^[a-z][a-z0-9-]{0,63}$`, not
    `api` / `types` / `new` / `media`, unique), the description (≤ 500), switching to one entry (refused
    with more than one), and the fields ([`ContentSchema.Validate`](../features/structured-content.md#field-types));

@@ -1,7 +1,7 @@
 @model List<PluginRowViewModel>
 @{
-    ViewData["Title"] = "Plugins";
-    ViewData["Description"] = "Extensions found in the extensions/ folder. Nothing an extension offers is used until you enable it; enabling and disabling take effect at once. Code changes need a restart.";
+    ViewData["Title"] = T["Plugins"];
+    ViewData["Description"] = T["Extensions found in the extensions/ folder. Nothing an extension offers is used until you enable it; enabling and disabling take effect at once. Code changes need a restart."];
     var enabledCount = Model.Count(e => e.IsEnabled);
     var problemCount = Model.Count(e => e.Problem is not null);
     var types = Model.Select(e => e.Type).Where(t => t != "-").Distinct().Order().ToList();
@@ -24,36 +24,36 @@
 <section class="dnf-card" aria-labelledby="extensions-title" data-collection>
     <div class="dnf-card__header">
         <div>
-            <h2 class="dnf-card__title" id="extensions-title">Extensions</h2>
-            <p class="dnf-card__description" data-collection-count>@Model.Count total</p>
+            <h2 class="dnf-card__title" id="extensions-title">@T["Extensions"]</h2>
+            <p class="dnf-card__description" data-collection-count>@T["{0} total", Model.Count]</p>
         </div>
     </div>
 
     @if (Model.Count == 0)
     {
-        <dnf-empty-state icon="puzzle" title="No extensions found" description="Put an extension folder with a dotnetforge.extension.json manifest under extensions/ and it appears here." />
+        <dnf-empty-state icon="puzzle" title="@T["No extensions found"]" description="@T["Put an extension folder with a dotnetforge.extension.json manifest under extensions/ and it appears here."]" />
     }
     else
     {
         <div class="dnf-toolbar" data-js-only hidden>
-            <div class="dnf-segmented" role="group" aria-label="Filter by status">
-                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="" aria-pressed="true">All <span class="text-subtle">@Model.Count</span></button>
-                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="enabled" aria-pressed="false">Enabled <span class="text-subtle">@enabledCount</span></button>
-                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="disabled" aria-pressed="false">Disabled <span class="text-subtle">@(Model.Count - enabledCount)</span></button>
+            <div class="dnf-segmented" role="group" aria-label="@T["Filter by status"]">
+                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="" aria-pressed="true">@T["All"] <span class="text-subtle">@Model.Count</span></button>
+                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="enabled" aria-pressed="false">@T["Enabled"] <span class="text-subtle">@enabledCount</span></button>
+                <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="disabled" aria-pressed="false">@T["Disabled"] <span class="text-subtle">@(Model.Count - enabledCount)</span></button>
                 @if (problemCount > 0)
                 {
-                    <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="problem" aria-pressed="false">Needs attention <span class="text-subtle">@problemCount</span></button>
+                    <button type="button" class="dnf-segmented__item" data-collection-filter="state" data-value="problem" aria-pressed="false">@T["Needs attention"] <span class="text-subtle">@problemCount</span></button>
                 }
             </div>
             <span class="dnf-toolbar__spacer"></span>
             <div class="dnf-toolbar__search dnf-input-group">
                 <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
-                <label class="sr-only" for="extension-search">Search extensions</label>
-                <input id="extension-search" type="search" class="dnf-input dnf-input--sm" placeholder="Search extensions" data-collection-search />
+                <label class="sr-only" for="extension-search">@T["Search extensions"]</label>
+                <input id="extension-search" type="search" class="dnf-input dnf-input--sm" placeholder="@T["Search extensions"]" data-collection-search />
             </div>
-            <label class="sr-only" for="extension-type">Type</label>
+            <label class="sr-only" for="extension-type">@T["Type"]</label>
             <select id="extension-type" class="dnf-select dnf-select--sm" data-collection-filter="type">
-                <option value="">All types</option>
+                <option value="">@T["All types"]</option>
                 @foreach (var type in types)
                 {
                     <option value="@type">@type</option>
@@ -76,10 +76,10 @@
                                 {
                                     @* The problem stays out of the card: an icon next to the name opens it (a dnf-popover, placed by dnf.js). *@
                                     var problemId = "problem-" + System.Text.RegularExpressions.Regex.Replace(ext.Id, "[^A-Za-z0-9]", "-");
-                                    var problemTitle = ext.ValidManifest ? "Not running" : "Invalid manifest";
+                                    var problemTitle = ext.ValidManifest ? T["Not running"] : T["Invalid manifest"];
                                     <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-extension-card__problem-button" data-tone="@(ext.ValidManifest ? "warning" : "danger")"
                                             popovertarget="@problemId" aria-haspopup="dialog" aria-expanded="false"
-                                            aria-label="@problemTitle - show why" data-tooltip="@problemTitle">
+                                            aria-label="@T["{0} - show why", problemTitle]" data-tooltip="@problemTitle">
                                         <dnf-icon name="@(ext.ValidManifest ? "triangle-alert" : "circle-x")" />
                                     </button>
                                     <div class="dnf-popover dnf-popover--bare" id="@problemId" popover role="dialog" aria-label="@problemTitle" data-placement="bottom-start">
@@ -91,11 +91,11 @@
                         </div>
                         @if (ext.IsEnabled)
                         {
-                            <dnf-badge tone="Success" dot="true">Enabled</dnf-badge>
+                            <dnf-badge tone="Success" dot="true">@T["Enabled"]</dnf-badge>
                         }
                         else
                         {
-                            <dnf-badge dot="true">Disabled</dnf-badge>
+                            <dnf-badge dot="true">@T["Disabled"]</dnf-badge>
                         }
                     </div>
 
@@ -108,36 +108,36 @@
                         <dnf-badge tone="Primary">@ext.Type</dnf-badge>
                         @if (ext.HasCode)
                         {
-                            <dnf-badge><dnf-icon name="code" size="Sm" /> Code</dnf-badge>
+                            <dnf-badge><dnf-icon name="code" size="Sm" /> @T["Code"]</dnf-badge>
                         }
                         @foreach (var dependency in ext.Dependencies)
                         {
-                            <dnf-badge outline="true" title="Needs @dependency"><dnf-icon name="link" size="Sm" /> @dependency</dnf-badge>
+                            <dnf-badge outline="true" title="@T["Needs {0}", dependency]"><dnf-icon name="link" size="Sm" /> @dependency</dnf-badge>
                         }
                     </div>
 
                     <div class="dnf-extension-card__foot">
-                        <span class="text-xs text-muted">by @ext.Author</span>
+                        <span class="text-xs text-muted">@T["by {0}", ext.Author]</span>
                         @if (ext.CanToggle && ext.IsEnabled)
                         {
                             <form method="post" action="/admin/plugins/@Uri.EscapeDataString(ext.Id)/disable" class="inline"
-                                  data-confirm="Disable '@ext.Name'? Everything it adds stops working until you enable it again."
-                                  data-confirm-title="Disable extension" data-confirm-action="Disable">
+                                  data-confirm="@T["Disable '{0}'? Everything it adds stops working until you enable it again.", ext.Name]"
+                                  data-confirm-title="@T["Disable extension"]" data-confirm-action="@T["Disable"]">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm"><dnf-icon name="power" size="Sm" /> Disable</button>
+                                <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm"><dnf-icon name="power" size="Sm" /> @T["Disable"]</button>
                             </form>
                         }
                         else if (ext.CanToggle && ext.Problem is null)
                         {
                             <form method="post" action="/admin/plugins/@Uri.EscapeDataString(ext.Id)/enable" class="inline">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="dnf-button dnf-button--primary dnf-button--sm"><dnf-icon name="power" size="Sm" /> Enable</button>
+                                <button type="submit" class="dnf-button dnf-button--primary dnf-button--sm"><dnf-icon name="power" size="Sm" /> @T["Enable"]</button>
                             </form>
                         }
                     </div>
                 </article>
             }
         </div>
-        <dnf-empty-state icon="search" title="No matching extensions" description="Try another search or filter." compact="true" data-collection-empty hidden />
+        <dnf-empty-state icon="search" title="@T["No matching extensions"]" description="@T["Try another search or filter."]" compact="true" data-collection-empty hidden />
     }
 </section>

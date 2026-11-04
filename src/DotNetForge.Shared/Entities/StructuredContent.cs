@@ -40,6 +40,12 @@ public class ContentType
     /// <summary>Position in the Content Manager's list of types.</summary>
     public int SortOrder { get; set; }
 
+    /// <summary>
+    /// Entries can be translated: their text fields get a value per enabled locale (<see cref="ContentEntryTranslation"/>);
+    /// the other fields are shared by every locale (.docs/features/internationalization.md#entries).
+    /// </summary>
+    public bool Localized { get; set; }
+
     public Guid? CreatedById { get; set; }
 
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

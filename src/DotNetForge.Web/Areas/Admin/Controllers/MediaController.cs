@@ -90,7 +90,7 @@ public sealed class MediaController : AdminControllerBase
 
         if (file.SizeBytes > MaxZipListBytes)
         {
-            return Json(new { error = $"Too large to list here (over {MaxZipListBytes / 1024 / 1024} MB). Download it instead." });
+            return Json(new { error = T["Too large to list here (over {0} MB). Download it instead.", MaxZipListBytes / 1024 / 1024] });
         }
 
         await using var stored = await _storage.OpenReadAsync(file.RelativePath, HttpContext.RequestAborted);
@@ -110,7 +110,7 @@ public sealed class MediaController : AdminControllerBase
         }
         catch (InvalidDataException)
         {
-            return Json(new { error = "This .zip file is damaged or not a .zip file." });
+            return Json(new { error = T["This .zip file is damaged or not a .zip file."] });
         }
     }
 
@@ -129,7 +129,7 @@ public sealed class MediaController : AdminControllerBase
 
         if (file.SizeBytes > MaxDocumentPreviewBytes)
         {
-            return Json(new { error = $"Too large to preview here (over {MaxDocumentPreviewBytes / 1024 / 1024} MB). Download it instead." });
+            return Json(new { error = T["Too large to preview here (over {0} MB). Download it instead.", MaxDocumentPreviewBytes / 1024 / 1024] });
         }
 
         await using var stored = await _storage.OpenReadAsync(file.RelativePath, HttpContext.RequestAborted);
@@ -148,7 +148,7 @@ public sealed class MediaController : AdminControllerBase
         }
         catch (InvalidDataException)
         {
-            return Json(new { error = "This file couldn't be read: it may be damaged or protected with a password. Download it instead." });
+            return Json(new { error = T["This file couldn't be read: it may be damaged or protected with a password. Download it instead."] });
         }
     }
 
@@ -181,7 +181,7 @@ public sealed class MediaController : AdminControllerBase
             return Back(parentId);
         }
 
-        TempData["Success"] = $"Created the folder '{folder.Name}'.";
+        TempData["Success"] = T["Created the folder '{0}'.", folder.Name];
         return Back(parentId);
     }
 
@@ -196,7 +196,7 @@ public sealed class MediaController : AdminControllerBase
 
         // RenameAsync writes the MediaFolderUpdated audit entry.
         var error = await _folders.RenameAsync(id, name, HttpContext.RequestAborted);
-        TempData[error is null ? "Success" : "Error"] = error ?? "Folder renamed.";
+        TempData[error is null ? "Success" : "Error"] = error ?? T["Folder renamed."];
         return Back(id);
     }
 
@@ -211,7 +211,7 @@ public sealed class MediaController : AdminControllerBase
 
         // MoveAsync writes the MediaFolderUpdated audit entry.
         var error = await _folders.MoveAsync(id, parentId, HttpContext.RequestAborted);
-        TempData[error is null ? "Success" : "Error"] = error ?? "Folder moved.";
+        TempData[error is null ? "Success" : "Error"] = error ?? T["Folder moved."];
         return Back(id);
     }
 
@@ -233,7 +233,7 @@ public sealed class MediaController : AdminControllerBase
             return Back(id);
         }
 
-        TempData["Success"] = "Folder deleted.";
+        TempData["Success"] = T["Folder deleted."];
         return Back(parentId);
     }
 
@@ -249,7 +249,7 @@ public sealed class MediaController : AdminControllerBase
         folderIds = folderIds.Distinct().ToList();
         if (ids.Count + folderIds.Count == 0 || ids.Count + folderIds.Count > MaxBulkDelete)
         {
-            TempData["Error"] = ids.Count + folderIds.Count == 0 ? "Select at least one file or folder." : $"Move at most {MaxBulkDelete} items at a time.";
+            TempData["Error"] = ids.Count + folderIds.Count == 0 ? T["Select at least one file or folder."] : T["Move at most {0} items at a time.", MaxBulkDelete];
             return Back(returnFolder);
         }
 
@@ -259,7 +259,7 @@ public sealed class MediaController : AdminControllerBase
             targetPath = await _db.MediaFolders.Where(f => f.Id == target).Select(f => f.Path).FirstOrDefaultAsync();
             if (targetPath is null)
             {
-                TempData["Error"] = "The target folder no longer exists.";
+                TempData["Error"] = T["The target folder no longer exists."];
                 return Back(returnFolder);
             }
         }
@@ -305,22 +305,22 @@ public sealed class MediaController : AdminControllerBase
 
         if (moved > 0)
         {
-            TempData["Success"] = $"Moved {Items(moved)} to {targetPath ?? "Root"}.";
+            TempData["Success"] = T["Moved {0} to {1}.", Items(moved), targetPath ?? T["Root"]];
         }
 
         if (refused > 0 || problems.Count > 0)
         {
             TempData["Error"] = string.Join(" ", new[]
             {
-                refused > 0 ? $"{Items(refused)} not moved: your role may not change them." : null,
-                problems.Count > 0 ? problems[0] + (problems.Count > 1 ? $" (and {problems.Count - 1} more)" : null) : null,
+                refused > 0 ? T["{0} not moved: your role may not change them.", Items(refused)] : null,
+                problems.Count > 0 ? problems[0] + (problems.Count > 1 ? " " + T["(and {0} more)", problems.Count - 1] : null) : null,
             }.OfType<string>());
         }
 
         return Back(returnFolder);
     }
 
-    private static string Items(int n) => n == 1 ? "1 item" : $"{n} items";
+    private string Items(int n) => n == 1 ? T["1 item"] : T["{0} items", n];
 
     [HttpPost("upload")]
     [ValidateAntiForgeryToken]
@@ -334,16 +334,16 @@ public sealed class MediaController : AdminControllerBase
 
         if (files.Count == 0)
         {
-            ModelState.AddModelError(string.Empty, "Choose at least one file to upload.");
+            ModelState.AddModelError(string.Empty, T["Choose at least one file to upload."]);
         }
         else if (files.Count > MediaService.MaxFilesPerUpload)
         {
-            ModelState.AddModelError(string.Empty, $"Upload at most {MediaService.MaxFilesPerUpload} files at a time.");
+            ModelState.AddModelError(string.Empty, T["Upload at most {0} files at a time.", MediaService.MaxFilesPerUpload]);
         }
 
         if (folderId is { } target && !await _db.MediaFolders.AnyAsync(f => f.Id == target))
         {
-            ModelState.AddModelError(string.Empty, "That folder no longer exists.");
+            ModelState.AddModelError(string.Empty, T["That folder no longer exists."]);
             folderId = null;
         }
 
@@ -372,7 +372,7 @@ public sealed class MediaController : AdminControllerBase
             return View(nameof(Index), await BuildIndexAsync(folderId));
         }
 
-        TempData["Success"] = uploaded == 1 ? "Uploaded 1 file." : $"Uploaded {uploaded} files.";
+        TempData["Success"] = uploaded == 1 ? T["Uploaded 1 file."] : T["Uploaded {0} files.", uploaded];
         return Back(folderId);
     }
 
@@ -393,8 +393,8 @@ public sealed class MediaController : AdminControllerBase
 
         await _media.SetVisibilityAsync(file, isPublic, HttpContext.RequestAborted);
         TempData["Success"] = isPublic
-            ? $"'{file.FileName}' is now public: anyone with the link can open it."
-            : $"'{file.FileName}' is now private: only signed-in admin users can open it.";
+            ? T["'{0}' is now public: anyone with the link can open it.", file.FileName]
+            : T["'{0}' is now private: only signed-in admin users can open it.", file.FileName];
         return Back(file.FolderId);
     }
 
@@ -416,7 +416,7 @@ public sealed class MediaController : AdminControllerBase
         var before = file.FileName;
         // RenameAsync writes the MediaUpdated audit entry.
         var error = await _media.RenameAsync(file, name, HttpContext.RequestAborted);
-        TempData[error is null ? "Success" : "Error"] = error ?? (file.FileName == before ? "The name is unchanged." : $"Renamed to '{file.FileName}'.");
+        TempData[error is null ? "Success" : "Error"] = error ?? (file.FileName == before ? T["The name is unchanged."] : T["Renamed to '{0}'.", file.FileName]);
         return Back(file.FolderId);
     }
 
@@ -436,7 +436,7 @@ public sealed class MediaController : AdminControllerBase
         }
 
         await _media.DeleteAsync(file, HttpContext.RequestAborted);
-        TempData["Success"] = $"Deleted '{file.FileName}'.";
+        TempData["Success"] = T["Deleted '{0}'.", file.FileName];
         return Back(file.FolderId);
     }
 
@@ -456,7 +456,7 @@ public sealed class MediaController : AdminControllerBase
         folderIds = folderIds.Distinct().ToList();
         if (ids.Count + folderIds.Count == 0 || ids.Count + folderIds.Count > MaxBulkDelete)
         {
-            TempData["Error"] = ids.Count + folderIds.Count == 0 ? "Select at least one file or folder." : $"Delete at most {MaxBulkDelete} items at a time.";
+            TempData["Error"] = ids.Count + folderIds.Count == 0 ? T["Select at least one file or folder."] : T["Delete at most {0} items at a time.", MaxBulkDelete];
             return Back(returnFolder);
         }
 
@@ -500,20 +500,24 @@ public sealed class MediaController : AdminControllerBase
 
         if (deleted > 0)
         {
-            TempData["Success"] = $"Deleted {Items(deleted)}.";
+            TempData["Success"] = T["Deleted {0}.", Items(deleted)];
         }
 
         if (refused > 0 || notEmpty > 0)
         {
             TempData["Error"] = string.Join(" ", new[]
             {
-                refused > 0 ? $"{Items(refused)} not deleted: your role may not delete them." : null,
-                notEmpty > 0 ? $"{(notEmpty == 1 ? "1 folder was" : $"{notEmpty} folders were")} not deleted: only empty folders can be deleted." : null,
+                refused > 0 ? T["{0} not deleted: your role may not delete them.", Items(refused)] : null,
+                notEmpty > 0
+                    ? notEmpty == 1
+                        ? T["1 folder was not deleted: only empty folders can be deleted."]
+                        : T["{0} folders were not deleted: only empty folders can be deleted.", notEmpty]
+                    : null,
             }.OfType<string>());
         }
         else if (deleted == 0)
         {
-            TempData["Error"] = "None of the selected items exist any more.";
+            TempData["Error"] = T["None of the selected items exist any more."];
         }
 
         return Back(returnFolder);

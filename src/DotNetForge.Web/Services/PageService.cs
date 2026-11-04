@@ -97,6 +97,12 @@ public sealed partial class PageService : IPageService
             return $"A page with the slug '{slug}' already exists under this parent.";
         }
 
+        // A top-level slug equal to a locale code would be read as that locale's URL prefix (/de/...).
+        if (input.ParentPageId is null && await _db.Locales.AnyAsync(l => l.Code.ToLower() == slug, ct))
+        {
+            return $"The slug '{slug}' is a locale code (Internationalization); choose another one.";
+        }
+
         // A parent can have at most one dynamic "[param]" route segment (otherwise resolution is ambiguous).
         if (IsDynamic(slug) && siblings.Any(p => IsDynamic(p.Slug)))
         {
@@ -273,6 +279,8 @@ public sealed partial class PageService : IPageService
             child.UpdatedDate = DateTime.UtcNow;
         }
 
+        // Its translations go with it (.docs/features/internationalization.md#content-pages).
+        _db.PageTranslations.RemoveRange(await _db.PageTranslations.Where(t => t.PageId == page.Id).ToListAsync(ct));
         _db.Pages.Remove(page);
         return null;
     }

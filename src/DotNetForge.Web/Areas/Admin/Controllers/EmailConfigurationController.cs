@@ -69,7 +69,7 @@ public sealed partial class EmailConfigurationController : AdminControllerBase
     {
         if (!_config.Settings.IsConfigured)
         {
-            TempData["Error"] = "Email is not configured: set SMTP_HOST and SMTP_FROM in .env.";
+            TempData["Error"] = T["Email is not configured: set SMTP_HOST and SMTP_FROM in .env."];
             return RedirectToAction(nameof(Index));
         }
 
@@ -91,13 +91,13 @@ public sealed partial class EmailConfigurationController : AdminControllerBase
         TempData["TestTemplate"] = definition?.Key;
         if (!EmailValidator.IsValid(to))
         {
-            TempData["Error"] = "Enter a valid email address to send the test to.";
+            TempData["Error"] = T["Enter a valid email address to send the test to."];
             return RedirectToAction(nameof(Index));
         }
 
         if (!_config.Settings.IsConfigured)
         {
-            TempData["Error"] = "Email is not configured: set SMTP_HOST and SMTP_FROM in .env.";
+            TempData["Error"] = T["Email is not configured: set SMTP_HOST and SMTP_FROM in .env."];
             return RedirectToAction(nameof(Index));
         }
 
@@ -110,7 +110,7 @@ public sealed partial class EmailConfigurationController : AdminControllerBase
         try
         {
             await _sender.SendAsync(await TestMessageAsync(to, definition), HttpContext.RequestAborted);
-            TempData["Success"] = $"{what} sent to {to}.";
+            TempData["Success"] = definition is null ? T["Test email sent to {0}.", to] : T["Test of '{0}' sent to {1}.", T[definition.Name], to];
             await _audit.LogAsync(AuditActions.SettingsChanged, "Setting", null, "Email configuration", details: what + " sent");
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)

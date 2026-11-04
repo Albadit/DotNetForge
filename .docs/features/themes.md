@@ -60,7 +60,10 @@ standard [extension view data](extensions.md#slots) (`Extension`, `Settings`, `R
 | `ViewData` key | Value |
 | --- | --- |
 | `AppName` | `APP_NAME` |
-| `Menu` | `IReadOnlyList<PublishedPage>`: top-level live pages with "display in menu", from `IPublishedPages` (tree order, then sort order) |
+| `Menu` | `IReadOnlyList<PublishedPage>`: top-level live pages with "display in menu", from `IPublishedPages` (tree order, then sort order) - in the request's locale: translated titles, paths under its prefix (`/de/about`) |
+| `CurrentPath` | this page's path in the request's locale (`/de/about`): compare it with `Menu` paths to mark the active link |
+| `HomePath` | the site root in the request's locale (`/` or `/de`) - the brand link |
+| `Languages` | `IReadOnlyList<LanguageLink>` (`Code`, `Name`, `Url`, `Current`): this page in every enabled locale, for a language switcher and `<link rel="alternate" hreflang>`; empty with only one enabled locale ([internationalization](internationalization.md#public-site)) |
 
 To show [modules](extensions.md#slots) placed on a page, a theme's `Page.cshtml` calls
 `@await Component.InvokeAsync("ExtensionModules", new { page = Model })` (the built-in view does too).
@@ -89,7 +92,7 @@ classes rather than writing styles.
 The built-in fallback is the public layout of the [design system](../architecture/design-system.md#public-fallback):
 `Views/Shared/_Layout.cshtml` with the library's `dnf.css` and `wwwroot/css/site.css` (light/dark by system
 preference or the saved `dnf-theme` choice). Its header lists the `Menu` pages (`nav.dnf-site__nav`, the current page
-`aria-current="page"`) and shows **Admin →** only to signed-in users who may enter the admin (`Roles.CanEnterAdmin`).
+`aria-current="page"`), a language select (`.dnf-site__languages`, run by `src/DotNetForge.Web/wwwroot/js/site/language-switch.js`; links without JavaScript) when more than one locale is enabled, and shows **Admin →** only to signed-in users who may enter the admin (`Roles.CanEnterAdmin`).
 
 **Isolation.** Only `HomeController.Index` and `RenderPage` use themes, plus the page builder's canvas and draft
 preview (`PageBuilderController`), which show the page as the site does. Admin screens keep `_AdminLayout`
@@ -99,7 +102,8 @@ preview (`PageBuilderController`), which show the page as the site does. Admin s
 affects it, and it never affects a theme.
 
 **Sample.** `extensions/themes/default-theme` (`dotnetforge.theme.default`, views only): `Shared/_Layout.cshtml`
-with the menu (and the `FullWidth` / `NoIndex` / `SocialImage` keys), `Page.cshtml` (renders a page builder layout
+with the menu, the language switcher and `hreflang` links (`Languages`, `CurrentPath`, `HomePath`; `<html lang>` from
+the UI culture) and the `FullWidth` / `NoIndex` / `SocialImage` keys, `Page.cshtml` (renders a page builder layout
 when there is one), `Index.cshtml`, `Views/Resources/css/theme.css`; settings `supportsDarkMode`,
 `accent` (`indigo`/`teal`/`rose`), `tagline`. It is `ThemeResolver.DefaultThemeId`, so enabling it themes the site.
 

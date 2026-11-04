@@ -18,8 +18,8 @@ documented once in [structured content](../features/structured-content.md); this
 | --- | --- |
 | Overview | `GET /admin/content` - the content types as cards |
 | Entry list | `GET /admin/content/{type}` (`type` = the type's API id), query `q`, `status` (`draft` / `published` / `changed`), `sort` (`title`, `createdAt`, `updatedAt`, `publishedAt` or a field key), `desc` (`true`), `page` |
-| Entry form | `GET /admin/content/{type}/new`, `GET /admin/content/{type}/{id:guid}` |
-| Mutations | `POST /admin/content/{type}/new` and `POST /admin/content/{type}/{id}` (save, `intent` = `save` or `publish`), `POST .../{id}/publish`, `.../{id}/unpublish`, `.../{id}/duplicate`, `.../{id}/delete`, `POST /admin/content/{type}/delete-selected` (`ids`), `POST /admin/content/{type}/reorder` (JSON `{ ids }`) |
+| Entry form | `GET /admin/content/{type}/new`, `GET /admin/content/{type}/{id:guid}`; a translation of a localized type's entry: `GET /admin/content/{type}/{id:guid}/translations/{locale}` |
+| Mutations | `POST /admin/content/{type}/new` and `POST /admin/content/{type}/{id}` (save, `intent` = `save` or `publish`), `POST .../{id}/publish`, `.../{id}/unpublish`, `.../{id}/duplicate`, `.../{id}/delete`, `POST /admin/content/{type}/delete-selected` (`ids`), `POST /admin/content/{type}/reorder` (JSON `{ ids }`), `POST /admin/content/{type}/{id}/translations/{locale}` (save a translation, `intent` = `save` or `publish`) |
 | JSON for the form | `GET /admin/content/api/entries?type={typeId}&q=`, `GET /admin/content/api/media?kind=image|file&q=`, `POST /admin/content/api/media/upload` (multipart `file`) |
 | Old addresses | `GET /admin/content?selected={pageId}` and `GET /admin/content/{pageId}/builder` answer **301** to [Pages](pages.md) and its builder (the page tree lived here before) |
 | Navigation entry | Sidebar → **Main** → **Content Manager** (`AdminNavigation.Tree`, icon `database`; active for any `/admin/content...` path) |
@@ -38,6 +38,7 @@ src/DotNetForge.Web/Areas/Admin/Views/Content/_Field.cshtml          one field's
 src/DotNetForge.Web/Services/EntryForm.cs                            the posted form → entry values (f.path names, __rows markers)
 src/DotNetForge.Content/ContentEntryService.cs                       save, publish, unpublish, duplicate, delete, reorder (rules + audit)
 src/DotNetForge.Content/ContentQueryService.cs                       search, status, filters, sort, paging
+src/DotNetForge.Content/EntryTranslationService.cs                   translations of localized types (save, read, locales)
 src/DotNetForge.Web/Services/ContentRenderService.cs                 ItemsAsync: list column text (same formatting as the site)
 src/DotNetForge.Web/wwwroot/js/admin/entries.js                      rich text editor, media and relationship pickers, repeaters, slugs, row drag, unsaved-changes guard
 src/DotNetForge.Web/wwwroot/css/admin/content.css                     .dnf-type-card, .dnf-type-icon, .dnf-workflow, .dnf-repeater*, .dnf-rte*, .dnf-media-picker*, .dnf-media-dialog*, .dnf-media-tile*, .dnf-relation-picker*
@@ -66,6 +67,7 @@ Entry form - "New entry" / the entry's title / the type name (single) (h1)
 ├── header: [All <type>] (collection) [New entry] (existing entry, with create)
 └── .dnf-split
     ├── main: <dnf-validation-summary/>, card with the generated fields (.dnf-form-grid; half-width fields side by side)
+    ├── (localized type, another enabled locale) language switcher: <default locale> | Deutsch · | Français …
     └── aside: card "Status" (badge Draft | Changes not published | Published; Published / Updated by / Created;
                [Publish] or [Publish changes] + [Save draft] - or [Save] for a type without drafts)
                card "More" ([Unpublish] [Duplicate] [Delete])
@@ -120,6 +122,25 @@ the post back into values, guided by the type's fields. Controls per [field type
 
 Errors are shown at the top (`<dnf-validation-summary />`) and under each field whose path matches (`.dnf-field[data-invalid="true"]`). The form is
 `novalidate`; leaving it with changes asks first (`beforeunload`).
+
+### Translation form (localized types)
+
+For a type with **Localized** on ([Content types](content-types.md)) and at least one enabled locale besides the
+default, an existing entry's form shows a language switcher (`nav.dnf-segmented` "Language") above the form: the main
+values, named after the default locale, then each enabled locale (`EntryEditViewModel.Languages`); a locale not
+translated yet has a "·" after its name and the tooltip "Not translated yet". A locale opens the same `Edit.cshtml` in
+translation mode (`EntryEditViewModel.TranslationCode`):
+
+- description "<type> · <locale> translation"; an info alert **Translating into <locale>** - "Only the text fields are
+  translated; images, numbers, links and the other fields are shared by every language. An empty field shows the main
+  text.";
+- only the translatable fields - top-level text, long text and rich text that are not unique
+  ([rules](../features/internationalization.md#entries)) - with the translation's working values; none → "This
+  content type has no text fields to translate. Edit its fields.";
+- the **Translation** card: **Not translated**, **Changes not published** or **Published**, a note ("Published
+  translations show on the site and in the API with ?locale=de." or "The entry itself is not published yet: the
+  translation shows once it is." + "Publishing the entry publishes its translations too.") and the same buttons as
+  the entry; no **More** card; **Use it** shows `GET /api/entries/<type>/<id>?locale=<code>`.
 
 ## Functionality
 
@@ -177,6 +198,18 @@ Needs `create` (not for single types). An unpublished copy right below the origi
 index rows are removed; audit `entry.deleted`. Bulk: every selected entry must be deletable by the user, otherwise 403
 and nothing is deleted. Pages that showed the entries simply stop showing them.
 
+### Save a translation
+
+`POST /admin/content/{type}/{id}/translations/{locale}` → `ContentController.SaveTranslation`: 404 unless the type is
+localized, the entry exists and the locale is enabled and not the default; `update` (or `update.own` on own entries)
+else 403. `intent=publish` (or a type without drafts) also needs `publish` ("You don't have permission to publish
+entries. Save a draft instead."; a no-drafts type → 403). `EntryTranslationService.SaveAsync` validates like the entry
+(lengths, rich text; required fields are not enforced), keeps only non-empty translatable values, saves the working
+copy and - when publishing - the published values; audit `entry.translated`. Toast "Published the Deutsch
+translation." / "Saved a draft of the Deutsch translation.", back to the translation form. Errors re-render the form
+with the input. Publishing, unpublishing, duplicating and deleting the **entry** carry its translations along
+([internationalization → entries](../features/internationalization.md#entries)).
+
 ### Single types
 
 `GET /admin/content/{type}` of a single type redirects to its one entry, or to `/new` when it has none yet (the first
@@ -200,6 +233,7 @@ save creates it; a GET never writes). A second "new" form of a single type edits
 | Rich text | DOM + hidden JSON textarea | editing |
 | Selection / bulk bar | DOM (`dnf.js`) | checking rows |
 | Entries | database | save, publish, unpublish, duplicate, delete, reorder |
+| Translations | database (`ContentEntryTranslations`) | saving a translation; publishing, unpublishing, duplicating, deleting the entry |
 
 ## Permissions
 
@@ -219,6 +253,7 @@ redirects included. Without it (the built-in `Developer`, or a custom role witho
 | Delete | `delete`, or `delete.own` on own entries | ✔ | own |
 | Reorder | `update` | ✔ | ✘ |
 | Upload from a picker | `Media` / `create` | ✔ | ✔ |
+| Save a translation | `update`, or `update.own` on own entries (+ `publish` to publish it) | ✔ | own (draft) |
 
 A user who may read but not save sees the form read-only ("View only"). Refusals are `Forbid()` → `/account/denied`.
 
@@ -307,6 +342,7 @@ are shown), [Media](media.md) (files the pickers offer), [API Tokens](api-tokens
 - No version history, review workflow, scheduling or tags for entries ([structured content → Planned](../features/structured-content.md#planned-not-implemented)).
 - Pickers list at most the first 100 entries / newest 100 files server-side; more are reached through the search (JS).
 - Adding repeater rows needs JavaScript.
+- The list's search, filters and sort use the main (default-locale) values; the list shows no translation state.
 
 ## Extension points
 

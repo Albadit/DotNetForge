@@ -1,0 +1,179 @@
+@using DotNetForge.Web.Services
+@model EnvironmentVariablesController.EnvironmentVariablesViewModel
+@{
+    ViewData["Title"] = T["Environment Variables"];
+    ViewData["Description"] = T["Store API keys, tokens and configuration for {0}. Secrets can't be read after saving. This site runs in {1}.", Model.AppName, T[Model.RunningEnvironment]];
+    string EnvironmentName(string environment) => environment.Length == 0 ? T["All Environments"] : T[environment];
+    var environments = EnvironmentVariableService.Environments.Where(e => e.Length > 0).ToList();
+    const string Masked = "••••••••••••••••";
+}
+
+@section Actions {
+    @if (Model.CanEdit)
+    {
+        <a class="dnf-button dnf-button--primary" href="/admin/environment-variables/new"><dnf-icon name="plus" /> @T["Add Environment Variable"]</a>
+    }
+}
+
+<section class="dnf-card" aria-labelledby="variables-title" data-collection data-page-size="25">
+    <div class="dnf-card__header">
+        <div>
+            <h2 class="dnf-card__title" id="variables-title">@T["Project variables"]</h2>
+            <p class="dnf-card__description" data-collection-count>@T["{0} total", Model.Variables.Count]</p>
+        </div>
+    </div>
+    @if (Model.Variables.Count == 0)
+    {
+        <dnf-empty-state icon="braces" title="@T["No environment variables yet"]" description="@T["Add an API key, a token or a value your site and extensions read."]" />
+    }
+    else
+    {
+        <div class="dnf-toolbar dnf-env-vars__toolbar">
+            <div class="dnf-toolbar__search dnf-input-group" data-js-only hidden>
+                <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
+                <label class="sr-only" for="variables-search">@T["Search variables"]</label>
+                <input id="variables-search" type="search" class="dnf-input dnf-input--sm" placeholder="@T["Search variables…"]" data-collection-search />
+            </div>
+            <label class="sr-only" for="variables-type">@T["Type"]</label>
+            <select id="variables-type" class="dnf-select dnf-select--sm dnf-select--auto" data-collection-filter="type" data-js-only hidden>
+                <option value="">@T["All Types"]</option>
+                <option value="secret">@T["Secret"]</option>
+                <option value="config">@T["Config"]</option>
+            </select>
+            <label class="sr-only" for="variables-environment">@T["Environment"]</label>
+            <select id="variables-environment" class="dnf-select dnf-select--sm dnf-select--auto" data-collection-filter="environments" data-js-only hidden>
+                <option value="">@T["All Environments"]</option>
+                @foreach (var environment in environments)
+                {
+                    <option value="@environment.ToLowerInvariant()">@T[environment]</option>
+                }
+            </select>
+            @* The order comes from the server (GET ?sort=); env-vars.js submits on change, the button is the fallback. *@
+            <form method="get" action="/admin/environment-variables" class="dnf-env-vars__sort" data-env-vars-sort>
+                <label class="sr-only" for="variables-sort">@T["Sort"]</label>
+                <select id="variables-sort" name="sort" class="dnf-select dnf-select--sm dnf-select--auto">
+                    <option value="updated" selected="@(Model.Sort == "updated" ? "selected" : null)">@T["Last Updated"]</option>
+                    <option value="name" selected="@(Model.Sort == "name" ? "selected" : null)">@T["Name (A-Z)"]</option>
+                </select>
+                <noscript><button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm">@T["Sort"]</button></noscript>
+            </form>
+        </div>
+        <div class="dnf-table dnf-table--stack">
+            <table class="dnf-table__table">
+                <thead>
+                    <tr>
+                        <th scope="col">@T["Key"]</th>
+                        <th scope="col">@T["Value"]</th>
+                        <th scope="col">@T["Environment"]</th>
+                        <th scope="col">@T["Updated"]</th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">@T["Actions"]</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var v in Model.Variables)
+                    {
+                        // An all-environments value applies to every environment filter.
+                        var envTokens = v.Environment.Length == 0 ? string.Join(' ', environments).ToLowerInvariant() : v.Environment.ToLowerInvariant();
+                        <tr data-item data-type="@(v.IsSecret ? "secret" : "config")" data-environments="@envTokens" data-search="@v.Key @v.Note">
+                            <td class="dnf-table__cell--lead">
+                                <div class="dnf-env-vars__key">
+                                    <span class="dnf-env-vars__icon" title="@(v.IsSecret ? T["Secret"] : T["Config"])">
+                                        <dnf-icon name="@(v.IsSecret ? "lock" : "code")" size="Sm" />
+                                        <span class="sr-only">@(v.IsSecret ? T["Secret"] : T["Config"])</span>
+                                    </span>
+                                    <span class="dnf-stack dnf-stack--sm min-w-0">
+                                        <code class="dnf-env-vars__name">@v.Key</code>
+                                        @if (v.Note is not null)
+                                        {
+                                            <span class="text-xs text-muted">@v.Note</span>
+                                        }
+                                        @if (v.ManagedBy is { } managed)
+                                        {
+                                            <span class="text-xs text-muted">@T["Managed on {0}", T[managed.Name]]</span>
+                                        }
+                                    </span>
+                                </div>
+                            </td>
+                            <td data-label="@T["Value"]">
+                                @* Always the same dots, so they don't tell a value's length; the eye shows a config value (env-vars.js). *@
+                                @if (v.IsSecret)
+                                {
+                                    <span class="dnf-env-vars__value">
+                                        <span class="dnf-env-vars__eye" aria-hidden="true"></span>
+                                        <span class="dnf-env-vars__masked" title="@T["A secret can't be shown after saving."]">@Masked</span>
+                                    </span>
+                                }
+                                else if (string.IsNullOrEmpty(v.Value))
+                                {
+                                    <span class="dnf-env-vars__value"><span class="dnf-env-vars__eye" aria-hidden="true"></span><span class="text-muted">@T["(empty)"]</span></span>
+                                }
+                                else
+                                {
+                                    <span class="dnf-env-vars__value" data-env-value>
+                                        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-env-vars__eye" data-env-reveal
+                                                aria-pressed="false" aria-label="@T["Show value"]" data-label-show="@T["Show value"]" data-label-hide="@T["Hide value"]" data-js-only hidden>
+                                            <dnf-icon name="eye" size="Sm" data-reveal-icon="show" />
+                                            <dnf-icon name="eye-off" size="Sm" data-reveal-icon="hide" hidden />
+                                        </button>
+                                        <span class="dnf-env-vars__masked" data-env-masked>@Masked</span>
+                                        <code class="dnf-env-vars__plain" data-env-plain hidden>@v.Value</code>
+                                    </span>
+                                }
+                            </td>
+                            <td data-label="@T["Environment"]">
+                                @EnvironmentName(v.Environment)
+                                @if (v.Environment == Model.RunningEnvironment)
+                                {
+                                    <dnf-badge tone="Info">@T["This site"]</dnf-badge>
+                                }
+                            </td>
+                            <td data-label="@T["Updated"]">
+                                <span class="dnf-env-vars__updated">
+                                    <dnf-timestamp value="@v.UpdatedDate" />
+                                    @if (v.UpdatedBy is not null)
+                                    {
+                                        <span class="dnf-env-vars__editor" data-tooltip="@v.UpdatedBy"><dnf-avatar name="@v.UpdatedBy" size="Sm" /><span class="sr-only">@v.UpdatedBy</span></span>
+                                    }
+                                </span>
+                            </td>
+                            <td class="dnf-table__cell--actions">
+                                <dnf-dropdown label="@T["Actions for {0}", v.Key]">
+                                    @if (v.ManagedBy is { } owner)
+                                    {
+                                        <dnf-dropdown-link href="@owner.Href" icon="arrow-right">@T["Change on {0}", T[owner.Name]]</dnf-dropdown-link>
+                                    }
+                                    else if (Model.CanEdit)
+                                    {
+                                        <dnf-dropdown-link href="/admin/environment-variables/@v.Id" icon="pencil">@T["Edit"]</dnf-dropdown-link>
+                                    }
+                                    @if (v.IsSecret)
+                                    {
+                                        <dnf-dropdown-button icon="copy" disabled title="@T["A secret can't be copied."]">@T["Copy"]</dnf-dropdown-button>
+                                    }
+                                    else
+                                    {
+                                        @* KEY=VALUE, ready for a .env file. *@
+                                        <dnf-dropdown-button icon="copy" data-copy-text="@(v.Key + "=" + v.Value)">@T["Copy"]</dnf-dropdown-button>
+                                    }
+                                    @if (Model.CanEdit && v.ManagedBy is null)
+                                    {
+                                        <dnf-dropdown-separator />
+                                        <dnf-dropdown-post action="/admin/environment-variables/@v.Id/delete" icon="trash" danger="true"
+                                                           confirm="@T["Delete {0} ({1})? Whatever reads it gets no value any more.", v.Key, EnvironmentName(v.Environment)]"
+                                                           confirm-title="@T["Delete environment variable"]" confirm-action="@T["Delete"]">@T["Delete"]</dnf-dropdown-post>
+                                    }
+                                </dnf-dropdown>
+                            </td>
+                        </tr>
+                    }
+                    <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="5">@T["No variable matches the search or filters."]</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="dnf-pagination" data-collection-pagination hidden></div>
+    }
+</section>
+
+@section Scripts {
+    <script src="~/js/admin/env-vars.js" asp-append-version="true" defer></script>
+}

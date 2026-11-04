@@ -1,4 +1,5 @@
 import { createNode } from "../core/doc.js";
+import { t } from "../ui/i18n.js";
 function build(spec) {
   const out = [];
   let n = 0;
@@ -15,7 +16,7 @@ function build(spec) {
   make(spec, null);
   return out;
 }
-const text = (t) => [{ type: "p", runs: [{ text: t }] }];
+const text = (value) => [{ type: "p", runs: [{ text: value }] }];
 /**
  * Content lists (.docs/features/structured-content.md#content-lists): a list and its item template, designed like
  * any layout. The props are bound to fields when a content type is chosen (ui/data-panel.js autoBind).
@@ -28,9 +29,9 @@ const listOf = (name, props, layout, item) => build(["section", { name: name + "
 const CONTENT_PRESETS = [
   {
     id: "content-cards",
-    group: "Content lists",
-    label: "Card grid",
-    description: "Entries as cards in a responsive grid: picture, title, text and a link. 3 columns, 2 on tablets, 1 on phones.",
+    group: t("Content lists"),
+    label: t("Card grid"),
+    description: t("Entries as cards in a responsive grid: picture, title, text and a link. 3 columns, 2 on tablets, 1 on phones."),
     icon: "cards",
     build: () => listOf("Card grid", {}, { base: { mode: "grid", columns: 3, colGap: 24, rowGap: 24, rowMode: "auto" }, tablet: { columns: 2 }, mobile: { columns: 1 } },
       ["item", { name: "Card", layout: { base: { mode: "stack", direction: "column", gap: 12 } }, style: { base: card } }, [
@@ -42,9 +43,9 @@ const CONTENT_PRESETS = [
   },
   {
     id: "content-list",
-    group: "Content lists",
-    label: "List",
-    description: "Entries one below the other, a picture beside the text. Stacks on phones.",
+    group: t("Content lists"),
+    label: t("List"),
+    description: t("Entries one below the other, a picture beside the text. Stacks on phones."),
     icon: "rows",
     build: () => listOf("List", {}, { base: { mode: "stack", direction: "column", gap: 20 } },
       ["item", { name: "Row", layout: { base: { mode: "stack", direction: "row", gap: 20, align: "center" }, mobile: { direction: "column", align: "stretch" } } }, [
@@ -58,9 +59,9 @@ const CONTENT_PRESETS = [
   },
   {
     id: "content-carousel",
-    group: "Content lists",
-    label: "Carousel",
-    description: "Cards in one row that scrolls sideways; swipe on phones.",
+    group: t("Content lists"),
+    label: t("Carousel"),
+    description: t("Cards in one row that scrolls sideways; swipe on phones."),
     icon: "carousel",
     build: () => listOf("Carousel", { carousel: true }, { base: { mode: "stack", direction: "row", gap: 20, align: "stretch" } },
       ["item", { name: "Slide", layout: { base: { mode: "stack", direction: "column", gap: 12 } }, style: { base: { ...card, width: { mode: "fixed", value: 300 } }, mobile: { width: { mode: "fixed", value: 260 } } } }, [
@@ -71,9 +72,9 @@ const CONTENT_PRESETS = [
   },
   {
     id: "content-table",
-    group: "Content lists",
-    label: "Table",
-    description: "Entries as table rows; choose the columns. The first column links to the entry.",
+    group: t("Content lists"),
+    label: t("Table"),
+    description: t("Entries as table rows; choose the columns. The first column links to the entry."),
     icon: "table",
     build: () => listOf("Table", { view: "table", limit: 20, paginate: true }, { base: { mode: "stack", direction: "column", gap: 16 } },
       ["item", { name: "Item", layout: { base: { mode: "stack", direction: "column", gap: 8 } } }, [
@@ -82,9 +83,9 @@ const CONTENT_PRESETS = [
   },
   {
     id: "content-detail",
-    group: "Content lists",
-    label: "Detail",
-    description: "One entry in full - for a page like /products/[slug] that shows the entry its URL names.",
+    group: t("Content lists"),
+    label: t("Detail"),
+    description: t("One entry in full - for a page like /products/[slug] that shows the entry its URL names."),
     icon: "detail",
     build: () => listOf("Detail", { mode: "single", limit: 1 }, { base: { mode: "stack", direction: "column", gap: 0 } },
       ["item", { name: "Entry", layout: { base: { mode: "stack", direction: "column", gap: 20 } } }, [
@@ -98,8 +99,8 @@ const PRESETS = [
   ...CONTENT_PRESETS,
   {
     id: "hero",
-    label: "Hero",
-    description: "A big title, a short text and two buttons, centered on a colored band.",
+    label: t("Hero"),
+    description: t("A big title, a short text and two buttons, centered on a colored band."),
     icon: "section",
     build: () => build(["section", {
       name: "Hero",
@@ -117,8 +118,8 @@ const PRESETS = [
   },
   {
     id: "two-columns",
-    label: "Text and image",
-    description: "Two columns: text on the left, a picture on the right. Stacks on phones.",
+    label: t("Text and image"),
+    description: t("Two columns: text on the left, a picture on the right. Stacks on phones."),
     icon: "stackH",
     build: () => build(["section", {
       name: "Text and image",
@@ -134,8 +135,8 @@ const PRESETS = [
   },
   {
     id: "cards",
-    label: "Three cards",
-    description: "Three equal cards with a picture, a title and a link; 2 on tablets, 1 on phones.",
+    label: t("Three cards"),
+    description: t("Three equal cards with a picture, a title and a link; 2 on tablets, 1 on phones."),
     icon: "grid",
     build: () => {
       const card = (n) => ["container", {
@@ -157,8 +158,8 @@ const PRESETS = [
   },
   {
     id: "dashboard",
-    label: "Dashboard grid",
-    description: "A 12-column grid with a banner (8×2), a side panel (4×4) and wide blocks, like a community dashboard.",
+    label: t("Dashboard grid"),
+    description: t("A 12-column grid with a banner (8×2), a side panel (4×4) and wide blocks, like a community dashboard."),
     icon: "dashboard",
     build: () => build(["section", {
       name: "Dashboard",
@@ -181,8 +182,8 @@ const PRESETS = [
   },
   {
     id: "cta",
-    label: "Call to action",
-    description: "A line of text and a button side by side; stacked on phones.",
+    label: t("Call to action"),
+    description: t("A line of text and a button side by side; stacked on phones."),
     icon: "button",
     build: () => build(["section", {
       name: "Call to action",
@@ -196,8 +197,8 @@ const PRESETS = [
   },
   {
     id: "columns-3",
-    label: "Three columns",
-    description: "An empty 3-column grid to fill yourself.",
+    label: t("Three columns"),
+    description: t("An empty 3-column grid to fill yourself."),
     icon: "frame",
     build: () => build(["section", {
       name: "Columns",

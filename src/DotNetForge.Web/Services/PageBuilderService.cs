@@ -89,7 +89,7 @@ public sealed class PageBuilderService
     }
 
     /// <summary>Makes the draft what visitors see. Null when published, else the error.</summary>
-    public async Task<string?> PublishAsync(Page page, CancellationToken ct = default)
+    public async Task<string?> PublishAsync(Page page, CancellationToken ct = default, string? locale = null)
     {
         var json = EditableJson(page);
         if (json is null)
@@ -111,20 +111,25 @@ public sealed class PageBuilderService
         page.LayoutPublishedDate = DateTime.UtcNow;
         page.UpdatedDate = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
-        await _audit.LogAsync(AuditActions.ContentUpdated, "Page", page.Id.ToString(), page.Title, details: "Layout published", cancellationToken: ct);
+        await AuditLayoutAsync(page, "Layout published", locale, ct);
         return null;
     }
 
     /// <summary>Visitors get the page's default view again; the draft is kept.</summary>
-    public async Task UnpublishAsync(Page page, CancellationToken ct = default)
+    public async Task UnpublishAsync(Page page, CancellationToken ct = default, string? locale = null)
     {
         page.DraftLayoutJson ??= page.LayoutJson;
         page.LayoutJson = null;
         page.LayoutPublishedDate = null;
         page.UpdatedDate = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
-        await _audit.LogAsync(AuditActions.ContentUpdated, "Page", page.Id.ToString(), page.Title, details: "Layout unpublished", cancellationToken: ct);
+        await AuditLayoutAsync(page, "Layout unpublished", locale, ct);
     }
+
+    /// <summary>A layout change of the page, or of one of its translations (<paramref name="locale"/> "Deutsch (de)").</summary>
+    private Task AuditLayoutAsync(Page page, string change, string? locale, CancellationToken ct) => locale is null
+        ? _audit.LogAsync(AuditActions.ContentUpdated, "Page", page.Id.ToString(), page.Title, details: change, cancellationToken: ct)
+        : _audit.LogAsync(AuditActions.ContentTranslated, "Page", page.Id.ToString(), page.Title, details: $"{change} - {locale}", cancellationToken: ct);
 
     /// <summary>Throws the draft away: the editor continues from the published layout (or an empty page).</summary>
     public async Task DiscardDraftAsync(Page page, Guid? userId, CancellationToken ct = default)

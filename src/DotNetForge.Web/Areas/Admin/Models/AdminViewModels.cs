@@ -127,6 +127,10 @@ public sealed class PageEditorExtras
     public DateTime? LayoutPublishedDate { get; init; }
     public DateTime? DraftUpdatedDate { get; init; }
     public bool CanEditLayout { get; init; }
+
+    /// <summary>The page in every enabled locale other than the default (the Translations tab); empty with one locale.</summary>
+    public IReadOnlyList<DotNetForge.Web.Services.Localization.PageTranslationView> Translations { get; init; } =
+        Array.Empty<DotNetForge.Web.Services.Localization.PageTranslationView>();
 }
 
 /// <summary>A role in the page permission table; <see cref="SiteOnly"/> roles (Public, Authenticated) can only view.</summary>
@@ -250,13 +254,6 @@ public sealed class MediaRowViewModel
     public bool CanEdit { get; init; }
 }
 
-/// <summary>The Settings screen: existing key/value settings (left) and an add/update form (right).</summary>
-public sealed class SettingsIndexViewModel
-{
-    public string AppName { get; init; } = string.Empty;
-    public IReadOnlyList<(string Key, string? Value)> Settings { get; init; } = Array.Empty<(string, string?)>();
-}
-
 /// <summary>One content type on the Content types and Content Manager screens (.docs/pages/content-types.md).</summary>
 public sealed record ContentTypeCard(
     Guid Id, string Name, string Slug, string? Description, string Icon, DotNetForge.Shared.Enums.ContentTypeKind Kind,
@@ -358,7 +355,21 @@ public sealed class EntryEditViewModel
     public bool CanDelete { get; init; }
     public bool CanCreate { get; init; }
     public bool CanUpload { get; init; }
+
+    /// <summary>The entry in every language (a localized type with more than one locale): the switcher above the form.</summary>
+    public IReadOnlyList<EntryLanguage> Languages { get; set; } = Array.Empty<EntryLanguage>();
+
+    /// <summary>The locale this form translates into (code and name); null = the entry's own (main) values.</summary>
+    public string? TranslationCode { get; set; }
+    public string? TranslationName { get; set; }
+
+    /// <summary>The translation's state: null = not translated yet, true = published, false = a draft only.</summary>
+    public bool? TranslationPublished { get; set; }
+    public bool TranslationHasDraft { get; set; }
 }
+
+/// <summary>A language of an entry for the switcher: the main values (the default locale) or a translation.</summary>
+public sealed record EntryLanguage(string Code, string Name, string Url, bool Current, bool Translated);
 
 /// <summary>One field of the entry form (the recursive <c>_Field</c> partial): its definition, value and form path.</summary>
 public sealed record EntryFieldView(DotNetForge.Core.Content.FieldDefinition Field, Newtonsoft.Json.Linq.JToken? Value, string Path, EntryEditViewModel Form)

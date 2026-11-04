@@ -8,6 +8,7 @@
  * the top row is the first item of the flow; in a free container the top row
  * is the frontmost layer, so its children are listed last-first.
  */
+import { t } from "./i18n.js";
 import { jsx, Fragment, useEffect, useMemo, useRef, useState } from "./vdom.js";
 import { canContain } from "../core/schema.js";
 import { ancestors, displayName, isAncestor, walk } from "../core/doc.js";
@@ -90,20 +91,18 @@ export function LayersPanel() {
     }, [query, doc]);
     if (!root)
         return null;
-    return (jsx("div", { class: "pe-layers", role: "tree", "aria-label": "Layers" },
+    return (jsx("div", { class: "pe-layers", role: "tree", "aria-label": t("Layers") },
         jsx("div", { class: "pe-layers-bar" },
             jsx("div", { class: "pe-search" },
                 jsx(Icon, { name: "search", size: 16 }),
-                jsx("input", { type: "search", placeholder: "Search layers", value: query, "aria-label": "Search layers", onInput: e => setQuery(e.target.value) })),
-            jsx("button", { type: "button", class: "pe-icon-btn", title: "Collapse layers", "aria-label": "Collapse layers", onClick: () => {
+                jsx("input", { type: "search", placeholder: t("Search layers"), value: query, "aria-label": t("Search layers"), onInput: e => setQuery(e.target.value) })),
+            jsx("button", { type: "button", class: "pe-icon-btn", title: t("Collapse layers"), "aria-label": t("Collapse layers"), onClick: () => {
                     expanded.set(new Set());
                     collapsed.set(new Set(root.children ?? []));
                 } },
                 jsx(Icon, { name: "collapseLayers", size: 16 }))),
         jsx("div", { class: "pe-layer-list" }, matches ? (matches.length ? matches.map(id => jsx(LayerRow, { key: id, id: id, depth: 0, flat: true })) : jsx("div", { class: "pe-empty-state" },
-            "No layer matches \u201C",
-            query,
-            "\u201D.")) : (
+            t("No layer matches “{0}”.", query))) : (
         // As in Figma, the list starts at the page's layers; the page itself has no row.
         (isStacking(root, session.breakpoint.value) ? [...(root.children ?? [])].reverse() : root.children ?? []).map(id => jsx(LayerRow, { key: id, id: id, depth: 0 }))))));
 }
@@ -235,7 +234,7 @@ function LayerRow({ id, depth, flat }) {
                     session.store.select([id]);
                 openContextMenu(e.clientX, e.clientY);
             } },
-            !flat && (jsx("button", { type: "button", class: cls('pe-layer-caret', !kids.length && 'is-empty'), tabIndex: -1, onClick: toggle, "aria-label": open ? 'Collapse' : 'Expand' }, kids.length > 0 && jsx(Icon, { name: open ? 'chevronDown16' : 'chevronRight16', size: 16 }))),
+            !flat && (jsx("button", { type: "button", class: cls('pe-layer-caret', !kids.length && 'is-empty'), tabIndex: -1, onClick: toggle, "aria-label": open ? t("Collapse") : t("Expand") }, kids.length > 0 && jsx(Icon, { name: open ? 'chevronDown16' : 'chevronRight16', size: 16 }))),
             jsx(Icon, { name: layerIcon(node, bp), size: 16, class: "pe-layer-icon" }),
             renaming ? (jsx("input", { class: "pe-layer-rename", autoFocus: true, defaultValue: node.name ?? displayName(node), onClick: e => e.stopPropagation(), onBlur: e => {
                     renameNode(session.store, id, e.target.value);
@@ -253,12 +252,12 @@ function LayerRow({ id, depth, flat }) {
                     displayName(doc.nodes[node.parent])))),
             jsx(LayerBadges, { id: id }),
             !isRoot && caps.editLayout && (jsx("span", { class: "pe-layer-tools" },
-                jsx("button", { type: "button", class: cls('pe-layer-tool', node.locked && 'is-on'), title: node.locked ? 'Unlock' : 'Lock', "aria-pressed": !!node.locked, onClick: e => {
+                jsx("button", { type: "button", class: cls('pe-layer-tool', node.locked && 'is-on'), title: node.locked ? t("Unlock") : t("Lock"), "aria-pressed": !!node.locked, onClick: e => {
                         e.stopPropagation();
                         setFlag(session.store, [id], 'locked', !node.locked);
                     } },
                     jsx(Icon, { name: node.locked ? 'lock16' : 'unlock16', size: 16 })),
-                jsx("button", { type: "button", class: cls('pe-layer-tool', node.hidden && 'is-on'), title: node.hidden ? 'Show' : 'Hide', "aria-pressed": !!node.hidden, onClick: e => {
+                jsx("button", { type: "button", class: cls('pe-layer-tool', node.hidden && 'is-on'), title: node.hidden ? t("Show") : t("Hide"), "aria-pressed": !!node.hidden, onClick: e => {
                         e.stopPropagation();
                         setFlag(session.store, [id], 'hidden', !node.hidden);
                     } },
@@ -272,13 +271,13 @@ function LayerBadges({ id }) {
     const v = node.visibility;
     const out = [];
     if (v?.roles?.length || v?.audience)
-        out.push(jsx("span", { key: "aud", class: "pe-badge", title: "Shown to some visitors only" },
+        out.push(jsx("span", { key: "aud", class: "pe-badge", title: t("Shown to some visitors only") },
             jsx(Icon, { name: "users", size: 14 })));
     if (v?.devices && v.devices.length < 3)
-        out.push(jsx("span", { key: "dev", class: "pe-badge", title: 'Shown on: ' + (v.devices.join(', ') || 'no device') },
+        out.push(jsx("span", { key: "dev", class: "pe-badge", title: t("Shown on: {0}", v.devices.join(', ') || t("no device")) },
             jsx(Icon, { name: "mobile", size: 14 })));
     if (node.permissions?.editRoles?.length)
-        out.push(jsx("span", { key: "perm", class: "pe-badge", title: "Editing restricted to some roles" },
+        out.push(jsx("span", { key: "perm", class: "pe-badge", title: t("Editing restricted to some roles") },
             jsx(Icon, { name: "lock", size: 14 })));
     if (node.type === 'module')
         out.push(jsx("span", { key: "mod", class: "pe-badge pe-badge-text" },

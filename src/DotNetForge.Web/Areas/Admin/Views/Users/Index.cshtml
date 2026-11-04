@@ -1,7 +1,7 @@
 @model List<UsersController.UserListItem>
 @{
-    ViewData["Title"] = "Users";
-    ViewData["Description"] = "People with access to the admin and the roles that decide what they can do.";
+    ViewData["Title"] = T["Users"];
+    ViewData["Description"] = T["People with access to the admin and the roles that decide what they can do."];
     var roles = Model.SelectMany(u => u.Roles).Distinct().Order().ToList();
     var canCreate = ViewData["CanCreate"] as bool? == true;
     var canUpdate = ViewData["CanUpdate"] as bool? == true;
@@ -15,47 +15,47 @@
 @section Actions {
     @if (canCreate)
     {
-        <a class="dnf-button dnf-button--primary" href="/admin/users/create"><dnf-icon name="plus" /> Create user</a>
+        <a class="dnf-button dnf-button--primary" href="/admin/users/create"><dnf-icon name="plus" /> @T["Create user"]</a>
     }
 }
 
 <section class="dnf-card" aria-labelledby="users-title" data-collection data-page-size="25">
     <div class="dnf-card__header">
         <div>
-            <h2 class="dnf-card__title" id="users-title">All users</h2>
-            <p class="dnf-card__description" data-collection-count>@Model.Count total</p>
+            <h2 class="dnf-card__title" id="users-title">@T["All users"]</h2>
+            <p class="dnf-card__description" data-collection-count>@T["{0} total", Model.Count]</p>
         </div>
     </div>
     <div class="dnf-toolbar" data-js-only hidden>
         <div class="dnf-toolbar__search dnf-input-group">
             <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
-            <label class="sr-only" for="user-search">Search users</label>
-            <input id="user-search" type="search" class="dnf-input dnf-input--sm" placeholder="Search by name or email" data-collection-search />
+            <label class="sr-only" for="user-search">@T["Search users"]</label>
+            <input id="user-search" type="search" class="dnf-input dnf-input--sm" placeholder="@T["Search by name or email"]" data-collection-search />
         </div>
-        <label class="sr-only" for="user-role">Role</label>
+        <label class="sr-only" for="user-role">@T["Role"]</label>
         <select id="user-role" class="dnf-select dnf-select--sm" data-collection-filter="roles">
-            <option value="">All roles</option>
+            <option value="">@T["All roles"]</option>
             @foreach (var role in roles)
             {
                 <option value="@role.Replace(' ', '-')">@role</option>
             }
         </select>
-        <label class="sr-only" for="user-status">Status</label>
+        <label class="sr-only" for="user-status">@T["Status"]</label>
         <select id="user-status" class="dnf-select dnf-select--sm" data-collection-filter="status">
-            <option value="">Any status</option>
-            <option value="enabled">Enabled</option>
-            <option value="disabled">Disabled</option>
+            <option value="">@T["Any status"]</option>
+            <option value="enabled">@T["Enabled"]</option>
+            <option value="disabled">@T["Disabled"]</option>
         </select>
     </div>
     <div class="dnf-table dnf-table--stack">
         <table class="dnf-table__table">
             <thead>
                 <tr>
-                    <th scope="col" data-sort="text">User</th>
-                    <th scope="col">Roles</th>
-                    <th scope="col" data-sort="text">Status</th>
-                    <th scope="col" data-sort="date">Last sign-in</th>
-                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
+                    <th scope="col" data-sort="text">@T["User"]</th>
+                    <th scope="col">@T["Roles"]</th>
+                    <th scope="col" data-sort="text">@T["Status"]</th>
+                    <th scope="col" data-sort="date">@T["Last sign-in"]</th>
+                    <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">@T["Actions"]</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -71,7 +71,7 @@
                                     <a class="dnf-table__primary" href="/admin/users/@user.Id">@(string.IsNullOrWhiteSpace(user.Name) ? user.Email : user.Name)</a>
                                     @if (user.IsSelf)
                                     {
-                                        <dnf-badge tone="Neutral">You</dnf-badge>
+                                        <dnf-badge tone="Neutral">@T["You"]</dnf-badge>
                                     }
                                     @if (!string.IsNullOrWhiteSpace(user.Name))
                                     {
@@ -80,7 +80,7 @@
                                 </span>
                             </div>
                         </td>
-                        <td data-label="Roles">
+                        <td data-label="@T["Roles"]">
                             <div class="dnf-cluster">
                                 @foreach (var role in user.Roles)
                                 {
@@ -88,33 +88,33 @@
                                 }
                                 @if (user.Roles.Count == 0)
                                 {
-                                    <span class="text-subtle">No role</span>
+                                    <span class="text-subtle">@T["No role"]</span>
                                 }
                             </div>
                         </td>
-                        <td data-label="Status"><dnf-badge tone="@(enabled ? DnfTone.Success : DnfTone.Danger)" dot="true">@user.Status</dnf-badge></td>
-                        <td data-label="Last sign-in" data-sort-value="@(user.LastLogin?.ToString("O") ?? "")"><dnf-timestamp value="@user.LastLogin" empty="Never" /></td>
+                        <td data-label="@T["Status"]"><dnf-badge tone="@(enabled ? DnfTone.Success : DnfTone.Danger)" dot="true">@(enabled ? T["Enabled"] : T["Disabled"])</dnf-badge></td>
+                        <td data-label="@T["Last sign-in"]" data-sort-value="@(user.LastLogin?.ToString("O") ?? "")"><dnf-timestamp value="@user.LastLogin" empty="@T["Never"]" /></td>
                         <td class="dnf-table__cell--actions">
-                            <dnf-dropdown label="Actions for @user.Email">
-                                <dnf-dropdown-link href="/admin/users/@user.Id" icon="@(canUpdate ? "pencil" : "eye")">@(canUpdate ? "Edit" : "View")</dnf-dropdown-link>
+                            <dnf-dropdown label="@T["Actions for {0}", user.Email]">
+                                <dnf-dropdown-link href="/admin/users/@user.Id" icon="@(canUpdate ? "pencil" : "eye")">@(canUpdate ? T["Edit"] : T["View"])</dnf-dropdown-link>
                                 @if (canUpdate && !user.IsSelf)
                                 {
-                                    <dnf-dropdown-post action="/admin/users/@user.Id/@(enabled ? "disable" : "enable")" icon="power" field-returnTo="list">@(enabled ? "Disable" : "Enable")</dnf-dropdown-post>
+                                    <dnf-dropdown-post action="/admin/users/@user.Id/@(enabled ? "disable" : "enable")" icon="power" field-returnTo="list">@(enabled ? T["Disable"] : T["Enable"])</dnf-dropdown-post>
                                 }
                                 @if (canDelete && !user.IsSelf)
                                 {
                                     <dnf-dropdown-separator />
                                     <dnf-dropdown-post action="/admin/users/@user.Id/delete" icon="trash" danger="true" field-returnTo="list"
-                                               confirm="Delete @user.Email? They can't sign in any more. This can't be undone." confirm-title="Delete user" confirm-action="Delete user">Delete</dnf-dropdown-post>
+                                               confirm="@T["Delete {0}? They can't sign in any more. This can't be undone.", user.Email]" confirm-title="@T["Delete user"]" confirm-action="@T["Delete user"]">@T["Delete"]</dnf-dropdown-post>
                                 }
                             </dnf-dropdown>
                         </td>
                     </tr>
                 }
-                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="5">No user matches the search or filters.</td></tr>
+                <tr class="dnf-table__empty" data-collection-empty hidden><td colspan="5">@T["No user matches the search or filters."]</td></tr>
                 @if (Model.Count == 0)
                 {
-                    <tr class="dnf-table__empty"><td colspan="5">No users yet.</td></tr>
+                    <tr class="dnf-table__empty"><td colspan="5">@T["No users yet."]</td></tr>
                 }
             </tbody>
         </table>

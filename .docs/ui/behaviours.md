@@ -62,6 +62,15 @@ window.dnfUI = { toast, confirm, init, icon };
 Delegated behaviours (dropdowns, tooltips, confirm, pending, copy, reveal, fill, drawer, theme switch) work for added
 markup without `init`.
 
+### Text (`window.dnfText`)
+
+`dnfText("Copied.")`, `dnfText("{0} selected", n)`: the English text, or its translation from the page's
+`<meta name="dnf-text" content='{"Copied.":"Kopiert."}'>` (read once; a broken or missing meta keeps English);
+`{0}`, `{1}`... are replaced with the arguments. `dnf.js` shows its own texts through it, and screen scripts use it for
+theirs. The CMS writes the meta in the admin language
+([internationalization → admin language](../features/internationalization.md#admin-language)); a page without it
+stays English.
+
 ## Hooks
 
 ### Dropdowns and popovers

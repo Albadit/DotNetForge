@@ -22,18 +22,18 @@
             return json;
         }
     }
-    ViewData["Title"] = "Delivery log";
-    ViewData["Description"] = $"Every attempt of '{w.Name}' in the last 30 days, newest first.";
+    ViewData["Title"] = T["Delivery log"];
+    ViewData["Description"] = T["Every attempt of '{0}' in the last 30 days, newest first.", w.Name];
 }
 
 @section Actions {
-    <a class="dnf-button dnf-button--secondary" href="/admin/webhooks/@w.Id"><dnf-icon name="pencil" /> Edit webhook</a>
+    <a class="dnf-button dnf-button--secondary" href="/admin/webhooks/@w.Id"><dnf-icon name="pencil" /> @T["Edit webhook"]</a>
     @if (Model.CanUpdate)
     {
         <form method="post" action="/admin/webhooks/@w.Id/test">
             @Html.AntiForgeryToken()
             <input type="hidden" name="returnTo" value="deliveries" />
-            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="send" /> Send test delivery</button>
+            <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="send" /> @T["Send test delivery"]</button>
         </form>
     }
 }
@@ -41,14 +41,14 @@
 <section class="dnf-card" aria-labelledby="log-title">
     <div class="dnf-card__header">
         <div>
-            <h2 class="dnf-card__title" id="log-title">Attempts</h2>
-            <p class="dnf-card__description">@Model.Total total · to <code>@w.Url</code></p>
+            <h2 class="dnf-card__title" id="log-title">@T["Attempts"]</h2>
+            <p class="dnf-card__description">@T["{0} total · to", Model.Total] <code>@w.Url</code></p>
         </div>
-        <dnf-badge tone="@(w.Enabled ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(w.Enabled ? "Enabled" : "Disabled")</dnf-badge>
+        <dnf-badge tone="@(w.Enabled ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(w.Enabled ? T["Enabled"] : T["Disabled"])</dnf-badge>
     </div>
     @if (Model.Deliveries.Count == 0)
     {
-        <dnf-empty-state icon="send" title="Nothing sent yet" description="Attempts appear here when a subscribed event happens, or after a test delivery." />
+        <dnf-empty-state icon="send" title="@T["Nothing sent yet"]" description="@T["Attempts appear here when a subscribed event happens, or after a test delivery."]" />
     }
     else
     {
@@ -56,13 +56,13 @@
             @foreach (var d in Model.Deliveries)
             {
                 var tone = d.Outcome switch { WebhookOutcome.Success => DnfTone.Success, WebhookOutcome.Failure => DnfTone.Danger, _ => DnfTone.Neutral };
-                var label = d.Outcome switch { WebhookOutcome.Success => d.ResponseStatusCode?.ToString() ?? "OK", WebhookOutcome.Failure => d.ResponseStatusCode?.ToString() ?? "Failed", _ => "Waiting" };
+                var label = d.Outcome switch { WebhookOutcome.Success => d.ResponseStatusCode?.ToString() ?? T["OK"], WebhookOutcome.Failure => d.ResponseStatusCode?.ToString() ?? T["Failed"], _ => T["Waiting"] };
                 <li class="dnf-list__item block p-0">
                     <details class="dnf-delivery">
                         <summary class="dnf-delivery__summary">
                             <dnf-badge tone="@tone" dot="true">@label</dnf-badge>
                             <code class="text-sm">@d.Event</code>
-                            <span class="text-sm text-muted">attempt @d.AttemptNumber</span>
+                            <span class="text-sm text-muted">@T["attempt {0}", d.AttemptNumber]</span>
                             <span class="grow min-w-0"></span>
                             <span class="text-sm text-muted">@(d.ResponseTimeMs is { } ms ? $"{ms} ms" : "")</span>
                             <dnf-timestamp value="@d.RequestTimestamp" absolute="true" />
@@ -73,16 +73,16 @@
                                 <p class="text-sm @(d.Outcome == WebhookOutcome.Failure ? "text-danger" : "text-muted")">@d.Detail</p>
                             }
                             <dl class="dnf-description-list dnf-description-list--compact">
-                                <dt>Event id</dt>
+                                <dt>@T["Event id"]</dt>
                                 <dd><code>@d.EventId</code></dd>
-                                <dt>Target</dt>
+                                <dt>@T["Target"]</dt>
                                 <dd><code>@d.TargetUrl</code></dd>
                             </dl>
-                            <span class="dnf-field__label">Request body</span>
+                            <span class="dnf-field__label">@T["Request body"]</span>
                             <pre class="dnf-code-block dnf-code-block--scroll">@Pretty(d.RequestBody)</pre>
                             @if (d.ResponseBody is not null)
                             {
-                                <span class="dnf-field__label">Response (start)</span>
+                                <span class="dnf-field__label">@T["Response (start)"]</span>
                                 <pre class="dnf-code-block dnf-code-block--scroll">@Pretty(d.ResponseBody)</pre>
                             }
                         </div>
@@ -93,14 +93,14 @@
         @if (pages > 1)
         {
             <div class="dnf-card__footer">
-                <span class="text-sm text-muted">Page @current of @pages</span>
+                <span class="text-sm text-muted">@T["Page {0} of {1}", current, pages]</span>
                 @if (current > 1)
                 {
-                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="?page=@(current - 1)"><dnf-icon name="chevron-left" size="Sm" /> Newer</a>
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="?page=@(current - 1)"><dnf-icon name="chevron-left" size="Sm" /> @T["Newer"]</a>
                 }
                 @if (current < pages)
                 {
-                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="?page=@(current + 1)">Older <dnf-icon name="chevron-right" size="Sm" /></a>
+                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="?page=@(current + 1)">@T["Older"] <dnf-icon name="chevron-right" size="Sm" /></a>
                 }
             </div>
         }

@@ -159,7 +159,8 @@ flowchart LR
 ## Known limitations
 
 - No plain-text part; the body is sent as HTML only.
-- No per-language templates ([internationalization](../features/internationalization.md) is planned).
+- No per-language templates: emails are sent in the templates' one language, whatever the site's locales or the
+  recipient's admin language ([internationalization → what stays English](../features/internationalization.md#what-stays-english)).
 - Monaco's HTML mode doesn't check markup (e.g. unclosed tags); only the template rules are validated.
 - Monaco loads about 5 MB the first time the editor opens (cached afterwards).
 

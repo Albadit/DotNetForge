@@ -4,6 +4,7 @@ using DotNetForge.Core.Content;
 using DotNetForge.Data;
 using DotNetForge.PageBuilder;
 using DotNetForge.Shared.Entities;
+using DotNetForge.Web.Services.Localization;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 
@@ -25,18 +26,28 @@ public sealed record ContentRenderData(JObject Data, bool MissingEntry, string? 
 /// query (source type, one entry or many, filters, sort, page size, the page from <c>?pg-{nodeId}=n</c>), the published
 /// entries, their media and linked entries - and turns each entry into item data (<see cref="ItemData"/>) the C# and
 /// JavaScript renderers bind identically. Used for visitors, the editor's preview and the canvas. Queries run per
-/// request, so an edited entry shows on every page at once; nothing here is cached.
+/// request, so an edited entry shows on every page at once; nothing here is cached. On a translated page (the request's
+/// locale, .docs/features/internationalization.md#entries) the published translations of localized types show over the
+/// entries' own values, and item links get the locale's prefix.
 /// </summary>
 public sealed partial class ContentRenderService
 {
     private readonly DotNetForgeDbContext _db;
     private readonly ContentQueryService _query;
+    private readonly EntryTranslationService _translations;
+    private readonly IHttpContextAccessor _http;
 
-    public ContentRenderService(DotNetForgeDbContext db, ContentQueryService query)
+    public ContentRenderService(DotNetForgeDbContext db, ContentQueryService query, EntryTranslationService translations, IHttpContextAccessor http)
     {
         _db = db;
         _query = query;
+        _translations = translations;
+        _http = http;
     }
+
+    /// <summary>The request's locale when it is a translation (not the default), else null.</summary>
+    private LocaleInfo? TranslationLocale() =>
+        _http.HttpContext is { } context && RequestLocale.Of(context).Locale is { IsDefault: false } locale ? locale : null;
 
     [GeneratedRegex(@"\{([^{}]+)\}", RegexOptions.CultureInvariant)]
     private static partial Regex Placeholder();
@@ -116,9 +127,15 @@ public sealed partial class ContentRenderService
                 pageCount = props.Paginate ? result.PageCount : 1;
             }
 
+            var items = await ItemsAsync(type, entries, props.ItemUrl, published: true, ct);
+            if (props.Mode == "single" && props.RouteParam.Length > 0 && !preview && items.Count > 0 && TranslationLocale() is not null)
+            {
+                entryTitle = (string?)items[0]["fields"]?[ItemData.TitlePath]?["text"] ?? entryTitle; // the detail page's title, translated
+            }
+
             data[node.Id] = new JObject
             {
-                ["items"] = new JArray(await ItemsAsync(type, entries, props.ItemUrl, published: true, ct)),
+                ["items"] = new JArray(items),
                 ["total"] = total,
                 ["page"] = page,
                 ["pageCount"] = pageCount,
@@ -152,6 +169,15 @@ public sealed partial class ContentRenderService
 
         var fields = ContentSchema.Parse(type.FieldsJson);
         var values = entries.ToDictionary(e => e.Id, e => ContentEntryService.Parse(published ? e.PublishedDataJson : e.DataJson));
+        var locale = published ? TranslationLocale() : null;
+        if (locale is not null && type.Localized)
+        {
+            var translated = await _translations.PublishedAsync(values.Keys.ToList(), locale.Id, ct);
+            foreach (var (id, t) in translated)
+            {
+                values[id] = EntryTranslations.Merge(fields, values[id], t);
+            }
+        }
 
         // Linked entries (published only, as visitors see them) and their types.
         var relatedIds = new HashSet<Guid>();
@@ -172,13 +198,26 @@ public sealed partial class ContentRenderService
                 .Select(e => new { e.Id, e.Title, e.ContentTypeId, e.PublishedDataJson })
                 .ToListAsync(ct);
             var typeIds = rows.Select(r => r.ContentTypeId).Distinct().ToList();
-            var relatedFields = (await _db.ContentTypes.AsNoTracking().Where(t => typeIds.Contains(t.Id))
-                    .Select(t => new { t.Id, t.FieldsJson }).ToListAsync(ct))
-                .ToDictionary(t => t.Id, t => ContentSchema.Parse(t.FieldsJson));
+            var relatedTypes = (await _db.ContentTypes.AsNoTracking().Where(t => typeIds.Contains(t.Id))
+                    .Select(t => new { t.Id, t.FieldsJson, t.TitleField, t.Localized }).ToListAsync(ct))
+                .ToDictionary(t => t.Id);
+            // Linked entries of localized types show in the locale too.
+            var relatedTranslations = locale is null
+                ? new Dictionary<Guid, JObject>()
+                : await _translations.PublishedAsync(rows.Where(r => relatedTypes.GetValueOrDefault(r.ContentTypeId)?.Localized == true).Select(r => r.Id).ToList(), locale.Id, ct);
             foreach (var r in rows)
             {
-                related[r.Id] = new RelatedEntry(r.Id, r.Title, relatedFields.GetValueOrDefault(r.ContentTypeId) ?? Array.Empty<FieldDefinition>(),
-                    ContentEntryService.Parse(r.PublishedDataJson));
+                var relatedType = relatedTypes.GetValueOrDefault(r.ContentTypeId);
+                var relatedFieldList = relatedType is null ? Array.Empty<FieldDefinition>() : ContentSchema.Parse(relatedType.FieldsJson);
+                var data = ContentEntryService.Parse(r.PublishedDataJson);
+                var title = r.Title;
+                if (relatedTranslations.TryGetValue(r.Id, out var t))
+                {
+                    data = EntryTranslations.Merge(relatedFieldList, data, t);
+                    title = EntryData.Title(relatedFieldList, relatedType!.TitleField, data);
+                }
+
+                related[r.Id] = new RelatedEntry(r.Id, title, relatedFieldList, data);
             }
         }
 
@@ -209,8 +248,13 @@ public sealed partial class ContentRenderService
         var items = new List<JObject>();
         foreach (var entry in entries)
         {
-            var item = ItemData.Build(entry.Id, entry.Title, string.Empty, fields, values[entry.Id], media.GetValueOrDefault, related.GetValueOrDefault);
+            var title = locale is not null && type.Localized ? EntryData.Title(fields, type.TitleField, values[entry.Id]) : entry.Title;
+            var item = ItemData.Build(entry.Id, title, string.Empty, fields, values[entry.Id], media.GetValueOrDefault, related.GetValueOrDefault);
             var url = ItemUrl(itemUrl, (JObject)item["fields"]!);
+            if (locale is not null && url.StartsWith('/'))
+            {
+                url = RequestLocale.UrlIn(locale, url); // the entry's page in the same language
+            }
             item["fields"]![ItemData.UrlPath] = new JObject { ["text"] = url, ["url"] = url };
             items.Add(item);
         }

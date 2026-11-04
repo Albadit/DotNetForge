@@ -28,6 +28,7 @@ public static class DataSeeder
         await SeedRolesAsync(db, cancellationToken);
         await SeedPagesAsync(db, cancellationToken);
         await SeedAuthProvidersAsync(db, cancellationToken);
+        await SeedLocalesAsync(db, cancellationToken);
         await EnsureSystemStateAsync(db, cancellationToken);
         await UpgradeAsync(db, cancellationToken);
     }
@@ -184,6 +185,21 @@ public static class DataSeeder
         {
             await db.SaveChangesAsync(ct);
         }
+    }
+
+    /// <summary>
+    /// The site always has a locale (.docs/features/internationalization.md): English as the default when there is none -
+    /// a new database, or one from before locales existed. Once one exists this does nothing (the last can't be deleted).
+    /// </summary>
+    private static async Task SeedLocalesAsync(DotNetForgeDbContext db, CancellationToken ct)
+    {
+        if (await db.Locales.AnyAsync(ct))
+        {
+            return;
+        }
+
+        db.Locales.Add(new Locale { Code = "en", DisplayName = "English", IsDefault = true, Enabled = true });
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task EnsureSystemStateAsync(DotNetForgeDbContext db, CancellationToken ct)

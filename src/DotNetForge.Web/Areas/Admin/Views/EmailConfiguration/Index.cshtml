@@ -2,8 +2,8 @@
 @model EmailConfigurationController.EmailConfigurationViewModel
 @{
     ViewData["PageWidth"] = "medium";
-    ViewData["Title"] = "Email Configuration";
-    ViewData["Description"] = "The SMTP server the CMS sends email with, tools to test it, and the emails it sent.";
+    ViewData["Title"] = T["Email Configuration"];
+    ViewData["Description"] = T["The SMTP server the CMS sends email with, tools to test it, and the emails it sent."];
     var settings = Model.Settings;
     var configured = settings.IsConfigured;
     var canTest = Model.CanTest && configured;
@@ -13,33 +13,33 @@
 @section Actions {
     @if (Model.MailpitInboxUrl is not null)
     {
-        <a class="dnf-button dnf-button--secondary" href="@Model.MailpitInboxUrl" target="_blank" rel="noopener"><dnf-icon name="inbox" /> Open Mailpit inbox</a>
+        <a class="dnf-button dnf-button--secondary" href="@Model.MailpitInboxUrl" target="_blank" rel="noopener"><dnf-icon name="inbox" /> @T["Open Mailpit inbox"]</a>
     }
 }
 
 <div class="dnf-stack">
     @if (!configured)
     {
-        <dnf-alert tone="Warning" title="Email is off">Set <code>SMTP_HOST</code> and <code>SMTP_FROM</code> (and the other <code>SMTP_*</code> values) in <code>.env</code> and restart. Until then the sign-in page has no "Forgot password?" link and email confirmation can't be turned on.</dnf-alert>
+        <dnf-alert tone="Warning" title="@T["Email is off"]">@T["Set"] <code>SMTP_HOST</code> @T["and"] <code>SMTP_FROM</code> @T["(and the other"] <code>SMTP_*</code> @T["values) in"] <code>.env</code> @T["and restart. Until then the sign-in page has no \"Forgot password?\" link and email confirmation can't be turned on."]</dnf-alert>
     }
 
     <section class="dnf-card" aria-labelledby="smtp-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="smtp-title">SMTP server</h2>
-                <p class="dnf-card__description">From <code>.env</code> - read-only here. Change the <code>SMTP_*</code> values there and restart the app.</p>
+                <h2 class="dnf-card__title" id="smtp-title">@T["SMTP server"]</h2>
+                <p class="dnf-card__description">@T["From"] <code>.env</code> @T["- read-only here. Change the"] <code>SMTP_*</code> @T["values there and restart the app."]</p>
             </div>
-            <dnf-badge tone="@(configured ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(configured ? "Configured" : "Not configured")</dnf-badge>
+            <dnf-badge tone="@(configured ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(configured ? T["Configured"] : T["Not configured"])</dnf-badge>
         </div>
         <div class="dnf-card__body">
             <dl class="dnf-description-list dnf-description-list--compact">
-                <dt>Host</dt>
+                <dt>@T["Host"]</dt>
                 <dd>@(configured ? $"{settings.Host}:{settings.Port}" : "-") <span class="text-subtle text-sm">SMTP_HOST, SMTP_PORT</span></dd>
-                <dt>Encryption</dt>
-                <dd>@(settings.UseTls ? "STARTTLS" : "None (only for a local test server)") <span class="text-subtle text-sm">SMTP_TLS</span></dd>
-                <dt>Sign-in</dt>
-                <dd>@(string.IsNullOrEmpty(settings.Username) ? "None" : $"{settings.Username}, password {(string.IsNullOrEmpty(settings.Password) ? "not set" : "set")}") <span class="text-subtle text-sm">SMTP_USERNAME, SMTP_PASSWORD</span></dd>
-                <dt>Sender</dt>
+                <dt>@T["Encryption"]</dt>
+                <dd>@(settings.UseTls ? "STARTTLS" : T["None (only for a local test server)"]) <span class="text-subtle text-sm">SMTP_TLS</span></dd>
+                <dt>@T["Sign-in"]</dt>
+                <dd>@(string.IsNullOrEmpty(settings.Username) ? T["None"] : string.IsNullOrEmpty(settings.Password) ? T["{0}, password not set", settings.Username] : T["{0}, password set", settings.Username]) <span class="text-subtle text-sm">SMTP_USERNAME, SMTP_PASSWORD</span></dd>
+                <dt>@T["Sender"]</dt>
                 <dd>@Or(settings.FromName, Model.AppName) &lt;@Or(settings.FromAddress, "-")&gt; <span class="text-subtle text-sm">SMTP_FROM, SMTP_FROM_NAME</span></dd>
             </dl>
         </div>
@@ -48,19 +48,19 @@
     <section class="dnf-card" aria-labelledby="connection-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="connection-title">Test connection</h2>
-                <p class="dnf-card__description">Connects, starts TLS and signs in - without sending anything - and shows which step fails.</p>
+                <h2 class="dnf-card__title" id="connection-title">@T["Test connection"]</h2>
+                <p class="dnf-card__description">@T["Connects, starts TLS and signs in - without sending anything - and shows which step fails."]</p>
             </div>
             <form method="post" action="/admin/email/configuration/connection">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm" disabled="@(canTest ? null : "disabled")"><dnf-icon name="plug" /> Test connection</button>
+                <button type="submit" class="dnf-button dnf-button--secondary dnf-button--sm" disabled="@(canTest ? null : "disabled")"><dnf-icon name="plug" /> @T["Test connection"]</button>
             </form>
         </div>
         @if (Model.Probe is { } probe)
         {
             <div class="dnf-card__body dnf-stack">
-                <dnf-alert tone="@(probe.Succeeded ? DnfTone.Success : DnfTone.Danger)" title="@(probe.Succeeded ? "The connection works" : "The connection test failed")">
-                    @(probe.Succeeded ? "Emails can be sent with these settings." : "See the failed step below.")
+                <dnf-alert tone="@(probe.Succeeded ? DnfTone.Success : DnfTone.Danger)" title="@(probe.Succeeded ? T["The connection works"] : T["The connection test failed"])">
+                    @(probe.Succeeded ? T["Emails can be sent with these settings."] : T["See the failed step below."])
                 </dnf-alert>
                 <ol class="dnf-probe">
                     @foreach (var step in probe.Steps)
@@ -75,7 +75,7 @@
                 </ol>
                 @if (probe.Extensions.Count > 0)
                 {
-                    <p class="text-sm text-muted">Server extensions: @string.Join(" · ", probe.Extensions)</p>
+                    <p class="text-sm text-muted">@T["Server extensions:"] @string.Join(" · ", probe.Extensions)</p>
                 }
             </div>
         }
@@ -84,33 +84,33 @@
     <section class="dnf-card" aria-labelledby="test-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="test-title">Send a test</h2>
-                <p class="dnf-card__description">A short test message, or one of the email templates with its sample data - to see the real email in an inbox.</p>
+                <h2 class="dnf-card__title" id="test-title">@T["Send a test"]</h2>
+                <p class="dnf-card__description">@T["A short test message, or one of the email templates with its sample data - to see the real email in an inbox."]</p>
             </div>
         </div>
         <form method="post" action="/admin/email/configuration/test">
             @Html.AntiForgeryToken()
             <fieldset class="dnf-fieldset dnf-card__body" disabled="@(canTest ? null : "disabled")">
-                <legend class="sr-only">Send a test</legend>
+                <legend class="sr-only">@T["Send a test"]</legend>
                 <div class="dnf-form-grid">
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="template">Email</label>
+                        <label class="dnf-field__label" for="template">@T["Email"]</label>
                         <select id="template" name="template" class="dnf-select">
-                            <option value="">Test message</option>
+                            <option value="">@T["Test message"]</option>
                             @foreach (var template in EmailTemplateCatalog.All)
                             {
-                                <option value="@template.Key" selected="@(template.Key == Model.TestTemplate ? "selected" : null)">@template.Name (template)</option>
+                                <option value="@template.Key" selected="@(template.Key == Model.TestTemplate ? "selected" : null)">@T["{0} (template)", T[template.Name]]</option>
                             }
                         </select>
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="recipient">Send to</label>
+                        <label class="dnf-field__label" for="recipient">@T["Send to"]</label>
                         <input id="recipient" name="recipient" type="email" class="dnf-input" value="@Model.TestRecipient" required />
                     </div>
                 </div>
             </fieldset>
             <div class="dnf-card__footer">
-                <button type="submit" class="dnf-button dnf-button--primary" disabled="@(canTest ? null : "disabled")"><dnf-icon name="send" /> Send test</button>
+                <button type="submit" class="dnf-button dnf-button--primary" disabled="@(canTest ? null : "disabled")"><dnf-icon name="send" /> @T["Send test"]</button>
             </div>
         </form>
     </section>
@@ -118,13 +118,13 @@
     <section class="dnf-card" aria-labelledby="log-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="log-title">Email log</h2>
-                <p class="dnf-card__description">The latest emails the CMS tried to send (kept 30 days; no message bodies).</p>
+                <h2 class="dnf-card__title" id="log-title">@T["Email log"]</h2>
+                <p class="dnf-card__description">@T["The latest emails the CMS tried to send (kept 30 days; no message bodies)."]</p>
             </div>
         </div>
         @if (Model.Log.Count == 0)
         {
-            <dnf-empty-state icon="mail" title="No emails yet" description="Password resets, confirmations, welcome emails and tests appear here." />
+            <dnf-empty-state icon="mail" title="@T["No emails yet"]" description="@T["Password resets, confirmations, welcome emails and tests appear here."]" />
         }
         else
         {
@@ -132,10 +132,10 @@
                 <table class="dnf-table__table">
                     <thead>
                         <tr>
-                            <th scope="col">When</th>
-                            <th scope="col">To</th>
-                            <th scope="col">Email</th>
-                            <th scope="col">Result</th>
+                            <th scope="col">@T["When"]</th>
+                            <th scope="col">@T["To"]</th>
+                            <th scope="col">@T["Email"]</th>
+                            <th scope="col">@T["Result"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -143,13 +143,13 @@
                         {
                             <tr>
                                 <td class="dnf-table__cell--lead"><dnf-timestamp value="@entry.SentAt" /></td>
-                                <td data-label="To">@entry.Recipient</td>
-                                <td data-label="Email">
-                                    @(entry.Template is { } key ? EmailTemplateCatalog.Find(key)?.Name ?? key : "Test message")
+                                <td data-label="@T["To"]">@entry.Recipient</td>
+                                <td data-label="@T["Email"]">
+                                    @(entry.Template is { } key ? EmailTemplateCatalog.Find(key) is { } found ? T[found.Name] : key : T["Test message"])
                                     <span class="dnf-table__secondary">@entry.Subject</span>
                                 </td>
-                                <td data-label="Result">
-                                    <dnf-badge tone="@(entry.Success ? DnfTone.Success : DnfTone.Danger)" dot="true">@(entry.Success ? "Sent" : "Failed")</dnf-badge>
+                                <td data-label="@T["Result"]">
+                                    <dnf-badge tone="@(entry.Success ? DnfTone.Success : DnfTone.Danger)" dot="true">@(entry.Success ? T["Sent"] : T["Failed"])</dnf-badge>
                                     @if (entry.Error is not null)
                                     {
                                         <span class="dnf-table__secondary">@entry.Error</span>

@@ -1,18 +1,17 @@
 @model string[]
 @{
     ViewData["PageWidth"] = "medium";
-    ViewData["Title"] = "Your recovery codes";
-    ViewData["Description"] = "If you lose your phone or key, sign in with one of these. Each works once.";
+    ViewData["Title"] = T["Your recovery codes"];
+    ViewData["Description"] = T["If you lose your phone or key, sign in with one of these. Each works once."];
 }
 
 <div class="dnf-stack dnf-stack--lg max-w-(--dnf-form-max)">
-    <dnf-alert tone="Warning" title="Save them now">
-        This is the only time they are shown. Keep them somewhere safe - a password manager, or printed. Only hashes are
-        stored, so they can't be shown again; you can make new ones on Sign-in security.
+    <dnf-alert tone="Warning" title="@T["Save them now"]">
+        @T["This is the only time they are shown. Keep them somewhere safe - a password manager, or printed. Only hashes are stored, so they can't be shown again; you can make new ones on Sign-in security."]
     </dnf-alert>
 
     <section class="dnf-card dnf-card--accent" aria-labelledby="codes-title">
-        <div class="dnf-card__header"><h2 class="dnf-card__title" id="codes-title">Recovery codes</h2></div>
+        <div class="dnf-card__header"><h2 class="dnf-card__title" id="codes-title">@T["Recovery codes"]</h2></div>
         <div class="dnf-card__body dnf-stack">
             <ol class="dnf-mfa__codes">
                 @foreach (var code in Model)
@@ -23,8 +22,8 @@
             <span id="recovery-text" hidden>@string.Join("\n", Model)</span>
         </div>
         <div class="dnf-card__footer">
-            <button type="button" class="dnf-button dnf-button--secondary" data-copy-target="#recovery-text" data-js-only hidden><dnf-icon name="copy" /> Copy</button>
-            <a class="dnf-button dnf-button--primary" href="/admin/profile/security">I saved them</a>
+            <button type="button" class="dnf-button dnf-button--secondary" data-copy-target="#recovery-text" data-js-only hidden><dnf-icon name="copy" /> @T["Copy"]</button>
+            <a class="dnf-button dnf-button--primary" href="/admin/profile/security">@T["I saved them"]</a>
         </div>
     </section>
 </div>

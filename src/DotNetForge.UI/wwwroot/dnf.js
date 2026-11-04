@@ -5,12 +5,24 @@
 //   dnfUI.confirm({ title, text, action, tone }) → Promise<boolean>   tone "primary" for a non-destructive question
 //   dnfUI.init(root)                 wires the per-element behaviours inside content added after the page loaded
 //   dnfUI.icon(name, size, class)    the markup of a sprite icon (size "sm" | "lg" | "xl" | undefined; extra classes)
+// Text (window.dnfText): dnfText("Copied.") or dnfText("{0} selected", n) - the English text, or its translation from
+// the page's <meta name="dnf-text"> (the CMS admin language, .docs/features/internationalization.md#admin-language).
 // State is exposed as data attributes (data-selected, data-dragging, data-open, data-tabbed, data-loaded, ...), never
 // as classes, so the component CSS and the markup share one vocabulary (.docs/ui/README.md#states).
 (function () {
     "use strict";
 
     var doc = document;
+    var texts = (function () {
+        var meta = doc.querySelector("meta[name='dnf-text']");
+        try { return meta ? JSON.parse(meta.getAttribute("content")) : {}; } catch (e) { return {}; }
+    })();
+    function t(text) {
+        var args = arguments;
+        var shown = Object.prototype.hasOwnProperty.call(texts, text) ? texts[text] : text;
+        return args.length < 2 ? shown : shown.replace(/\{(\d+)\}/g, function (m, i) { return i < args.length - 1 ? String(args[+i + 1]) : m; });
+    }
+    window.dnfText = t;
     var storage = {
         get: function (key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } },
         set: function (key, value) { try { window.localStorage.setItem(key, value); } catch (e) { /* blocked */ } },
@@ -302,11 +314,11 @@
         if (!dialog || typeof dialog.showModal !== "function") {
             return Promise.resolve(window.confirm(options.text));
         }
-        dialog.querySelector("[data-confirm-title]").textContent = options.title || "Are you sure?";
+        dialog.querySelector("[data-confirm-title]").textContent = options.title || t("Are you sure?");
         dialog.querySelector("[data-confirm-text]").textContent = options.text || "";
         var ok = dialog.querySelector("[data-confirm-ok]");
         var danger = options.tone !== "primary";
-        ok.textContent = options.action || "Confirm";
+        ok.textContent = options.action || t("Confirm");
         ok.className = danger ? "dnf-button dnf-button--danger" : "dnf-button dnf-button--primary";
         dialog.querySelector("[data-confirm-icon]").className = danger ? "dnf-dialog__icon dnf-dialog__icon--danger" : "dnf-dialog__icon";
         return new Promise(function (resolve) {
@@ -424,7 +436,7 @@
             items.forEach(function (item) { item.hidden = true; });
             visible.slice(first, last).forEach(function (item) { item.hidden = false; });
             if (empty) { empty.hidden = visible.length !== 0 || items.length === 0; }
-            if (count) { count.textContent = visible.length === items.length ? allCount || items.length + " total" : visible.length + " of " + items.length; }
+            if (count) { count.textContent = visible.length === items.length ? allCount || t("{0} total", items.length) : t("{0} of {1}", visible.length, items.length); }
             if (pager) { renderPager(pager, pages, visible.length, first, Math.min(last, visible.length)); }
         }
         // The pager's parts are made once and updated on each render, so the size select keeps its focus.
@@ -436,7 +448,7 @@
             var label = doc.createElement("label");
             label.className = "dnf-pagination__size";
             var labelText = doc.createElement("span");
-            labelText.textContent = "Rows per page";
+            labelText.textContent = t("Rows per page");
             var select = doc.createElement("select");
             select.className = "dnf-select dnf-select--sm";
             PageSizes.concat(PageSizes.indexOf(pageSize) === -1 ? [pageSize] : []).sort(function (a, b) { return a - b; }).forEach(function (size) {
@@ -460,7 +472,7 @@
             info.appendChild(summary);
             var nav = doc.createElement("nav");
             nav.className = "dnf-pagination__pages";
-            nav.setAttribute("aria-label", "Pages");
+            nav.setAttribute("aria-label", t("Pages"));
             container.appendChild(info);
             container.appendChild(nav);
             return { summary: summary, nav: nav };
@@ -470,7 +482,7 @@
             container.hidden = total <= Math.min(pageSize, PageSizes[0]);
             if (container.hidden) { return; }
             pagerParts = pagerParts || buildPager(container);
-            pagerParts.summary.textContent = total === 0 ? "0 of 0" : (first + 1) + "-" + last + " of " + total;
+            pagerParts.summary.textContent = total === 0 ? t("{0} of {1}", 0, 0) : t("{0}-{1} of {2}", first + 1, last, total);
             var nav = pagerParts.nav;
             nav.textContent = "";
             function add(content, target, current, aria, isIcon) {
@@ -484,12 +496,12 @@
                 button.addEventListener("click", function () { page = target; render(); scope.scrollIntoView({ block: "nearest" }); });
                 nav.appendChild(button);
             }
-            add(iconHtml("chevron-left", "sm"), page - 1, false, "Previous page", true);
+            add(iconHtml("chevron-left", "sm"), page - 1, false, t("Previous page"), true);
             for (var p = 1; p <= pages; p++) {
-                if (p === 1 || p === pages || Math.abs(p - page) <= 1) { add(String(p), p, p === page, "Page " + p); }
+                if (p === 1 || p === pages || Math.abs(p - page) <= 1) { add(String(p), p, p === page, t("Page {0}", p)); }
                 else if (Math.abs(p - page) === 2) { var gap = doc.createElement("span"); gap.className = "dnf-pagination__gap"; gap.setAttribute("aria-hidden", "true"); gap.textContent = "…"; nav.appendChild(gap); }
             }
-            add(iconHtml("chevron-right", "sm"), page + 1, false, "Next page", true);
+            add(iconHtml("chevron-right", "sm"), page + 1, false, t("Next page"), true);
         }
 
         if (search) { search.addEventListener("input", function () { page = 1; render(); }); }
@@ -560,7 +572,7 @@
                 selectAll.indeterminate = checked.length > 0 && checked.length < boxes.length;
             });
             if (bulkBar) { bulkBar.hidden = checked.length === 0; }
-            if (bulkCount) { bulkCount.textContent = checked.length + " selected"; }
+            if (bulkCount) { bulkCount.textContent = t("{0} selected", checked.length); }
         }
         selectAlls.forEach(function (selectAll) {
             selectAll.addEventListener("change", function () {
@@ -639,9 +651,9 @@
             var source = doc.querySelector(button.getAttribute("data-copy-target"));
             text = source ? (source.value !== undefined && source.tagName === "INPUT" ? source.value : source.textContent) : "";
         }
-        if (!navigator.clipboard) { toast("Copying is not available in this browser.", "danger"); return; }
-        navigator.clipboard.writeText(text.trim()).then(function () { toast("Copied to clipboard.", "success"); },
-            function () { toast("Could not copy. Select the text and copy it manually.", "danger"); });
+        if (!navigator.clipboard) { toast(t("Copying is not available in this browser."), "danger"); return; }
+        navigator.clipboard.writeText(text.trim()).then(function () { toast(t("Copied to clipboard."), "success"); },
+            function () { toast(t("Could not copy. Select the text and copy it manually."), "danger"); });
     });
 
     // ---- Password reveal: <button data-reveal="#password" aria-pressed="false"> --------------------------------
@@ -651,7 +663,7 @@
         var show = input.type === "password";
         input.type = show ? "text" : "password";
         button.setAttribute("aria-pressed", show ? "true" : "false");
-        button.setAttribute("aria-label", show ? "Hide password" : "Show password");
+        button.setAttribute("aria-label", show ? t("Hide password") : t("Show password"));
         // Icons are <svg> elements, which have no .hidden property: toggle the attribute.
         $all("[data-reveal-icon]", button).forEach(function (icon) { icon.toggleAttribute("hidden", icon.getAttribute("data-reveal-icon") !== (show ? "hide" : "show")); });
     });

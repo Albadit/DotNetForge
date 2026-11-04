@@ -115,8 +115,8 @@ public sealed class AuthProvidersController : AdminControllerBase
         }
 
         TempData["Success"] = input.Enabled
-            ? $"{provider.Name} is on: the sign-in page shows \"Sign in with {provider.Name}\"."
-            : $"{provider.Name} is saved and off.";
+            ? T["{0} is on: the sign-in page shows \"Sign in with {0}\".", provider.Name]
+            : T["{0} is saved and off.", provider.Name];
         return RedirectToAction(nameof(Index));
     }
 

@@ -26,8 +26,8 @@ calls it "two-step verification" towards users.
 ## Settings
 
 Stored as `Settings` rows, read by `MfaSettingsService.GetAsync`, saved only on [Two-factor authentication](../pages/mfa.md)
-(the generic [Settings](../pages/settings.md) screen refuses keys starting with `mfa.`, so the checks below can't be
-skipped).
+([Environment Variables](../pages/environment-variables.md) lists keys starting with `mfa.` but refuses to change
+them, so the checks below can't be skipped).
 
 | Setting | Key | Default | Rule |
 | --- | --- | --- | --- |

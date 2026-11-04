@@ -58,8 +58,8 @@ public sealed class ContentTypesController : AdminControllerBase
         }
 
         TempData["Success"] = ContentTypeTemplates.Find(template) is { Requires.Count: > 0 }
-            ? $"Created '{type.Name}' and the types it links to. Adjust the fields, then add entries."
-            : $"Created '{type.Name}'. Add its fields, then save.";
+            ? T["Created '{0}' and the types it links to. Adjust the fields, then add entries.", type.Name]
+            : T["Created '{0}'. Add its fields, then save.", type.Name];
         return Redirect($"/admin/content-types/{type.Id}");
     }
 
@@ -93,7 +93,7 @@ public sealed class ContentTypesController : AdminControllerBase
             return View(nameof(Edit), await BuildAsync(type, input));
         }
 
-        TempData["Success"] = $"Saved '{type.Name}'.";
+        TempData["Success"] = T["Saved '{0}'.", type.Name];
         return Redirect($"/admin/content-types/{type.Id}");
     }
 
@@ -115,7 +115,7 @@ public sealed class ContentTypesController : AdminControllerBase
             return Redirect($"/admin/content-types/{type.Id}");
         }
 
-        TempData["Success"] = $"Deleted '{type.Name}'.";
+        TempData["Success"] = T["Deleted '{0}'.", type.Name];
         return Redirect("/admin/content-types");
     }
 

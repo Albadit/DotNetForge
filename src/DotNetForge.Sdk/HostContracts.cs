@@ -12,6 +12,17 @@ public interface IExtensionState
     ValueTask<IReadOnlySet<string>> GetEnabledAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// The site's environment variables (Settings → Environment Variables): the value of a key in the environment the app
+/// runs in - its own value for that environment, else the one for all environments - with secrets decrypted. Inject it
+/// for an API key or a URL an extension needs.
+/// </summary>
+public interface IEnvironmentVariables
+{
+    /// <summary>The value of <paramref name="key"/>, or null when it isn't set (or a secret can't be decrypted here).</summary>
+    Task<string?> GetAsync(string key, CancellationToken cancellationToken = default);
+}
+
 /// <summary>An audit entry the CMS saved, as passed to <see cref="IAuditEventHandler"/>.</summary>
 /// <param name="Action">The audit action, e.g. <c>user.login.failed</c> (<c>AuditActions</c>).</param>
 /// <param name="UserDisplay">Who acted (display name, email or API token), if known.</param>

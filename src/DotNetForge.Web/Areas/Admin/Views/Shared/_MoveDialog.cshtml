@@ -20,15 +20,15 @@
         {
             <div class="dnf-input-group">
                 <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
-                <label class="sr-only" for="@Model.Id-search">Search</label>
-                <input id="@Model.Id-search" type="search" class="dnf-input dnf-input--sm" placeholder="Search" autocomplete="off" data-move-search />
+                <label class="sr-only" for="@Model.Id-search">@T["Search"]</label>
+                <input id="@Model.Id-search" type="search" class="dnf-input dnf-input--sm" placeholder="@T["Search"]"autocomplete="off" data-move-search />
             </div>
         }
         <div class="dnf-move-list" role="radiogroup" aria-labelledby="@titleId">
             <label class="dnf-move-option" data-move-option="" data-search="root">
                 <input type="radio" class="dnf-radio" name="@Model.Field" value="" form="@Model.Form" />
                 <dnf-icon name="home" size="Sm" />
-                <span class="dnf-move-option__label">Root</span>
+                <span class="dnf-move-option__label">@T["Root"]</span>
                 <span class="dnf-move-option__note" data-move-note></span>
             </label>
             @foreach (var target in Model.Targets)
@@ -46,10 +46,10 @@
                 </label>
             }
         </div>
-        <p class="text-sm text-muted" data-move-empty hidden>Nothing matches the search.</p>
+        <p class="text-sm text-muted" data-move-empty hidden>@T["Nothing matches the search."]</p>
     </div>
     <div class="dnf-dialog__footer">
-        <button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>Cancel</button>
-        <button type="submit" class="dnf-button dnf-button--primary" form="@Model.Form" formaction="@Model.Action" data-move-submit disabled><dnf-icon name="arrow-right" /> Move here</button>
+        <button type="button" class="dnf-button dnf-button--secondary" data-dialog-close>@T["Cancel"]</button>
+        <button type="submit" class="dnf-button dnf-button--primary" form="@Model.Form" formaction="@Model.Action" data-move-submit disabled><dnf-icon name="arrow-right" /> @T["Move here"]</button>
     </div>
 </dialog>

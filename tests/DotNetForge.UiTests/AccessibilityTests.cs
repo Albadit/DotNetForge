@@ -22,7 +22,7 @@ public sealed class AccessibilityTests(UiHost host)
                          "/admin/docs/ui", "/admin/docs/ui/components", "/admin/docs/ui/components/button",
                          "/admin/docs/ui/components/table", "/admin/docs/ui/components/input", "/admin/docs/ui/components/dialog",
                          "/admin/docs/ui/theming", "/admin", "/admin/pages", "/admin/content-types", "/admin/media", "/admin/users",
-                         "/admin/roles", "/admin/settings", "/admin/plugins", "/admin/webhooks", "/admin/api-tokens/create",
+                         "/admin/roles", "/admin/environment-variables", "/admin/plugins", "/admin/webhooks", "/admin/api-tokens/create",
                          "/admin/profile/security", "/admin/email/templates", "/admin/data",
                      })
             {

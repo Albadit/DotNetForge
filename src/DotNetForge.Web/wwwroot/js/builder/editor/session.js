@@ -1,3 +1,4 @@
+import { t } from "../ui/i18n.js";
 import { Store } from "../core/store.js";
 import { signal } from "../core/signal.js";
 import { createDocument, removedModuleIds } from "../core/doc.js";
@@ -108,7 +109,7 @@ class Session {
       doc = state.draft.document ? normalizeDocument(state.draft.document) : createDocument();
     } catch {
       doc = createDocument();
-      this.problems.update((p) => [...p, "The saved draft could not be read and was replaced by an empty page."]);
+      this.problems.update((p) => [...p, t("The saved draft could not be read and was replaced by an empty page.")]);
     }
     this.replaceDocument(doc);
     this.saveState.set("saved");
@@ -145,7 +146,7 @@ class Session {
     }
     this.replaceDocument(this.store.doc, true);
     const names = missing.map((m) => '"' + (m.title || m.moduleName) + '"').join(", ");
-    this.toast((missing.length === 1 ? "Module " + names + " was" : "Modules " + names + " were") + " added to this page and now show in the layers.", "info");
+    this.toast(missing.length === 1 ? t("Module {0} was added to this page and now show in the layers.", names) : t("Modules {0} were added to this page and now show in the layers.", names), "info");
   }
   /** Swaps in a whole new document (load, restore, onboarding) and resets history. */
   replaceDocument(doc, markDirty = false) {
@@ -239,14 +240,14 @@ class Session {
   async publish(note) {
     await this.save();
     if (this.saveState.value !== "saved") {
-      this.toast("Save the page before publishing: " + (this.saveError.value || "there are unsaved changes."), "error");
+      this.toast(t("Save the page before publishing: {0}", this.saveError.value || t("there are unsaved changes.")), "error");
       return;
     }
     try {
       const res = await this.api.publish(note);
       this.page.update((p) => p ? { ...p, published: true, enabled: res.enabled, publishedVersionId: res.versionId, publishedOn: res.publishedOn } : p);
       this.pendingChanges.set(false);
-      this.toast("Published. Visitors now see this version.", "success");
+      this.toast(t("Published. Visitors now see this version."), "success");
     } catch (e) {
       this.toast(e instanceof Error ? e.message : String(e), "error");
     }
@@ -256,7 +257,7 @@ class Session {
       await this.api.unpublish();
       this.page.update((p) => p ? { ...p, published: false, publishedVersionId: null } : p);
       this.pendingChanges.set(true);
-      this.toast("Unpublished. Visitors see the page's default view again; your draft is kept.", "success");
+      this.toast(t("Unpublished. Visitors see the page's default view again; your draft is kept."), "success");
     } catch (e) {
       this.toast(e instanceof Error ? e.message : String(e), "error");
     }
@@ -265,7 +266,7 @@ class Session {
     try {
       const res = await this.api.setEnabled(enabled);
       this.page.update((p) => p ? { ...p, enabled: res.enabled } : p);
-      this.toast(enabled ? "The custom layout is switched on for this page." : "The page uses DNN's own layout again. Nothing was deleted.", "success");
+      this.toast(enabled ? t("The custom layout is switched on for this page.") : t("The page shows its default view again. Nothing was deleted."), "success");
     } catch (e) {
       this.toast(e instanceof Error ? e.message : String(e), "error");
     }
@@ -280,7 +281,7 @@ class Session {
       this.saveState.set("saved");
       this.pendingChanges.set(true);
       this.canvasRevision.update((n) => n + 1);
-      this.toast("Version restored into the draft. Publish to make it live.", "success");
+      this.toast(t("Version restored into the draft. Publish to make it live."), "success");
     } catch (e) {
       this.toast(e instanceof Error ? e.message : String(e), "error");
     }
@@ -293,7 +294,7 @@ class Session {
       this.saveState.set("saved");
       this.pendingChanges.set(false);
       this.canvasRevision.update((n) => n + 1);
-      this.toast("Unpublished changes discarded.", "success");
+      this.toast(t("Unpublished changes discarded."), "success");
     } catch (e) {
       this.toast(e instanceof Error ? e.message : String(e), "error");
     }
@@ -329,7 +330,7 @@ class Session {
   toast(text, kind = "info", action) {
     const id = ++this.toastId;
     this.toasts.update((list) => [...list.slice(-3), { id, text, kind, action }]);
-    window.setTimeout(() => this.toasts.update((list) => list.filter((t) => t.id !== id)), kind === "error" ? 8e3 : 4e3);
+    window.setTimeout(() => this.toasts.update((list) => list.filter((item) => item.id !== id)), kind === "error" ? 8e3 : 4e3);
   }
   dispose() {
     window.clearTimeout(this.saveTimer);

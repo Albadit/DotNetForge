@@ -2,8 +2,8 @@
 @using DotNetForge.Shared.Enums
 @model MediaIndexViewModel
 @{
-    ViewData["Title"] = "Media";
-    ViewData["Description"] = "Images, documents and other files for your pages. Public files are reachable by anyone with the link.";
+    ViewData["Title"] = T["Media"];
+    ViewData["Description"] = T["Images, documents and other files for your pages. Public files are reachable by anyone with the link."];
     var accept = string.Join(",", MediaService.AllowedTypes.Keys);
     string Extensions(MediaKind kind) => string.Join(",", MediaService.AllowedTypes.Where(t => MediaSettings.KindOf(t.Value) == kind).Select(t => t.Key));
     static long Mb(int mb) => mb * 1024L * 1024;
@@ -15,25 +15,27 @@
     var anyMovable = Model.Files.Any(f => f.CanEdit) || (Model.Folders.Count > 0 && Model.CanEditFolders);
     var here = Model.Current?.Id;
     var empty = Model.Files.Count == 0 && Model.Folders.Count == 0;
-    static string Count(int n, string noun) => n == 1 ? $"1 {noun}" : $"{n} {noun}s";
+    string FolderCount(int n) => n == 1 ? T["1 folder"] : T["{0} folders", n];
+    string FileCount(int n) => n == 1 ? T["1 file"] : T["{0} files", n];
     var anyRenamable = Model.Files.Any(f => f.CanEdit);
     // Info (media.js fills #file-info-dialog from it; the text is set as text, never as HTML).
     string Info(MediaRowViewModel file)
     {
         var saved = file.OriginalSizeBytes is > 0 and var before && before > file.SizeBytes
-            ? $" - optimized from {MediaPresentation.Size(before)}, {(int)Math.Round(100 - file.SizeBytes * 100d / before)}% smaller"
+            ? " - " + T["optimized from {0}, {1}% smaller", MediaPresentation.Size(before), (int)Math.Round(100 - file.SizeBytes * 100d / before)]
             : null;
+        var uploaded = DnfTimestampTagHelper.Format(file.UploadedDate);
         return System.Text.Json.JsonSerializer.Serialize(new[]
         {
-            new[] { "Name", file.FileName },
-            new[] { "Uploaded as", string.IsNullOrEmpty(file.OriginalName) || file.OriginalName == file.FileName ? null : file.OriginalName },
-            new[] { "Type", file.ContentType },
-            new[] { "Size", MediaPresentation.Size(file.SizeBytes) + saved },
-            new[] { "Access", file.IsPublic ? "Public - anyone with the link can open it" : "Private - only signed-in admin users can open it" },
-            new[] { "Folder", Model.Current is null ? "Root" : "Library" + Model.Current.Path },
-            new[] { "Uploaded", DnfTimestampTagHelper.Format(file.UploadedDate) + (file.UploadedBy is null ? null : " by " + file.UploadedBy) },
-            new[] { "Link", origin + file.Url },
-            new[] { "Id", file.Id.ToString() },
+            new[] { T["Name"], file.FileName },
+            new[] { T["Uploaded as"], string.IsNullOrEmpty(file.OriginalName) || file.OriginalName == file.FileName ? null : file.OriginalName },
+            new[] { T["Type"], file.ContentType },
+            new[] { T["Size"], MediaPresentation.Size(file.SizeBytes) + saved },
+            new[] { T["Access"], file.IsPublic ? T["Public - anyone with the link can open it"] : T["Private - only signed-in admin users can open it"] },
+            new[] { T["Folder"], Model.Current is null ? T["Root"] : T["Library"] + Model.Current.Path },
+            new[] { T["Uploaded"], file.UploadedBy is null ? uploaded : T["{0} by {1}", uploaded, file.UploadedBy] },
+            new[] { T["Link"], origin + file.Url },
+            new[] { T["Id"], file.Id.ToString() },
         }.Where(row => row[1] is not null));
     }
 }
@@ -41,8 +43,8 @@
 @section Actions {
     @if (Model.CanUpload)
     {
-        <button type="button" class="dnf-button dnf-button--secondary" data-folder-new aria-controls="new-folder-dialog"><dnf-icon name="folder" /> New folder</button>
-        <button type="button" class="dnf-button dnf-button--primary" data-upload-toggle aria-controls="upload"><dnf-icon name="upload" /> Upload</button>
+        <button type="button" class="dnf-button dnf-button--secondary" data-folder-new aria-controls="new-folder-dialog"><dnf-icon name="folder" /> @T["New folder"]</button>
+        <button type="button" class="dnf-button dnf-button--primary" data-upload-toggle aria-controls="upload"><dnf-icon name="upload" /> @T["Upload"]</button>
     }
 }
 
@@ -51,14 +53,14 @@
         <div class="dnf-card__header">
             <div>
                 <h2 class="dnf-card__title" id="library-title">
-                    <nav class="dnf-folder-crumbs" aria-label="Folder">
+                    <nav class="dnf-folder-crumbs" aria-label="@T["Folder"]">
                         @if (Model.Current is null)
                         {
-                            <span aria-current="page">Library</span>
+                            <span aria-current="page">@T["Library"]</span>
                         }
                         else
                         {
-                            <a class="dnf-folder-crumbs__link" href="/admin/media" data-drop-folder="">Library</a>
+                            <a class="dnf-folder-crumbs__link" href="/admin/media" data-drop-folder="">@T["Library"]</a>
                             @foreach (var crumb in Model.Breadcrumbs)
                             {
                                 <span class="dnf-folder-crumbs__sep" aria-hidden="true">/</span>
@@ -74,13 +76,13 @@
                         }
                     </nav>
                 </h2>
-                <p class="dnf-card__description" data-collection-count>@Count(Model.Folders.Count, "folder") · @Count(Model.Files.Count, "file")</p>
+                <p class="dnf-card__description" data-collection-count>@FolderCount(Model.Folders.Count) · @FileCount(Model.Files.Count)</p>
             </div>
             @if (!empty)
             {
-                <div class="dnf-segmented" role="group" aria-label="Layout" data-view-switch="media" data-view-target="#media-items" data-default="grid" data-js-only hidden>
-                    <button type="button" class="dnf-segmented__item" data-view-button="grid" aria-pressed="true" aria-label="Grid view"><dnf-icon name="grid" size="Sm" /></button>
-                    <button type="button" class="dnf-segmented__item" data-view-button="list" aria-pressed="false" aria-label="List view"><dnf-icon name="list" size="Sm" /></button>
+                <div class="dnf-segmented" role="group" aria-label="@T["Layout"]" data-view-switch="media" data-view-target="#media-items" data-default="grid" data-js-only hidden>
+                    <button type="button" class="dnf-segmented__item" data-view-button="grid" aria-pressed="true" aria-label="@T["Grid view"]"><dnf-icon name="grid" size="Sm" /></button>
+                    <button type="button" class="dnf-segmented__item" data-view-button="list" aria-pressed="false" aria-label="@T["List view"]"><dnf-icon name="list" size="Sm" /></button>
                 </div>
             }
         </div>
@@ -89,11 +91,11 @@
         {
             @if (Model.Current is null)
             {
-                <dnf-empty-state icon="image" title="No media yet" description="Uploaded files appear here, ready to use on your pages." />
+                <dnf-empty-state icon="image" title="@T["No media yet"]" description="@T["Uploaded files appear here, ready to use on your pages."]" />
             }
             else
             {
-                <dnf-empty-state icon="folder" title="This folder is empty" description="Upload files into it, move files here, or create a folder inside it." />
+                <dnf-empty-state icon="folder" title="@T["This folder is empty"]" description="@T["Upload files into it, move files here, or create a folder inside it."]" />
             }
         }
         else
@@ -102,27 +104,27 @@
             <div class="dnf-toolbar" data-js-only hidden>
                 @if (anySelectable)
                 {
-                    <label class="dnf-check" aria-label="Select all"><input type="checkbox" class="dnf-checkbox" data-select-all /></label>
+                    <label class="dnf-check" aria-label="@T["Select all"]"><input type="checkbox" class="dnf-checkbox" data-select-all /></label>
                 }
                 <div class="dnf-toolbar__search dnf-input-group">
                     <dnf-icon name="search" size="Sm" class="dnf-input-group__icon" />
-                    <label class="sr-only" for="media-search">Search files</label>
-                    <input id="media-search" type="search" class="dnf-input" placeholder="Search files" data-collection-search />
+                    <label class="sr-only" for="media-search">@T["Search files"]</label>
+                    <input id="media-search" type="search" class="dnf-input" placeholder="@T["Search files"]" data-collection-search />
                 </div>
-                <label class="sr-only" for="media-kind">File type</label>
+                <label class="sr-only" for="media-kind">@T["File type"]</label>
                 <select id="media-kind" class="dnf-select" data-collection-filter="kind">
-                    <option value="">All types</option>
-                    <option value="image">Images</option>
-                    <option value="video">Video</option>
-                    <option value="audio">Audio</option>
-                    <option value="document">Documents</option>
-                    <option value="archive">Archives</option>
+                    <option value="">@T["All types"]</option>
+                    <option value="image">@T["Images"]</option>
+                    <option value="video">@T["Video"]</option>
+                    <option value="audio">@T["Audio"]</option>
+                    <option value="document">@T["Documents"]</option>
+                    <option value="archive">@T["Archives"]</option>
                 </select>
-                <label class="sr-only" for="media-access">Access</label>
+                <label class="sr-only" for="media-access">@T["Access"]</label>
                 <select id="media-access" class="dnf-select" data-collection-filter="access">
-                    <option value="">Public and private</option>
-                    <option value="public">Public</option>
-                    <option value="private">Private</option>
+                    <option value="">@T["Public and private"]</option>
+                    <option value="public">@T["Public"]</option>
+                    <option value="private">@T["Private"]</option>
                 </select>
             </div>
 
@@ -131,19 +133,19 @@
                 <form method="post" action="/admin/media/delete-selected" id="bulkForm" class="dnf-bulk-bar" data-bulk-bar hidden>
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="returnFolder" value="@here" />
-                    <label class="dnf-check" aria-label="Select all"><input type="checkbox" class="dnf-checkbox" data-select-all /></label>
-                    <span class="dnf-bulk-bar__count" data-bulk-count>0 selected</span>
+                    <label class="dnf-check" aria-label="@T["Select all"]"><input type="checkbox" class="dnf-checkbox" data-select-all /></label>
+                    <span class="dnf-bulk-bar__count" data-bulk-count>@T["{0} selected", 0]</span>
                     <span class="flex-auto"></span>
-                    <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" data-bulk-clear>Clear</button>
+                    <button type="button" class="dnf-button dnf-button--ghost dnf-button--sm" data-bulk-clear>@T["Clear"]</button>
                     @if (anyMovable)
                     {
-                        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" data-media-move aria-haspopup="dialog"><dnf-icon name="folder" size="Sm" /> Move…</button>
+                        <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" data-media-move aria-haspopup="dialog"><dnf-icon name="folder" size="Sm" /> @T["Move…"]</button>
                     }
                     @if (anyDeletable)
                     {
                         <button type="submit" class="dnf-button dnf-button--danger dnf-button--sm"
-                                data-confirm="Delete the selected items? Links to deleted files stop working; only empty folders can be deleted." data-confirm-title="Delete selected" data-confirm-action="Delete">
-                            <dnf-icon name="trash" size="Sm" /> Delete selected
+                                data-confirm="@T["Delete the selected items? Links to deleted files stop working; only empty folders can be deleted."]" data-confirm-title="@T["Delete selected"]" data-confirm-action="@T["Delete"]">
+                            <dnf-icon name="trash" size="Sm" /> @T["Delete selected"]
                         </button>
                     }
                 </form>
@@ -153,12 +155,12 @@
             <div class="dnf-media-grid" id="media-items" data-view-mode="grid">
                 @foreach (var folder in Model.Folders)
                 {
-                    var inside = string.Join(" · ", new[] { folder.Folders > 0 ? Count(folder.Folders, "folder") : null, Count(folder.Files, "file") }.OfType<string>());
+                    var inside = string.Join(" · ", new[] { folder.Folders > 0 ? FolderCount(folder.Folders) : null, FileCount(folder.Files) }.OfType<string>());
                     <article class="dnf-media-card dnf-media-card--folder" data-item data-kind="folder" data-access="" data-search="@folder.Name"
                              data-drop-folder="@folder.Id" draggable="@(Model.CanEditFolders ? "true" : null)" data-drag-folder="@(Model.CanEditFolders ? (Guid?)folder.Id : null)">
                         @if (foldersSelectable)
                         {
-                            <label class="dnf-media-card__select" aria-label="Select the folder @folder.Name">
+                            <label class="dnf-media-card__select" aria-label="@T["Select the folder {0}", folder.Name]">
                                 <input type="checkbox" class="dnf-checkbox" name="folderIds" value="@folder.Id" form="bulkForm" data-select-item />
                             </label>
                         }
@@ -171,19 +173,19 @@
                         </div>
                         @if (Model.CanEditFolders || Model.CanDeleteFolders)
                         {
-                            <dnf-dropdown class="dnf-media-card__actions" variant="Secondary" label="Actions for the folder @folder.Name">
-                                <dnf-dropdown-link href="/admin/media?folder=@folder.Id" icon="folder">Open</dnf-dropdown-link>
+                            <dnf-dropdown class="dnf-media-card__actions" variant="Secondary" label="@T["Actions for the folder {0}", folder.Name]">
+                                <dnf-dropdown-link href="/admin/media?folder=@folder.Id" icon="folder">@T["Open"]</dnf-dropdown-link>
                                 @if (Model.CanEditFolders)
                                 {
                                     <dnf-dropdown-button icon="pencil" data-folder-edit="@folder.Id" data-folder-name="@folder.Name" data-folder-path="@folder.Path"
-                                                 data-folder-parent="@here" data-js-only hidden>Edit…</dnf-dropdown-button>
-                                    <dnf-dropdown-button icon="arrow-right" data-media-move-item="folderIds" data-move-id="@folder.Id" data-move-name="@folder.Name" data-js-only hidden>Move…</dnf-dropdown-button>
+                                                 data-folder-parent="@here" data-js-only hidden>@T["Edit…"]</dnf-dropdown-button>
+                                    <dnf-dropdown-button icon="arrow-right" data-media-move-item="folderIds" data-move-id="@folder.Id" data-move-name="@folder.Name" data-js-only hidden>@T["Move…"]</dnf-dropdown-button>
                                 }
                                 @if (Model.CanDeleteFolders)
                                 {
                                     <dnf-dropdown-separator />
                                     <dnf-dropdown-post action="/admin/media/folders/@folder.Id/delete" icon="trash" danger="true"
-                                               confirm="Delete the folder '@folder.Name'? Only an empty folder can be deleted." confirm-title="Delete folder" confirm-action="Delete folder">Delete</dnf-dropdown-post>
+                                               confirm="@T["Delete the folder '{0}'? Only an empty folder can be deleted.", folder.Name]" confirm-title="@T["Delete folder"]" confirm-action="@T["Delete folder"]">@T["Delete"]</dnf-dropdown-post>
                                 }
                             </dnf-dropdown>
                         }
@@ -195,11 +197,11 @@
                     <article class="dnf-media-card" data-item data-kind="@kind" data-access="@(file.IsPublic ? "public" : "private")"
                              data-search="@file.FileName @file.ContentType"
                              data-preview="@file.Id" data-preview-url="@file.Url" data-preview-name="@file.FileName" data-preview-type="@file.ContentType"
-                             data-preview-meta="@MediaPresentation.Size(file.SizeBytes) · @file.ContentType · @(file.IsPublic ? "Public" : "Private")" data-preview-link="@origin@file.Url"
+                             data-preview-meta="@MediaPresentation.Size(file.SizeBytes) · @file.ContentType · @(file.IsPublic ? T["Public"] : T["Private"])" data-preview-link="@origin@file.Url"
                              draggable="@(file.CanEdit ? "true" : null)" data-drag-file="@(file.CanEdit ? (Guid?)file.Id : null)">
                         @if (file.CanDelete || file.CanEdit)
                         {
-                            <label class="dnf-media-card__select" aria-label="Select @file.FileName">
+                            <label class="dnf-media-card__select" aria-label="@T["Select {0}", file.FileName]">
                                 <input type="checkbox" class="dnf-checkbox" name="ids" value="@file.Id" form="bulkForm" data-select-item />
                             </label>
                         }
@@ -219,53 +221,53 @@
                             <span class="dnf-media-card__badges">
                                 @if (file.IsPublic)
                                 {
-                                    <dnf-badge tone="Success">Public</dnf-badge>
+                                    <dnf-badge tone="Success">@T["Public"]</dnf-badge>
                                 }
                                 else
                                 {
-                                    <dnf-badge tone="Warning"><dnf-icon name="lock" size="Sm" /> Private</dnf-badge>
+                                    <dnf-badge tone="Warning"><dnf-icon name="lock" size="Sm" /> @T["Private"]</dnf-badge>
                                 }
                                 @* Type and optimization savings are in Info. *@
                                 @if (file.Optimization is MediaOptimization.Pending or MediaOptimization.Processing)
                                 {
-                                    <dnf-badge data-tooltip="The video is being compressed in the background">Optimizing…</dnf-badge>
+                                    <dnf-badge data-tooltip="@T["The video is being compressed in the background"]">@T["Optimizing…"]</dnf-badge>
                                 }
                             </span>
                         </div>
-                        <dnf-dropdown class="dnf-media-card__actions" variant="Secondary" label="Actions for @file.FileName">
-                            <dnf-dropdown-button icon="eye" data-preview-open data-js-only hidden>Preview</dnf-dropdown-button>
-                            <dnf-dropdown-link href="@file.Url" icon="external-link" new-tab="true">Open in new tab</dnf-dropdown-link>
-                            <dnf-dropdown-button icon="link" data-copy-text="@origin@file.Url">Copy link</dnf-dropdown-button>
-                            <dnf-dropdown-button icon="info" data-file-info="@Info(file)" data-js-only hidden>Info</dnf-dropdown-button>
+                        <dnf-dropdown class="dnf-media-card__actions" variant="Secondary" label="@T["Actions for {0}", file.FileName]">
+                            <dnf-dropdown-button icon="eye" data-preview-open data-js-only hidden>@T["Preview"]</dnf-dropdown-button>
+                            <dnf-dropdown-link href="@file.Url" icon="external-link" new-tab="true">@T["Open in new tab"]</dnf-dropdown-link>
+                            <dnf-dropdown-button icon="link" data-copy-text="@origin@file.Url">@T["Copy link"]</dnf-dropdown-button>
+                            <dnf-dropdown-button icon="info" data-file-info="@Info(file)" data-js-only hidden>@T["Info"]</dnf-dropdown-button>
                             @if (file.CanEdit)
                             {
                                 <dnf-dropdown-button icon="pencil" data-file-rename="@file.Id" data-file-name="@System.IO.Path.GetFileNameWithoutExtension(file.FileName)"
-                                             data-file-extension="@System.IO.Path.GetExtension(file.FileName)" data-js-only hidden>Rename…</dnf-dropdown-button>
-                                <dnf-dropdown-button icon="arrow-right" data-media-move-item="ids" data-move-id="@file.Id" data-move-name="@file.FileName" data-js-only hidden>Move…</dnf-dropdown-button>
+                                             data-file-extension="@System.IO.Path.GetExtension(file.FileName)" data-js-only hidden>@T["Rename…"]</dnf-dropdown-button>
+                                <dnf-dropdown-button icon="arrow-right" data-media-move-item="ids" data-move-id="@file.Id" data-move-name="@file.FileName" data-js-only hidden>@T["Move…"]</dnf-dropdown-button>
                                 @if (file.IsPublic)
                                 {
                                     <dnf-dropdown-post action="/admin/media/visibility/@file.Id" icon="lock" field-isPublic="false"
-                                               confirm="Make '@file.FileName' private? Visitors can no longer open it - pages that show it display a broken image."
-                                               confirm-title="Make file private" confirm-action="Make private" confirm-tone="primary">Make private</dnf-dropdown-post>
+                                               confirm="@T["Make '{0}' private? Visitors can no longer open it - pages that show it display a broken image.", file.FileName]"
+                                               confirm-title="@T["Make file private"]" confirm-action="@T["Make private"]" confirm-tone="primary">@T["Make private"]</dnf-dropdown-post>
                                 }
                                 else
                                 {
                                     <dnf-dropdown-post action="/admin/media/visibility/@file.Id" icon="globe" field-isPublic="true"
-                                               confirm="Make '@file.FileName' public? Anyone with the link can open it."
-                                               confirm-title="Make file public" confirm-action="Make public">Make public</dnf-dropdown-post>
+                                               confirm="@T["Make '{0}' public? Anyone with the link can open it.", file.FileName]"
+                                               confirm-title="@T["Make file public"]" confirm-action="@T["Make public"]">@T["Make public"]</dnf-dropdown-post>
                                 }
                             }
                             @if (file.CanDelete)
                             {
                                 <dnf-dropdown-separator />
                                 <dnf-dropdown-post action="/admin/media/delete/@file.Id" icon="trash" danger="true"
-                                           confirm="Delete '@file.FileName'? Links to it stop working." confirm-title="Delete file" confirm-action="Delete file">Delete</dnf-dropdown-post>
+                                           confirm="@T["Delete '{0}'? Links to it stop working.", file.FileName]" confirm-title="@T["Delete file"]" confirm-action="@T["Delete file"]">@T["Delete"]</dnf-dropdown-post>
                             }
                         </dnf-dropdown>
                     </article>
                 }
             </div>
-            <dnf-empty-state icon="search" title="No matching files" description="Try another search or filter." compact="true" data-collection-empty hidden />
+            <dnf-empty-state icon="search" title="@T["No matching files"]" description="@T["Try another search or filter."]" compact="true" data-collection-empty hidden />
             <div class="dnf-pagination" data-collection-pagination hidden></div>
         }
     </section>
@@ -281,17 +283,17 @@
                  data-image-types="@Extensions(MediaKind.Image)" data-video-types="@Extensions(MediaKind.Video)">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="upload-title">Upload</h2>
+                    <h2 class="dnf-card__title" id="upload-title">@T["Upload"]</h2>
                     <p class="dnf-card__description">
-                        Up to @MediaService.MaxFilesPerUpload files into <strong>@(Model.Current?.Path ?? "Root")</strong>:
-                        images up to @Model.Limits.MaxImageMb MB, videos and audio up to @Model.Limits.MaxVideoMb MB, other files up to @Model.Limits.MaxOtherMb MB.
+                        @T["Up to {0} files into", MediaService.MaxFilesPerUpload] <strong>@(Model.Current?.Path ?? T["Root"])</strong>:
+                        @T["images up to {0} MB, videos and audio up to {1} MB, other files up to {2} MB.", Model.Limits.MaxImageMb, Model.Limits.MaxVideoMb, Model.Limits.MaxOtherMb]
                         @if (Model.Limits.OptimizeImages)
                         {
-                            <text>Images are optimized@(Model.Limits.ConvertToWebP ? " and stored as WebP" : null).</text>
+                            <text>@(Model.Limits.ConvertToWebP ? T["Images are optimized and stored as WebP."] : T["Images are optimized."])</text>
                         }
                     </p>
                 </div>
-                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-upload-close aria-label="Close upload" data-tooltip="Close">
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-upload-close aria-label="@T["Close upload"]" data-tooltip="@T["Close"]">
                     <dnf-icon name="x" />
                 </button>
             </div>
@@ -301,12 +303,12 @@
                 <dnf-validation-summary />
                 <div class="dnf-file-upload">
                     <dnf-icon name="upload" size="Xl" />
-                    <span class="dnf-file-upload__title">Drop files here or click to choose</span>
+                    <span class="dnf-file-upload__title">@T["Drop files here or click to choose"]</span>
                     <span class="text-sm">@string.Join(" · ", MediaService.AllowedTypes.Keys)</span>
-                    <label class="sr-only" for="files">Files to upload</label>
+                    <label class="sr-only" for="files">@T["Files to upload"]</label>
                     <input id="files" name="files" type="file" class="dnf-file-upload__input" multiple required accept="@accept" />
                 </div>
-                <ul class="dnf-upload-preview" data-upload-preview aria-label="Files to upload" hidden></ul>
+                <ul class="dnf-upload-preview" data-upload-preview aria-label="@T["Files to upload"]" hidden></ul>
                 <template id="upload-icons">
                     <dnf-icon name="file" size="Xl" data-icon="file" />
                     <dnf-icon name="x" size="Sm" data-icon="remove" />
@@ -314,9 +316,9 @@
                 <div class="dnf-spread">
                     <label class="dnf-check">
                         <input type="checkbox" class="dnf-checkbox" name="isPublic" value="true" checked />
-                        <span class="dnf-check__text"><span>Public</span><span class="dnf-check__description">Anyone with the link can open it. Private files need an admin sign-in.</span></span>
+                        <span class="dnf-check__text"><span>@T["Public"]</span><span class="dnf-check__description">@T["Anyone with the link can open it. Private files need an admin sign-in."]</span></span>
                     </label>
-                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="upload" /> Upload</button>
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="upload" /> @T["Upload"]</button>
                 </div>
             </form>
         </section>
@@ -326,21 +328,21 @@
     <dialog class="dnf-dialog dnf-dialog--md" id="new-folder-dialog" aria-labelledby="new-folder-title">
         <div class="dnf-dialog__header">
             <div>
-                <h2 class="dnf-dialog__title" id="new-folder-title">New folder</h2>
-                <p class="dnf-dialog__description">In Library@(Model.Current?.Path)</p>
+                <h2 class="dnf-dialog__title" id="new-folder-title">@T["New folder"]</h2>
+                <p class="dnf-dialog__description">@T["In {0}", T["Library"] + Model.Current?.Path]</p>
             </div>
         </div>
         <div class="dnf-dialog__body">
             <form method="post" action="/admin/media/folders" id="folder-create" class="dnf-field">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="parentId" value="@here" />
-                <label class="dnf-field__label" for="new-folder">Name</label>
-                <input id="new-folder" name="name" class="dnf-input" required maxlength="@MediaFolderService.MaxNameLength" placeholder="New folder" autofocus />
+                <label class="dnf-field__label" for="new-folder">@T["Name"]</label>
+                <input id="new-folder" name="name" class="dnf-input" required maxlength="@MediaFolderService.MaxNameLength" placeholder="@T["New folder"]" autofocus />
             </form>
         </div>
         <form method="dialog" class="dnf-dialog__footer">
-            <button type="submit" class="dnf-button dnf-button--secondary">Cancel</button>
-            <button type="submit" class="dnf-button dnf-button--primary" form="folder-create"><dnf-icon name="folder" /> Create folder</button>
+            <button type="submit" class="dnf-button dnf-button--secondary">@T["Cancel"]</button>
+            <button type="submit" class="dnf-button dnf-button--primary" form="folder-create"><dnf-icon name="folder" /> @T["Create folder"]</button>
         </form>
     </dialog>
 }
@@ -350,34 +352,34 @@
     @* Edit… in a folder's menu opens this (media.js fills in the folder); without JavaScript the folder's own page has the same forms. *@
     <dialog class="dnf-dialog dnf-dialog--md" id="folder-dialog" aria-labelledby="folder-dialog-title">
         <div class="dnf-dialog__header">
-            <h2 class="dnf-dialog__title" id="folder-dialog-title">Edit folder</h2>
+            <h2 class="dnf-dialog__title" id="folder-dialog-title">@T["Edit folder"]</h2>
         </div>
         <div class="dnf-dialog__body">
             <form method="post" data-folder-rename class="dnf-field">
                 @Html.AntiForgeryToken()
-                <label class="dnf-field__label" for="folder-dialog-name">Name</label>
+                <label class="dnf-field__label" for="folder-dialog-name">@T["Name"]</label>
                 <div class="dnf-form-actions flex-nowrap">
                     <input id="folder-dialog-name" name="name" required maxlength="@MediaFolderService.MaxNameLength" class="dnf-input grow min-w-0" />
-                    <button type="submit" class="dnf-button dnf-button--primary">Rename</button>
+                    <button type="submit" class="dnf-button dnf-button--primary">@T["Rename"]</button>
                 </div>
             </form>
             <form method="post" data-folder-move class="dnf-field">
                 @Html.AntiForgeryToken()
-                <label class="dnf-field__label" for="folder-dialog-parent">Move into</label>
+                <label class="dnf-field__label" for="folder-dialog-parent">@T["Move into"]</label>
                 <div class="dnf-form-actions flex-nowrap">
                     <select id="folder-dialog-parent" name="parentId" class="dnf-select grow min-w-0">
-                        <option value="" data-path="">Root</option>
+                        <option value="" data-path="">@T["Root"]</option>
                         @foreach (var target in Model.AllFolders)
                         {
                             <option value="@target.Id" data-path="@target.Path">@(new string(' ', target.Depth * 3))@target.Path</option>
                         }
                     </select>
-                    <button type="submit" class="dnf-button dnf-button--secondary">Move</button>
+                    <button type="submit" class="dnf-button dnf-button--secondary">@T["Move"]</button>
                 </div>
             </form>
         </div>
         <form method="dialog" class="dnf-dialog__footer">
-            <button type="submit" class="dnf-button dnf-button--secondary">Close</button>
+            <button type="submit" class="dnf-button dnf-button--secondary">@T["Close"]</button>
         </form>
     </dialog>
 }
@@ -393,7 +395,7 @@
     var folderTargets = Model.AllFolders
         .Select(f => new MoveTarget(f.Id, f.Name, null, f.Depth, Model.AllFolders.Where(p => f.Path.StartsWith(p.Path + "/", StringComparison.Ordinal)).Select(p => p.Id).ToList()))
         .ToList();
-    <partial name="_MoveDialog" model="@(new MoveDialogModel("media-move-dialog", "Move to", "folderId", "bulkForm", "/admin/media/move-selected", "folder", folderTargets))" />
+    <partial name="_MoveDialog" model="@(new MoveDialogModel("media-move-dialog", T["Move to"], "folderId", "bulkForm", "/admin/media/move-selected", "folder", folderTargets))" />
 }
 
 @if (Model.Files.Count > 0)
@@ -401,13 +403,13 @@
     @* Info in a file's menu opens this (media.js fills in the file). *@
     <dialog class="dnf-dialog dnf-dialog--md" id="file-info-dialog" aria-labelledby="file-info-title">
         <div class="dnf-dialog__header">
-            <h2 class="dnf-dialog__title" id="file-info-title">File info</h2>
+            <h2 class="dnf-dialog__title" id="file-info-title">@T["File info"]</h2>
         </div>
         <div class="dnf-dialog__body">
             <dl class="dnf-description-list dnf-description-list--compact" data-file-info-list></dl>
         </div>
         <form method="dialog" class="dnf-dialog__footer">
-            <button type="submit" class="dnf-button dnf-button--secondary">Close</button>
+            <button type="submit" class="dnf-button dnf-button--secondary">@T["Close"]</button>
         </form>
     </dialog>
 }
@@ -418,14 +420,14 @@
     <dialog class="dnf-dialog dnf-dialog--md" id="file-rename-dialog" aria-labelledby="file-rename-title">
         <div class="dnf-dialog__header">
             <div>
-                <h2 class="dnf-dialog__title" id="file-rename-title">Rename file</h2>
-                <p class="dnf-dialog__description">The file keeps its type and its links - links with the old name keep working.</p>
+                <h2 class="dnf-dialog__title" id="file-rename-title">@T["Rename file"]</h2>
+                <p class="dnf-dialog__description">@T["The file keeps its type and its links - links with the old name keep working."]</p>
             </div>
         </div>
         <div class="dnf-dialog__body">
             <form method="post" id="file-rename" class="dnf-field">
                 @Html.AntiForgeryToken()
-                <label class="dnf-field__label" for="file-rename-name">Name</label>
+                <label class="dnf-field__label" for="file-rename-name">@T["Name"]</label>
                 <div class="dnf-input-group">
                     <input id="file-rename-name" name="name" class="dnf-input" required maxlength="@MediaService.MaxFileNameLength" />
                     <span class="dnf-input-group__suffix" data-file-rename-extension></span>
@@ -433,8 +435,8 @@
             </form>
         </div>
         <form method="dialog" class="dnf-dialog__footer">
-            <button type="submit" class="dnf-button dnf-button--secondary">Cancel</button>
-            <button type="submit" class="dnf-button dnf-button--primary" form="file-rename"><dnf-icon name="pencil" /> Rename</button>
+            <button type="submit" class="dnf-button dnf-button--secondary">@T["Cancel"]</button>
+            <button type="submit" class="dnf-button dnf-button--primary" form="file-rename"><dnf-icon name="pencil" /> @T["Rename"]</button>
         </form>
     </dialog>
 }
@@ -448,15 +450,15 @@
                 <h2 class="dnf-dialog__title truncate" id="media-preview-title" data-preview-title></h2>
                 <p class="text-xs text-muted truncate" data-preview-subtitle></p>
             </div>
-            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-preview-step="-1" aria-label="Previous file" data-tooltip="Previous file"><dnf-icon name="chevron-left" /></button>
-            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-preview-step="1" aria-label="Next file" data-tooltip="Next file"><dnf-icon name="chevron-right" /></button>
-            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-preview-close aria-label="Close preview" data-tooltip="Close"><dnf-icon name="x" /></button>
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-preview-step="-1" aria-label="@T["Previous file"]" data-tooltip="@T["Previous file"]"><dnf-icon name="chevron-left" /></button>
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-preview-step="1" aria-label="@T["Next file"]" data-tooltip="@T["Next file"]"><dnf-icon name="chevron-right" /></button>
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-preview-close aria-label="@T["Close preview"]" data-tooltip="@T["Close"]"><dnf-icon name="x" /></button>
         </div>
         <div class="dnf-media-preview__stage" data-preview-stage></div>
         <div class="dnf-dialog__footer">
-            <button type="button" class="dnf-button dnf-button--secondary" data-copy-text="" data-preview-copy><dnf-icon name="link" /> Copy link</button>
-            <a class="dnf-button dnf-button--secondary" href="#" target="_blank" rel="noopener" data-preview-tab><dnf-icon name="external-link" /> Open in new tab</a>
-            <a class="dnf-button dnf-button--primary" href="#" data-preview-download><dnf-icon name="download" /> Download</a>
+            <button type="button" class="dnf-button dnf-button--secondary" data-copy-text="" data-preview-copy><dnf-icon name="link" /> @T["Copy link"]</button>
+            <a class="dnf-button dnf-button--secondary" href="#" target="_blank" rel="noopener" data-preview-tab><dnf-icon name="external-link" /> @T["Open in new tab"]</a>
+            <a class="dnf-button dnf-button--primary" href="#" data-preview-download><dnf-icon name="download" /> @T["Download"]</a>
         </div>
         <template id="media-preview-icons">
             <dnf-icon name="file" size="Xl" data-icon="file" />

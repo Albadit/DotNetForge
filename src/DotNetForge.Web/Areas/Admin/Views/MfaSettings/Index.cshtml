@@ -2,30 +2,30 @@
 @model MfaSettingsController.MfaSettingsViewModel
 @{
     ViewData["PageWidth"] = "medium";
-    ViewData["Title"] = "Two-factor authentication";
-    ViewData["Description"] = "A second step after the password: which methods people can set up on Profile › Sign-in security, and who must use one.";
+    ViewData["Title"] = T["Two-factor authentication"];
+    ViewData["Description"] = T["A second step after the password: which methods people can set up on Profile › Sign-in security, and who must use one."];
     int Users(MfaMethodType type) => Model.Users.GetValueOrDefault(type);
-    string Count(int n) => n == 1 ? "1 account" : $"{n} accounts";
+    string Count(int n) => n == 1 ? T["1 account"] : T["{0} accounts", n];
 }
 
 <form method="post" action="/admin/mfa" class="dnf-stack dnf-stack--lg">
     @Html.AntiForgeryToken()
     <dnf-validation-summary />
     <fieldset class="dnf-fieldset dnf-stack dnf-stack--lg" disabled="@(Model.CanEdit ? null : "disabled")">
-        <legend class="sr-only">Two-factor authentication settings</legend>
+        <legend class="sr-only">@T["Two-factor authentication settings"]</legend>
 
         <section class="dnf-card" aria-labelledby="methods-title">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="methods-title">Methods</h2>
-                    <p class="dnf-card__description">@Count(Model.UsersWithMfa) use two-factor authentication. Turning a method off stops it at sign-in; what people set up is kept.</p>
+                    <h2 class="dnf-card__title" id="methods-title">@T["Methods"]</h2>
+                    <p class="dnf-card__description">@T["{0} use two-factor authentication. Turning a method off stops it at sign-in; what people set up is kept.", Count(Model.UsersWithMfa)]</p>
                 </div>
             </div>
             <div class="dnf-card__body dnf-stack">
                 <label class="dnf-switch-row">
                     <span class="dnf-check__text">
-                        <span>Authenticator app <dnf-badge tone="Success">Recommended</dnf-badge></span>
-                        <span class="dnf-check__description">Time-based 6-digit codes (TOTP) from Google Authenticator, Microsoft Authenticator, 1Password and similar apps; set up with a QR code. Works offline. @Count(Users(MfaMethodType.AuthenticatorApp)).</span>
+                        <span>@T["Authenticator app"] <dnf-badge tone="Success">@T["Recommended"]</dnf-badge></span>
+                        <span class="dnf-check__description">@T["Time-based 6-digit codes (TOTP) from Google Authenticator, Microsoft Authenticator, 1Password and similar apps; set up with a QR code. Works offline."] @Count(Users(MfaMethodType.AuthenticatorApp)).</span>
                     </span>
                     @* The checkbox first: a bound bool takes the first posted value. *@
                     <input type="checkbox" class="dnf-switch" role="switch" name="AuthenticatorApp" value="true" checked="@(Model.AuthenticatorApp ? "checked" : null)" />
@@ -33,18 +33,18 @@
                 </label>
                 <label class="dnf-switch-row">
                     <span class="dnf-check__text">
-                        <span>Passkeys and security keys <dnf-badge tone="Success">Recommended</dnf-badge></span>
-                        <span class="dnf-check__description">WebAuthn: Face ID, Touch ID, Windows Hello, a phone or a USB key such as a YubiKey. Phishing-resistant. Works only at the address in <code>APP_URL</code>. @Count(Users(MfaMethodType.Passkey)).</span>
+                        <span>@T["Passkeys and security keys"] <dnf-badge tone="Success">@T["Recommended"]</dnf-badge></span>
+                        <span class="dnf-check__description">@T["WebAuthn: Face ID, Touch ID, Windows Hello, a phone or a USB key such as a YubiKey. Phishing-resistant. Works only at the address in"] <code>APP_URL</code>. @Count(Users(MfaMethodType.Passkey)).</span>
                     </span>
                     <input type="checkbox" class="dnf-switch" role="switch" name="Passkeys" value="true" checked="@(Model.Passkeys ? "checked" : null)" />
                     <input type="hidden" name="Passkeys" value="false" />
                 </label>
                 <label class="dnf-switch-row">
                     <span class="dnf-check__text">
-                        <span>Email codes @if (!Model.EmailAvailable) { <dnf-badge dot="true">Needs email</dnf-badge> }</span>
+                        <span>@T["Email codes"] @if (!Model.EmailAvailable) { <dnf-badge dot="true">@T["Needs email"]</dnf-badge> }</span>
                         <span class="dnf-check__description">
-                            A 6-digit code emailed at sign-in (template "Sign-in code" on Email › Templates). Only as safe as the mailbox.
-                            @(Model.EmailAvailable ? Count(Users(MfaMethodType.Email)) + "." : "Set SMTP_* in .env (Email › Configuration) to use it.")
+                            @T["A 6-digit code emailed at sign-in (template \"Sign-in code\" on Email › Templates). Only as safe as the mailbox."]
+                            @(Model.EmailAvailable ? Count(Users(MfaMethodType.Email)) + "." : T["Set SMTP_* in .env (Email › Configuration) to use it."])
                         </span>
                     </span>
                     <input type="checkbox" class="dnf-switch" role="switch" name="Email" value="true"
@@ -53,45 +53,45 @@
                 </label>
                 <label class="dnf-switch-row">
                     <span class="dnf-check__text">
-                        <span>SMS codes @if (!Model.SmsAvailable) { <dnf-badge dot="true">Needs Twilio</dnf-badge> }</span>
+                        <span>@T["SMS codes"] @if (!Model.SmsAvailable) { <dnf-badge dot="true">@T["Needs Twilio"]</dnf-badge> }</span>
                         <span class="dnf-check__description">
-                            A 6-digit code by text message, sent through Twilio. The weakest method (SIM swapping), and each message costs money.
-                            @(Model.SmsAvailable ? Count(Users(MfaMethodType.Sms)) + "." : "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM in .env and restart to use it.")
+                            @T["A 6-digit code by text message, sent through Twilio. The weakest method (SIM swapping), and each message costs money."]
+                            @(Model.SmsAvailable ? Count(Users(MfaMethodType.Sms)) + "." : T["Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM in .env and restart to use it."])
                         </span>
                     </span>
                     <input type="checkbox" class="dnf-switch" role="switch" name="Sms" value="true"
                            checked="@(Model.Sms ? "checked" : null)" disabled="@(Model.SmsAvailable ? null : "disabled")" />
                     <input type="hidden" name="Sms" value="false" />
                 </label>
-                <p class="dnf-note text-sm text-muted"><dnf-icon name="shield" size="Sm" /><span>Everyone who sets up a method also gets 10 one-time recovery codes. Someone who lost every method: reset it on Users › edit › Two-step verification.</span></p>
+                <p class="dnf-note text-sm text-muted"><dnf-icon name="shield" size="Sm" /><span>@T["Everyone who sets up a method also gets 10 one-time recovery codes. Someone who lost every method: reset it on Users › edit › Two-step verification."]</span></p>
             </div>
         </section>
 
         <section class="dnf-card" aria-labelledby="require-title">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="require-title">Who must use it</h2>
-                    <p class="dnf-card__description">Wrong codes count toward the account lockout, like wrong passwords.</p>
+                    <h2 class="dnf-card__title" id="require-title">@T["Who must use it"]</h2>
+                    <p class="dnf-card__description">@T["Wrong codes count toward the account lockout, like wrong passwords."]</p>
                 </div>
-                <dnf-badge tone="@(Model.Requirement == MfaRequirement.AdminUsers ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(Model.Requirement == MfaRequirement.AdminUsers ? "Required" : "Optional")</dnf-badge>
+                <dnf-badge tone="@(Model.Requirement == MfaRequirement.AdminUsers ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(Model.Requirement == MfaRequirement.AdminUsers ? T["Required"] : T["Optional"])</dnf-badge>
             </div>
             <div class="dnf-card__body dnf-stack">
                 <label class="dnf-check">
                     <input class="dnf-radio" type="radio" name="Requirement" value="@MfaRequirement.Optional" checked="@(Model.Requirement == MfaRequirement.Optional ? "checked" : null)" />
-                    <span class="dnf-check__text"><span>Optional</span><span class="dnf-check__description">Everyone may turn it on for their account; nobody has to.</span></span>
+                    <span class="dnf-check__text"><span>@T["Optional"]</span><span class="dnf-check__description">@T["Everyone may turn it on for their account; nobody has to."]</span></span>
                 </label>
                 <label class="dnf-check">
                     <input class="dnf-radio" type="radio" name="Requirement" value="@MfaRequirement.AdminUsers" checked="@(Model.Requirement == MfaRequirement.AdminUsers ? "checked" : null)" />
                     <span class="dnf-check__text">
-                        <span>Required for everyone who uses the admin</span>
-                        <span class="dnf-check__description">@Count(Model.AdminUsers) with a role that opens the admin. Someone without a method is sent to Sign-in security after signing in and can't use the admin until they set one up.</span>
+                        <span>@T["Required for everyone who uses the admin"]</span>
+                        <span class="dnf-check__description">@T["{0} with a role that opens the admin. Someone without a method is sent to Sign-in security after signing in and can't use the admin until they set one up.", Count(Model.AdminUsers)]</span>
                     </span>
                 </label>
             </div>
             @if (Model.CanEdit)
             {
                 <div class="dnf-card__footer">
-                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Save settings</button>
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> @T["Save settings"]</button>
                 </div>
             }
         </section>

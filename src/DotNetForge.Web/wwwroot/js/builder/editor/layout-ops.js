@@ -1,3 +1,4 @@
+import { t } from "../ui/i18n.js";
 import { moveNodes, setPlacement, updateLayout, updateStyle, updateStyleEach } from "../core/commands.js";
 import { freePlacementAt, layoutAt, merged } from "../core/responsive.js";
 function flowOf(session, id) {
@@ -88,7 +89,7 @@ function align(session, canvas, ids, edge) {
       done = true;
     }
   }
-  if (!done) session.toast("In a stack, children line up along the stack. Use the alignment box of the stack instead.", "info");
+  if (!done) session.toast(t("In a stack, children line up along the stack. Use the alignment box of the stack instead."), "info");
   return done;
 }
 function moveToEnd(session, id, end) {

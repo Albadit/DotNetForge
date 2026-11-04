@@ -97,7 +97,7 @@ public sealed class MediaSettingsController : AdminControllerBase
             return View(nameof(Index), await BuildAsync(input));
         }
 
-        TempData["Success"] = "Media Library settings saved. They apply to new uploads.";
+        TempData["Success"] = T["Media Library settings saved. They apply to new uploads."];
         return RedirectToAction(nameof(Index));
     }
 

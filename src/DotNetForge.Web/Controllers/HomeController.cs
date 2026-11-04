@@ -7,6 +7,7 @@ using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Web.Components;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,10 +27,13 @@ public sealed class HomeController : Controller
     private readonly PagePermissionService _pagePermissions;
     private readonly IPermissionService _permissions;
     private readonly ContentRenderService _content;
+    private readonly PageTranslationService _translations;
 
     public HomeController(AppEnvironment env, DotNetForgeDbContext db, ThemeResolver themes, IPublishedPages published,
-        ExtensionViewRenderer renderer, PagePermissionService pagePermissions, IPermissionService permissions, ContentRenderService content)
+        ExtensionViewRenderer renderer, PagePermissionService pagePermissions, IPermissionService permissions, ContentRenderService content,
+        PageTranslationService translations)
     {
+        _translations = translations;
         _content = content;
         _env = env;
         _db = db;
@@ -144,6 +148,10 @@ public sealed class HomeController : Controller
                 : Redirect("/login?returnUrl=" + Uri.EscapeDataString(Request.Path + Request.QueryString));
         }
 
+        // A translation (/de/...) shows the page's texts and layout in that locale, the default's where untranslated
+        // (.docs/features/internationalization.md#content-pages).
+        await _translations.TranslateAsync(page, RequestLocale.Of(HttpContext).Locale, HttpContext.RequestAborted);
+
         // Content lists (.docs/features/structured-content.md#content-lists): resolved here, not only in the view, so a
         // detail page whose URL names no published entry (/products/[slug]) is a 404 like any unknown address.
         if (page.LayoutJson is not null)
@@ -181,9 +189,7 @@ public sealed class HomeController : Controller
     private async Task<IActionResult> ThemedViewAsync(string name, object model, string? pageThemeId = null)
     {
         ViewData["AppName"] = _env.AppName;
-        ViewData["Menu"] = (await _published.ListAsync(HttpContext.RequestAborted))
-            .Where(p => p.DisplayInMenu && p.ParentPageId is null)
-            .ToList();
+        await SetLocaleViewDataAsync(ViewData, _published, _translations, HttpContext, Request.Path.Value);
         var theme = await _themes.GetActiveThemeAsync(HttpContext.RequestAborted, pageThemeId);
         if (theme?.FindView(name + ".cshtml") is not { } themeView)
         {
@@ -192,5 +198,22 @@ public sealed class HomeController : Controller
 
         ExtensionViewRenderer.AddExtensionViewData(ViewData, theme, admin: false);
         return View(_renderer.ToViewPath(themeView), model);
+    }
+
+    /// <summary>
+    /// What every public layout gets for the request's locale: <c>Menu</c> (top-level live pages marked "display in menu",
+    /// titles and paths in the locale), <c>CurrentPath</c> (this page's path with the locale prefix, to mark the active
+    /// menu link), <c>HomePath</c> (the site root in the locale) and <c>Languages</c> (this page in every enabled locale, for a switcher and <c>hreflang</c> links).
+    /// </summary>
+    internal static async Task SetLocaleViewDataAsync(Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary viewData,
+        IPublishedPages published, PageTranslationService translations, HttpContext context, string? pagePath)
+    {
+        var locale = RequestLocale.Of(context);
+        var menu = (await published.ListAsync(context.RequestAborted)).Where(p => p.DisplayInMenu && p.ParentPageId is null).ToList();
+        var path = pagePath?.TrimEnd('/') is { Length: > 0 } p ? p : "/";
+        viewData["Menu"] = await translations.LocalizeAsync(menu, locale.Locale, context.RequestAborted);
+        viewData["CurrentPath"] = locale.Url(path);
+        viewData["HomePath"] = locale.Url("/");
+        viewData["Languages"] = PageTranslationService.Languages(locale, path);
     }
 }

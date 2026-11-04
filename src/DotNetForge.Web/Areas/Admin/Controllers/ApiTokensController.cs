@@ -64,7 +64,7 @@ public sealed class ApiTokensController : AdminControllerBase
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            ModelState.AddModelError(string.Empty, "Name is required.");
+            ModelState.AddModelError(string.Empty, T["Name is required."]);
             return View();
         }
 
@@ -73,14 +73,14 @@ public sealed class ApiTokensController : AdminControllerBase
         if (name.Length > MaxNameLength || description?.Length > MaxDescriptionLength)
         {
             ModelState.AddModelError(string.Empty,
-                $"Name is limited to {MaxNameLength} characters and description to {MaxDescriptionLength}.");
+                T["Name is limited to {0} characters and description to {1}.", MaxNameLength, MaxDescriptionLength]);
             return View();
         }
 
         // Names are unique (revoked tokens included) - say so instead of failing at save time.
         if (await _db.ApiTokens.AnyAsync(t => t.Name == name))
         {
-            ModelState.AddModelError(string.Empty, $"A token named '{name}' already exists. Choose another name.");
+            ModelState.AddModelError(string.Empty, T["A token named '{0}' already exists. Choose another name.", name]);
             return View();
         }
 
@@ -91,7 +91,7 @@ public sealed class ApiTokensController : AdminControllerBase
 
         if (selected.Length == 0)
         {
-            ModelState.AddModelError(string.Empty, "Select at least one permission.");
+            ModelState.AddModelError(string.Empty, T["Select at least one permission."]);
             return View();
         }
 
@@ -134,7 +134,7 @@ public sealed class ApiTokensController : AdminControllerBase
             token.Revoked = true;
             await _db.SaveChangesAsync();
             await _audit.LogAsync(AuditActions.ApiTokenRevoked, "ApiToken", token.Id.ToString(), token.Name);
-            TempData["Success"] = $"Revoked '{token.Name}'.";
+            TempData["Success"] = T["Revoked '{0}'.", token.Name];
         }
 
         return RedirectToAction(nameof(Index));

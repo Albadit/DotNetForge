@@ -17,12 +17,12 @@ namespace DotNetForge.IntegrationTests;
 /// </summary>
 public sealed partial class AdminUiTests
 {
-    private static readonly string[] AdminScreens =
+    internal static readonly string[] AdminScreens =
     {
-        "/admin", "/admin/pages", "/admin/content", "/admin/content-types", "/admin/content-types/new", "/admin/media", "/admin/settings", "/admin/users", "/admin/users/create", "/admin/roles",
+        "/admin", "/admin/pages", "/admin/content", "/admin/content-types", "/admin/content-types/new", "/admin/media", "/admin/environment-variables", "/admin/users", "/admin/users/create", "/admin/roles",
         "/admin/roles/create", "/admin/audit-logs", "/admin/profile",
         "/admin/api-tokens", "/admin/api-tokens/create", "/admin/plugins", "/admin/marketplace", "/admin/content-history",
-        "/admin/internationalization", "/admin/data", "/admin/webhooks", "/admin/email/configuration",
+        "/admin/internationalization", "/admin/internationalization/add", "/admin/environment-variables/new", "/admin/data", "/admin/webhooks", "/admin/email/configuration",
         "/admin/email/templates", "/admin/providers", "/admin/advanced-settings",
     };
 
@@ -43,7 +43,7 @@ public sealed partial class AdminUiTests
         var block = InlineScriptOrStyleBlock().Match(html);
         Assert.False(block.Success, $"{path} has an inline script, style block or event handler: {Around(html, block.Index)}");
         Assert.True(H1().Matches(html).Count == 1, $"{path} must have exactly one <h1>.");
-        Assert.Contains("<html lang=\"en\">", html);
+        Assert.Matches("<html lang=\"en\"( dir=\"ltr\")?>", html); // the admin also states the writing direction
         Assert.Contains("class=\"dnf-skip-link\" href=\"#main\"", html);
         Assert.Matches("<link rel=\"stylesheet\" href=\"/_content/DotNetForge.UI/dnf.css\\?v=[^\"]+\"", html);
     }
@@ -106,7 +106,7 @@ public sealed partial class AdminUiTests
         var editorHtml = await editor.GetStringAsync("/admin");
         Assert.Contains("href=\"/admin/content\"", editorHtml);
         Assert.Contains("href=\"/admin/media\"", editorHtml);
-        foreach (var restricted in new[] { "/admin/plugins", "/admin/users", "/admin/settings", "/admin/api-tokens", "/admin/content-types" })
+        foreach (var restricted in new[] { "/admin/plugins", "/admin/users", "/admin/environment-variables", "/admin/api-tokens", "/admin/content-types" })
         {
             Assert.DoesNotContain($"href=\"{restricted}\"", editorHtml);
             // Hiding is not the gate: the screen itself still refuses.

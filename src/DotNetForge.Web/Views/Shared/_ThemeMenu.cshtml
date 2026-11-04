@@ -1,3 +1,5 @@
+@* Shared by every layout: in the admin language under /admin, English elsewhere. *@
+@inject DotNetForge.Web.Services.Localization.AdminText T
 @*
     Light / dark / system switch (.docs/architecture/design-system.md#themes). Needs JS (dnf.js stores the choice and
     sets <html data-theme>): shown from the first paint once dnf-theme.js has marked <html class="dnf-js"> (dnf-js-only),
@@ -6,14 +8,14 @@
 *@
 <div class="dnf-dropdown dnf-js-only">
     <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only" popovertarget="theme-menu" aria-haspopup="menu"
-            aria-expanded="false" aria-label="Colour theme">
+            aria-expanded="false" aria-label="@T["Colour theme"]">
         <dnf-icon name="sun" class="inline dark:hidden" />
         <dnf-icon name="moon" class="hidden dark:inline" />
     </button>
-    <div class="dnf-dropdown__menu" id="theme-menu" popover role="menu" aria-label="Colour theme" data-placement="bottom-end">
-        <dnf-dropdown-label>Theme</dnf-dropdown-label>
-        <dnf-dropdown-button icon="sun" role="menuitemradio" aria-checked="false" data-theme-set="light">Light</dnf-dropdown-button>
-        <dnf-dropdown-button icon="moon" role="menuitemradio" aria-checked="false" data-theme-set="dark">Dark</dnf-dropdown-button>
-        <dnf-dropdown-button icon="monitor" role="menuitemradio" aria-checked="false" data-theme-set="system">System</dnf-dropdown-button>
+    <div class="dnf-dropdown__menu" id="theme-menu" popover role="menu" aria-label="@T["Colour theme"]" data-placement="bottom-end">
+        <dnf-dropdown-label>@T["Theme"]</dnf-dropdown-label>
+        <dnf-dropdown-button icon="sun" role="menuitemradio" aria-checked="false" data-theme-set="light">@T["Light"]</dnf-dropdown-button>
+        <dnf-dropdown-button icon="moon" role="menuitemradio" aria-checked="false" data-theme-set="dark">@T["Dark"]</dnf-dropdown-button>
+        <dnf-dropdown-button icon="monitor" role="menuitemradio" aria-checked="false" data-theme-set="system">@T["System"]</dnf-dropdown-button>
     </div>
 </div>

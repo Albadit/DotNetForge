@@ -1,21 +1,24 @@
 @*
     Default Theme layout: the document shell of every public page while this theme is active. The host passes
     Extension (settings), ResourceBase (public URL of Views/Resources/), AppName and Menu (top-level live pages marked
-    "display in menu"). No inline script or style (CSP): everything visual is in Views/Resources/css/theme.css.
+    "display in menu"), plus for the request's locale CurrentPath, HomePath and Languages (the page in every enabled
+    locale: switcher and hreflang links). No inline script or style (CSP): everything visual is in Views/Resources/css/theme.css.
 *@
 @{
     var extension = (ExtensionContext)ViewData["Extension"]!;
     var resourceBase = ViewData["ResourceBase"] as string;
     var appName = ViewData["AppName"] as string ?? "DotNetForge CMS";
     var menu = ViewData["Menu"] as IReadOnlyList<PublishedPage> ?? Array.Empty<PublishedPage>();
-    var current = Context.Request.Path.Value?.TrimEnd('/') is { Length: > 0 } p ? p : "/";
+    var current = ViewData["CurrentPath"] as string ?? (Context.Request.Path.Value?.TrimEnd('/') is { Length: > 0 } p ? p : "/");
+    var home = ViewData["HomePath"] as string ?? "/";
+    var languages = ViewData["Languages"] as IReadOnlyList<LanguageLink> ?? Array.Empty<LanguageLink>();
     var accent = extension.GetString("accent", "indigo") is "teal" or "rose" ? extension.GetString("accent") : "indigo";
     var bodyClass = $"accent-{accent}" + (extension.GetBool("supportsDarkMode") ? " auto-dark" : string.Empty);
     var title = ViewData["Title"] as string;
     var fullWidth = ViewData["FullWidth"] as bool? == true;
 }
 <!doctype html>
-<html lang="en">
+<html lang="@(System.Globalization.CultureInfo.CurrentUICulture.Name is { Length: > 0 } lang ? lang : "en")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -32,22 +35,52 @@
     {
         <meta name="robots" content="noindex" />
     }
+    @foreach (var language in languages)
+    {
+        <link rel="alternate" hreflang="@language.Code" href="@($"{Context.Request.Scheme}://{Context.Request.Host}{language.Url}")" />
+    }
     @if (ViewData["SocialImage"] is string image && image.Length > 0)
     {
         <meta property="og:image" content="@(image.StartsWith('/') ? $"{Context.Request.Scheme}://{Context.Request.Host}{image}" : image)" />
     }
     <link rel="stylesheet" href="@resourceBase/css/theme.css" />
+    @if (languages.Count > 1)
+    {
+        <script src="/js/site/language-switch.js" defer></script>
+    }
 </head>
 <body class="@bodyClass">
     <header class="site-header">
         <div class="wrap">
-            <a class="brand" href="/">@appName</a>
+            <a class="brand" href="@home">@appName</a>
             <nav>
                 @foreach (var item in menu)
                 {
                     <a href="@item.Path" class="@(string.Equals(item.Path, current, StringComparison.OrdinalIgnoreCase) ? "active" : null)">@item.Title</a>
                 }
             </nav>
+            @if (languages.Count > 1)
+            {
+                @* A select that opens the page in the chosen language (the CMS's /js/site/language-switch.js shows it and
+                   follows the choice); links without JavaScript. *@
+                <div class="languages">
+                    <label class="sr-only" for="site-language">Language</label>
+                    <select id="site-language" data-language-switch hidden>
+                        @foreach (var language in languages)
+                        {
+                            <option value="@language.Url" lang="@language.Code" selected="@(language.Current ? "selected" : null)">@language.Name</option>
+                        }
+                    </select>
+                    <noscript>
+                        <nav aria-label="Language">
+                            @foreach (var language in languages)
+                            {
+                                <a href="@language.Url" hreflang="@language.Code" lang="@language.Code" class="@(language.Current ? "active" : null)" aria-current="@(language.Current ? "true" : null)">@language.Name</a>
+                            }
+                        </nav>
+                    </noscript>
+                </div>
+            }
         </div>
     </header>
     <main class="@(fullWidth ? "full" : "wrap")">

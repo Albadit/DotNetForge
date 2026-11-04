@@ -89,7 +89,7 @@ class ContentSource {
   }
 
   typeById(id) {
-    return (this.types.value ?? []).find((t) => t.id === id);
+    return (this.types.value ?? []).find((ty) => ty.id === id);
   }
 
   /** The content list a node is inside (its item template's list), or undefined. */

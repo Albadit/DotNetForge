@@ -1,3 +1,4 @@
+import { t } from "../../ui/i18n.js";
 import "../../components/builtins.js";
 import { getComponent } from "../../components/registry.js";
 import { removedModuleIds } from "../../core/doc.js";
@@ -40,7 +41,7 @@ class CanvasFrame {
   init() {
     const d = this.document;
     this.mount = d.getElementById("pe-canvas-mount");
-    if (!this.mount) return "The page did not load in canvas mode. Is the Page Editor installed and are you still signed in?";
+    if (!this.mount) return t("The page did not load in canvas mode. Are you still signed in?");
     this.stash = d.createElement("div");
     this.stash.id = "pe-module-stash";
     this.stash.hidden = true;
@@ -276,7 +277,7 @@ class CanvasFrame {
         slot.classList.remove("pe-module-missing");
       } else {
         slot.classList.add("pe-module-missing");
-        slot.setAttribute("data-pe-missing", !id ? "Choose a module" : this.modules.has(id) ? "Module " + id + " is already placed elsewhere" : "Module " + id + " is not on this page");
+        slot.setAttribute("data-pe-missing", !id ? t("Choose a module") : this.modules.has(id) ? t("Module {0} is already placed elsewhere", id) : t("Module {0} is not on this page", id));
       }
     }
   }

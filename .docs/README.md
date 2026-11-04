@@ -110,7 +110,7 @@ extension view is built from.
 | Themes (site-wide and per-page theme) | [themes.md](features/themes.md) |
 | Webhooks: events, signed delivery, retries, delivery log | [webhooks.md](features/webhooks.md) |
 | Email (SMTP, templates) | [email.md](features/email.md) |
-| Internationalization (planned) | [internationalization.md](features/internationalization.md) |
+| Internationalization: locales and the default locale, `/de/...` URLs, translated pages and entries, the admin language | [internationalization.md](features/internationalization.md) |
 | Data Management: export (CMS or additional database), backups, import in Development; updates (planned) | [transfer-and-updates.md](features/transfer-and-updates.md) |
 
 ## Screens
@@ -122,7 +122,7 @@ extension view is built from.
 | Account | Register, forgot / reset password, confirm email | `/register`, `/forgot-password`, `/reset-password`, `/confirm-email` | [account-self-service.md](pages/account-self-service.md) |
 | Account | Access denied | `/account/denied` | [access-denied.md](pages/access-denied.md) |
 | Public | Home | `/` | [public-home.md](pages/public-home.md) |
-| Public | Content page | `/{slug}/...` (fallback) | [public-page.md](pages/public-page.md) |
+| Public | Content page | `/{slug}/...` (fallback), `/{locale}/{slug}/...` in another locale | [public-page.md](pages/public-page.md) |
 | Public | Error | `/error` | [error.md](pages/error.md) |
 | Admin | Dashboard | `/admin` | [dashboard.md](pages/dashboard.md) |
 | Admin | Content Manager (structured content) | `/admin/content`, `/admin/content/{type}` | [content-manager.md](pages/content-manager.md) |
@@ -133,7 +133,8 @@ extension view is built from.
 | Admin | Sign-in security (own two-step methods, recovery codes) | `/admin/profile/security` | [sign-in-security.md](pages/sign-in-security.md) |
 | Admin | Media | `/admin/media` | [media.md](pages/media.md) |
 | Admin | Media Library settings (upload limits, image optimization, video compression) | `/admin/media-settings` | [media-settings.md](pages/media-settings.md) |
-| Admin | Settings | `/admin/settings` | [settings.md](pages/settings.md) |
+| Admin | Environment Variables (secret and config key/values per environment; formerly Settings) | `/admin/environment-variables` | [environment-variables.md](pages/environment-variables.md) |
+| Admin | Internationalization (locales, admin language) | `/admin/internationalization` | [internationalization.md](pages/internationalization.md) |
 | Admin | Providers (sign-in providers) | `/admin/providers` | [providers.md](pages/providers.md) |
 | Admin | Two-factor authentication (methods, requirement) | `/admin/mfa` | [mfa.md](pages/mfa.md) |
 | Admin | Advanced Settings (Advanced User Settings) | `/admin/advanced-settings` | [advanced-settings.md](pages/advanced-settings.md) |
@@ -150,7 +151,7 @@ extension view is built from.
 | Admin | Audit Logs | `/admin/audit-logs` | [audit-logs.md](pages/audit-logs.md) |
 | Admin | Plugins | `/admin/plugins` | [plugins.md](pages/plugins.md) |
 | Admin | Admin extension tab | `/admin/ext/{id}` | [extension-host.md](pages/extension-host.md) |
-| Admin | Unbuilt modules (3 placeholders) | `/admin/marketplace`, `/admin/content-history`, `/admin/internationalization` | [module-placeholders.md](pages/module-placeholders.md) |
+| Admin | Unbuilt modules (2 placeholders) | `/admin/marketplace`, `/admin/content-history` | [module-placeholders.md](pages/module-placeholders.md) |
 
 ## Guides
 
@@ -166,7 +167,7 @@ extension view is built from.
 There is no separate specification folder. Each document that owns a topic ends with a
 **Planned (not implemented)** section holding the remaining requirements, user flows, rules, edge cases and
 acceptance criteria for that topic (criteria already met are ticked). Modules that do not exist yet at all
-(internationalization, core updates) have a feature document with a short
+(core updates) have a feature document with a short
 *Current state* and a *Planned* section. [implementation-status.md](implementation-status.md) links every module to
 its planned section; [product.md](product.md) holds the product goals and MVP scope.
 

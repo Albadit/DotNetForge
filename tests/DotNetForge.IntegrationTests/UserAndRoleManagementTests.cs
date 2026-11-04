@@ -126,12 +126,12 @@ public sealed class UserAndRoleManagementTests
         var reviewer = await factory.SignInAsync("rev@example.com", Password);
 
         Assert.Equal(HttpStatusCode.OK, (await reviewer.GetAsync("/admin/pages")).StatusCode);
-        Assert.Contains("/account/denied", (await reviewer.GetAsync("/admin/settings")).Headers.Location?.OriginalString);
+        Assert.Contains("/account/denied", (await reviewer.GetAsync("/admin/environment-variables")).Headers.Location?.OriginalString);
         var sidebar = await reviewer.GetStringAsync("/admin");
         Assert.Contains("href=\"/admin/pages\"", sidebar);
         Assert.DoesNotContain("href=\"/admin/content\"", sidebar); // no Entries grant
         Assert.DoesNotContain("href=\"/admin/media\"", sidebar); // no Media grant
-        Assert.DoesNotContain("href=\"/admin/settings\"", sidebar);
+        Assert.DoesNotContain("href=\"/admin/environment-variables\"", sidebar);
 
         // Granting Settings read lets the signed-in reviewer open Settings without signing in again.
         var saved = await PostAsync(admin, roleUrl, roleUrl, new KeyValuePair<string, string>[]
@@ -141,7 +141,7 @@ public sealed class UserAndRoleManagementTests
             new("Grants", $"{PermissionAreas.Settings}|{PermissionActions.Read}"),
         });
         Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await reviewer.GetAsync("/admin/settings")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await reviewer.GetAsync("/admin/environment-variables")).StatusCode);
         await factory.WithDbAsync(async db =>
             Assert.True(await db.AuditLogs.AnyAsync(a => a.Action == AuditActions.PermissionChanged && a.EntityId == roleId.ToString())));
     }

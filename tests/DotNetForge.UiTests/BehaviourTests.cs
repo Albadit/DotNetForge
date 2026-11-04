@@ -202,7 +202,7 @@ public sealed class BehaviourTests(UiHost host)
             }
         };
 
-        foreach (var path in new[] { "/admin", "/admin/docs/ui", "/admin/docs/ui/components/table", "/admin/pages", "/admin/content", "/admin/media", "/admin/settings", "/admin/plugins" })
+        foreach (var path in new[] { "/admin", "/admin/docs/ui", "/admin/docs/ui/components/table", "/admin/pages", "/admin/content", "/admin/media", "/admin/environment-variables", "/admin/plugins" })
         {
             await page.GotoAsync(path);
             await page.WaitForLoadStateAsync(LoadState.NetworkIdle);

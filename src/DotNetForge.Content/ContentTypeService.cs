@@ -26,6 +26,9 @@ public sealed class ContentTypeInput
 
     public bool Drafts { get; set; } = true;
 
+    /// <summary>Entries can be translated into the site's other locales (.docs/features/internationalization.md#entries).</summary>
+    public bool Localized { get; set; }
+
     public string? TitleField { get; set; }
 
     /// <summary>The field definitions as JSON (the builder serializes its state into this).</summary>
@@ -39,6 +42,7 @@ public sealed class ContentTypeInput
         Icon = t.Icon,
         Kind = t.Kind,
         Drafts = t.Drafts,
+        Localized = t.Localized,
         TitleField = t.TitleField,
         FieldsJson = t.FieldsJson,
     };
@@ -261,6 +265,8 @@ public sealed partial class ContentTypeService
         type.Icon = icon;
         type.Kind = input.Kind;
         type.Drafts = input.Drafts;
+        // Turning it off hides the translations; they stay, and come back when it is on again.
+        type.Localized = input.Localized;
         type.TitleField = titleKey;
         type.FieldsJson = newFieldsJson;
         type.UpdatedDate = DateTime.UtcNow;

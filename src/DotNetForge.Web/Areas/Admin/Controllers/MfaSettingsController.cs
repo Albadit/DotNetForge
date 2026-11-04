@@ -90,7 +90,7 @@ public sealed class MfaSettingsController : AdminControllerBase
             return View(nameof(Index), await BuildAsync(input));
         }
 
-        TempData["Success"] = "Two-factor authentication settings saved.";
+        TempData["Success"] = T["Two-factor authentication settings saved."];
         return RedirectToAction(nameof(Index));
     }
 

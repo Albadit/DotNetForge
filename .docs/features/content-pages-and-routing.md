@@ -72,6 +72,7 @@ Validates a `PageInput` against the target `Page` and, if valid, copies every fi
 | 6 | walking up from the new parent never reaches this page | `That parent would create a cycle in the page tree.` |
 | 7 | no other page under the same parent has the slug - root level (`null` parent) included | `A page with the slug '<slug>' already exists under this parent.` |
 | 8 | if the slug is `[...]`, no sibling is also `[...]` | `This parent already has a dynamic route ([…]); only one is allowed per parent.` |
+| 8a | a top-level slug is not a locale's code (it would be read as the [locale prefix](internationalization.md#request-locale)) | `The slug '<slug>' is a locale code (Internationalization); choose another one.` |
 | 9 | unpublish after publish when both set | `Scheduled unpublish must be after scheduled publish.` |
 | 10 | `UrlRedirect` needs `TargetUrl` | `Target URL is required for a URL redirect page.` |
 | 11 | `File` needs `FileReference` | `File reference is required for a File page.` |
@@ -109,7 +110,8 @@ danger toast, then reloads.
 
 The page's children move up to the deleted page's parent. If that would put two equal slugs or two `[...]` pages
 under one parent, the delete is refused with `Can't delete: its child pages would move up a level and clash.`
-followed by the conflict message (rule 4 or 5 above); the Pages screen shows it as a form error.
+followed by the conflict message (rule 4 or 5 above); the Pages screen shows it as a form error. The page's
+`PageTranslations` are removed with it ([internationalization](internationalization.md#content-pages)).
 
 ### `PageService.Slugify`
 
@@ -234,6 +236,14 @@ and has that file, else `src/DotNetForge.Web/Views/Home/Page.cshtml` / `Index.cs
 Mapped by `app.MapFallbackToController("RenderPage", "Home")`, i.e. only paths with **no file extension** that no
 other route matched - including endpoints mapped by extensions (`await app.MapDotNetForgeExtensionsAsync()`).
 
+**Locale prefix.** Before routing, `RequestLocaleMiddleware` takes an enabled locale's prefix off the path
+(`/de/about` → `/about`, the request's locale German) and redirects the default locale's prefix (`/en/about` → 301
+`/about`), so `Index` and `RenderPage` always resolve the unprefixed path - the same slugs in every locale. The admin,
+the API, sign-in, setup, `/health` and `/media` keep their one URL (`/de/admin` → 404). After the
+page is found, `PageTranslationService.TranslateAsync` shows its translated title, SEO texts and published layout,
+falling back to the page's own values; menus and links get the prefix
+([internationalization](internationalization.md#public-site)).
+
 1. Trim slashes; empty → redirect to `Index`.
 2. Load only the tree shape (`Id`, `ParentPageId`, `Slug`) of **all live pages** into memory.
 3. Starting at `parent = null`, for each segment: pick the child of `parent` whose slug equals the segment
@@ -267,7 +277,8 @@ Consequences worth knowing:
 - Exact slugs win over a dynamic sibling. Only one dynamic sibling per parent is allowed by `PageService` on every
   write path (save, reorder, delete, API create); if older data still holds two, the first in load order wins.
 - Slugs that collide with real routes (`admin`, `setup`, `account`, `api`, `error`, `health`, `ext`) and paths mapped
-  by a loaded extension (enabled or not) never reach `RenderPage`.
+  by a loaded extension (enabled or not) never reach `RenderPage`. A top-level slug can't equal a locale's code
+  (rule 8a), and a locale can't be added with a top-level page's slug as its code (`LocaleService.AddAsync`).
 - `PageType`, `TargetUrl`, `FileReference` and `SeoKeywords` have no effect on rendering; `DisplayInMenu` only feeds
   the header menu.
 - No caching: every public request runs a narrow tree query, walks the list, then loads the one matched page.
@@ -697,5 +708,6 @@ Dynamic routes:
 | New validation rule | `PageService` only: `ApplyAsync` for one page; `FindConflict` for tree-wide rules (used by `ReorderAsync` and `DeleteAsync`). Never in controllers |
 | Who may do what | `PagesController` (`Can` / `CanModify` in `Collection types`); default grants in `PermissionMatrix` ([authorization](authorization.md)) |
 | Who sees what publicly | `PageVisibility.Live` (`src/DotNetForge.Shared/Content/PublishedPages.cs`) - never re-implement the rule; the URL list for menus/sitemaps is `PublishedPageService` |
-| URL matching | `HomeController.RenderPage` |
+| URL matching | `HomeController.RenderPage` (the locale prefix: `RequestLocaleMiddleware`) |
+| Translated texts and layouts | `PageTranslationService` ([internationalization](internationalization.md#content-pages)) - not `PageService`, never per-locale columns on `Page` |
 | Honour `PageType` (redirect/file) | `HomeController.RenderPage`/`Index` after a match - not in the view |

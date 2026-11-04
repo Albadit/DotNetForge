@@ -12,6 +12,9 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
 {
     public DotNetForgeDbContext(DbContextOptions<DotNetForgeDbContext> options) : base(options) { }
 
+    /// <summary>The environment whose <see cref="Setting"/> rows this context sees (besides the all-environments ones).</summary>
+    public string SettingEnvironment { get; set; } = DotNetForge.Shared.Entities.SettingEnvironment.Current;
+
     /// <summary>For provider-specific subclasses that carry their own migration set (<see cref="PostgreSqlDbContext"/>).</summary>
     protected DotNetForgeDbContext(DbContextOptions options) : base(options) { }
 
@@ -43,6 +46,9 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<TransferRecord> TransferRecords => Set<TransferRecord>();
     public DbSet<EmailLogEntry> EmailLog => Set<EmailLogEntry>();
+    public DbSet<Locale> Locales => Set<Locale>();
+    public DbSet<PageTranslation> PageTranslations => Set<PageTranslation>();
+    public DbSet<ContentEntryTranslation> ContentEntryTranslations => Set<ContentEntryTranslation>();
 
     /// <summary>ASP.NET Core Data Protection key ring (auth cookies, antiforgery), shared by all instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -57,6 +63,7 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.Property(u => u.Email).IsRequired().HasMaxLength(256);
             e.Property(u => u.FirstName).HasMaxLength(100);
             e.Property(u => u.LastName).HasMaxLength(100);
+            e.Property(u => u.AdminLanguage).HasMaxLength(35);
             e.Property(u => u.PasswordHash).IsRequired();
             // Email is unique (.docs/features/authorization.md).
             e.HasIndex(u => u.Email).IsUnique();
@@ -111,6 +118,36 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
             e.HasKey(p => p.Id);
             e.Property(p => p.Permission).IsRequired().HasMaxLength(20);
             e.HasIndex(p => new { p.PageId, p.RoleId, p.Permission }).IsUnique();
+        });
+
+        // Internationalization (.docs/features/internationalization.md): locales and the translations of pages and entries.
+        b.Entity<Locale>(e =>
+        {
+            e.HasKey(l => l.Id);
+            e.Property(l => l.Code).IsRequired().HasMaxLength(35);
+            e.Property(l => l.DisplayName).IsRequired().HasMaxLength(100);
+            e.HasIndex(l => l.Code).IsUnique();
+            // At most one default, enforced by the database too: two concurrent "set default" can't both succeed.
+            e.HasIndex(l => l.IsDefault).IsUnique().HasFilter("\"IsDefault\"");
+        });
+
+        b.Entity<PageTranslation>(e =>
+        {
+            e.HasKey(t => t.Id);
+            // The page's own limits (Page.Title 300, MetaTitle 300, MetaDescription 1000).
+            e.Property(t => t.Title).HasMaxLength(300);
+            e.Property(t => t.MetaTitle).HasMaxLength(300);
+            e.Property(t => t.MetaDescription).HasMaxLength(1000);
+            e.HasIndex(t => new { t.PageId, t.LocaleId }).IsUnique();
+            e.HasIndex(t => t.LocaleId);
+        });
+
+        b.Entity<ContentEntryTranslation>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.Property(t => t.DataJson).IsRequired();
+            e.HasIndex(t => new { t.EntryId, t.LocaleId }).IsUnique();
+            e.HasIndex(t => t.LocaleId);
         });
 
         b.Entity<PageUserPermission>(e =>
@@ -303,8 +340,13 @@ public class DotNetForgeDbContext : DbContext, IDataProtectionKeyContext
         {
             e.HasKey(s => s.Id);
             e.Property(s => s.Key).IsRequired().HasMaxLength(200);
-            e.Property(s => s.Value).HasMaxLength(4000);
-            e.HasIndex(s => s.Key).IsUnique();
+            // Encrypted secrets are longer than the 4000 characters a value may have.
+            e.Property(s => s.Value).HasMaxLength(8000);
+            e.Property(s => s.Environment).IsRequired().HasMaxLength(50).HasDefaultValue(string.Empty);
+            e.Property(s => s.Note).HasMaxLength(500);
+            e.HasIndex(s => new { s.Key, s.Environment }).IsUnique();
+            // The app sees its own environment's values and those for all environments (.docs/pages/environment-variables.md).
+            e.HasQueryFilter(s => s.Environment == string.Empty || s.Environment == SettingEnvironment);
         });
 
         b.Entity<AuthProvider>(e =>

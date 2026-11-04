@@ -39,6 +39,12 @@
     <EmbeddedResource Include="Areas/Admin/Views/UiDocs/**/*.cshtml" LogicalName="UiDocs/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <!-- The admin translations, one catalog per language (Services/Localization/AdminTranslations.cs). -->
+  <ItemGroup>
+    <Content Remove="Localization/**" />
+    <EmbeddedResource Include="Localization/Admin/*.json" LogicalName="AdminText/%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="../../extensions/**" Exclude="../../extensions/**/obj/**" LinkBase="extensions" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

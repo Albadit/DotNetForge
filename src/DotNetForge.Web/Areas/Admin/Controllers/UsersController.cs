@@ -81,7 +81,7 @@ public sealed class UsersController : AdminControllerBase
             return View("Edit", await BuildFormAsync(null, input));
         }
 
-        TempData["Success"] = $"Created {input.Email!.Trim()}. They can sign in now.";
+        TempData["Success"] = T["Created {0}. They can sign in now.", input.Email!.Trim()];
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -118,8 +118,8 @@ public sealed class UsersController : AdminControllerBase
         }
 
         TempData["Success"] = id == CurrentUserId
-            ? "Saved. Role changes apply the next time you sign in."
-            : "Saved. Role changes apply the next time the user signs in.";
+            ? T["Saved. Role changes apply the next time you sign in."]
+            : T["Saved. Role changes apply the next time the user signs in."];
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -150,15 +150,15 @@ public sealed class UsersController : AdminControllerBase
 
         if (id == CurrentUserId)
         {
-            TempData["Error"] = "Change your own methods on Profile › Sign-in security.";
+            TempData["Error"] = T["Change your own methods on Profile › Sign-in security."];
             return RedirectToAction(nameof(Edit), new { id });
         }
 
         // ResetAsync writes the user.mfa.reset audit entry.
         var removed = await _mfa.ResetAsync(user, HttpContext.RequestAborted);
         TempData["Success"] = removed == 0
-            ? $"{user.Email} has no two-step methods."
-            : $"Two-step verification is off for {user.Email}. They sign in with their password and can set it up again.";
+            ? T["{0} has no two-step methods.", user.Email]
+            : T["Two-step verification is off for {0}. They sign in with their password and can set it up again.", user.Email];
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -175,14 +175,23 @@ public sealed class UsersController : AdminControllerBase
             return FromList ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Edit), new { id });
         }
 
-        TempData["Success"] = $"Deleted {email}.";
+        TempData["Success"] = T["Deleted {0}.", email];
         return RedirectToAction(nameof(Index));
     }
 
     private async Task<IActionResult> SetStatusAsync(Guid id, bool enabled)
     {
         var error = await _users.SetStatusAsync(id, enabled, Actor);
-        TempData[error is null ? "Success" : "Error"] = error ?? $"{(enabled ? "Enabled" : "Disabled")} {await EmailOfAsync(id)}.";
+        if (error is not null)
+        {
+            TempData["Error"] = error;
+        }
+        else
+        {
+            var email = await EmailOfAsync(id);
+            TempData["Success"] = enabled ? T["Enabled {0}.", email] : T["Disabled {0}.", email];
+        }
+
         return FromList ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -249,7 +258,7 @@ public sealed class UsersController : AdminControllerBase
         .ToList();
 
     private async Task<string> EmailOfAsync(Guid id) =>
-        await _db.Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Email).FirstOrDefaultAsync() ?? "the user";
+        await _db.Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Email).FirstOrDefaultAsync() ?? T["the user"];
 
     public sealed record UserListItem(Guid Id, string Email, string Name, string Status, DateTime? LastLogin, List<string> Roles, bool IsSelf);
 

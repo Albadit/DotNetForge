@@ -5,8 +5,10 @@
         ?? Array.Empty<(Guid, string)>();
     var extras = ViewData["Extras"] as PageEditorExtras ?? new PageEditorExtras();
     var initialTab = ViewData["Tab"] as string ?? "page";
-    var (tone, status) = Model.Published ? (DnfTone.Success, "Published") : (DnfTone.Danger, "Disabled");
-    var tabs = new[] { ("page", "Page settings", "settings"), ("seo", "SEO", "search"), ("theme", "Theme", "palette"), ("permissions", "Permissions", "shield"), ("layout", "Layout", "layers") };
+    var (tone, status) = Model.Published ? (DnfTone.Success, T["Published"]) : (DnfTone.Danger, T["Disabled"]);
+    var tabs = new[] { ("page", T["Page settings"], "settings"), ("seo", T["SEO"], "search"), ("theme", T["Theme"], "palette"), ("permissions", T["Permissions"], "shield"), ("layout", T["Layout"], "layers") }
+        .Concat(extras.Translations.Count > 0 ? new[] { ("translations", T["Translations"], "globe") } : Array.Empty<(string, string, string)>())
+        .ToArray();
     var builderUrl = $"/admin/pages/{selectedId}/builder";
     // The home page is the site's root: PageService keeps its slug, parent and position.
     var isHome = DotNetForge.Web.Services.PageService.IsHome(Model.Slug);
@@ -27,15 +29,15 @@
         <section class="dnf-card" aria-labelledby="general-title" data-tabs data-initial-tab="@initialTab">
             <div class="dnf-card__header">
                 <div class="flex flex-wrap items-center gap-2">
-                    <h2 class="dnf-card__title" id="general-title">@(string.IsNullOrWhiteSpace(Model.Title) ? "Untitled page" : Model.Title)</h2>
+                    <h2 class="dnf-card__title" id="general-title">@(string.IsNullOrWhiteSpace(Model.Title) ? T["Untitled page"] : Model.Title)</h2>
                     <dnf-badge tone="@tone" dot="true">@status</dnf-badge>
                     @if (extras.HasLayout)
                     {
-                        <dnf-badge tone="Primary"><dnf-icon name="layers" size="Sm" /> Layout</dnf-badge>
+                        <dnf-badge tone="Primary"><dnf-icon name="layers" size="Sm" /> @T["Layout"]</dnf-badge>
                     }
                 </div>
             </div>
-            <div class="dnf-tabs px-5" role="tablist" aria-label="Page sections" data-js-only hidden>
+            <div class="dnf-tabs px-5" role="tablist" aria-label="@T["Page sections"]" data-js-only hidden>
                 @foreach (var (key, label, iconName) in tabs)
                 {
                     <button type="button" class="dnf-tabs__tab" role="tab" id="tab-@key" aria-controls="panel-@key" data-tab="@key"
@@ -47,37 +49,37 @@
 
             @* ---------------------------------------------------------------- Page settings *@
             <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-page" aria-labelledby="tab-page" data-tab-panel="page">
-                <h3 class="dnf-tab-panel__title">Page settings</h3>
+                <h3 class="dnf-tab-panel__title">@T["Page settings"]</h3>
                 <div class="dnf-form-grid">
                     <div class="dnf-field dnf-form-grid__full">
-                        <label class="dnf-field__label" asp-for="Title">Title<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                        <label class="dnf-field__label" asp-for="Title">@T["Title"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                         <input asp-for="Title" class="dnf-input" required maxlength="300" />
                     </div>
                     <div class="dnf-field dnf-form-grid__full">
-                        <label class="dnf-field__label" asp-for="Slug">Slug<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                        <label class="dnf-field__label" asp-for="Slug">@T["Slug"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                         <input asp-for="Slug" aria-describedby="slug-hint" class="dnf-input dnf-input--mono" readonly="@(isHome ? "readonly" : null)" />
                         @if (isHome)
                         {
-                            <span class="dnf-field__description" id="slug-hint">The home page is the site's root, so its slug, parent page and sort order stay as they are, and it can't be deleted.</span>
+                            <span class="dnf-field__description" id="slug-hint">@T["The home page is the site's root, so its slug, parent page and sort order stay as they are, and it can't be deleted."]</span>
                         }
                         else
                         {
-                            <span class="dnf-field__description" id="slug-hint">The URL segment. Use <code>[id]</code> for a dynamic segment.</span>
+                            <span class="dnf-field__description" id="slug-hint">@T["The URL segment. Use"] <code>[id]</code> @T["for a dynamic segment."]</span>
                         }
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" asp-for="PageType">Page type</label>
+                        <label class="dnf-field__label" asp-for="PageType">@T["Page type"]</label>
                         <select asp-for="PageType" id="PageType" class="dnf-select">
-                            <option value="Standard">Standard</option>
-                            <option value="ExistingPage">Existing page</option>
-                            <option value="UrlRedirect">URL redirect</option>
-                            <option value="File">File</option>
+                            <option value="Standard">@T["Standard"]</option>
+                            <option value="ExistingPage">@T["Existing page"]</option>
+                            <option value="UrlRedirect">@T["URL redirect"]</option>
+                            <option value="File">@T["File"]</option>
                         </select>
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" asp-for="ParentPageId">Parent page</label>
+                        <label class="dnf-field__label" asp-for="ParentPageId">@T["Parent page"]</label>
                         <select asp-for="ParentPageId" class="dnf-select" disabled="@(isHome ? "disabled" : null)">
-                            <option value="">Root</option>
+                            <option value="">@T["Root"]</option>
                             @foreach (var opt in parentOptions)
                             {
                                 <option value="@opt.Id">@opt.Label</option>
@@ -85,56 +87,56 @@
                         </select>
                     </div>
                     <div class="dnf-field dnf-form-grid__full" data-when-type="UrlRedirect">
-                        <label class="dnf-field__label" asp-for="TargetUrl">Target URL</label>
+                        <label class="dnf-field__label" asp-for="TargetUrl">@T["Target URL"]</label>
                         <input asp-for="TargetUrl" class="dnf-input" type="url" placeholder="https://" />
                     </div>
                     <div class="dnf-field dnf-form-grid__full" data-when-type="File">
-                        <label class="dnf-field__label" asp-for="FileReference">File reference</label>
+                        <label class="dnf-field__label" asp-for="FileReference">@T["File reference"]</label>
                         <input asp-for="FileReference" class="dnf-input" />
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" asp-for="SortOrder">Sort order</label>
+                        <label class="dnf-field__label" asp-for="SortOrder">@T["Sort order"]</label>
                         <input asp-for="SortOrder" class="dnf-input" type="number" min="0" aria-describedby="sort-hint" readonly="@(isHome ? "readonly" : null)" />
-                        <span class="dnf-field__description" id="sort-hint">Position among its siblings, from 0. At the root the home page stays first. Dragging in the tree sets it too.</span>
+                        <span class="dnf-field__description" id="sort-hint">@T["Position among its siblings, from 0. At the root the home page stays first. Dragging in the tree sets it too."]</span>
                     </div>
                 </div>
             </div>
 
             @* ---------------------------------------------------------------- SEO *@
             <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-seo" aria-labelledby="tab-seo" data-tab-panel="seo">
-                <h3 class="dnf-tab-panel__title">SEO</h3>
-                <p class="dnf-card__description">How the page appears in search results and when it is shared.</p>
+                <h3 class="dnf-tab-panel__title">@T["SEO"]</h3>
+                <p class="dnf-card__description">@T["How the page appears in search results and when it is shared."]</p>
                 <div class="dnf-search-preview" aria-hidden="true">
                     <span class="dnf-search-preview__title">@(string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Title : Model.MetaTitle)</span>
                     <span class="dnf-search-preview__url">@Context.Request.Host/@Model.Slug.TrimStart('/')</span>
-                    <span class="dnf-search-preview__text">@(string.IsNullOrWhiteSpace(Model.MetaDescription) ? "Add a meta description to control the text shown here." : Model.MetaDescription)</span>
+                    <span class="dnf-search-preview__text">@(string.IsNullOrWhiteSpace(Model.MetaDescription) ? T["Add a meta description to control the text shown here."] : Model.MetaDescription)</span>
                 </div>
                 <div class="dnf-form-grid">
                     <div class="dnf-field dnf-form-grid__full">
-                        <label class="dnf-field__label" asp-for="MetaTitle">Meta title<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" asp-for="MetaTitle">@T["Meta title"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input asp-for="MetaTitle" class="dnf-input" maxlength="300" aria-describedby="meta-title-hint" />
-                        <span class="dnf-field__description" id="meta-title-hint">Defaults to the page title. Around 50-60 characters show in search results.</span>
+                        <span class="dnf-field__description" id="meta-title-hint">@T["Defaults to the page title. Around 50-60 characters show in search results."]</span>
                     </div>
                     <div class="dnf-field dnf-form-grid__full">
-                        <label class="dnf-field__label" asp-for="MetaDescription">Meta description<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" asp-for="MetaDescription">@T["Meta description"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <textarea asp-for="MetaDescription" class="dnf-textarea" rows="3" maxlength="1000" aria-describedby="meta-desc-hint"></textarea>
-                        <span class="dnf-field__description" id="meta-desc-hint">About 150-160 characters show in search results.</span>
+                        <span class="dnf-field__description" id="meta-desc-hint">@T["About 150-160 characters show in search results."]</span>
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" asp-for="SeoKeywords">Keywords<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" asp-for="SeoKeywords">@T["Keywords"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input asp-for="SeoKeywords" class="dnf-input" maxlength="500" placeholder="cms, dotnet" />
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" asp-for="CanonicalUrl">Canonical URL<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" asp-for="CanonicalUrl">@T["Canonical URL"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input asp-for="CanonicalUrl" class="dnf-input" type="url" maxlength="2000" placeholder="https://" />
                     </div>
                     <div class="dnf-field dnf-form-grid__full">
-                        <label class="dnf-field__label" asp-for="SocialImageUrl">Social image<span class="dnf-field__optional">optional</span></label>
-                        <input asp-for="SocialImageUrl" class="dnf-input" maxlength="2000" placeholder="/media/… or https://…" aria-describedby="social-hint" />
-                        <span class="dnf-field__description" id="social-hint">Shown when the page is shared (Open Graph). Copy a public image's link from the Media screen.</span>
+                        <label class="dnf-field__label" asp-for="SocialImageUrl">@T["Social image"]<span class="dnf-field__optional">@T["optional"]</span></label>
+                        <input asp-for="SocialImageUrl" class="dnf-input" maxlength="2000" placeholder="@T["/media/… or https://…"]" aria-describedby="social-hint" />
+                        <span class="dnf-field__description" id="social-hint">@T["Shown when the page is shared (Open Graph). Copy a public image's link from the Media screen."]</span>
                     </div>
                     <label class="dnf-switch-row dnf-form-grid__full">
-                        <span class="dnf-check__text"><span class="font-semibold">Hide from search engines</span><span class="dnf-check__description">Adds <code>noindex</code> and leaves the page out of sitemaps.</span></span>
+                        <span class="dnf-check__text"><span class="font-semibold">@T["Hide from search engines"]</span><span class="dnf-check__description">@T["Adds"] <code>noindex</code> @T["and leaves the page out of sitemaps."]</span></span>
                         <input asp-for="NoIndex" class="dnf-switch" role="switch" />
                     </label>
                 </div>
@@ -142,18 +144,18 @@
 
             @* ---------------------------------------------------------------- Theme *@
             <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-theme" aria-labelledby="tab-theme" data-tab-panel="theme">
-                <h3 class="dnf-tab-panel__title">Theme</h3>
-                <p class="dnf-card__description">The look of this page on the site. Themes are extensions; enable them on the Plugins screen.</p>
-                <fieldset class="dnf-check-list" aria-label="Theme">
+                <h3 class="dnf-tab-panel__title">@T["Theme"]</h3>
+                <p class="dnf-card__description">@T["The look of this page on the site. Themes are extensions; enable them on the Plugins screen."]</p>
+                <fieldset class="dnf-check-list" aria-label="@T["Theme"]">
                     <label class="dnf-check">
                         <input type="radio" class="dnf-radio" name="ThemeId" value="" checked="@(string.IsNullOrEmpty(Model.ThemeId) ? "checked" : null)" />
                         @if (extras.InheritedTheme is { } inherited)
                         {
-                            <span class="dnf-check__text"><span class="font-semibold">Parent's theme</span><span class="dnf-check__description">Follows <strong>@inherited.Theme</strong>, which "@inherited.FromPage" hands down to its child pages.</span></span>
+                            <span class="dnf-check__text"><span class="font-semibold">@T["Parent's theme"]</span><span class="dnf-check__description">@T["Follows"] <strong>@inherited.Theme</strong>, @T["which \"{0}\" hands down to its child pages.", inherited.FromPage]</span></span>
                         }
                         else
                         {
-                            <span class="dnf-check__text"><span class="font-semibold">Site theme</span><span class="dnf-check__description">Use whatever theme the site uses (recommended).</span></span>
+                            <span class="dnf-check__text"><span class="font-semibold">@T["Site theme"]</span><span class="dnf-check__description">@T["Use whatever theme the site uses (recommended)."]</span></span>
                         }
                     </label>
                     @foreach (var theme in extras.Themes)
@@ -165,10 +167,10 @@
                                     @theme.Name
                                     @if (!theme.Enabled)
                                     {
-                                        <dnf-badge tone="Warning">Not enabled</dnf-badge>
+                                        <dnf-badge tone="Warning">@T["Not enabled"]</dnf-badge>
                                     }
                                 </span>
-                                <span class="dnf-check__description">@(theme.Enabled ? theme.Description ?? theme.Id : "Enable it on the Plugins screen; until then the site theme is used.")</span>
+                                <span class="dnf-check__description">@(theme.Enabled ? theme.Description ?? theme.Id : T["Enable it on the Plugins screen; until then the site theme is used."])</span>
                             </span>
                         </label>
                     }
@@ -177,8 +179,8 @@
                 {
                     <label class="dnf-switch-row">
                         <span class="dnf-check__text">
-                            <span>Use this theme for child pages too</span>
-                            <span class="dnf-check__description">Child pages without a theme of their own follow this page's theme, down to the next page that picks its own.</span>
+                            <span>@T["Use this theme for child pages too"]</span>
+                            <span class="dnf-check__description">@T["Child pages without a theme of their own follow this page's theme, down to the next page that picks its own."]</span>
                         </span>
                         @* The checkbox first: a bound bool takes the first posted value. *@
                         <input type="checkbox" class="dnf-switch" role="switch" name="ThemeForChildren" value="true" checked="@(Model.ThemeForChildren ? "checked" : null)" />
@@ -187,17 +189,17 @@
                 }
                 @if (extras.Themes.Count == 0)
                 {
-                    <p class="text-sm text-muted">No theme extensions are installed, so the built-in look is used.</p>
+                    <p class="text-sm text-muted">@T["No theme extensions are installed, so the built-in look is used."]</p>
                 }
             </div>
 
             @* ---------------------------------------------------------------- Permissions *@
             <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-permissions" aria-labelledby="tab-permissions" data-tab-panel="permissions">
-                <h3 class="dnf-tab-panel__title">Permissions</h3>
+                <h3 class="dnf-tab-panel__title">@T["Permissions"]</h3>
                 <p class="dnf-card__description">
-                    <strong>View</strong>: with no box ticked, everyone can see the page. Tick roles to show it only to them
-                    (<em>Public</em> = everyone, <em>Authenticated</em> = any signed-in user); others are asked to sign in.
-                    <strong>Edit</strong>: extra roles that may edit this page in the admin.
+                    <strong>@T["View"]</strong>: @T["with no box ticked, everyone can see the page. Tick roles to show it only to them"]
+                    (<em>Public</em> = @T["everyone"], <em>Authenticated</em> = @T["any signed-in user"]); @T["others are asked to sign in."]
+                    <strong>@T["Edit"]</strong>: @T["extra roles that may edit this page in the admin."]
                 </p>
                 @if (extras.CanManagePermissions)
                 {
@@ -205,15 +207,15 @@
                 }
                 else
                 {
-                    <dnf-alert tone="Info" title="View only">Changing page permissions needs permission to update every page.</dnf-alert>
+                    <dnf-alert tone="Info" title="@T["View only"]">@T["Changing page permissions needs permission to update every page."]</dnf-alert>
                 }
                 <div class="dnf-table">
                     <table class="dnf-table__table">
                         <thead>
                             <tr>
-                                <th scope="col">Role</th>
-                                <th scope="col" class="dnf-table__cell--center w-24">View</th>
-                                <th scope="col" class="dnf-table__cell--center w-24">Edit</th>
+                                <th scope="col">@T["Role"]</th>
+                                <th scope="col" class="dnf-table__cell--center w-24">@T["View"]</th>
+                                <th scope="col" class="dnf-table__cell--center w-24">@T["Edit"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -222,17 +224,17 @@
                                 <tr>
                                     <th scope="row" class="dnf-table__primary">@role.Name</th>
                                     <td class="dnf-table__cell--center">
-                                        <input type="checkbox" class="dnf-checkbox" name="viewRoles" value="@role.Id" aria-label="@role.Name can view"
+                                        <input type="checkbox" class="dnf-checkbox" name="viewRoles" value="@role.Id" aria-label="@T["{0} can view", role.Name]"
                                                checked="@(extras.ViewRoles.Contains(role.Id) ? "checked" : null)" disabled="@(extras.CanManagePermissions ? null : "disabled")" />
                                     </td>
                                     <td class="dnf-table__cell--center">
                                         @if (role.SiteOnly)
                                         {
-                                            <span class="text-subtle text-xs" title="Site visitors can't edit pages">-</span>
+                                            <span class="text-subtle text-xs" title="@T["Site visitors can't edit pages"]">-</span>
                                         }
                                         else
                                         {
-                                            <input type="checkbox" class="dnf-checkbox" name="editRoles" value="@role.Id" aria-label="@role.Name can edit"
+                                            <input type="checkbox" class="dnf-checkbox" name="editRoles" value="@role.Id" aria-label="@T["{0} can edit", role.Name]"
                                                    checked="@(extras.EditRoles.Contains(role.Id) ? "checked" : null)" disabled="@(extras.CanManagePermissions ? null : "disabled")" />
                                         }
                                     </td>
@@ -241,13 +243,13 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="dnf-field__description">Super Admins have full access to every page, so they aren't listed. Everyone allowed to edit pages also sees restricted pages. Restricted pages are left out of menus and sitemaps.</p>
+                <p class="dnf-field__description">@T["Super Admins have full access to every page, so they aren't listed. Everyone allowed to edit pages also sees restricted pages. Restricted pages are left out of menus and sitemaps."]</p>
 
                 @* Users: allow or block one person, whatever their roles say (.docs/features/content-pages-and-routing.md#page-permissions). *@
-                <h4 class="mt-2 text-base font-semibold">Users</h4>
+                <h4 class="mt-2 text-base font-semibold">@T["Users"]</h4>
                 <p class="dnf-card__description">
-                    Allow or <strong>block</strong> single users. A block wins over everything their roles allow (including editing
-                    every page); Super Admins can't be blocked and you can't block yourself. Set both to <em>Not set</em> to remove a user.
+                    @T["Allow or"] <strong>@T["block"]</strong> @T["single users. A block wins over everything their roles allow (including editing every page); Super Admins can't be blocked and you can't block yourself. Set both to"]
+                    <em>@T["Not set"]</em> @T["to remove a user."]
                 </p>
                 @{
                     var listed = extras.UserGrants.Select(g => g.UserId).ToHashSet();
@@ -258,10 +260,10 @@
                     <table class="dnf-table__table">
                         <thead>
                             <tr>
-                                <th scope="col">User</th>
-                                <th scope="col" class="w-32">View</th>
-                                <th scope="col" class="w-32">Edit</th>
-                                <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Remove</span></th>
+                                <th scope="col">@T["User"]</th>
+                                <th scope="col" class="w-32">@T["View"]</th>
+                                <th scope="col" class="w-32">@T["Edit"]</th>
+                                <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">@T["Remove"]</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -282,17 +284,17 @@
                                     @foreach (var (field, value) in new[] { ("View", grant.View), ("Edit", grant.Edit) })
                                     {
                                         <td class="w-32">
-                                            <select name="userPermissions[@i].@field" class="dnf-select dnf-select--sm" aria-label="@field for @user.Email" disabled="@(canEdit ? null : "disabled")">
-                                                <option value="" selected="@(value is null ? "selected" : null)">Not set</option>
-                                                <option value="allow" selected="@(value == true ? "selected" : null)">Allow</option>
-                                                <option value="block" selected="@(value == false ? "selected" : null)">Block</option>
+                                            <select name="userPermissions[@i].@field" class="dnf-select dnf-select--sm" aria-label="@(field == "View" ? T["View for {0}", user.Email] : T["Edit for {0}", user.Email])" disabled="@(canEdit ? null : "disabled")">
+                                                <option value="" selected="@(value is null ? "selected" : null)">@T["Not set"]</option>
+                                                <option value="allow" selected="@(value == true ? "selected" : null)">@T["Allow"]</option>
+                                                <option value="block" selected="@(value == false ? "selected" : null)">@T["Block"]</option>
                                             </select>
                                         </td>
                                     }
                                     <td class="dnf-table__cell--actions">
                                         @if (canEdit)
                                         {
-                                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-remove-user-row data-js-only hidden aria-label="Remove @user.Email"><dnf-icon name="trash" size="Sm" /></button>
+                                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-remove-user-row data-js-only hidden aria-label="@T["Remove {0}", user.Email]"><dnf-icon name="trash" size="Sm" /></button>
                                         }
                                     </td>
                                 </tr>
@@ -302,9 +304,9 @@
                                 var n = extras.UserGrants.Count;
                                 <tr class="dnf-permission-add-row">
                                     <td>
-                                        <label class="sr-only" for="add-user">Add a user</label>
+                                        <label class="sr-only" for="add-user">@T["Add a user"]</label>
                                         <select id="add-user" name="userPermissions[@n].UserId" class="dnf-select dnf-select--sm">
-                                            <option value="">Add a user…</option>
+                                            <option value="">@T["Add a user…"]</option>
                                             @foreach (var user in extras.Users.Where(u => !listed.Contains(u.Id)))
                                             {
                                                 <option value="@user.Id">@Label(user)</option>
@@ -314,10 +316,10 @@
                                     @foreach (var field in new[] { "View", "Edit" })
                                     {
                                         <td class="w-32">
-                                            <select name="userPermissions[@n].@field" class="dnf-select dnf-select--sm" aria-label="@field for the added user">
-                                                <option value="">Not set</option>
-                                                <option value="allow">Allow</option>
-                                                <option value="block">Block</option>
+                                            <select name="userPermissions[@n].@field" class="dnf-select dnf-select--sm" aria-label="@(field == "View" ? T["View for the added user"] : T["Edit for the added user"])">
+                                                <option value="">@T["Not set"]</option>
+                                                <option value="allow">@T["Allow"]</option>
+                                                <option value="block">@T["Block"]</option>
                                             </select>
                                         </td>
                                     }
@@ -326,82 +328,143 @@
                             }
                             @if (extras.UserGrants.Count == 0 && !canEdit)
                             {
-                                <tr class="dnf-table__empty"><td colspan="4">No user rules on this page.</td></tr>
+                                <tr class="dnf-table__empty"><td colspan="4">@T["No user rules on this page."]</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 @if (canEdit)
                 {
-                    <p class="dnf-field__description">Choose a user in the last row, set View and/or Edit, then <strong>Save changes</strong>.</p>
+                    <p class="dnf-field__description">@T["Choose a user in the last row, set View and/or Edit, then"] <strong>@T["Save changes"]</strong>.</p>
                 }
             </div>
 
             @* ---------------------------------------------------------------- Layout *@
             <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-layout" aria-labelledby="tab-layout" data-tab-panel="layout">
-                <h3 class="dnf-tab-panel__title">Layout</h3>
-                <p class="dnf-card__description">Design how this page looks with the page builder: sections, grids, text, images, buttons and more.</p>
+                <h3 class="dnf-tab-panel__title">@T["Layout"]</h3>
+                <p class="dnf-card__description">@T["Design how this page looks with the page builder: sections, grids, text, images, buttons and more."]</p>
                 <div class="dnf-layout-status">
                     <span class="dnf-layout-status__icon" aria-hidden="true"><dnf-icon name="layers" /></span>
                     <div class="dnf-stack dnf-stack--sm">
                         @if (extras.HasLayout)
                         {
-                            <strong>Visitors see the published layout</strong>
-                            <span class="text-sm text-muted">Published <dnf-timestamp value="@extras.LayoutPublishedDate" />@(extras.HasDraftChanges ? " · there are unpublished changes" : "")</span>
+                            <strong>@T["Visitors see the published layout"]</strong>
+                            <span class="text-sm text-muted">@T["Published"] <dnf-timestamp value="@extras.LayoutPublishedDate" />@(extras.HasDraftChanges ? " · " + T["there are unpublished changes"] : "")</span>
                         }
                         else if (extras.DraftUpdatedDate is not null)
                         {
-                            <strong>A draft layout, not published yet</strong>
-                            <span class="text-sm text-muted">Saved <dnf-timestamp value="@extras.DraftUpdatedDate" />. Visitors see the page's default view until you publish.</span>
+                            <strong>@T["A draft layout, not published yet"]</strong>
+                            <span class="text-sm text-muted">@T["Saved"] <dnf-timestamp value="@extras.DraftUpdatedDate" />. @T["Visitors see the page's default view until you publish."]</span>
                         }
                         else
                         {
-                            <strong>No layout yet</strong>
-                            <span class="text-sm text-muted">The page shows its default view. Open the page builder to design it.</span>
+                            <strong>@T["No layout yet"]</strong>
+                            <span class="text-sm text-muted">@T["The page shows its default view. Open the page builder to design it."]</span>
                         }
                     </div>
                 </div>
                 <div class="dnf-cluster">
                     @if (extras.CanEditLayout)
                     {
-                        <a class="dnf-button dnf-button--primary" href="@builderUrl"><dnf-icon name="pencil" /> Open page builder</a>
+                        <a class="dnf-button dnf-button--primary" href="@builderUrl"><dnf-icon name="pencil" /> @T["Open page builder"]</a>
                     }
                     @if (extras.HasLayout || extras.DraftUpdatedDate is not null)
                     {
-                        <a class="dnf-button dnf-button--secondary" href="@builderUrl/preview" target="_blank" rel="noopener"><dnf-icon name="eye" /> Preview draft</a>
+                        <a class="dnf-button dnf-button--secondary" href="@builderUrl/preview" target="_blank" rel="noopener"><dnf-icon name="eye" /> @T["Preview draft"]</a>
                     }
                 </div>
-                <p class="dnf-field__description">The builder saves a draft automatically; publish it from the builder's top bar. Unsaved settings on the other tabs are kept only when you press Save.</p>
+                <p class="dnf-field__description">@T["The builder saves a draft automatically; publish it from the builder's top bar. Unsaved settings on the other tabs are kept only when you press Save."]</p>
             </div>
+
+            @* ---------------------------------------------------------------- Translations (.docs/features/internationalization.md#content-pages) *@
+            @if (extras.Translations.Count > 0)
+            {
+                <div class="dnf-card__body dnf-tab-panel" role="tabpanel" id="panel-translations" aria-labelledby="tab-translations" data-tab-panel="translations">
+                    <h3 class="dnf-tab-panel__title">@T["Translations"]</h3>
+                    <p class="dnf-card__description">@T["The page in the site's other languages, at the same address under the language's prefix. An empty field shows the main text (the default locale's) instead."]</p>
+                    @for (var i = 0; i < extras.Translations.Count; i++)
+                    {
+                        var t = extras.Translations[i];
+                        var translationBuilder = $"/admin/pages/{selectedId}/translations/{t.Locale.Code}/builder";
+                        <fieldset class="dnf-fieldset dnf-stack" aria-labelledby="translation-@i-title">
+                            <legend class="sr-only" id="translation-@i-title">@t.Locale.DisplayName (@t.Locale.Code)</legend>
+                            <div class="flex flex-wrap items-center gap-2" aria-hidden="true">
+                                <strong>@t.Locale.DisplayName</strong>
+                                <dnf-badge><code>/@t.Locale.Code/</code></dnf-badge>
+                            </div>
+                            <input type="hidden" name="translations[@i].LocaleId" value="@t.Locale.Id" />
+                            <div class="dnf-form-grid">
+                                <div class="dnf-field dnf-form-grid__full">
+                                    <label class="dnf-field__label" for="translation-@i-page-title">@T["Title"]<span class="dnf-field__optional">@T["optional"]</span></label>
+                                    <input id="translation-@i-page-title" class="dnf-input" name="translations[@i].Title" value="@t.Title" maxlength="300" placeholder="@Model.Title" lang="@t.Locale.Code" />
+                                </div>
+                                <div class="dnf-field dnf-form-grid__full">
+                                    <label class="dnf-field__label" for="translation-@i-meta-title">@T["Meta title"]<span class="dnf-field__optional">@T["optional"]</span></label>
+                                    <input id="translation-@i-meta-title" class="dnf-input" name="translations[@i].MetaTitle" value="@t.MetaTitle" maxlength="300" placeholder="@T["Defaults to the translated title"]" lang="@t.Locale.Code" />
+                                </div>
+                                <div class="dnf-field dnf-form-grid__full">
+                                    <label class="dnf-field__label" for="translation-@i-meta-description">@T["Meta description"]<span class="dnf-field__optional">@T["optional"]</span></label>
+                                    <textarea id="translation-@i-meta-description" class="dnf-textarea" name="translations[@i].MetaDescription" rows="2" maxlength="1000" placeholder="@Model.MetaDescription" lang="@t.Locale.Code">@t.MetaDescription</textarea>
+                                </div>
+                            </div>
+                            <div class="dnf-cluster">
+                                <span class="text-sm text-muted">
+                                    @if (t.HasLayout)
+                                    {
+                                        <text>@T["Own layout, published"] <dnf-timestamp value="@t.LayoutPublishedDate" />@(t.HasDraftChanges ? " · " + T["unpublished changes"] : "")</text>
+                                    }
+                                    else if (t.DraftUpdatedDate is not null)
+                                    {
+                                        <text>@T["A draft layout, not published: visitors see the main layout."]</text>
+                                    }
+                                    else
+                                    {
+                                        <text>@T["Shows the main layout. Open the builder to translate it (it starts as a copy)."]</text>
+                                    }
+                                </span>
+                                @if (extras.CanEditLayout)
+                                {
+                                    <a class="dnf-button dnf-button--secondary dnf-button--sm" href="@translationBuilder"><dnf-icon name="pencil" size="Sm" /> @T["Edit {0} layout", t.Locale.DisplayName]</a>
+                                }
+                                @if (t.HasLayout || t.DraftUpdatedDate is not null)
+                                {
+                                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="@translationBuilder/preview" target="_blank" rel="noopener"><dnf-icon name="eye" size="Sm" /> @T["Preview"]</a>
+                                }
+                            </div>
+                        </fieldset>
+                    }
+                    <p class="dnf-field__description">@T["Texts are saved with Save; translated layouts are published from the page builder, like the main layout."]</p>
+                </div>
+            }
         </section>
     </div>
 
-    <aside class="dnf-split__aside" aria-label="Publishing">
+    <aside class="dnf-split__aside" aria-label="@T["Publishing"]">
         <section class="dnf-card" aria-labelledby="publish-title">
-            <div class="dnf-card__header"><h2 class="dnf-card__title" id="publish-title">Publishing</h2></div>
+            <div class="dnf-card__header"><h2 class="dnf-card__title" id="publish-title">@T["Publishing"]</h2></div>
             <div class="dnf-card__body dnf-stack">
                 <label class="dnf-switch-row">
-                    <span class="dnf-check__text"><span class="font-semibold">Published</span><span class="dnf-check__description">On: visible on the site (within its schedule). Off: disabled, hidden everywhere.</span></span>
+                    <span class="dnf-check__text"><span class="font-semibold">@T["Published"]</span><span class="dnf-check__description">@T["On: visible on the site (within its schedule). Off: disabled, hidden everywhere."]</span></span>
                     <input asp-for="Published" id="Published" class="dnf-switch" role="switch" />
                 </label>
                 <div class="dnf-stack" id="publishOpts">
                     <label class="dnf-switch-row">
-                        <span class="dnf-check__text"><span class="font-semibold">Show in menu</span><span class="dnf-check__description">Listed in the site navigation.</span></span>
+                        <span class="dnf-check__text"><span class="font-semibold">@T["Show in menu"]</span><span class="dnf-check__description">@T["Listed in the site navigation."]</span></span>
                         <input asp-for="DisplayInMenu" class="dnf-switch" role="switch" />
                     </label>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" asp-for="ScheduledPublishDate">Publish at (UTC)<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" asp-for="ScheduledPublishDate">@T["Publish at (UTC)"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input asp-for="ScheduledPublishDate" class="dnf-input" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" asp-for="ScheduledUnpublishDate">Unpublish at (UTC)<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" asp-for="ScheduledUnpublishDate">@T["Unpublish at (UTC)"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input asp-for="ScheduledUnpublishDate" class="dnf-input" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" />
                     </div>
-                    <p class="dnf-field__description">A future publish time keeps the page hidden until then; an unpublish time takes it offline.</p>
+                    <p class="dnf-field__description">@T["A future publish time keeps the page hidden until then; an unpublish time takes it offline."]</p>
                 </div>
             </div>
             <div class="dnf-card__footer">
-                <button type="submit" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="check" /> Save changes</button>
+                <button type="submit" class="dnf-button dnf-button--primary dnf-button--full-width"><dnf-icon name="check" /> @T["Save changes"]</button>
             </div>
         </section>
 
@@ -410,15 +473,15 @@
             <section class="dnf-card dnf-card--danger" aria-labelledby="danger-title">
                 <div class="dnf-card__header">
                     <div>
-                        <h2 class="dnf-card__title" id="danger-title">Delete page</h2>
-                        <p class="dnf-card__description">Its child pages move up a level; they are not deleted.</p>
+                        <h2 class="dnf-card__title" id="danger-title">@T["Delete page"]</h2>
+                        <p class="dnf-card__description">@T["Its child pages move up a level; they are not deleted."]</p>
                     </div>
                 </div>
                 <div class="dnf-card__body">
                     <button type="submit" form="deletePageForm" class="dnf-button dnf-button--danger-soft dnf-button--full-width"
-                            data-confirm="Delete this page? Its child pages move up a level." data-confirm-title="Delete page"
-                            data-confirm-action="Delete page">
-                        <dnf-icon name="trash" /> Delete page
+                            data-confirm="@T["Delete this page? Its child pages move up a level."]" data-confirm-title="@T["Delete page"]"
+                            data-confirm-action="@T["Delete page"]">
+                        <dnf-icon name="trash" /> @T["Delete page"]
                     </button>
                 </div>
             </section>

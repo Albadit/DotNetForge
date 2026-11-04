@@ -1,0 +1,35 @@
+@model InternationalizationController.InternationalizationViewModel
+@{
+    ViewData["PageWidth"] = "narrow";
+    ViewData["Title"] = T["Add locale"];
+}
+
+<form method="post" action="/admin/internationalization/add" class="dnf-card" aria-label="@T["Add locale"]">
+    @Html.AntiForgeryToken()
+    <div class="dnf-card__body dnf-stack">
+        <dnf-validation-summary />
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="Code">@T["Locale code"]</label>
+            <input id="Code" class="dnf-input" name="Code" value="@Model.Code" required maxlength="35" placeholder="de-DE" autocomplete="off" spellcheck="false" aria-describedby="code-hint" autofocus />
+            <span class="dnf-field__description" id="code-hint">@T["A BCP-47 tag: language (de), optionally with region (de-AT) or script (zh-Hans). It becomes the URL prefix."]</span>
+        </div>
+        <div class="dnf-field">
+            <label class="dnf-field__label" for="DisplayName">@T["Display name"]<span class="dnf-field__optional">@T["optional"]</span></label>
+            <input id="DisplayName" class="dnf-input" name="DisplayName" value="@Model.DisplayName" maxlength="100" placeholder="Deutsch" aria-describedby="name-hint" />
+            <span class="dnf-field__description" id="name-hint">@T["Shown in the admin and the site's language switcher. Empty: the language's own name."]</span>
+        </div>
+        <label class="dnf-switch-row">
+            <span class="dnf-check__text">
+                <span>@T["Enabled"]</span>
+                <span class="dnf-check__description">@T["Offered for translation and published under its code. A disabled locale keeps its translations hidden."]</span>
+            </span>
+            @* The checkbox first: a bound bool takes the first posted value. *@
+            <input type="checkbox" class="dnf-switch" role="switch" name="Enabled" value="true" checked="@(Model.Enabled ? "checked" : null)" />
+            <input type="hidden" name="Enabled" value="false" />
+        </label>
+    </div>
+    <div class="dnf-card__footer">
+        <a class="dnf-button dnf-button--ghost" href="/admin/internationalization">@T["Cancel"]</a>
+        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="plus" /> @T["Add locale"]</button>
+    </div>
+</form>

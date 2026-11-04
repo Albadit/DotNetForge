@@ -5,10 +5,10 @@
     var creating = Model.Id is null;
     var input = Model.Input;
     ViewData["PageWidth"] = creating ? "narrow" : "medium";
-    ViewData["Title"] = creating ? "Create role" : input.Name;
+    ViewData["Title"] = creating ? T["Create role"] : input.Name;
     ViewData["Description"] = creating
-        ? "Name the role and choose what it may do. Then give it to users on the Users screen."
-        : Model.IsBuiltIn ? "Built-in role: its name is fixed and it can't be deleted." : "Custom role.";
+        ? T["Name the role and choose what it may do. Then give it to users on the Users screen."]
+        : Model.IsBuiltIn ? T["Built-in role: its name is fixed and it can't be deleted."] : T["Custom role."];
     var grantsLocked = Model.GrantsReadOnlyReason is not null;
 }
 
@@ -17,7 +17,7 @@
     {
         <form method="post" action="/admin/roles/@Model.Id/duplicate">
             @Html.AntiForgeryToken()
-            <button type="submit" class="dnf-button dnf-button--secondary"><dnf-icon name="copy" /> Duplicate</button>
+            <button type="submit" class="dnf-button dnf-button--secondary"><dnf-icon name="copy" /> @T["Duplicate"]</button>
         </form>
     }
 }
@@ -31,31 +31,31 @@
             <section class="dnf-card" aria-labelledby="details-title">
                 <div class="dnf-card__header">
                     <div class="flex flex-wrap items-center gap-2">
-                        <h2 class="dnf-card__title" id="details-title">Details</h2>
+                        <h2 class="dnf-card__title" id="details-title">@T["Details"]</h2>
                         @if (Model.IsBuiltIn)
                         {
-                            <dnf-badge tone="Primary"><dnf-icon name="lock" size="Sm" /> Built-in</dnf-badge>
+                            <dnf-badge tone="Primary"><dnf-icon name="lock" size="Sm" /> @T["Built-in"]</dnf-badge>
                         }
                     </div>
                 </div>
                 <div class="dnf-card__body dnf-form">
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="Name">Name<span class="dnf-field__required" aria-hidden="true">*</span></label>
+                        <label class="dnf-field__label" for="Name">@T["Name"]<span class="dnf-field__required" aria-hidden="true">*</span></label>
                         @if (Model.NameEditable || creating)
                         {
                             <input id="Name" class="dnf-input" name="Name" value="@input.Name" required maxlength="@RoleManagementService.MaxNameLength"
-                                   placeholder="Content reviewer" autocomplete="off" />
+                                   placeholder="@T["Content reviewer"]" autocomplete="off" />
                         }
                         else
                         {
                             <input id="Name" class="dnf-input" value="@input.Name" readonly aria-describedby="name-hint" />
-                            <span class="dnf-field__description" id="name-hint">Built-in role names are fixed.</span>
+                            <span class="dnf-field__description" id="name-hint">@T["Built-in role names are fixed."]</span>
                         }
                     </div>
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="Description">Description<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" for="Description">@T["Description"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <textarea id="Description" class="dnf-textarea" name="Description" rows="2" maxlength="@RoleManagementService.MaxDescriptionLength"
-                                  placeholder="Who gets this role and why?">@input.Description</textarea>
+                                  placeholder="@T["Who gets this role and why?"]">@input.Description</textarea>
                     </div>
                 </div>
             </section>
@@ -63,9 +63,9 @@
             <section class="dnf-card" aria-labelledby="permissions-title">
                 <div class="dnf-card__header">
                     <div>
-                        <h2 class="dnf-card__title" id="permissions-title">Permissions</h2>
+                        <h2 class="dnf-card__title" id="permissions-title">@T["Permissions"]</h2>
                         <p class="dnf-card__description">
-                            @(Model.GrantsReadOnlyReason ?? "Users with this role may do what is ticked here. \"Own\" actions apply to records the user created. Changes apply immediately.")
+                            @(Model.GrantsReadOnlyReason ?? T["Users with this role may do what is ticked here. \"Own\" actions apply to records the user created. Changes apply immediately."])
                         </p>
                     </div>
                 </div>
@@ -83,12 +83,12 @@
                         {
                             var group = "role-" + area.Area.Replace(' ', '-').ToLowerInvariant();
                             <fieldset class="dnf-fieldset dnf-permission-group" disabled="@(grantsLocked ? "disabled" : null)">
-                                <legend class="dnf-fieldset__legend dnf-permission-group__head"><span>@area.Label</span></legend>
-                                <p class="dnf-permission-group__description">@area.Description</p>
+                                <legend class="dnf-fieldset__legend dnf-permission-group__head"><span>@T[area.Label]</span></legend>
+                                <p class="dnf-permission-group__description">@T[area.Description]</p>
                                 @if (!grantsLocked)
                                 {
                                     <label class="dnf-check text-sm text-muted" data-js-only hidden>
-                                        <input class="dnf-checkbox" type="checkbox" data-check-group="@group" /> All
+                                        <input class="dnf-checkbox" type="checkbox" data-check-group="@group" /> @T["All"]
                                     </label>
                                 }
                                 @foreach (var action in area.Actions)
@@ -97,7 +97,7 @@
                                     <label class="dnf-check">
                                         <input class="dnf-checkbox" type="checkbox" name="Grants" value="@key" data-check-member="@group"
                                                checked="@(Model.Grants.Contains(key) ? "checked" : null)" />
-                                        @PermissionCatalog.ActionLabel(action)
+                                        @T[PermissionCatalog.ActionLabel(action)]
                                     </label>
                                 }
                             </fieldset>
@@ -107,8 +107,8 @@
                 @if (Model.CanSave)
                 {
                     <div class="dnf-card__footer">
-                        <a class="dnf-button dnf-button--ghost" href="/admin/roles">Cancel</a>
-                        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="@(creating ? "plus" : "check")" /> @(creating ? "Create role" : "Save changes")</button>
+                        <a class="dnf-button dnf-button--ghost" href="/admin/roles">@T["Cancel"]</a>
+                        <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="@(creating ? "plus" : "check")" /> @(creating ? T["Create role"] : T["Save changes"])</button>
                     </div>
                 }
             </section>
@@ -121,14 +121,14 @@
             <section class="dnf-card" aria-labelledby="members-title">
                 <div class="dnf-card__header">
                     <div>
-                        <h2 class="dnf-card__title" id="members-title">Users with this role</h2>
-                        <p class="dnf-card__description">@Model.Members.Count @(Model.Members.Count == 1 ? "user" : "users")</p>
+                        <h2 class="dnf-card__title" id="members-title">@T["Users with this role"]</h2>
+                        <p class="dnf-card__description">@(Model.Members.Count == 1 ? T["1 user"] : T["{0} users", Model.Members.Count])</p>
                     </div>
                 </div>
                 <div class="dnf-card__body">
                     @if (Model.Members.Count == 0)
                     {
-                        <p class="text-sm text-muted">Nobody has this role yet. Assign it when you create or edit a user.</p>
+                        <p class="text-sm text-muted">@T["Nobody has this role yet. Assign it when you create or edit a user."]</p>
                     }
                     else
                     {
@@ -151,20 +151,20 @@
             @if (Model.CanDelete)
             {
                 <section class="dnf-card dnf-card--danger" aria-labelledby="danger-title">
-                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="danger-title">Delete role</h2></div>
+                    <div class="dnf-card__header"><h2 class="dnf-card__title" id="danger-title">@T["Delete role"]</h2></div>
                     <div class="dnf-card__body dnf-stack dnf-stack--sm">
                         @if (Model.Members.Count > 0)
                         {
-                            <p class="text-sm text-muted">Give the users above another role first; a role in use can't be deleted.</p>
+                            <p class="text-sm text-muted">@T["Give the users above another role first; a role in use can't be deleted."]</p>
                         }
                         else
                         {
-                            <p class="text-sm text-muted">Removes the role and its permissions.</p>
+                            <p class="text-sm text-muted">@T["Removes the role and its permissions."]</p>
                             <form method="post" action="/admin/roles/@Model.Id/delete"
-                                  data-confirm="Delete the role '@input.Name'? This can't be undone."
-                                  data-confirm-title="Delete role" data-confirm-action="Delete role">
+                                  data-confirm="@T["Delete the role '{0}'? This can't be undone.", input.Name]"
+                                  data-confirm-title="@T["Delete role"]" data-confirm-action="@T["Delete role"]">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="dnf-button dnf-button--danger-soft dnf-button--sm"><dnf-icon name="trash" /> Delete role</button>
+                                <button type="submit" class="dnf-button dnf-button--danger-soft dnf-button--sm"><dnf-icon name="trash" /> @T["Delete role"]</button>
                             </form>
                         }
                     </div>

@@ -420,7 +420,8 @@ public static partial class TransferFile
         var columns = Columns(type).ToList();
         var count = 0;
         writer.WriteStartArray();
-        await foreach (var row in db.Set<T>().AsNoTracking().AsAsyncEnumerable().WithCancellation(ct))
+        // Every row, also those a query filter hides from the running app (other environments' variables).
+        await foreach (var row in db.Set<T>().IgnoreQueryFilters().AsNoTracking().AsAsyncEnumerable().WithCancellation(ct))
         {
             writer.WriteStartObject();
             foreach (var column in columns)
@@ -442,7 +443,7 @@ public static partial class TransferFile
     }
 
     private static Task DeleteAllAsync<T>(DotNetForgeDbContext db, CancellationToken ct) where T : class =>
-        db.Set<T>().ExecuteDeleteAsync(ct);
+        db.Set<T>().IgnoreQueryFilters().ExecuteDeleteAsync(ct);
 
     /// <summary>Hashes what is written through it (the table files' checksums), without buffering.</summary>
     private sealed class HashingStream(Stream inner, IncrementalHash hash) : Stream

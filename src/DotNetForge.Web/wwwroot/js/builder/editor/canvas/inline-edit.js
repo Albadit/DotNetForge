@@ -1,3 +1,4 @@
+import { t } from "../../ui/i18n.js";
 import { getComponent } from "../../components/registry.js";
 import { updateProps } from "../../core/commands.js";
 import { normalizeBlocks, normalizeRuns } from "../../core/richtext.js";
@@ -99,7 +100,7 @@ class InlineEditor {
     if (!edit) return false;
     // Text bound to a content field shows the entry's value: it is changed in the Content Manager, not here.
     if (node.bind?.[edit.prop]) {
-      this.session.toast("This text comes from content. Edit the entry in the Content Manager, or unbind it in the Content tab.", "info");
+      this.session.toast(t("This text comes from content. Edit the entry in the Content Manager, or unbind it in the Content tab."), "info");
       return false;
     }
     return true;
@@ -198,7 +199,7 @@ class InlineEditor {
     const sel = doc.getSelection();
     const range = sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
     const current = sel?.anchorNode?.parentElement?.closest("a")?.getAttribute("href") ?? "";
-    const url = window.prompt("Link address (https://…, /page or #anchor). Leave empty to remove the link.", current);
+    const url = window.prompt(t("Link address (https://…, /page or #anchor). Leave empty to remove the link."), current);
     if (url === null) return;
     this.el.focus({ preventScroll: true });
     if (range) {

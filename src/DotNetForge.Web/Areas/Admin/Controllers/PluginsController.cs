@@ -55,13 +55,13 @@ public sealed class PluginsController : AdminControllerBase
             var problem = !discovered.IsValid
                 ? string.Join(" ", discovered.Validation.Errors.Select(e => e.ToString()))
                 : !installed.Contains(discovered)
-                    ? "Another extension already uses this id; only the first one found is used."
+                    ? T["Another extension already uses this id; only the first one found is used."]
                     : _catalog.Problem(discovered);
 
             rows.Add(new PluginRowViewModel
             {
                 Id = m?.Id ?? Path.GetFileName(folder),
-                Name = m?.Name ?? "(unknown)",
+                Name = m?.Name ?? T["(unknown)"],
                 Description = m?.Description ?? string.Empty,
                 Version = m?.Version ?? "-",
                 Type = m?.Type?.ToLowerInvariant() ?? "-",
@@ -83,18 +83,18 @@ public sealed class PluginsController : AdminControllerBase
     [HttpPost("{id}/enable")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Enable(string id) =>
-        Done(await _lifecycle.EnableAsync(id, HttpContext.RequestAborted), "enabled");
+        Done(await _lifecycle.EnableAsync(id, HttpContext.RequestAborted), T["Extension enabled."]);
 
     [HttpPost("{id}/disable")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Disable(string id) =>
-        Done(await _lifecycle.DisableAsync(id, HttpContext.RequestAborted), "disabled");
+        Done(await _lifecycle.DisableAsync(id, HttpContext.RequestAborted), T["Extension disabled."]);
 
-    private IActionResult Done(string? error, string verb)
+    private IActionResult Done(string? error, string success)
     {
         if (error is null)
         {
-            TempData["Success"] = $"Extension {verb}.";
+            TempData["Success"] = success;
         }
         else
         {

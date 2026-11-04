@@ -150,7 +150,8 @@ extension view receives:
 | `Settings` | manifest `settings` as `Dictionary<string, object?>`: numbers → `long`/`double`, booleans → `bool`, strings → `string`, arrays/objects → JSON text |
 | `ResourceBase` | `/admin/ext/{id}/resources` in the admin area, `/ext/{id}/resources` on the public site |
 
-Theme views also get `AppName` and `Menu` (top-level live pages marked "display in menu", as `PublishedPage`).
+Theme views also get `AppName`, `Menu` (top-level live pages marked "display in menu", as `PublishedPage`, in the
+request's locale) and `CurrentPath`, `HomePath`, `Languages` ([themes → theme views](themes.md#theme-views)).
 
 **Modules.** `ExtensionModulesViewComponent` (`src/DotNetForge.Web/Components/`) renders every active module whose
 `pages` setting contains the current URL path (case-insensitive, slashes trimmed: `"contact"`, `"about/team"`, `"/"`
@@ -172,6 +173,7 @@ json, svg, png, jpg/jpeg, gif, webp, ico, woff2, else `application/octet-stream`
 | `ExtensionContext` | `Id`, `Name`, `Version`, `Type`, `Directory`, `Settings`, `GetString/GetBool/GetInt64/GetDouble/GetStringList`, `GetEnvironmentValue(name)` (process environment, then `.env` - for secrets), `PublicResourceBase`, `AdminResourceBase` |
 | `ExtensionServiceCollectionExtensions` | `AddMediaStorage`, `AddLoginProvider`, `AddAuditEventHandler<T>` |
 | `IExtensionState` | `IsEnabledAsync(id)`, `GetEnabledAsync()` - for code that runs on its own (hosted services) |
+| `IEnvironmentVariables` | `GetAsync(key)` - a variable from [Environment Variables](../pages/environment-variables.md): the running environment's value, else the all-environments one, secrets decrypted; null when unset (or a secret encrypted by another site). Scoped: inject it per request or resolve it from a scope. Unlike `GetEnvironmentValue`, the value is managed in the admin, not in `.env` |
 | `IAuditEventHandler`, `AuditEvent` | audit event subscription |
 | `ExternalLogin.SignInScheme` | `dnf.external`, the cookie scheme a sign-in extension's remote handler signs into |
 

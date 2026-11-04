@@ -67,6 +67,13 @@ may not open are hidden (hiding is never the gate), the active link is the longe
 carry a "Soon" badge, and the breadcrumb trail comes from the same tree. `AdminNavModel.Allows(href)` lets a screen
 show an action only when its target is reachable. Details: [pages → navigation](pages.md#navigation).
 
+**Language.** The shell, the sidebar and every screen are shown in the
+[admin language](../features/internationalization.md#admin-language): `<html lang>` and `dir` (`rtl` for Arabic,
+Persian, Hebrew, Urdu) come from `AdminText.Language`, and the layout writes the script catalog into
+`<meta name="dnf-text">` for `dnfText` ([behaviours](../ui/behaviours.md#text-windowdnftext)). Write every text of a
+screen as `@T["..."]` (controllers: `T["..."]`, scripts: `dnfText("...")`) and add it to every catalog; CSS for a
+screen should use logical properties (`margin-inline-start`, `ps-*`) so it also works right to left.
+
 ### Auth layout
 
 `Views/Shared/_AuthLayout.cshtml` (+ `css/auth.css`, `dnf.js`): setup, sign-in and the two-step verification step,
@@ -80,7 +87,9 @@ Optional sections: `Head` and `Scripts` (e.g. `passkeys.js` on the two-step veri
 applies a saved light/dark choice): the site root, content pages and the error page while no theme extension is
 enabled ([themes](../features/themes.md)). It hosts page modules like a theme does. The header holds the brand, a
 page menu `nav.dnf-site__nav` (`aria-label="Site"`; the top-level live pages marked "display in menu" from
-`ViewData["Menu"]`, the current one `aria-current="page"`) and **Admin →** for signed-in users who may enter the admin
+`ViewData["Menu"]`, the current one `aria-current="page"`), a language switcher `nav.dnf-site__languages` when more
+than one locale is enabled (`ViewData["Languages"]`, [internationalization](../features/internationalization.md#public-site))
+and **Admin →** for signed-in users who may enter the admin
 (`Roles.CanEnterAdmin`) - or **Sign out** for a signed-in site-only account. The error page gets no `Menu`, so it shows
 no menu. `ViewData["FullWidth"]` (set for page builder layouts) drops the content width.
 
@@ -164,7 +173,9 @@ Every list with a pager sets `data-page-size`.
    submits with `data-confirm` ([form](../../src/DotNetForge.Web/Areas/Admin/Views/UiDocs/Components/Form.cshtml)).
 3. Navigation: add the link to `AdminNavigation.Tree` (label, href, icon, controller) - visibility, active state and
    breadcrumbs follow.
-4. No inline style or script: components and utilities first; a screen-specific block goes into the matching
+4. Text: every visible string through `@T["..."]` / `T["..."]` / `dnfText("...")`, keys added to every admin catalog
+   (`AdminTextCatalogTests` lists what is missing - [admin language](../features/internationalization.md#writing-translatable-text)).
+5. No inline style or script: components and utilities first; a screen-specific block goes into the matching
    `wwwroot/css/admin/*.css` (in `@layer components`, tokens only); a reusable component goes into the library
    ([ui/README.md → where to change things](../ui/README.md#where-to-change-things)); behaviour as a `dnf.js` hook or a
    page script.

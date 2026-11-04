@@ -7,7 +7,9 @@ using DotNetForge.Shared.Configuration;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Content;
 using DotNetForge.Shared.Entities;
+using DotNetForge.Web.Controllers;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -19,9 +21,13 @@ namespace DotNetForge.Web.Areas.Admin.Controllers;
 /// The page builder (.docs/pages/page-builder.md, .docs/features/page-builder.md): the full-screen editor of one page's
 /// layout, its canvas document, and the JSON API the editor (<c>wwwroot/js/builder</c>) talks to. Who may open it:
 /// whoever may edit the page (<c>Collection types</c> update, update.own on own pages, or a page edit grant);
-/// publishing needs <c>publish</c>. Drafts are saved continuously; visitors see only what is published.
+/// publishing needs <c>publish</c>. Drafts are saved continuously; visitors see only what is published. Under
+/// <c>/translations/{locale}/builder</c> the same editor works on the page's layout in another enabled locale
+/// (.docs/features/internationalization.md#content-pages): the translation's draft and published layout, starting from
+/// a copy of the main layout; canvas and preview render in that locale.
 /// </summary>
 [Route("admin/pages/{id:guid}/builder")]
+[Route("admin/pages/{id:guid}/translations/{locale}/builder")]
 public sealed class PageBuilderController : AdminControllerBase
 {
     private const long MaxRequestBytes = 6 * 1024 * 1024;
@@ -36,11 +42,22 @@ public sealed class PageBuilderController : AdminControllerBase
     private readonly ContentTypeService _types;
     private readonly ContentRenderService _content;
     private readonly ContentQueryService _query;
+    private readonly LocaleCatalog _locales;
+    private readonly PageTranslationService _translations;
+
+    /// <summary>In locale mode: the locale and its (tracked when changing) translation, set by <see cref="LoadAsync"/>.</summary>
+    private LocaleInfo? _locale;
+
+    /// <summary>The translation being edited, for the audit log ("Deutsch (de)"); null for the page's own layout.</summary>
+    private string? LocaleLabel() => _locale is null ? null : $"{_locale.DisplayName} ({_locale.Code})";
+    private PageTranslation? _translation;
 
     public PageBuilderController(DotNetForgeDbContext db, PageBuilderService builder, MediaService media, ThemeResolver themes,
         ExtensionViewRenderer renderer, IPublishedPages published, AppEnvironment env, ContentTypeService types,
-        ContentRenderService content, ContentQueryService query)
+        ContentRenderService content, ContentQueryService query, LocaleCatalog locales, PageTranslationService translations)
     {
+        _locales = locales;
+        _translations = translations;
         _types = types;
         _content = content;
         _query = query;
@@ -63,7 +80,10 @@ public sealed class PageBuilderController : AdminControllerBase
         }
 
         ViewData["CanUpload"] = Can(PermissionAreas.Media, PermissionActions.Create);
-        return View(new BuilderViewModel(page.Id, page.Title, await PublicPathAsync(page), CanPublish));
+        var api = _locale is null ? $"/admin/pages/{page.Id}/builder/" : $"/admin/pages/{page.Id}/translations/{_locale.Code}/builder/";
+        var title = _locale is null ? page.Title : $"{page.Title} ({_locale.DisplayName})";
+        return View(new BuilderViewModel(page.Id, title, await PublicPathAsync(page), CanPublish, api,
+            $"/admin/pages?selected={page.Id}#{(_locale is null ? "layout" : "translations")}"));
     }
 
     /// <summary>
@@ -106,9 +126,7 @@ public sealed class PageBuilderController : AdminControllerBase
     private async Task<IActionResult> SitePageViewAsync(Page page)
     {
         ViewData["AppName"] = _env.AppName;
-        ViewData["Menu"] = (await _published.ListAsync(HttpContext.RequestAborted))
-            .Where(p => p.DisplayInMenu && p.ParentPageId is null)
-            .ToList();
+        await HomeController.SetLocaleViewDataAsync(ViewData, _published, _translations, HttpContext, await PublicPathAsync(page, prefixed: false));
         var theme = await _themes.GetActiveThemeAsync(HttpContext.RequestAborted, await _themes.PageThemeIdAsync(page, HttpContext.RequestAborted));
         if (theme?.FindView("Page.cshtml") is not { } themeView)
         {
@@ -200,11 +218,17 @@ public sealed class PageBuilderController : AdminControllerBase
 
         var document = request.Document.ValueKind == JsonValueKind.Object ? JToken.Parse(request.Document.GetRawText()) : null;
         var result = await _builder.SaveDraftAsync(page, document, request.BaseVersion, request.Force, CurrentUserId, HttpContext.RequestAborted);
+        if (result.Error is null && result.Conflict is null)
+        {
+            await KeepTranslationAsync(page);
+        }
         if (result.Conflict is { } conflict)
         {
             return StatusCode(StatusCodes.Status409Conflict, new
             {
-                message = $"{conflict.SavedBy ?? "Someone else"} saved this page in the meantime.",
+                message = conflict.SavedBy is null
+                    ? T["Someone else saved this page in the meantime."]
+                    : T["{0} saved this page in the meantime.", conflict.SavedBy],
                 conflict = new { savedBy = conflict.SavedBy, savedOn = conflict.SavedOn, version = conflict.Version },
             });
         }
@@ -226,10 +250,14 @@ public sealed class PageBuilderController : AdminControllerBase
 
         if (!CanPublish)
         {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You don't have permission to publish pages." });
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = T["You don't have permission to publish pages."] });
         }
 
-        var error = await _builder.PublishAsync(page, HttpContext.RequestAborted);
+        var error = await _builder.PublishAsync(page, HttpContext.RequestAborted, LocaleLabel());
+        if (error is null)
+        {
+            await KeepTranslationAsync(page);
+        }
         return error is not null
             ? BadRequest(new { message = error })
             : Ok(new { versionId = (string?)null, publishedOn = page.LayoutPublishedDate, enabled = true });
@@ -247,10 +275,11 @@ public sealed class PageBuilderController : AdminControllerBase
 
         if (!CanPublish)
         {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You don't have permission to publish pages." });
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = T["You don't have permission to publish pages."] });
         }
 
-        await _builder.UnpublishAsync(page, HttpContext.RequestAborted);
+        await _builder.UnpublishAsync(page, HttpContext.RequestAborted, LocaleLabel());
+        await KeepTranslationAsync(page);
         return Ok(new { ok = true });
     }
 
@@ -265,6 +294,7 @@ public sealed class PageBuilderController : AdminControllerBase
         }
 
         await _builder.DiscardDraftAsync(page, CurrentUserId, HttpContext.RequestAborted);
+        await KeepTranslationAsync(page);
         return Json(new JObject
         {
             ["version"] = page.DraftVersion?.ToString(),
@@ -310,17 +340,17 @@ public sealed class PageBuilderController : AdminControllerBase
 
         if (!Can(PermissionAreas.Media, PermissionActions.Create))
         {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You don't have permission to upload files." });
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = T["You don't have permission to upload files."] });
         }
 
         if (file is null || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest(new { message = "Choose an image file." });
+            return BadRequest(new { message = T["Choose an image file."] });
         }
 
         var (saved, error) = await _media.UploadAsync(file, isPublic: true, CurrentUserId, reuseDuplicate: true, ct: HttpContext.RequestAborted);
         return saved is null
-            ? BadRequest(new { message = error ?? "The upload failed." })
+            ? BadRequest(new { message = error ?? T["The upload failed."] })
             : Ok(new { url = MediaService.UrlFor(saved), name = saved.FileName, contentType = saved.ContentType });
     }
 
@@ -359,7 +389,7 @@ public sealed class PageBuilderController : AdminControllerBase
                 ["icon"] = t.Icon,
                 ["published"] = counts.GetValueOrDefault(t.Id),
                 ["fields"] = new JArray(bindable.Select(b => new JObject { ["path"] = b.Path, ["label"] = b.Label, ["kind"] = b.Kind })),
-                ["filters"] = new JArray(new[] { new JObject { ["key"] = ItemData.TitlePath, ["label"] = "Title", ["type"] = FieldTypes.Text } }
+                ["filters"] = new JArray(new[] { new JObject { ["key"] = ItemData.TitlePath, ["label"] = T["Title"], ["type"] = FieldTypes.Text } }
                     .Concat(scalar.Select(f => new JObject
                     {
                         ["key"] = f.Key,
@@ -369,10 +399,10 @@ public sealed class PageBuilderController : AdminControllerBase
                     }))),
                 ["sorts"] = new JArray(new[]
                     {
-                        new JObject { ["key"] = "", ["label"] = "Manual order" },
-                        new JObject { ["key"] = "title", ["label"] = "Title" },
-                        new JObject { ["key"] = "publishedAt", ["label"] = "Publish date" },
-                        new JObject { ["key"] = "updatedAt", ["label"] = "Last updated" },
+                        new JObject { ["key"] = "", ["label"] = T["Manual order"] },
+                        new JObject { ["key"] = "title", ["label"] = T["Title"] },
+                        new JObject { ["key"] = "publishedAt", ["label"] = T["Publish date"] },
+                        new JObject { ["key"] = "updatedAt", ["label"] = T["Last updated"] },
                     }
                     .Concat(scalar.Where(f => f.Type is not (FieldTypes.Image or FieldTypes.File or FieldTypes.Relationship or FieldTypes.Array))
                         .Select(f => new JObject { ["key"] = f.Key, ["label"] = f.Label }))),
@@ -483,21 +513,63 @@ public sealed class PageBuilderController : AdminControllerBase
 
     private bool CanPublish => Can(PermissionAreas.CollectionTypes, PermissionActions.Publish);
 
-    /// <summary>The page if the user may edit it; else the 404/403 result.</summary>
+    /// <summary>
+    /// The page if the user may edit it; else the 404/403 result. In locale mode (a <c>locale</c> route value) the page
+    /// is an untracked copy carrying the translation's layout state (<see cref="PageTranslationService.ShowLayout"/>);
+    /// <paramref name="tracked"/> then tracks the translation instead, which <see cref="KeepTranslationAsync"/> saves.
+    /// </summary>
     private async Task<(Page? Page, IActionResult? Denied)> LoadAsync(Guid id, bool tracked = false)
     {
-        var query = tracked ? _db.Pages : _db.Pages.AsNoTracking();
+        var code = RouteData.Values["locale"] as string;
+        var query = tracked && code is null ? _db.Pages : _db.Pages.AsNoTracking();
         var page = await query.FirstOrDefaultAsync(p => p.Id == id);
         if (page is null)
         {
             return (null, NotFound());
         }
 
-        return await CanEditPageAsync(page) ? (page, null) : (null, Forbid());
+        if (!await CanEditPageAsync(page))
+        {
+            return (null, Forbid());
+        }
+
+        if (code is null)
+        {
+            return (page, null);
+        }
+
+        // Only an enabled locale other than the default has a translation to edit.
+        var locales = await _locales.GetAsync(HttpContext.RequestAborted);
+        if (locales.FindEnabled(code) is not { IsDefault: false } locale)
+        {
+            return (null, NotFound());
+        }
+
+        _locale = locale;
+        _translation = tracked
+            ? await _translations.GetOrAddAsync(page.Id, locale.Id, HttpContext.RequestAborted)
+            : await _db.PageTranslations.AsNoTracking().FirstOrDefaultAsync(t => t.PageId == page.Id && t.LocaleId == locale.Id)
+              ?? new PageTranslation { PageId = page.Id, LocaleId = locale.Id };
+        PageTranslationService.ShowLayout(page, _translation);
+        // Canvas, preview and state speak the locale: its menu, links and <html lang>.
+        HttpContext.Features.Set(new RequestLocale(locale, locales, locale.Code));
+        return (page, null);
     }
 
-    /// <summary>The page's URL on the site (its slug path through the tree).</summary>
-    private async Task<string> PublicPathAsync(Page page)
+    /// <summary>In locale mode, stores the layout state the builder left on the page copy in the translation.</summary>
+    private async Task KeepTranslationAsync(Page page)
+    {
+        if (_translation is null)
+        {
+            return;
+        }
+
+        PageTranslationService.KeepLayout(page, _translation, CurrentUserId);
+        await _db.SaveChangesAsync(HttpContext.RequestAborted);
+    }
+
+    /// <summary>The page's URL on the site (its slug path through the tree), in locale mode under the locale's prefix.</summary>
+    private async Task<string> PublicPathAsync(Page page, bool prefixed = true)
     {
         var tree = await _db.Pages.AsNoTracking()
             .Select(p => new { p.Id, p.ParentPageId, p.Slug })
@@ -511,7 +583,7 @@ public sealed class PageBuilderController : AdminControllerBase
         }
 
         var path = "/" + string.Join('/', segments.Where(s => s.Length > 0 && s != "home"));
-        return path;
+        return prefixed && _locale is not null ? RequestLocale.UrlIn(_locale, path) : path;
     }
 
     private static string? Iso(DateTime? value) => value?.ToString("O");
@@ -525,5 +597,7 @@ public sealed class PageBuilderController : AdminControllerBase
         public bool Force { get; set; }
     }
 
-    public sealed record BuilderViewModel(Guid PageId, string Title, string PublicPath, bool CanPublish);
+    /// <param name="Api">The editor's API base: the page's builder, or its translation's (<c>/translations/{locale}/builder/</c>).</param>
+    /// <param name="BackUrl">Where the editor's back button goes (the page's Layout or Translations tab).</param>
+    public sealed record BuilderViewModel(Guid PageId, string Title, string PublicPath, bool CanPublish, string Api, string BackUrl);
 }

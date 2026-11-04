@@ -16,10 +16,12 @@ namespace DotNetForge.Content;
 public sealed class ContentApiService
 {
     private readonly DotNetForgeDbContext _db;
+    private readonly EntryTranslationService _translations;
 
-    public ContentApiService(DotNetForgeDbContext db)
+    public ContentApiService(DotNetForgeDbContext db, EntryTranslationService translations)
     {
         _db = db;
+        _translations = translations;
     }
 
     public static JObject TypeJson(ContentType t) => new()
@@ -31,6 +33,8 @@ public sealed class ContentApiService
         ["description"] = t.Description,
         ["titleField"] = ContentSchema.TitleKey(ContentSchema.Parse(t.FieldsJson), t.TitleField),
         ["drafts"] = t.Drafts,
+        // Whether entries hold translations (?locale=, .docs/features/internationalization.md#entries).
+        ["localized"] = t.Localized,
         ["fields"] = JArray.Parse(t.FieldsJson),
         ["updatedAt"] = t.UpdatedDate,
     };
@@ -39,10 +43,23 @@ public sealed class ContentApiService
     /// Entries as the API returns them: <paramref name="published"/> selects the published values (else the working
     /// copies, for clients that may update).
     /// </summary>
-    public async Task<JArray> EntriesJsonAsync(ContentType type, IReadOnlyList<ContentEntry> entries, bool published, int depth, CancellationToken ct = default)
+    /// <param name="locale">A locale to read the entries in (<c>?locale=</c>, .docs/features/internationalization.md#entries):
+    /// a localized type's translated values over the entries' own; null or the default locale = the entries' own values.</param>
+    public async Task<JArray> EntriesJsonAsync(ContentType type, IReadOnlyList<ContentEntry> entries, bool published, int depth, CancellationToken ct = default,
+        Locale? locale = null)
     {
         var fields = ContentSchema.Parse(type.FieldsJson);
         var values = entries.Select(e => ContentEntryService.Parse(published ? e.PublishedDataJson ?? e.DataJson : e.DataJson)).ToList();
+        var translated = locale is { IsDefault: false } && type.Localized
+            ? await _translations.ValuesAsync(entries.Select(e => e.Id).ToList(), locale.Id, published, ct)
+            : new Dictionary<Guid, JObject>();
+        for (var i = 0; i < entries.Count; i++)
+        {
+            if (translated.TryGetValue(entries[i].Id, out var t))
+            {
+                values[i] = EntryTranslations.Merge(fields, values[i], t);
+            }
+        }
         IReadOnlyDictionary<Guid, JObject> media = new Dictionary<Guid, JObject>();
         IReadOnlyDictionary<Guid, JObject> related = new Dictionary<Guid, JObject>();
         if (depth > 0 && entries.Count > 0)
@@ -57,13 +74,23 @@ public sealed class ContentApiService
             }
 
             media = await MediaAsync(mediaIds, ct);
-            related = await RelatedAsync(entryIds, published, ct);
+            related = await RelatedAsync(entryIds, published, locale, ct);
         }
 
         var output = new JArray();
         for (var i = 0; i < entries.Count; i++)
         {
-            output.Add(EntryJson(type, entries[i], depth > 0 ? Expand(fields, values[i], media, related) : values[i]));
+            var json = EntryJson(type, entries[i], depth > 0 ? Expand(fields, values[i], media, related) : values[i]);
+            if (locale is not null)
+            {
+                json["locale"] = locale.Code;
+                if (translated.ContainsKey(entries[i].Id))
+                {
+                    json["title"] = EntryData.Title(fields, type.TitleField, values[i]);
+                }
+            }
+
+            output.Add(json);
         }
 
         return output;
@@ -135,7 +162,7 @@ public sealed class ContentApiService
             });
     }
 
-    private async Task<IReadOnlyDictionary<Guid, JObject>> RelatedAsync(HashSet<Guid> ids, bool published, CancellationToken ct)
+    private async Task<IReadOnlyDictionary<Guid, JObject>> RelatedAsync(HashSet<Guid> ids, bool published, Locale? locale, CancellationToken ct)
     {
         if (ids.Count == 0)
         {
@@ -148,14 +175,30 @@ public sealed class ContentApiService
             .Select(e => new { e.Id, e.Title, e.ContentTypeId, e.DataJson, e.PublishedDataJson })
             .ToListAsync(ct);
         var typeIds = rows.Select(r => r.ContentTypeId).Distinct().ToList();
-        var slugs = await _db.ContentTypes.AsNoTracking().Where(t => typeIds.Contains(t.Id))
-            .Select(t => new { t.Id, t.Slug }).ToDictionaryAsync(t => t.Id, t => t.Slug, ct);
-        return rows.ToDictionary(r => r.Id, r => new JObject
+        var types = await _db.ContentTypes.AsNoTracking().Where(t => typeIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.Slug, t.FieldsJson, t.TitleField, t.Localized }).ToDictionaryAsync(t => t.Id, ct);
+        // Linked entries of localized types in the same locale.
+        var translated = locale is { IsDefault: false }
+            ? await _translations.ValuesAsync(rows.Where(r => types.GetValueOrDefault(r.ContentTypeId)?.Localized == true).Select(r => r.Id).ToList(), locale.Id, published, ct)
+            : new Dictionary<Guid, JObject>();
+        return rows.ToDictionary(r => r.Id, r =>
         {
-            ["id"] = r.Id.ToString(),
-            ["title"] = r.Title,
-            ["type"] = slugs.GetValueOrDefault(r.ContentTypeId),
-            ["data"] = ContentEntryService.Parse(published ? r.PublishedDataJson : r.DataJson),
+            var data = ContentEntryService.Parse(published ? r.PublishedDataJson : r.DataJson);
+            var title = r.Title;
+            if (translated.TryGetValue(r.Id, out var t) && types.GetValueOrDefault(r.ContentTypeId) is { } type)
+            {
+                var fields = ContentSchema.Parse(type.FieldsJson);
+                data = EntryTranslations.Merge(fields, data, t);
+                title = EntryData.Title(fields, type.TitleField, data);
+            }
+
+            return new JObject
+            {
+                ["id"] = r.Id.ToString(),
+                ["title"] = title,
+                ["type"] = types.GetValueOrDefault(r.ContentTypeId)?.Slug,
+                ["data"] = data,
+            };
         });
     }
 }

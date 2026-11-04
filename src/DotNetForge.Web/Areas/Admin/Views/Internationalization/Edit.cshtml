@@ -1,0 +1,51 @@
+@model InternationalizationController.LocaleEditModel
+@{
+    ViewData["PageWidth"] = "medium";
+    ViewData["Title"] = Model.DisplayName ?? Model.Code;
+    ViewData["Description"] = Model.IsDefault
+        ? T["The default locale: the main content of every page and entry, and the fallback of missing translations."]
+        : T["Published under /{0}/ while enabled.", Model.Code];
+    var canEdit = ViewData["CanEdit"] is true;
+}
+
+<form method="post" action="/admin/internationalization/@Model.Id" class="dnf-card" aria-labelledby="locale-title">
+    @Html.AntiForgeryToken()
+    <div class="dnf-card__header">
+        <h2 class="dnf-card__title" id="locale-title">@T["Locale"] <code>@Model.Code</code></h2>
+    </div>
+    <div class="dnf-card__body dnf-stack">
+        <dnf-validation-summary />
+        <fieldset class="dnf-fieldset dnf-stack" disabled="@(canEdit ? null : "disabled")">
+            <legend class="sr-only">@T["Locale settings"]</legend>
+            <div class="dnf-field">
+                <label class="dnf-field__label" for="DisplayName">@T["Display name"]</label>
+                <input id="DisplayName" class="dnf-input" name="DisplayName" value="@Model.DisplayName" required maxlength="100" />
+                <span class="dnf-field__description">@T["The code can't change: it is the URL prefix of the translated pages. Add a new locale for another code."]</span>
+            </div>
+            <label class="dnf-switch-row">
+                <span class="dnf-check__text">
+                    <span>@T["Enabled"]</span>
+                    <span class="dnf-check__description">
+                        @if (Model.IsDefault)
+                        {
+                            <text>@T["The default locale is always enabled."]</text>
+                        }
+                        else
+                        {
+                            <text>@(Model.Entries == 1 ? T["Translated: {0} page(s), {1} entry. Disabled, translations are kept but not shown.", Model.Pages, Model.Entries] : T["Translated: {0} page(s), {1} entries. Disabled, translations are kept but not shown.", Model.Pages, Model.Entries])</text>
+                        }
+                    </span>
+                </span>
+                <input type="checkbox" class="dnf-switch" role="switch" name="Enabled" value="true" checked="@(Model.Enabled ? "checked" : null)" disabled="@(Model.IsDefault ? "disabled" : null)" />
+                <input type="hidden" name="Enabled" value="@(Model.IsDefault ? "true" : "false")" />
+            </label>
+        </fieldset>
+        <div class="dnf-form-actions">
+            <a class="dnf-button dnf-button--secondary" href="/admin/internationalization">@T["Back"]</a>
+            @if (canEdit)
+            {
+                <button type="submit" class="dnf-button dnf-button--primary">@T["Save"]</button>
+            }
+        </div>
+    </div>
+</form>

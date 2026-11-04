@@ -23,7 +23,7 @@
                 return res.text().then(function (text) {
                     var data;
                     try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
-                    if (!res.ok || res.redirected) { throw new Error(data && data.message ? data.message : "The server could not complete the request."); }
+                    if (!res.ok || res.redirected) { throw new Error(data && data.message ? data.message : dnfText("The server could not complete the request.")); }
                     return data;
                 });
             });
@@ -142,19 +142,19 @@
     }
 
     var TOOLS = [
-        { cmd: "formatBlock", arg: "p", icon: "pilcrow", label: "Paragraph" },
-        { cmd: "formatBlock", arg: "h3", icon: "heading", label: "Heading" },
-        { cmd: "formatBlock", arg: "h4", icon: "type", label: "Subheading" },
+        { cmd: "formatBlock", arg: "p", icon: "pilcrow", label: dnfText("Paragraph") },
+        { cmd: "formatBlock", arg: "h3", icon: "heading", label: dnfText("Heading") },
+        { cmd: "formatBlock", arg: "h4", icon: "type", label: dnfText("Subheading") },
         { sep: true },
-        { cmd: "bold", icon: "bold", label: "Bold (Ctrl+B)" },
-        { cmd: "italic", icon: "italic", label: "Italic (Ctrl+I)" },
-        { cmd: "underline", icon: "underline", label: "Underline (Ctrl+U)" },
-        { cmd: "link", icon: "link", label: "Link" },
+        { cmd: "bold", icon: "bold", label: dnfText("Bold (Ctrl+B)") },
+        { cmd: "italic", icon: "italic", label: dnfText("Italic (Ctrl+I)") },
+        { cmd: "underline", icon: "underline", label: dnfText("Underline (Ctrl+U)") },
+        { cmd: "link", icon: "link", label: dnfText("Link") },
         { sep: true },
-        { cmd: "insertUnorderedList", icon: "list", label: "Bulleted list" },
-        { cmd: "insertOrderedList", icon: "list-ordered", label: "Numbered list" },
-        { cmd: "formatBlock", arg: "blockquote", icon: "quote", label: "Quote" },
-        { cmd: "removeFormat", icon: "rotate-ccw", label: "Clear formatting" }
+        { cmd: "insertUnorderedList", icon: "list", label: dnfText("Bulleted list") },
+        { cmd: "insertOrderedList", icon: "list-ordered", label: dnfText("Numbered list") },
+        { cmd: "formatBlock", arg: "blockquote", icon: "quote", label: dnfText("Quote") },
+        { cmd: "removeFormat", icon: "rotate-ccw", label: dnfText("Clear formatting") }
     ];
     function wireRichText(scope) {
         scope.querySelectorAll("[data-rte]").forEach(function (wrap) {
@@ -167,7 +167,7 @@
             var toolbar = doc.createElement("div");
             toolbar.className = "dnf-rte__toolbar";
             toolbar.setAttribute("role", "toolbar");
-            toolbar.setAttribute("aria-label", "Formatting");
+            toolbar.setAttribute("aria-label", dnfText("Formatting"));
             TOOLS.forEach(function (t) {
                 if (t.sep) { toolbar.insertAdjacentHTML("beforeend", "<span class=\"dnf-rte__sep\" aria-hidden=\"true\"></span>"); return; }
                 var b = doc.createElement("button");
@@ -198,7 +198,7 @@
             function run(t) {
                 area.focus();
                 if (t.cmd === "link") {
-                    var url = window.prompt("Link address (https://…, /page, mailto:…). Leave empty to remove the link.", "https://");
+                    var url = window.prompt(dnfText("Link address (https://…, /page, mailto:…). Leave empty to remove the link."), "https://");
                     if (url === null) { return; }
                     if (url.trim() === "" || url.trim() === "https://") { doc.execCommand("unlink"); } else { doc.execCommand("createLink", false, url.trim()); }
                 } else {
@@ -221,7 +221,7 @@
     // ---- Repeaters: add, remove and move rows -------------------------------------------------------------------
     function renumber(repeater) {
         var label = (repeater.querySelector(".dnf-repeater__head .dnf-field__label") || {}).firstChild;
-        var name = label && label.textContent ? label.textContent.trim() : "Row";
+        var name = label && label.textContent ? label.textContent.trim() : dnfText("Row");
         repeater.querySelectorAll(":scope > [data-repeater-rows] > [data-repeater-row]").forEach(function (row, i, rows) {
             var title = row.querySelector("[data-repeater-title]");
             if (title) { title.textContent = name + " #" + (i + 1); }
@@ -285,14 +285,14 @@
         dialog.className = "dnf-dialog dnf-dialog--xl dnf-media-dialog";
         dialog.setAttribute("aria-labelledby", "media-dialog-title");
         dialog.innerHTML =
-            "<div class=\"dnf-media-dialog__head\"><h2 class=\"dnf-dialog__title\" id=\"media-dialog-title\" data-dialog-title>Choose from Media</h2>" +
-            "<button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only\" data-close aria-label=\"Close\">" + icon("x", "sm") + "</button></div>" +
+            "<div class=\"dnf-media-dialog__head\"><h2 class=\"dnf-dialog__title\" id=\"media-dialog-title\" data-dialog-title>" + esc(dnfText("Choose from Media")) + "</h2>" +
+            "<button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only\" data-close aria-label=\"" + esc(dnfText("Close")) + "\">" + icon("x", "sm") + "</button></div>" +
             "<div class=\"dnf-toolbar dnf-media-dialog__toolbar\"><div class=\"dnf-toolbar__search dnf-input-group\">" + icon("search", "sm", "dnf-input-group__icon") +
-            "<input type=\"search\" class=\"dnf-input dnf-input--sm\" placeholder=\"Search files\" aria-label=\"Search files\" data-search></div>" +
-            "<label class=\"dnf-button dnf-button--secondary dnf-button--sm relative overflow-hidden\" data-upload hidden>" + icon("upload", "sm") + " Upload<input type=\"file\" class=\"sr-only\" data-file></label></div>" +
-            "<div class=\"dnf-media-dialog__grid\" data-grid role=\"listbox\" aria-label=\"Files\"></div>" +
+            "<input type=\"search\" class=\"dnf-input dnf-input--sm\" placeholder=\"" + esc(dnfText("Search files")) + "\" aria-label=\"" + esc(dnfText("Search files")) + "\" data-search></div>" +
+            "<label class=\"dnf-button dnf-button--secondary dnf-button--sm relative overflow-hidden\" data-upload hidden>" + icon("upload", "sm") + " " + esc(dnfText("Upload")) + "<input type=\"file\" class=\"sr-only\" data-file></label></div>" +
+            "<div class=\"dnf-media-dialog__grid\" data-grid role=\"listbox\" aria-label=\"" + esc(dnfText("Files")) + "\"></div>" +
             "<div class=\"dnf-dialog__footer\"><span class=\"text-sm text-muted me-auto\" data-status></span>" +
-            "<button type=\"button\" class=\"dnf-button dnf-button--secondary\" data-close>Cancel</button><button type=\"button\" class=\"dnf-button dnf-button--primary\" data-done>Use selected</button></div>";
+            "<button type=\"button\" class=\"dnf-button dnf-button--secondary\" data-close>" + esc(dnfText("Cancel")) + "</button><button type=\"button\" class=\"dnf-button dnf-button--primary\" data-done>" + esc(dnfText("Use selected")) + "</button></div>";
         doc.body.appendChild(dialog);
         dialog.querySelectorAll("[data-close]").forEach(function (b) { b.addEventListener("click", function () { dialog.close(); }); });
         return dialog;
@@ -315,9 +315,9 @@
                         ? "<img src=\"" + esc(o.getAttribute("data-url")) + "\" alt=\"\" loading=\"lazy\">"
                         : "<span class=\"dnf-media-picker__file\">" + icon("file") + "</span>";
                     return "<figure class=\"dnf-media-picker__item\">" + thumb + "<figcaption class=\"dnf-media-picker__caption\" title=\"" + esc(o.text) + "\">" + esc(o.text) + "</figcaption>" +
-                        (select.disabled ? "" : "<button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only dnf-media-picker__remove\" data-remove=\"" + esc(o.value) + "\" aria-label=\"Remove " + esc(o.text) + "\">" + icon("x", "sm") + "</button>") + "</figure>";
+                        (select.disabled ? "" : "<button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--sm dnf-button--icon-only dnf-media-picker__remove\" data-remove=\"" + esc(o.value) + "\" aria-label=\"" + esc(dnfText("Remove {0}", o.text)) + "\">" + icon("x", "sm") + "</button>") + "</figure>";
                 }).join("") + (select.disabled ? "" : "<button type=\"button\" class=\"dnf-media-picker__add\" data-choose>" + icon(images ? "image" : "file") +
-                    "<span>" + (items.length && !multiple ? "Replace" : multiple ? "Add " + (images ? "images" : "files") : "Choose " + (images ? "an image" : "a file")) + "</span></button>");
+                    "<span>" + esc(items.length && !multiple ? dnfText("Replace") : multiple ? (images ? dnfText("Add images") : dnfText("Add files")) : (images ? dnfText("Choose an image") : dnfText("Choose a file"))) + "</span></button>");
             }
             box.addEventListener("click", function (event) {
                 var remove = event.target.closest("[data-remove]");
@@ -339,7 +339,7 @@
                 var fileInput = d.querySelector("[data-file]");
                 var picked = selected().map(function (o) { return o.value; });
                 var files = [];
-                d.querySelector("[data-dialog-title]").textContent = images ? (multiple ? "Choose images" : "Choose an image") : (multiple ? "Choose files" : "Choose a file");
+                d.querySelector("[data-dialog-title]").textContent = images ? (multiple ? dnfText("Choose images") : dnfText("Choose an image")) : (multiple ? dnfText("Choose files") : dnfText("Choose a file"));
                 upload.hidden = select.getAttribute("data-can-upload") !== "true";
                 fileInput.accept = images ? "image/*" : "";
                 function render() {
@@ -348,8 +348,8 @@
                         return "<button type=\"button\" class=\"dnf-media-tile\" role=\"option\" aria-selected=\"" + on + "\" data-id=\"" + esc(f.id) + "\">" +
                             (f.isImage ? "<img src=\"" + esc(f.url) + "\" alt=\"\" loading=\"lazy\">" : "<span class=\"dnf-media-tile__file\">" + icon("file", "lg") + "</span>") +
                             "<span class=\"dnf-media-tile__name\">" + esc(f.name) + "</span></button>";
-                    }).join("") : "<p class=\"text-sm text-muted\">No files match. Upload one, or add files on the Media screen.</p>";
-                    status.textContent = picked.length ? picked.length + " selected" : "";
+                    }).join("") : "<p class=\"text-sm text-muted\">" + esc(dnfText("No files match. Upload one, or add files on the Media screen.")) + "</p>";
+                    status.textContent = picked.length ? dnfText("{0} selected", picked.length) : "";
                 }
                 function load() {
                     json("/admin/content/api/media?kind=" + (images ? "image" : "file") + "&q=" + encodeURIComponent(search.value)).then(function (list) { files = list || []; render(); })
@@ -374,12 +374,12 @@
                     if (!fileInput.files.length) { return; }
                     var data = new FormData();
                     data.append("file", fileInput.files[0]);
-                    status.textContent = "Uploading…";
+                    status.textContent = dnfText("Uploading…");
                     json("/admin/content/api/media/upload", { method: "POST", body: data }).then(function (file) {
                         files.unshift(file);
                         if (multiple) { picked.push(file.id); } else { picked = [file.id]; }
                         render();
-                        toast("Uploaded " + file.name + ".", "success");
+                        toast(dnfText("Uploaded {0}.", file.name), "success");
                     }).catch(function (e) { status.textContent = ""; toast(e.message, "danger"); })
                         .finally(function () { fileInput.value = ""; });
                 };
@@ -402,7 +402,7 @@
                 d.querySelector("[data-done]").onclick = done;
                 d.querySelector("[data-done]").hidden = !multiple;
                 search.value = "";
-                grid.innerHTML = "<p class=\"text-sm text-muted\">Loading…</p>";
+                grid.innerHTML = "<p class=\"text-sm text-muted\">" + esc(dnfText("Loading…")) + "</p>";
                 d.showModal();
                 load();
                 search.focus();
@@ -422,7 +422,7 @@
             box.className = "dnf-relation-picker";
             box.innerHTML = "<div class=\"dnf-chip-list\" data-chips></div>" +
                 (select.disabled ? "" : "<div class=\"dnf-relation-picker__search dnf-input-group\">" + icon("search", "sm", "dnf-input-group__icon") +
-                "<input type=\"search\" class=\"dnf-input dnf-input--sm\" autocomplete=\"off\" role=\"combobox\" aria-expanded=\"false\" aria-autocomplete=\"list\" placeholder=\"Search " + esc(select.getAttribute("data-type-name")) + "\">" +
+                "<input type=\"search\" class=\"dnf-input dnf-input--sm\" autocomplete=\"off\" role=\"combobox\" aria-expanded=\"false\" aria-autocomplete=\"list\" placeholder=\"" + esc(dnfText("Search {0}", select.getAttribute("data-type-name"))) + "\">" +
                 "<ul class=\"dnf-relation-picker__results\" role=\"listbox\" hidden></ul></div>");
             select.hidden = true;
             select.parentNode.insertBefore(box, select.nextSibling);
@@ -437,8 +437,8 @@
             function draw() {
                 var items = selected();
                 chips.innerHTML = items.length ? items.map(function (o) {
-                    return "<span class=\"dnf-chip\">" + esc(o.text) + (select.disabled ? "" : "<button type=\"button\" class=\"dnf-chip__remove\" data-remove=\"" + esc(o.value) + "\" aria-label=\"Remove " + esc(o.text) + "\">" + icon("x", "sm") + "</button>") + "</span>";
-                }).join("") : "<span class=\"text-sm text-subtle\">Nothing linked yet.</span>";
+                    return "<span class=\"dnf-chip\">" + esc(o.text) + (select.disabled ? "" : "<button type=\"button\" class=\"dnf-chip__remove\" data-remove=\"" + esc(o.value) + "\" aria-label=\"" + esc(dnfText("Remove {0}", o.text)) + "\">" + icon("x", "sm") + "</button>") + "</span>";
+                }).join("") : "<span class=\"text-sm text-subtle\">" + esc(dnfText("Nothing linked yet.")) + "</span>";
             }
             chips.addEventListener("click", function (event) {
                 var remove = event.target.closest("[data-remove]");
@@ -454,8 +454,8 @@
                 function show(list) {
                     found = list;
                     results.innerHTML = list.length ? list.map(function (e, i) {
-                        return "<li class=\"dnf-relation-picker__result\" role=\"option\" id=\"" + esc(select.id) + "-opt-" + i + "\" data-index=\"" + i + "\">" + esc(e.title) + (e.published ? "" : " <span class=\"text-subtle\">(draft)</span>") + "</li>";
-                    }).join("") : "<li class=\"dnf-relation-picker__result dnf-relation-picker__result--empty\">No match</li>";
+                        return "<li class=\"dnf-relation-picker__result\" role=\"option\" id=\"" + esc(select.id) + "-opt-" + i + "\" data-index=\"" + i + "\">" + esc(e.title) + (e.published ? "" : " <span class=\"text-subtle\">" + esc(dnfText("(draft)")) + "</span>") + "</li>";
+                    }).join("") : "<li class=\"dnf-relation-picker__result dnf-relation-picker__result--empty\">" + esc(dnfText("No match")) + "</li>";
                     results.hidden = false;
                     input.setAttribute("aria-expanded", "true");
                 }
@@ -463,7 +463,7 @@
                 function pick(entry) {
                     var option = Array.prototype.filter.call(select.options, function (o) { return o.value === entry.id; })[0];
                     if (!option) {
-                        option = new Option(entry.title + (entry.published ? "" : " (draft)"), entry.id);
+                        option = new Option(entry.title + (entry.published ? "" : " " + dnfText("(draft)")), entry.id);
                         select.appendChild(option);
                     }
                     if (!multiple) { Array.prototype.forEach.call(select.options, function (o) { o.selected = false; }); }
@@ -516,7 +516,7 @@
             }
             saveOrder()
                 .then(function () { window.location.reload(); })
-                .catch(function (e) { toast(e.message || "Could not save the new order.", "danger"); });
+                .catch(function (e) { toast(e.message || dnfText("Could not save the new order."), "danger"); });
         });
         rowsBody.querySelectorAll("tr[data-entry-id]").forEach(function (tr) {
             var grip = tr.querySelector(".dnf-table__grip");
@@ -528,8 +528,8 @@
                 tr.removeAttribute("data-dragging");
                 draggedRow = null;
                 saveOrder()
-                    .then(function () { toast("Order saved.", "success"); })
-                    .catch(function (e) { toast(e.message || "Could not save the new order.", "danger"); });
+                    .then(function () { toast(dnfText("Order saved."), "success"); })
+                    .catch(function (e) { toast(e.message || dnfText("Could not save the new order."), "danger"); });
             });
             tr.addEventListener("dragover", function (event) {
                 if (!draggedRow || draggedRow === tr) { return; }

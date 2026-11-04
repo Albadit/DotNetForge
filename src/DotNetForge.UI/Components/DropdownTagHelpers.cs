@@ -22,8 +22,8 @@ public sealed class DnfDropdownTagHelper : DnfTagHelper
     {
     }
 
-    /// <summary>Accessible name of the button, e.g. "Actions for report.pdf".</summary>
-    public string Label { get; set; } = "Actions";
+    /// <summary>Accessible name of the button, e.g. "Actions for report.pdf"; "Actions" (in the UI language) when not set.</summary>
+    public string? Label { get; set; }
 
     /// <summary>Visible button text; without it the button is icon-only.</summary>
     public string? Text { get; set; }
@@ -62,12 +62,14 @@ public sealed class DnfDropdownTagHelper : DnfTagHelper
     public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
         var id = MenuId();
+        var t = DnfText.For(ViewContext);
+        var label = Label ?? t("Actions");
         var items = (await output.GetChildContentAsync()).GetContent();
         var size = Size == DnfSize.Md ? string.Empty : $" dnf-button--{Kebab(Size == DnfSize.Xl ? DnfSize.Lg : Size)}";
         var iconClass = Size == DnfSize.Sm ? "dnf-icon dnf-icon--sm dnf-button__icon" : "dnf-icon dnf-button__icon";
         var button = Text is null
             ? $"<button type=\"button\" class=\"dnf-button dnf-button--{Kebab(Variant)}{size} dnf-button--icon-only\" " +
-              $"popovertarget=\"{id}\" aria-haspopup=\"menu\" aria-expanded=\"false\" aria-label=\"{Encode(Label)}\">{IconHtml(Icon, iconClass)}</button>"
+              $"popovertarget=\"{id}\" aria-haspopup=\"menu\" aria-expanded=\"false\" aria-label=\"{Encode(label)}\">{IconHtml(Icon, iconClass)}</button>"
             : $"<button type=\"button\" class=\"dnf-button dnf-button--{Kebab(Variant)}{size}\" popovertarget=\"{id}\" " +
               $"aria-haspopup=\"menu\" aria-expanded=\"false\"><span class=\"dnf-button__label\">{Encode(Text)}</span>{IconHtml("chevron-down", iconClass + " dnf-dropdown__chevron")}</button>";
         var menuClass = MenuClass is null ? "dnf-dropdown__menu" : $"dnf-dropdown__menu {Encode(MenuClass)}";
@@ -76,7 +78,7 @@ public sealed class DnfDropdownTagHelper : DnfTagHelper
         output.TagMode = TagMode.StartTagAndEndTag;
         SetClasses(output, "dnf-dropdown");
         output.Content.SetHtmlContent(
-            button + $"<div class=\"{menuClass}\" id=\"{id}\" popover role=\"menu\" aria-label=\"{Encode(Label)}\" data-placement=\"{Encode(Placement)}\">{items}</div>");
+            button + $"<div class=\"{menuClass}\" id=\"{id}\" popover role=\"menu\" aria-label=\"{Encode(label)}\" data-placement=\"{Encode(Placement)}\">{items}</div>");
     }
 }
 

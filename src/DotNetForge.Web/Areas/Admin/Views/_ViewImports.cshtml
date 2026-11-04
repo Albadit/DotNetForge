@@ -8,3 +8,5 @@
 @using DotNetForge.UI
 @using DotNetForge.UI.Components
 @addTagHelper *, DotNetForge.UI
+@* The admin text in the admin language: @T["Save"], @T["{0} entries", count] (.docs/features/internationalization.md#admin-language). *@
+@inject DotNetForge.Web.Services.Localization.AdminText T

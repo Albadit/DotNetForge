@@ -1,3 +1,4 @@
+import { t } from "./i18n.js";
 import { jsx, useEffect, useRef, useState } from "./vdom.js";
 import { Icon } from "./icons.js";
 import { cls, useDraft, useEditor } from "./hooks.js";
@@ -132,11 +133,11 @@ export function PopoverButton({ icon, title, children, wide }) {
         open && (jsx("div", { class: cls('pe-popover', 'pe-pop', wide && 'is-wide'), role: "dialog", "aria-label": title },
             jsx("div", { class: "pe-pop-head" },
                 jsx("strong", null, title),
-                jsx(IconButton, { icon: "close", title: "Close", onClick: () => setOpen(false) })),
+                jsx(IconButton, { icon: "close", title: t("Close"), onClick: () => setOpen(false) })),
             jsx("div", { class: "pe-pop-body" }, children)))));
 }
 function OverrideDot({ onReset }) {
-    return (jsx("button", { type: "button", class: "pe-override", title: "Set for this breakpoint. Click to use the larger breakpoint's value again.", onClick: onReset, "aria-label": "Reset to inherited value" }));
+    return (jsx("button", { type: "button", class: "pe-override", title: t("Set for this breakpoint. Click to use the larger breakpoint's value again."), onClick: onReset, "aria-label": t("Reset to inherited value") }));
 }
 export function NumberField({ label, icon, title, value, placeholder, unit, min = -100000, max = 100000, step = 1, decimals = 2, disabled, text, menu, words, suffix, onChange }) {
     // Symbols are part of the text, as Figma's "0°" and "100%"; words (px, col) sit after it.
@@ -152,23 +153,23 @@ export function NumberField({ label, icon, title, value, placeholder, unit, min 
         return Math.min(max, Math.max(min, Math.round(n * f) / f));
     };
     const commit = () => {
-        let t = draft.trim();
-        if (t === display)
+        let typed = draft.trim();
+        if (typed === display)
             return;
-        if (inline && t.endsWith(inline))
-            t = t.slice(0, -inline.length).trim();
-        if (t === '') {
+        if (inline && typed.endsWith(inline))
+            typed = typed.slice(0, -inline.length).trim();
+        if (typed === '') {
             onChange(undefined);
             return;
         }
-        const word = words?.[t.toLowerCase()];
+        const word = words?.[typed.toLowerCase()];
         if (word) {
             word();
             return;
         }
         // Simple arithmetic like "16*2" or "100-8" is allowed, as in design tools.
-        const expr = /^[-+*/().\d\s]+$/.test(t) ? safeEval(t) : NaN;
-        const n = Number.isFinite(expr) ? expr : parseFloat(t);
+        const expr = /^[-+*/().\d\s]+$/.test(typed) ? safeEval(typed) : NaN;
+        const n = Number.isFinite(expr) ? expr : parseFloat(typed);
         if (Number.isFinite(n))
             onChange(clamp(n));
         else
@@ -222,7 +223,7 @@ export function NumberField({ label, icon, title, value, placeholder, unit, min 
         jsx("input", { ref: input, type: "text", inputMode: "decimal", value: draft, disabled: disabled, "aria-label": title ?? label, placeholder: placeholder === undefined ? '' : String(placeholder) + (typeof placeholder === 'number' ? inline : ''), onInput: e => setDraft(e.target.value), onBlur: commit, onKeyDown: key, onFocus: e => e.target.select() }),
         unit && !inline && jsx("span", { class: "pe-num-unit" }, unit),
         suffix && jsx("span", { class: "pe-num-suffix" }, suffix),
-        menu && (jsx("button", { type: "button", class: "pe-num-menu", disabled: disabled, "aria-haspopup": "menu", "aria-expanded": menuOpen, "aria-label": (title ?? label ?? 'Value') + ' options', onClick: e => {
+        menu && (jsx("button", { type: "button", class: "pe-num-menu", disabled: disabled, "aria-haspopup": "menu", "aria-expanded": menuOpen, "aria-label": t("{0} options", title ?? label ?? t("Value")), onClick: e => {
                 e.preventDefault();
                 setMenuOpen(!menuOpen);
             } },
@@ -364,14 +365,14 @@ export function ColorField({ value, placeholder, onChange, disabled }) {
     const alphaInput = useRef(null);
     const setAlpha = (n, merge) => rgba && onChange(hexOf({ ...rgba, a: Math.min(100, Math.max(0, Math.round(n))) / 100 }), merge);
     return (jsx("div", { class: cls('pe-color', open && 'is-open', disabled && 'is-disabled'), ref: root },
-        jsx("button", { type: "button", class: "pe-swatch", disabled: disabled, "aria-label": "Choose color", "aria-expanded": open, onClick: () => setOpen(!open) },
+        jsx("button", { type: "button", class: "pe-swatch", disabled: disabled, "aria-label": t("Choose color"), "aria-expanded": open, onClick: () => setOpen(!open) },
             jsx("span", { class: cls(!shown && 'is-none') },
                 jsx("span", { style: { background: shown ?? 'transparent' } }))),
-        jsx(TextField, { value: value === undefined ? '' : text(value), placeholder: placeholder ? text(placeholder) : 'None', disabled: disabled, ariaLabel: "Color value", validate: v => (parseInput(v) !== null || V.color(v) ? null : 'Use a hex color (FF0000), rgb(), hsl() or var(--name).'), onChange: v => {
+        jsx(TextField, { value: value === undefined ? '' : text(value), placeholder: placeholder ? text(placeholder) : t("None"), disabled: disabled, ariaLabel: t("Color value"), validate: v => (parseInput(v) !== null || V.color(v) ? null : t("Use a hex color (FF0000), rgb(), hsl() or var(--name).")), onChange: v => {
                 const hex = parseInput(v, rgba?.a ?? 1);
                 onChange(hex !== null ? hex : V.color(v) ?? undefined);
             } }),
-        jsx("label", { class: cls('pe-color-alpha', !disabled && rgba && 'is-scrub'), title: "Opacity: drag left or right, or click to type", onPointerDown: e => {
+        jsx("label", { class: cls('pe-color-alpha', !disabled && rgba && 'is-scrub'), title: t("Opacity: drag left or right, or click to type"), onPointerDown: e => {
                 if (disabled || !rgba || document.activeElement === alphaInput.current)
                     return;
                 scrubValue(e, alpha, setAlpha, () => {
@@ -379,7 +380,7 @@ export function ColorField({ value, placeholder, onChange, disabled }) {
                     alphaInput.current?.select();
                 });
             } },
-            jsx("input", { ref: alphaInput, type: "text", inputMode: "numeric", "aria-label": "Opacity", value: alpha, key: alpha, disabled: disabled || !rgba, onKeyDown: e => e.key === 'Enter' && e.target.blur(), onBlur: e => {
+            jsx("input", { ref: alphaInput, type: "text", inputMode: "numeric", "aria-label": t("Opacity"), value: alpha, key: alpha, disabled: disabled || !rgba, onKeyDown: e => e.key === 'Enter' && e.target.blur(), onBlur: e => {
                     const n = parseFloat(e.target.value);
                     if (rgba && Number.isFinite(n) && Math.round(n) !== alpha)
                         onChange(hexOf({ ...rgba, a: Math.min(100, Math.max(0, n)) / 100 }));
@@ -416,15 +417,15 @@ export function IconField({ value, onChange, disabled, allowNone = true }) {
     return (jsx("div", { class: "pe-iconfield", ref: root },
         jsx("button", { type: "button", class: "pe-btn pe-iconfield-btn", disabled: disabled, "aria-haspopup": "dialog", "aria-expanded": open, onClick: () => setOpen(!open) },
             value ? jsx(PageIcon, { name: value }) : jsx("span", { class: "pe-iconfield-none" }),
-            jsx("span", { class: "pe-iconfield-name" }, value ? value.replace(/-/g, ' ') : 'No icon'),
+            jsx("span", { class: "pe-iconfield-name" }, value ? value.replace(/-/g, ' ') : t("No icon")),
             jsx(Icon, { name: "chevronDown", size: 16 })),
-        open && (jsx("div", { class: "pe-popover pe-iconfield-pop", role: "dialog", "aria-label": "Choose an icon" },
+        open && (jsx("div", { class: "pe-popover pe-iconfield-pop", role: "dialog", "aria-label": t("Choose an icon") },
             jsx("div", { class: "pe-search" },
                 jsx(Icon, { name: "search", size: 16 }),
-                jsx("input", { type: "search", placeholder: "Search icons", value: query, "aria-label": "Search icons", onInput: e => setQuery(e.target.value) })),
+                jsx("input", { type: "search", placeholder: t("Search icons"), value: query, "aria-label": t("Search icons"), onInput: e => setQuery(e.target.value) })),
             jsx("div", { class: "pe-iconfield-grid" }, names.map(n => (jsx("button", { key: n, type: "button", title: n.replace(/-/g, ' '), "aria-label": n.replace(/-/g, ' '), class: cls('pe-iconfield-cell', n === value && 'is-on'), onClick: () => pick(n) },
                 jsx(PageIcon, { name: n, size: 22 }))))),
-            allowNone && jsx("button", { type: "button", class: "pe-btn-text", onClick: () => pick('') }, "No icon")))));
+            allowNone && jsx("button", { type: "button", class: "pe-btn-text", onClick: () => pick('') }, t("No icon"))))));
 }
 /** An image address with a Browse button that opens the site's files. */
 export function ImageInput({ value, onChange, disabled, placeholder, preview }) {
@@ -432,8 +433,8 @@ export function ImageInput({ value, onChange, disabled, placeholder, preview }) 
     return (jsx("div", { class: "pe-image-input" },
         preview && value && jsx("img", { class: "pe-image-preview", src: value, alt: "" }),
         jsx("div", { class: "pe-image-row" },
-            jsx(TextField, { value: value, disabled: disabled, placeholder: placeholder ?? 'https://… or /Portals/…', validate: v => (V.imageUrl(v) === null ? 'Use an https:// address or a path on this site.' : null), onChange: v => onChange(V.imageUrl(v) ?? '') }),
+            jsx(TextField, { value: value, disabled: disabled, placeholder: placeholder ?? t("https://… or /media/…"), validate: v => (V.imageUrl(v) === null ? t("Use an https:// address or a path on this site.") : null), onChange: v => onChange(V.imageUrl(v) ?? '') }),
             jsx("button", { type: "button", class: "pe-btn", disabled: disabled, onClick: () => session.dialog.set({ kind: 'files', onPick: url => onChange(url) }) },
                 jsx(Icon, { name: "folder", size: 16 }),
-                " Browse"))));
+                " " + t("Browse")))));
 }

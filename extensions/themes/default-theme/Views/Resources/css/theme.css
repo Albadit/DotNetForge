@@ -44,6 +44,12 @@ a { color: var(--accent); }
 .site-header nav { display: flex; gap: 20px; flex-wrap: wrap; }
 .site-header nav a { color: var(--muted); text-decoration: none; font-weight: 500; }
 .site-header nav a:hover, .site-header nav a.active { color: var(--accent); }
+/* The language switcher (the page in every enabled locale). */
+.site-header .languages nav { gap: 12px; font-size: 0.875em; }
+.site-header .languages select {
+    font: inherit; font-size: 0.875em; color: inherit; background: transparent;
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; cursor: pointer;
+}
 
 main.wrap { padding-top: 48px; padding-bottom: 64px; min-height: 60vh; }
 main.full { min-height: 60vh; } /* a page builder layout: its sections set their own width */

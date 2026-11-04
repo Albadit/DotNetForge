@@ -100,7 +100,7 @@
             while (heading && !/^H[23]$/.test(heading.tagName)) { heading = heading.previousElementSibling; }
             wrapper.setAttribute("tabindex", "0");
             wrapper.setAttribute("role", "region");
-            wrapper.setAttribute("aria-label", (heading ? heading.textContent.trim() : "Reference") + " table");
+            wrapper.setAttribute("aria-label", dnfText("{0} table", heading ? heading.textContent.trim() : dnfText("Reference")));
         });
     }
 
@@ -116,11 +116,11 @@
         var confirm = target.closest("[data-docs-confirm]");
         if (confirm) {
             window.dnfUI.confirm({
-                title: confirm.getAttribute("data-docs-confirm-title") || "Are you sure?",
+                title: confirm.getAttribute("data-docs-confirm-title") || dnfText("Are you sure?"),
                 text: confirm.getAttribute("data-docs-confirm"),
-                action: confirm.getAttribute("data-docs-confirm-action") || "Confirm",
+                action: confirm.getAttribute("data-docs-confirm-action") || dnfText("Confirm"),
                 tone: confirm.getAttribute("data-docs-confirm-tone")
-            }).then(function (confirmed) { window.dnfUI.toast(confirmed ? "Confirmed - nothing was changed." : "Cancelled.", "info"); });
+            }).then(function (confirmed) { window.dnfUI.toast(confirmed ? dnfText("Confirmed - nothing was changed.") : dnfText("Cancelled."), "info"); });
         }
     });
 
@@ -256,9 +256,9 @@
             return all ? allMarkdown() : preamble + "\n\n---\n\n" + pageMarkdown(document, window.location.pathname) + "\n";
         }, function (text) {
             var size = Math.max(1, Math.round(text.length / 1024));
-            window.dnfUI.toast(all ? "Copied all docs as Markdown (" + size + " KB)." : "Copied this page as Markdown (" + size + " KB).", "success");
+            window.dnfUI.toast(all ? dnfText("Copied all docs as Markdown ({0} KB).", size) : dnfText("Copied this page as Markdown ({0} KB).", size), "success");
         }).catch(function () {
-            window.dnfUI.toast("Could not copy. Your browser blocked the clipboard.", "danger");
+            window.dnfUI.toast(dnfText("Could not copy. Your browser blocked the clipboard."), "danger");
         }).then(function () {
             if (trigger) { trigger.removeAttribute("data-pending"); }
         });

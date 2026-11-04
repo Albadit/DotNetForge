@@ -5,7 +5,7 @@
     var input = Model.Input;
     ViewData["PageWidth"] = "medium";
     ViewData["Title"] = provider.Name;
-    ViewData["Description"] = $"Sign in with {provider.Name}: the app you register at {provider.Name} and whether the sign-in page offers it.";
+    ViewData["Description"] = T["Sign in with {0}: the app you register at {0} and whether the sign-in page offers it.", provider.Name];
     bool Uses(ProviderField field) => provider.Fields.Contains(field);
 }
 
@@ -14,29 +14,29 @@
     <dnf-validation-summary />
     @if (Model.Unreadable)
     {
-        <dnf-alert tone="Warning" title="The saved secret can't be read here">It was saved on another site (an imported export) and is encrypted with that site's keys. Enter it again.</dnf-alert>
+        <dnf-alert tone="Warning" title="@T["The saved secret can't be read here"]">@T["It was saved on another site (an imported export) and is encrypted with that site's keys. Enter it again."]</dnf-alert>
     }
 
     <fieldset class="dnf-fieldset dnf-stack dnf-stack--lg" disabled="@(Model.CanEdit ? null : "disabled")">
-        <legend class="sr-only">@provider.Name settings</legend>
+        <legend class="sr-only">@T["{0} settings", provider.Name]</legend>
 
         <section class="dnf-card" aria-labelledby="register-title">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="register-title">1. Register this site at @provider.Name</h2>
+                    <h2 class="dnf-card__title" id="register-title">@T["1. Register this site at {0}", provider.Name]</h2>
                     <p class="dnf-card__description">@provider.Help</p>
                 </div>
-                <a class="dnf-button dnf-button--secondary dnf-button--sm" href="@provider.ConsoleUrl" target="_blank" rel="noopener noreferrer"><dnf-icon name="external-link" size="Sm" /> Open</a>
+                <a class="dnf-button dnf-button--secondary dnf-button--sm" href="@provider.ConsoleUrl" target="_blank" rel="noopener noreferrer"><dnf-icon name="external-link" size="Sm" /> @T["Open"]</a>
             </div>
             <div class="dnf-card__body dnf-stack">
                 <div class="dnf-field">
-                    <span class="dnf-field__label" id="callback-label">@(provider.FormPost ? "Return URL" : "Callback / redirect URL")</span>
-                    <pre class="dnf-code-block" aria-labelledby="callback-label">@Model.CallbackUrl<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#callback-url" data-js-only hidden><dnf-icon name="copy" size="Sm" /> Copy</button></pre>
+                    <span class="dnf-field__label" id="callback-label">@(provider.FormPost ? T["Return URL"] : T["Callback / redirect URL"])</span>
+                    <pre class="dnf-code-block" aria-labelledby="callback-label">@Model.CallbackUrl<button type="button" class="dnf-button dnf-button--secondary dnf-button--sm dnf-code-block__copy" data-copy-target="#callback-url" data-js-only hidden><dnf-icon name="copy" size="Sm" /> @T["Copy"]</button></pre>
                     <span id="callback-url" hidden>@Model.CallbackUrl</span>
-                    <span class="dnf-field__description">From <code>APP_URL</code>: people must open the site at this address for the provider to send them back.</span>
+                    <span class="dnf-field__description">@T["From"] <code>APP_URL</code>: @T["people must open the site at this address for the provider to send them back."]</span>
                 </div>
                 <dl class="dnf-description-list dnf-description-list--compact">
-                    <dt>Scopes</dt>
+                    <dt>@T["Scopes"]</dt>
                     <dd><code>@string.Join(" ", provider.Scopes)</code></dd>
                 </dl>
             </div>
@@ -45,33 +45,33 @@
         <section class="dnf-card" aria-labelledby="credentials-title">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="credentials-title">2. Enter its credentials</h2>
-                    <p class="dnf-card__description">Secrets are stored encrypted and never shown again; leave a secret empty to keep the saved one.</p>
+                    <h2 class="dnf-card__title" id="credentials-title">@T["2. Enter its credentials"]</h2>
+                    <p class="dnf-card__description">@T["Secrets are stored encrypted and never shown again; leave a secret empty to keep the saved one."]</p>
                 </div>
             </div>
             <div class="dnf-card__body dnf-stack">
                 <div class="dnf-field">
-                    <label class="dnf-field__label" for="ClientId">@(provider.SignedClientSecret ? "Services ID" : "Client ID")</label>
+                    <label class="dnf-field__label" for="ClientId">@(provider.SignedClientSecret ? T["Services ID"] : T["Client ID"])</label>
                     <input id="ClientId" class="dnf-input" name="ClientId" value="@input.ClientId" maxlength="@AuthProviderService.MaxClientIdLength" spellcheck="false" />
                 </div>
                 @if (Uses(ProviderField.ClientSecret))
                 {
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="ClientSecret">Client secret</label>
+                        <label class="dnf-field__label" for="ClientSecret">@T["Client secret"]</label>
                         <input id="ClientSecret" class="dnf-input" name="ClientSecret" type="password" maxlength="@AuthProviderService.MaxSecretLength" autocomplete="new-password"
-                               placeholder="@(Model.HasClientSecret ? "Saved - leave empty to keep it" : "")" aria-describedby="secret-hint" />
-                        <span class="dnf-field__description" id="secret-hint">@(Model.HasClientSecret ? "A secret is saved." : "No secret saved yet.")</span>
+                               placeholder="@(Model.HasClientSecret ? T["Saved - leave empty to keep it"] : "")" aria-describedby="secret-hint" />
+                        <span class="dnf-field__description" id="secret-hint">@(Model.HasClientSecret ? T["A secret is saved."] : T["No secret saved yet."])</span>
                     </div>
                 }
                 @if (Uses(ProviderField.TeamId))
                 {
                     <div class="dnf-form-grid">
                         <div class="dnf-field">
-                            <label class="dnf-field__label" for="TeamId">Team ID</label>
+                            <label class="dnf-field__label" for="TeamId">@T["Team ID"]</label>
                             <input id="TeamId" class="dnf-input" name="TeamId" value="@input.TeamId" maxlength="20" spellcheck="false" placeholder="ABCDE12345" />
                         </div>
                         <div class="dnf-field">
-                            <label class="dnf-field__label" for="KeyId">Key ID</label>
+                            <label class="dnf-field__label" for="KeyId">@T["Key ID"]</label>
                             <input id="KeyId" class="dnf-input" name="KeyId" value="@input.KeyId" maxlength="20" spellcheck="false" placeholder="FGHIJ67890" />
                         </div>
                     </div>
@@ -79,26 +79,26 @@
                 @if (Uses(ProviderField.PrivateKey))
                 {
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="PrivateKey">Private key (.p8)</label>
+                        <label class="dnf-field__label" for="PrivateKey">@T["Private key (.p8)"]</label>
                         <textarea id="PrivateKey" name="PrivateKey" rows="5" maxlength="@AuthProviderService.MaxPrivateKeyLength" spellcheck="false" class="dnf-textarea dnf-textarea--mono"
-                                  placeholder="@(Model.HasPrivateKey ? "Saved - leave empty to keep it" : "-----BEGIN PRIVATE KEY-----")" aria-describedby="key-hint"></textarea>
-                        <span class="dnf-field__description" id="key-hint">The contents of the AuthKey_….p8 file. The client secret Apple wants is signed with it for each sign-in.</span>
+                                  placeholder="@(Model.HasPrivateKey ? T["Saved - leave empty to keep it"] : "-----BEGIN PRIVATE KEY-----")" aria-describedby="key-hint"></textarea>
+                        <span class="dnf-field__description" id="key-hint">@T["The contents of the AuthKey_….p8 file. The client secret Apple wants is signed with it for each sign-in."]</span>
                     </div>
                 }
                 @if (Uses(ProviderField.Tenant))
                 {
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="Tenant">Tenant<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" for="Tenant">@T["Tenant"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input id="Tenant" class="dnf-input" name="Tenant" value="@input.Tenant" maxlength="100" spellcheck="false" placeholder="common" aria-describedby="tenant-hint" />
-                        <span class="dnf-field__description" id="tenant-hint"><code>common</code> (any Microsoft account, the default), <code>consumers</code>, <code>organizations</code>, or your tenant ID to allow only your organization.</span>
+                        <span class="dnf-field__description" id="tenant-hint"><code>common</code> @T["(any Microsoft account, the default),"] <code>consumers</code>, <code>organizations</code>, @T["or your tenant ID to allow only your organization."]</span>
                     </div>
                 }
                 @if (Uses(ProviderField.ServerUrl))
                 {
                     <div class="dnf-field">
-                        <label class="dnf-field__label" for="ServerUrl">Server<span class="dnf-field__optional">optional</span></label>
+                        <label class="dnf-field__label" for="ServerUrl">@T["Server"]<span class="dnf-field__optional">@T["optional"]</span></label>
                         <input id="ServerUrl" class="dnf-input" name="ServerUrl" type="url" value="@input.ServerUrl" maxlength="200" placeholder="https://gitlab.com" aria-describedby="server-hint" />
-                        <span class="dnf-field__description" id="server-hint">Empty for gitlab.com; the address of a self-managed GitLab otherwise.</span>
+                        <span class="dnf-field__description" id="server-hint">@T["Empty for gitlab.com; the address of a self-managed GitLab otherwise."]</span>
                     </div>
                 }
             </div>
@@ -107,15 +107,15 @@
         <section class="dnf-card" aria-labelledby="enable-title">
             <div class="dnf-card__header">
                 <div>
-                    <h2 class="dnf-card__title" id="enable-title">3. Turn it on</h2>
-                    <p class="dnf-card__description">Changes apply within seconds; no restart needed.</p>
+                    <h2 class="dnf-card__title" id="enable-title">@T["3. Turn it on"]</h2>
+                    <p class="dnf-card__description">@T["Changes apply within seconds; no restart needed."]</p>
                 </div>
             </div>
             <div class="dnf-card__body">
                 <label class="dnf-switch-row">
                     <span class="dnf-check__text">
-                        <span>Offer "Sign in with @provider.Name"</span>
-                        <span class="dnf-check__description">Off: the button disappears and sign-ins through @provider.Name stop. Accounts are kept; those made through @provider.Name have no password until they set one (Forgot password, or Profile).</span>
+                        <span>@T["Offer \"Sign in with {0}\"", provider.Name]</span>
+                        <span class="dnf-check__description">@T["Off: the button disappears and sign-ins through {0} stop. Accounts are kept; those made through {0} have no password until they set one (Forgot password, or Profile).", provider.Name]</span>
                     </span>
                     @* The checkbox first: a bound bool takes the first posted value. *@
                     <input type="checkbox" class="dnf-switch" role="switch" name="Enabled" value="true" checked="@(input.Enabled ? "checked" : null)" />
@@ -125,8 +125,8 @@
             @if (Model.CanEdit)
             {
                 <div class="dnf-card__footer">
-                    <a class="dnf-button dnf-button--secondary" href="/admin/providers">Cancel</a>
-                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> Save</button>
+                    <a class="dnf-button dnf-button--secondary" href="/admin/providers">@T["Cancel"]</a>
+                    <button type="submit" class="dnf-button dnf-button--primary"><dnf-icon name="check" /> @T["Save"]</button>
                 </div>
             }
         </section>

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using DotNetForge.Extensions;
 using DotNetForge.Web.Areas.Admin.Controllers;
+using DotNetForge.Web.Services.Localization;
 using Microsoft.AspNetCore.Authorization;
 
 namespace DotNetForge.Web.Areas.Admin.Navigation;
@@ -18,7 +19,8 @@ public sealed record NavSection(string Label, IReadOnlyList<NavLink> Links, IRea
 /// <summary>A link as rendered for the current user and request.</summary>
 public sealed record NavLinkView(string Label, string Href, string Icon, bool Planned, bool Active);
 
-public sealed record NavGroupView(string Label, IReadOnlyList<NavLinkView> Links, bool ContainsActive);
+/// <summary>A sub-group as rendered; <see cref="Key"/> is its English label, which names it in the remembered-groups cookie in every language.</summary>
+public sealed record NavGroupView(string Label, IReadOnlyList<NavLinkView> Links, bool ContainsActive, string Key);
 
 public sealed record NavSectionView(string Label, IReadOnlyList<NavLinkView> Links, IReadOnlyList<NavGroupView> Groups);
 
@@ -54,9 +56,9 @@ public static class AdminNavigation
         {
             new NavGroup("Global Settings", new[]
             {
-                new NavLink("Settings", "/admin/settings", "settings", typeof(SettingsController)),
+                new NavLink("Environment Variables", "/admin/environment-variables", "braces", typeof(EnvironmentVariablesController)),
                 new NavLink("Content History", "/admin/content-history", "history", typeof(ModulesController), Planned: true),
-                new NavLink("Internationalization", "/admin/internationalization", "globe", typeof(ModulesController), Planned: true),
+                new NavLink("Internationalization", "/admin/internationalization", "globe", typeof(InternationalizationController)),
                 new NavLink("Media Library", "/admin/media-settings", "image", typeof(MediaSettingsController)),
                 new NavLink("Plugins", "/admin/plugins", "puzzle", typeof(PluginsController)),
             }),
@@ -97,7 +99,8 @@ public static class AdminNavigation
 /// (the same <c>[Authorize]</c> data the request pipeline enforces, evaluated through <see cref="IAuthorizationService"/>
 /// - hiding is never the gate), marks the active link (the longest matching href, so child routes such as
 /// <c>/admin/api-tokens/create</c> count; the first occurrence when a link appears twice) and appends the enabled admin
-/// extensions. Built once per request.
+/// extensions. Labels are shown in the admin language (<see cref="AdminText"/>; an extension's own name as it is). Built
+/// once per request.
 /// </summary>
 public sealed class AdminNavigationService
 {
@@ -106,13 +109,15 @@ public sealed class AdminNavigationService
     private readonly IAuthorizationService _authorization;
     private readonly IAuthorizationPolicyProvider _policies;
     private readonly ExtensionCatalog _catalog;
+    private readonly AdminText _t;
     private AdminNavModel? _built;
 
-    public AdminNavigationService(IAuthorizationService authorization, IAuthorizationPolicyProvider policies, ExtensionCatalog catalog)
+    public AdminNavigationService(IAuthorizationService authorization, IAuthorizationPolicyProvider policies, ExtensionCatalog catalog, AdminText t)
     {
         _authorization = authorization;
         _policies = policies;
         _catalog = catalog;
+        _t = t;
     }
 
     public async Task<AdminNavModel> BuildAsync(HttpContext http, string? pageTitle)
@@ -161,16 +166,16 @@ public sealed class AdminNavigationService
             if (active)
             {
                 activeTaken = true;
-                trail.Add((section, null));
+                trail.Add((_t[section], null));
                 if (group is not null)
                 {
-                    trail.Add((group, null));
+                    trail.Add((_t[group], null));
                 }
 
-                trail.Add((link.Label, link.Href));
+                trail.Add((_t[link.Label], link.Href));
             }
 
-            return new NavLinkView(link.Label, link.Href, link.Icon, link.Planned, active);
+            return new NavLinkView(_t[link.Label], link.Href, link.Icon, link.Planned, active);
         }
 
         var sections = new List<NavSectionView>();
@@ -199,13 +204,13 @@ public sealed class AdminNavigationService
 
                 if (groupLinks.Count > 0)
                 {
-                    groups.Add(new NavGroupView(group.Label, groupLinks, groupLinks.Any(l => l.Active)));
+                    groups.Add(new NavGroupView(_t[group.Label], groupLinks, groupLinks.Any(l => l.Active), group.Label));
                 }
             }
 
             if (links.Count > 0 || groups.Count > 0)
             {
-                sections.Add(new NavSectionView(section.Label, links, groups));
+                sections.Add(new NavSectionView(_t[section.Label], links, groups));
             }
         }
 

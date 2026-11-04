@@ -1,5 +1,6 @@
 using DotNetForge.Data;
 using DotNetForge.Web.Services;
+using DotNetForge.Web.Services.Localization;
 using DotNetForge.Web.Services.Mfa;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DotNetForge.Web.Areas.Admin.Controllers;
 
 /// <summary>
-/// Profile (.docs/pages/profile.md): every admin user edits their own name, email and password. Opened from the
+/// Profile (.docs/pages/profile.md): every admin user edits their own name, email, password and admin language. Opened from the
 /// account menu; no grant needed beyond entering the admin. Rules live in <see cref="ProfileService"/>.
 /// </summary>
 [Route("admin/profile")]
@@ -20,9 +21,12 @@ public sealed class ProfileController : AdminControllerBase
     private readonly AuthService _auth;
     private readonly MfaService _mfa;
     private readonly UserSessionService _sessions;
+    private readonly AdminLanguageService _languages;
 
-    public ProfileController(DotNetForgeDbContext db, ProfileService profile, AuthService auth, MfaService mfa, UserSessionService sessions)
+    public ProfileController(DotNetForgeDbContext db, ProfileService profile, AuthService auth, MfaService mfa, UserSessionService sessions,
+        AdminLanguageService languages)
     {
+        _languages = languages;
         _db = db;
         _profile = profile;
         _auth = auth;
@@ -56,7 +60,7 @@ public sealed class ProfileController : AdminControllerBase
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, current.Properties);
         }
 
-        TempData["Success"] = "Your profile is saved.";
+        TempData["Success"] = T["Your profile is saved."];
         return RedirectToAction(nameof(Index));
     }
 
@@ -76,8 +80,27 @@ public sealed class ProfileController : AdminControllerBase
         await _sessions.EndOthersAsync(User, HttpContext.RequestAborted);
 
         TempData["Success"] = input.CurrentPassword is null or ""
-            ? "Your password is set. You can also sign in with your email and password now."
-            : "Your password is changed. Use it the next time you sign in.";
+            ? T["Your password is set. You can also sign in with your email and password now."]
+            : T["Your password is changed. Use it the next time you sign in."];
+        return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>The user's own admin language; empty = the site's (Internationalization).</summary>
+    [HttpPost("language")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Language(string? language)
+    {
+        var id = CurrentUserId ?? Guid.Empty;
+        var error = await _languages.SetUserLanguageAsync(id, language, HttpContext.RequestAborted);
+        if (error is not null)
+        {
+            TempData["Error"] = error;
+            return RedirectToAction(nameof(Index));
+        }
+
+        // The toast already speaks the new language.
+        T.Use((await _languages.ResolveAsync(User, HttpContext.RequestAborted)).Code);
+        TempData["Success"] = T["Admin language saved."];
         return RedirectToAction(nameof(Index));
     }
 
@@ -95,13 +118,17 @@ public sealed class ProfileController : AdminControllerBase
         return new ProfileViewModel(
             details ?? new ProfileInput { FirstName = user.FirstName, LastName = user.LastName, Email = user.Email },
             user.DisplayName, user.Email, roles, user.CreatedDate, user.LastLoginDate, Form: null,
-            HasPassword: !string.IsNullOrEmpty(user.PasswordHash), MfaMethods: (await _mfa.MethodsAsync(id, HttpContext.RequestAborted)).Count);
+            HasPassword: !string.IsNullOrEmpty(user.PasswordHash), MfaMethods: (await _mfa.MethodsAsync(id, HttpContext.RequestAborted)).Count,
+            Languages: _languages.Languages, Language: (await _languages.UserLanguageAsync(id, HttpContext.RequestAborted))?.Code,
+            SiteLanguage: await _languages.SiteLanguageAsync(HttpContext.RequestAborted));
     }
 
     /// <summary>
     /// The screen; <see cref="Form"/> names the form whose errors are shown (<c>details</c> / <c>password</c>).
     /// <see cref="HasPassword"/> is false for an account made through a sign-in provider (it sets a first password).
+    /// <see cref="Language"/> is the user's own admin language (null = the site's, <see cref="SiteLanguage"/>).
     /// </summary>
     public sealed record ProfileViewModel(ProfileInput Details, string DisplayName, string Email, IReadOnlyList<string> Roles,
-        DateTime Created, DateTime? LastLogin, string? Form, bool HasPassword, int MfaMethods);
+        DateTime Created, DateTime? LastLogin, string? Form, bool HasPassword, int MfaMethods,
+        IReadOnlyList<AdminLanguageOption> Languages, string? Language, AdminLanguageOption SiteLanguage);
 }

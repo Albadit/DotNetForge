@@ -88,7 +88,7 @@ public sealed class EmailTemplatesController : AdminControllerBase
             });
         }
 
-        TempData["Success"] = $"Saved '{state.Definition.Name}'.";
+        TempData["Success"] = T["Saved '{0}'.", T[state.Definition.Name]];
         return RedirectToAction(nameof(Edit), new { key });
     }
 
@@ -104,8 +104,8 @@ public sealed class EmailTemplatesController : AdminControllerBase
 
         // RestoreAsync audits only when there was something to restore.
         TempData["Success"] = await _templates.RestoreAsync(key, HttpContext.RequestAborted)
-            ? $"'{definition.Name}' uses the default again."
-            : $"'{definition.Name}' already uses the default.";
+            ? T["'{0}' uses the default again.", T[definition.Name]]
+            : T["'{0}' already uses the default.", T[definition.Name]];
         return RedirectToAction(nameof(Edit), new { key });
     }
 
@@ -150,16 +150,16 @@ public sealed class EmailTemplatesController : AdminControllerBase
         {
             var values = definition.SampleValues;
             var banner = "<div style=\"padding:10px 16px;border-bottom:1px solid " + EmailLayout.Border + ";background:#ffffff;font:13px/1.5 "
-                + EmailLayout.Font + ";color:" + EmailLayout.Text + ";\"><b style=\"color:" + EmailLayout.Muted + ";margin-right:6px;\">Subject</b>"
+                + EmailLayout.Font + ";color:" + EmailLayout.Text + ";\"><b style=\"color:" + EmailLayout.Muted + ";margin-right:6px;\">" + WebUtility.HtmlEncode(T["Subject"]) + "</b>"
                 + WebUtility.HtmlEncode(EmailTemplateRenderer.RenderSubject(subject!, values)) + "</div>";
             return Content(EmailLayout.Wrap(EmailTemplateRenderer.RenderBody(body!, values), values["appName"], values["appUrl"], banner),
                 "text/html; charset=utf-8");
         }
 
-        var html = new StringBuilder("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Preview</title>")
+        var html = new StringBuilder("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>" + WebUtility.HtmlEncode(T["Preview"]) + "</title>")
             .Append("<style>body{margin:0;font:15px/1.5 system-ui,sans-serif;color:#1f2328;background:#fff}")
             .Append(".errors{padding:16px;color:#b42318}</style></head><body><div class=\"errors\">")
-            .Append("<p><b>This template can't be rendered:</b></p><ul>");
+            .Append("<p><b>").Append(WebUtility.HtmlEncode(T["This template can't be rendered:"])).Append("</b></p><ul>");
         foreach (var error in errors)
         {
             html.Append("<li>").Append(WebUtility.HtmlEncode(error)).Append("</li>");

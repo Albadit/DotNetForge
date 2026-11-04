@@ -65,9 +65,9 @@
                         @if (!readOnly)
                         {
                             <span class="dnf-repeater__tools" data-js-only hidden>
-                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-up aria-label="Move up" data-tooltip="Move up"><dnf-icon name="chevron-up" size="Sm" /></button>
-                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-down aria-label="Move down" data-tooltip="Move down"><dnf-icon name="chevron-down" size="Sm" /></button>
-                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-remove aria-label="Remove row" data-tooltip="Remove"><dnf-icon name="trash" size="Sm" /></button>
+                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-up aria-label="@T["Move up"]" data-tooltip="@T["Move up"]"><dnf-icon name="chevron-up" size="Sm" /></button>
+                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-down aria-label="@T["Move down"]" data-tooltip="@T["Move down"]"><dnf-icon name="chevron-down" size="Sm" /></button>
+                                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-remove aria-label="@T["Remove row"]" data-tooltip="@T["Remove"]"><dnf-icon name="trash" size="Sm" /></button>
                             </span>
                         }
                     </div>
@@ -87,9 +87,9 @@
                     <div class="dnf-repeater__row-head">
                         <span class="dnf-repeater__row-title" data-repeater-title>@f.Label</span>
                         <span class="dnf-repeater__tools">
-                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-up aria-label="Move up"><dnf-icon name="chevron-up" size="Sm" /></button>
-                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-down aria-label="Move down"><dnf-icon name="chevron-down" size="Sm" /></button>
-                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-remove aria-label="Remove row"><dnf-icon name="trash" size="Sm" /></button>
+                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-up aria-label="@T["Move up"]"><dnf-icon name="chevron-up" size="Sm" /></button>
+                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-down aria-label="@T["Move down"]"><dnf-icon name="chevron-down" size="Sm" /></button>
+                            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-repeater-remove aria-label="@T["Remove row"]"><dnf-icon name="trash" size="Sm" /></button>
                         </span>
                     </div>
                     <div class="dnf-form-grid">
@@ -100,8 +100,8 @@
                     </div>
                 </li>
             </template>
-            <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" data-repeater-add data-js-only hidden><dnf-icon name="plus" size="Sm" /> Add @f.Label.ToLowerInvariant() row</button>
-            <noscript><p class="dnf-field__description">Adding and removing rows needs JavaScript.</p></noscript>
+            <button type="button" class="dnf-button dnf-button--secondary dnf-button--sm" data-repeater-add data-js-only hidden><dnf-icon name="plus" size="Sm" /> @T["Add {0} row", f.Label.ToLowerInvariant()]</button>
+            <noscript><p class="dnf-field__description">@T["Adding and removing rows needs JavaScript."]</p></noscript>
         }
     </div>
     return;
@@ -184,7 +184,7 @@
 
             case FieldTypes.Select:
                 <select id="@Model.Id" name="@Model.Name" class="dnf-select" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" disabled="@(readOnly ? "disabled" : null)">
-                    <option value="">Choose…</option>
+                    <option value="">@T["Choose…"]</option>
                     @foreach (var choice in f.Choices)
                     {
                         <option value="@choice.Value" selected="@(values.Contains(choice.Value) ? "selected" : null)">@choice.Label</option>
@@ -206,7 +206,7 @@
                             disabled="@(readOnly ? "disabled" : null)">
                         @if (!f.Multiple)
                         {
-                            <option value="">None</option>
+                            <option value="">@T["None"]</option>
                         }
                         @foreach (var m in choices)
                         {
@@ -219,7 +219,7 @@
             case FieldTypes.Relationship:
                 {
                     var options = f.RelationTo is { } target && form.Relations.TryGetValue(target, out var found) ? found : Array.Empty<EntryChoice>();
-                    var typeName = f.RelationTo is { } t && form.RelationTypeNames.TryGetValue(t, out var name) ? name : "entries";
+                    var typeName = f.RelationTo is { } t && form.RelationTypeNames.TryGetValue(t, out var name) ? name : T["entries"];
                     if (f.Multiple)
                     {
                         <input type="hidden" name="@(Model.Name + "." + EntryForm.RowsMarker)" value="1" />
@@ -228,20 +228,20 @@
                             data-type-name="@typeName" aria-describedby="@(describedBy.Length > 0 ? describedBy : null)" disabled="@(readOnly ? "disabled" : null)">
                         @if (!f.Multiple)
                         {
-                            <option value="">None</option>
+                            <option value="">@T["None"]</option>
                         }
                         @foreach (var o in options)
                         {
-                            <option value="@o.Id" selected="@(values.Contains(o.Id.ToString()) ? "selected" : null)">@(o.Title.Length > 0 ? o.Title : "Untitled")@(o.Published ? "" : " (draft)")</option>
+                            <option value="@o.Id" selected="@(values.Contains(o.Id.ToString()) ? "selected" : null)">@(o.Title.Length > 0 ? o.Title : T["Untitled"])@(o.Published ? "" : " " + T["(draft)"])</option>
                         }
                     </select>
                     break;
                 }
 
             case FieldTypes.Array:
-                <textarea id="@Model.Id" name="@Model.Name" class="dnf-textarea" rows="3" placeholder="One per line" aria-describedby="@Model.Id-lines @(describedBy)"
+                <textarea id="@Model.Id" name="@Model.Name" class="dnf-textarea" rows="3" placeholder="@T["One per line"]" aria-describedby="@Model.Id-lines @(describedBy)"
                           readonly="@(readOnly ? "readonly" : null)">@string.Join("\n", values)</textarea>
-                <span class="dnf-field__description" id="@Model.Id-lines">One @(f.ItemType == FieldTypes.Number ? "number" : "value") per line.</span>
+                <span class="dnf-field__description" id="@Model.Id-lines">@(f.ItemType == FieldTypes.Number ? T["One number per line."] : T["One value per line."])</span>
                 break;
 
             default:

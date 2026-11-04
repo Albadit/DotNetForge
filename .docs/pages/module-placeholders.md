@@ -17,11 +17,11 @@ planned link a **Soon** badge (tooltip "Planned - not built yet").
 | --- | --- | --- | --- | --- | --- |
 | `/admin/marketplace` | `Marketplace` | Marketplace | Main → **Marketplace** | `store` | [extensions.md](../features/extensions.md#planned-not-implemented) |
 | `/admin/content-history` | `ContentHistory` | Content History | Settings → Global Settings → **Content History** | `history` | [content-pages-and-routing.md](../features/content-pages-and-routing.md#planned-not-implemented) |
-| `/admin/internationalization` | `Internationalization` | Internationalization | Settings → Global Settings → **Internationalization** | `globe` | [internationalization.md](../features/internationalization.md#planned-not-implemented) |
 
 All are `GET` only, no parameters. Breadcrumbs follow the sidebar entry; when the title differs from the sidebar
-label the title is appended. **Providers** (`/admin/providers`) and **Webhooks** (`/admin/webhooks`) were
-placeholders until they were built ([Providers](providers.md), [Webhooks](webhooks.md)).
+label the title is appended. **Providers** (`/admin/providers`), **Webhooks** (`/admin/webhooks`) and
+**Internationalization** (`/admin/internationalization`) were placeholders until they were built
+([Providers](providers.md), [Webhooks](webhooks.md), [Internationalization](internationalization.md)).
 
 ## Relevant source files
 
@@ -80,10 +80,10 @@ flowchart LR
 ## Important implementation details / known limitations
 
 - `DocPath` is shown as plain text (`<code>`), not a link - the `.docs/` files are not served by the app.
-- Marketplace, content history and i18n have no foundation in the code (Transfer is built as
+- Marketplace and content history have no foundation in the code (Transfer is built as
   [Data Management](data-management.md), Providers as [Providers](providers.md), Webhooks as
   [Webhooks](webhooks.md), email as [Email Configuration](email-configuration.md) and
-  [Email Templates](email-templates.md)).
+  [Email Templates](email-templates.md), i18n as [Internationalization](internationalization.md)).
   See [implementation status](../implementation-status.md).
 
 ## Extension points

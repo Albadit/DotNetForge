@@ -100,7 +100,7 @@ public sealed class EmailTemplatesTests
         Assert.Contains("<p>Draft 60 https://cms.example.com/reset-password?token=sample</p>", await changed.Content.ReadAsStringAsync());
         var broken = await DotNetForgeWebFactory.PostFormAsync(admin, Reset, Reset + "/preview",
             new Dictionary<string, string> { ["subject"] = "S", ["body"] = "{{nope}}" });
-        Assert.Contains("can't be rendered", await broken.Content.ReadAsStringAsync());
+        Assert.Contains("can't be rendered", System.Net.WebUtility.HtmlDecode(await broken.Content.ReadAsStringAsync()));
         await factory.WithDbAsync(async db => Assert.False(await db.EmailTemplates.AnyAsync()));
     }
 

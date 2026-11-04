@@ -93,7 +93,7 @@
             scrollBeyondLastLine: false,
             renderLineHighlight: "line",
             fixedOverflowWidgets: true,
-            ariaLabel: "Body (HTML)",
+            ariaLabel: dnfText("Body (HTML)"),
             quickSuggestions: { other: true, comments: false, strings: true }
         });
         var model = editor.getModel();
@@ -135,8 +135,8 @@
                             filterText: "{{" + v.name,
                             range: range,
                             sortText: String(index).padStart(3, "0"),
-                            detail: v.required ? "Required variable" : "Variable",
-                            documentation: { value: "Example: `" + v.sample + "`" }
+                            detail: v.required ? dnfText("Required variable") : dnfText("Variable"),
+                            documentation: { value: dnfText("Example: {0}", "`" + v.sample + "`") }
                         };
                     })
                 };
@@ -156,8 +156,8 @@
                         return {
                             range: new monaco.Range(position.lineNumber, start, position.lineNumber, end),
                             contents: v
-                                ? [{ value: "**{{" + v.name + "}}**" + (v.required ? " - required" : "") }, { value: "Example: `" + v.sample + "`" }]
-                                : [{ value: "**Unknown variable** - not available in this template." }]
+                                ? [{ value: v.required ? dnfText("{0} - required", "**{{" + v.name + "}}**") : "**{{" + v.name + "}}**" }, { value: dnfText("Example: {0}", "`" + v.sample + "`") }]
+                                : [{ value: dnfText("**Unknown variable** - not available in this template.") }]
                         };
                     }
                 }
@@ -180,8 +180,8 @@
                 if (byName[match[1]]) {
                     highlights.push({ range: range, options: { inlineClassName: "dnf-code-editor__var" } });
                 } else {
-                    markers.push(marker(range, monaco.MarkerSeverity.Error, "Unknown variable {{" + match[1] + "}}. Available: " +
-                        variables.map(function (v) { return "{{" + v.name + "}}"; }).join(", ")));
+                    markers.push(marker(range, monaco.MarkerSeverity.Error, dnfText("Unknown variable {0}. Available: {1}", "{{" + match[1] + "}}",
+                        variables.map(function (v) { return "{{" + v.name + "}}"; }).join(", "))));
                 }
             }
 
@@ -190,27 +190,27 @@
             var stray = /\{\{|\}\}/g;
             while ((match = stray.exec(rest)) !== null) {
                 markers.push(marker(rangeOf(match.index, 2), monaco.MarkerSeverity.Error,
-                    "Incomplete placeholder: write variables as {{name}}."));
+                    dnfText("Incomplete placeholder: write variables as {{name}}.")));
             }
 
             variables.forEach(function (v) {
                 if (v.required && !used[v.name]) {
                     markers.push(marker(new monaco.Range(1, 1, 1, 1), monaco.MarkerSeverity.Error,
-                        "The body must contain {{" + v.name + "}} - without it the email is useless."));
+                        dnfText("The body must contain {0} - without it the email is useless.", "{{" + v.name + "}}")));
                 }
             });
 
             var script = /<script\b/gi;
             while ((match = script.exec(text)) !== null) {
                 markers.push(marker(rangeOf(match.index, match[0].length), monaco.MarkerSeverity.Warning,
-                    "Email clients don't run scripts."));
+                    dnfText("Email clients don't run scripts.")));
             }
 
             if (!text.trim()) {
-                markers.push(marker(new monaco.Range(1, 1, 1, 1), monaco.MarkerSeverity.Error, "Enter a body."));
+                markers.push(marker(new monaco.Range(1, 1, 1, 1), monaco.MarkerSeverity.Error, dnfText("Enter a body.")));
             } else if (maxLength > 0 && text.trim().length > maxLength) {
                 markers.push(marker(new monaco.Range(1, 1, 1, 1), monaco.MarkerSeverity.Error,
-                    "The body is limited to " + maxLength + " characters."));
+                    dnfText("The body is limited to {0} characters.", maxLength)));
             }
 
             monaco.editor.setModelMarkers(model, "email-template", markers);
@@ -253,8 +253,9 @@
             warningsEl.textContent = warnings;
             flag(errorsEl.parentElement, "data-active", errors > 0);
             flag(warningsEl.parentElement, "data-active", warnings > 0);
-            var label = errors + (errors === 1 ? " error, " : " errors, ") + warnings + (warnings === 1 ? " warning" : " warnings");
-            problemsButton.setAttribute("aria-label", label + (errors + warnings > 0 ? " - go to the next problem" : ""));
+            var label = dnfText("{0}, {1}", errors === 1 ? dnfText("1 error") : dnfText("{0} errors", errors),
+                warnings === 1 ? dnfText("1 warning") : dnfText("{0} warnings", warnings));
+            problemsButton.setAttribute("aria-label", errors + warnings > 0 ? dnfText("{0} - go to the next problem", label) : label);
         }
         monaco.editor.onDidChangeMarkers(function (uris) {
             if (uris.some(function (uri) { return uri.toString() === model.uri.toString(); })) { showProblems(); }
@@ -266,10 +267,10 @@
 
         function showPosition() {
             var position = editor.getPosition() || { lineNumber: 1, column: 1 };
-            var text = "Ln " + position.lineNumber + ", Col " + position.column;
+            var text = dnfText("Ln {0}, Col {1}", position.lineNumber, position.column);
             var selection = editor.getSelection();
             var selected = selection ? model.getValueInRange(selection).length : 0;
-            positionEl.textContent = selected > 0 ? text + " (" + numberFormat.format(selected) + " selected)" : text;
+            positionEl.textContent = selected > 0 ? dnfText("{0} ({1} selected)", text, numberFormat.format(selected)) : text;
         }
         editor.onDidChangeCursorSelection(showPosition);
 
@@ -277,7 +278,7 @@
             var length = model.getValue().trim().length; // the server trims before checking the limit
             lengthEl.textContent = numberFormat.format(length) + " / " + numberFormat.format(maxLength);
             flag(lengthEl, "data-over", maxLength > 0 && length > maxLength);
-            lengthEl.title = "Characters (limit " + numberFormat.format(maxLength) + ")";
+            lengthEl.title = dnfText("Characters (limit {0})", numberFormat.format(maxLength));
         }
         model.onDidChangeContent(showLength);
 

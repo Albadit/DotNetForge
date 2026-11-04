@@ -1,36 +1,36 @@
 @model AuthProvidersController.ProvidersViewModel
 @{
-    ViewData["Title"] = "Providers";
-    ViewData["Description"] = "How people sign in: with their email and password, or with an account they already have elsewhere.";
+    ViewData["Title"] = T["Providers"];
+    ViewData["Description"] = T["How people sign in: with their email and password, or with an account they already have elsewhere."];
 }
 
 <div class="dnf-stack dnf-stack--lg">
     <section class="dnf-card" aria-labelledby="providers-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="providers-title">Sign-in providers</h2>
-                <p class="dnf-card__description">An enabled provider adds "Sign in with ..." to the sign-in page. Only verified email addresses are accepted; with Enable sign-ups on (Advanced Settings), a new email gets a new account.</p>
+                <h2 class="dnf-card__title" id="providers-title">@T["Sign-in providers"]</h2>
+                <p class="dnf-card__description">@T["An enabled provider adds \"Sign in with ...\" to the sign-in page. Only verified email addresses are accepted; with Enable sign-ups on (Advanced Settings), a new email gets a new account."]</p>
             </div>
         </div>
         <div class="dnf-table dnf-table--stack">
             <table class="dnf-table__table">
                 <thead>
                     <tr>
-                        <th scope="col">Provider</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Callback URL</th>
-                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">Actions</span></th>
+                        <th scope="col">@T["Provider"]</th>
+                        <th scope="col">@T["Status"]</th>
+                        <th scope="col">@T["Callback URL"]</th>
+                        <th scope="col" class="dnf-table__cell--actions"><span class="sr-only">@T["Actions"]</span></th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td class="dnf-table__cell--lead">
-                            <span class="dnf-table__primary">Email</span>
-                            <span class="dnf-table__secondary">Email address and password - built in</span>
+                            <span class="dnf-table__primary">@T["Email"]</span>
+                            <span class="dnf-table__secondary">@T["Email address and password - built in"]</span>
                         </td>
-                        <td data-label="Status"><dnf-badge tone="Success" dot="true">Enabled</dnf-badge></td>
-                        <td data-label="Callback URL"><span class="text-subtle">-</span></td>
-                        <td class="dnf-table__cell--actions"><a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/advanced-settings">Settings</a></td>
+                        <td data-label="@T["Status"]"><dnf-badge tone="Success" dot="true">@T["Enabled"]</dnf-badge></td>
+                        <td data-label="@T["Callback URL"]"><span class="text-subtle">-</span></td>
+                        <td class="dnf-table__cell--actions"><a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/advanced-settings">@T["Settings"]</a></td>
                     </tr>
                     @foreach (var row in Model.Providers)
                     {
@@ -39,22 +39,22 @@
                                 <a class="dnf-table__primary" href="/admin/providers/@row.Provider.Key">@row.Provider.Name</a>
                                 <span class="dnf-table__secondary">@row.Provider.Key</span>
                             </td>
-                            <td data-label="Status">
+                            <td data-label="@T["Status"]">
                                 @switch (row.State)
                                 {
                                     case AuthProvidersController.ProviderState.Enabled:
-                                        <dnf-badge tone="Success" dot="true">Enabled</dnf-badge>
+                                        <dnf-badge tone="Success" dot="true">@T["Enabled"]</dnf-badge>
                                         break;
                                     case AuthProvidersController.ProviderState.Disabled:
-                                        <dnf-badge dot="true">Disabled</dnf-badge>
+                                        <dnf-badge dot="true">@T["Disabled"]</dnf-badge>
                                         break;
                                     default:
-                                        <dnf-badge tone="@(row.Unreadable ? DnfTone.Warning : DnfTone.Neutral)">@(row.Unreadable ? "Secret unreadable" : "Not set up")</dnf-badge>
+                                        <dnf-badge tone="@(row.Unreadable ? DnfTone.Warning : DnfTone.Neutral)">@(row.Unreadable ? T["Secret unreadable"] : T["Not set up"])</dnf-badge>
                                         break;
                                 }
                             </td>
-                            <td data-label="Callback URL"><code class="text-xs">@Model.AppUrl@row.Provider.CallbackPath</code></td>
-                            <td class="dnf-table__cell--actions"><a class="dnf-button dnf-button--secondary dnf-button--sm" href="/admin/providers/@row.Provider.Key"><dnf-icon name="pencil" size="Sm" /> Edit</a></td>
+                            <td data-label="@T["Callback URL"]"><code class="text-xs">@Model.AppUrl@row.Provider.CallbackPath</code></td>
+                            <td class="dnf-table__cell--actions"><a class="dnf-button dnf-button--secondary dnf-button--sm" href="/admin/providers/@row.Provider.Key"><dnf-icon name="pencil" size="Sm" /> @T["Edit"]</a></td>
                         </tr>
                     }
                 </tbody>
@@ -65,13 +65,13 @@
     <section class="dnf-card" aria-labelledby="extensions-title">
         <div class="dnf-card__header">
             <div>
-                <h2 class="dnf-card__title" id="extensions-title">From extensions</h2>
-                <p class="dnf-card__description">Providers added by authentication extensions. They are configured in <code>.env</code> and turned on or off on Plugins.</p>
+                <h2 class="dnf-card__title" id="extensions-title">@T["From extensions"]</h2>
+                <p class="dnf-card__description">@T["Providers added by authentication extensions. They are configured in"] <code>.env</code> @T["and turned on or off on Plugins."]</p>
             </div>
         </div>
         @if (Model.Extensions.Count == 0)
         {
-            <dnf-empty-state icon="puzzle" title="No provider extensions" description="Authentication extensions in extensions/ can add more providers." compact="true" />
+            <dnf-empty-state icon="puzzle" title="@T["No provider extensions"]" description="@T["Authentication extensions in extensions/ can add more providers."]" compact="true" />
         }
         else
         {
@@ -81,10 +81,10 @@
                     <li class="dnf-list__item">
                         <span class="dnf-list__content">
                             <strong>@extension.Name</strong>
-                            <span class="text-xs text-muted">Extension @extension.ExtensionId · scheme <code>@extension.Scheme</code></span>
+                            <span class="text-xs text-muted">@T["Extension {0}", extension.ExtensionId] · @T["scheme"] <code>@extension.Scheme</code></span>
                         </span>
-                        <dnf-badge tone="@(extension.Active ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(extension.Active ? "Enabled" : "Disabled")</dnf-badge>
-                        <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/plugins">Plugins</a>
+                        <dnf-badge tone="@(extension.Active ? DnfTone.Success : DnfTone.Neutral)" dot="true">@(extension.Active ? T["Enabled"] : T["Disabled"])</dnf-badge>
+                        <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/admin/plugins">@T["Plugins"]</a>
                     </li>
                 }
             </ul>

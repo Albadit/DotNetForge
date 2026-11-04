@@ -18,12 +18,12 @@
 @{
     // The UI docs (/admin/docs/ui) are for the people who build screens and extensions: Super Admins and Developers.
     var canReadUiDocs = (await Authorization.AuthorizeAsync(User, DotNetForge.Shared.Constants.AuthorizationPolicies.ApiDocs)).Succeeded;
-    var title = ViewData["Title"] as string ?? "Admin";
+    var title = ViewData["Title"] as string ?? T["Admin"];
     var description = ViewData["Description"] as string;
     // ViewData["PageWidth"] = "narrow" | "medium": a centred, narrower page for forms (.docs/architecture/design-system.md#admin-shell).
     var pageWidth = ViewData["PageWidth"] is string width ? " dnf-container--" + width : null;
     var nav = await Navigation.BuildAsync(Context, title);
-    var displayName = User.Identity?.Name is { Length: > 0 } name ? name : "Account";
+    var displayName = User.Identity?.Name is { Length: > 0 } name ? name : T["Account"];
     var email = User.FindFirst(ClaimTypes.Email)?.Value;
     var initials = string.Concat(displayName.Split(new[] { ' ', '@', '.' }, StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0]));
     var isDashboard = string.Equals(Context.Request.Path.Value?.TrimEnd('/'), "/admin", StringComparison.OrdinalIgnoreCase);
@@ -31,7 +31,8 @@
     string Versioned(string path) => Versions.AddFileVersionToPath(Context.Request.PathBase, path);
     var stylesheets = AdminShell.Stylesheets.Select(Versioned).ToArray();
     var scripts = AdminShell.Scripts.ToDictionary(path => path, Versioned);
-    var shell = AdminShell.Fingerprint(stylesheets.Concat(scripts.Values), nav, $"{displayName}|{email}|{canReadUiDocs}");
+    // The language is part of the shell: a screen in another language comes as a full page (sidebar, scripts' text).
+    var shell = AdminShell.Fingerprint(stylesheets.Concat(scripts.Values), nav, $"{displayName}|{email}|{canReadUiDocs}|{T.Language.Code}");
     var screenOnly = AdminShell.IsScreenOnly(Context.Request);
     ViewData["ScreenOnly"] = screenOnly;
     if (!Context.Response.HasStarted)
@@ -40,10 +41,10 @@
     }
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@T.Language.Code" dir="@(T.Language.RightToLeft ? "rtl" : "ltr")">
 <head>
     <meta charset="utf-8" />
-    <title>@title · DotNetForge Admin</title>
+    <title>@title · @T["DotNetForge Admin"]</title>
     <meta name="dnf-shell" content="@shell" />
     <meta name="dnf-active" content="@AdminShell.ActiveHref(nav)" />
     @if (screenOnly)
@@ -55,6 +56,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
         <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
+        @if (T.ScriptJson.Length > 0)
+        {
+            @* The admin scripts' text in the admin language (dnf.js: window.dnfText). *@
+            <meta name="dnf-text" content="@T.ScriptJson" />
+        }
         <script src="@scripts["/_content/DotNetForge.UI/dnf-theme.js"]"></script>
         @foreach (var stylesheet in stylesheets)
         {
@@ -67,15 +73,15 @@
 <body data-started="@DotNetForge.Web.Services.NavigationWarmUp.StartId">
     @if (!screenOnly)
     {
-        <a class="dnf-skip-link" href="#main">Skip to content</a>
+        <a class="dnf-skip-link" href="#main">@T["Skip to content"]</a>
         @:<div class="dnf-shell" data-shell>
-        <aside class="dnf-sidebar" id="sidebar" aria-label="Admin" data-drawer-panel>
+        <aside class="dnf-sidebar" id="sidebar" aria-label="@T["Admin"]" data-drawer-panel>
             <div class="dnf-sidebar__header">
-                <a class="dnf-sidebar__brand" href="/admin" aria-label="DotNetForge - Dashboard">
+                <a class="dnf-sidebar__brand" href="/admin" aria-label="@T["DotNetForge - Dashboard"]">
                     <img class="block dark:hidden" src="~/img/logo.svg" asp-append-version="true" alt="" width="148" height="36" />
                     <img class="hidden dark:block" src="~/img/logo-dark.svg" asp-append-version="true" alt="" width="148" height="36" />
                 </a>
-                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-sidebar__close" data-drawer-close aria-label="Close navigation">
+                <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-sidebar__close" data-drawer-close aria-label="@T["Close navigation"]">
                     <dnf-icon name="x" />
                 </button>
             </div>
@@ -86,7 +92,7 @@
                 <div class="dnf-dropdown dnf-user-menu">
                     <button type="button" class="dnf-user-menu__button" popovertarget="account-menu" aria-haspopup="menu" aria-expanded="false">
                         <span class="dnf-avatar" aria-hidden="true">@initials</span>
-                        <span class="sr-only">Account menu:</span>
+                        <span class="sr-only">@T["Account menu:"]</span>
                         <span class="dnf-user-menu__text">
                             <span class="dnf-user-menu__name">@displayName</span>
                             @if (email is not null && email != displayName)
@@ -96,15 +102,15 @@
                         </span>
                         <dnf-icon name="chevron-down" size="Sm" class="dnf-dropdown__chevron" />
                     </button>
-                    <div class="dnf-dropdown__menu" id="account-menu" popover role="menu" aria-label="Account menu" data-placement="top-start">
-                        <dnf-dropdown-link href="/admin/profile" icon="user">Profile</dnf-dropdown-link>
-                        <dnf-dropdown-link href="/" icon="external-link" new-tab="true">View site</dnf-dropdown-link>
+                    <div class="dnf-dropdown__menu" id="account-menu" popover role="menu" aria-label="@T["Account menu"]" data-placement="top-start">
+                        <dnf-dropdown-link href="/admin/profile" icon="user">@T["Profile"]</dnf-dropdown-link>
+                        <dnf-dropdown-link href="/" icon="external-link" new-tab="true">@T["View site"]</dnf-dropdown-link>
                         @if (canReadUiDocs)
                         {
-                            <dnf-dropdown-link href="/admin/docs/ui" icon="book">UI docs</dnf-dropdown-link>
+                            <dnf-dropdown-link href="/admin/docs/ui" icon="book">@T["UI docs"]</dnf-dropdown-link>
                         }
                         <dnf-dropdown-separator />
-                        <dnf-dropdown-post action="/account/logout" icon="log-out" danger="true">Sign out</dnf-dropdown-post>
+                        <dnf-dropdown-post action="/account/logout" icon="log-out" danger="true">@T["Sign out"]</dnf-dropdown-post>
                     </div>
                 </div>
             </div>
@@ -120,12 +126,12 @@
         <div class="dnf-shell__main">
             <header class="dnf-topbar">
                 <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-topbar__menu" data-drawer-open aria-controls="sidebar"
-                        aria-expanded="false" aria-label="Open navigation">
+                        aria-expanded="false" aria-label="@T["Open navigation"]">
                     <dnf-icon name="menu" />
                 </button>
                 @if (!isDashboard && nav.Trail.Count > 1)
                 {
-                    <nav class="dnf-breadcrumbs dnf-breadcrumbs--collapse" aria-label="Breadcrumb">
+                    <nav class="dnf-breadcrumbs dnf-breadcrumbs--collapse" aria-label="@T["Breadcrumb"]">
                         <ol class="dnf-breadcrumbs__list">
                             @for (var i = 0; i < nav.Trail.Count; i++)
                             {
@@ -150,8 +156,8 @@
                     </nav>
                 }
                 <div class="dnf-topbar__actions">
-                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/" target="_blank" rel="noopener" aria-label="View site">
-                        <span class="dnf-topbar__site-label">View site</span> <dnf-icon name="external-link" size="Sm" />
+                    <a class="dnf-button dnf-button--ghost dnf-button--sm" href="/" target="_blank" rel="noopener" aria-label="@T["View site"]">
+                        <span class="dnf-topbar__site-label">@T["View site"]</span> <dnf-icon name="external-link" size="Sm" />
                     </a>
                     <partial name="_ThemeMenu" />
                 </div>

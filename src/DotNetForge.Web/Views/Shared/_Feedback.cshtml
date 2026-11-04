@@ -1,3 +1,5 @@
+@* Shared by every layout: in the admin language under /admin, English elsewhere. *@
+@inject DotNetForge.Web.Services.Localization.AdminText T
 @*
     The feedback layer of every built-in layout (.docs/architecture/design-system.md#feedback):
     - toasts for TempData["Success"] (auto-hides), TempData["Error"] and TempData["Info"] (stay until dismissed);
@@ -19,7 +21,7 @@
              data-toast data-autohide="@(toast.Tone == "success" ? "true" : null)">
             <dnf-icon name="@toast.Icon" class="dnf-toast__icon" />
             <p class="dnf-toast__message">@toast.Message</p>
-            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-toast-close aria-label="Dismiss">
+            <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-toast-close aria-label="@T["Dismiss"]">
                 <dnf-icon name="x" size="Sm" />
             </button>
         </div>
@@ -32,7 +34,7 @@
     <div class="dnf-toast" role="status" data-toast>
         <dnf-icon name="info" class="dnf-toast__icon" />
         <p class="dnf-toast__message"></p>
-        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-toast-close aria-label="Dismiss">
+        <button type="button" class="dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm" data-toast-close aria-label="@T["Dismiss"]">
             <dnf-icon name="x" size="Sm" />
         </button>
     </div>
@@ -43,13 +45,13 @@
         <div class="dnf-dialog__header">
             <span class="dnf-dialog__icon dnf-dialog__icon--danger" data-confirm-icon><dnf-icon name="triangle-alert" /></span>
             <div>
-                <h2 class="dnf-dialog__title" id="confirm-title" data-confirm-title>Are you sure?</h2>
+                <h2 class="dnf-dialog__title" id="confirm-title" data-confirm-title>@T["Are you sure?"]</h2>
                 <p class="dnf-dialog__description" id="confirm-text" data-confirm-text></p>
             </div>
         </div>
         <div class="dnf-dialog__footer">
-            <button type="submit" value="cancel" class="dnf-button dnf-button--secondary">Cancel</button>
-            <button type="submit" value="confirm" class="dnf-button dnf-button--danger" data-confirm-ok>Confirm</button>
+            <button type="submit" value="cancel" class="dnf-button dnf-button--secondary">@T["Cancel"]</button>
+            <button type="submit" value="confirm" class="dnf-button dnf-button--danger" data-confirm-ok>@T["Confirm"]</button>
         </div>
     </form>
 </dialog>

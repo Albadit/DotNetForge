@@ -15,9 +15,9 @@
     var basePath = form.querySelector("[data-endpoint-path]");
     var methods = JSON.parse(form.getAttribute("data-methods") || "[\"GET\"]");
     var types = JSON.parse(form.getAttribute("data-types") || "[\"string\"]");
-    var sources = [["route", "URL path"], ["query", "Query string"], ["body", "JSON body"]];
-    var results = [["Rows", "All rows - { data: [...] }"], ["FirstRow", "First row - { data: {...} }, 404 if none"],
-        ["Value", "One value - { data: 42 }"], ["AffectedRows", "Rows changed - { affected: 3 }"]];
+    var sources = [["route", dnfText("URL path")], ["query", dnfText("Query string")], ["body", dnfText("JSON body")]];
+    var results = [["Rows", dnfText("All rows - { data: [...] }")], ["FirstRow", dnfText("First row - { data: {...} }, 404 if none")],
+        ["Value", dnfText("One value - { data: 42 }")], ["AffectedRows", dnfText("Rows changed - { affected: 3 }")]];
     var toggleAll = form.querySelector("[data-op-toggle-all]");
     var placeholder = /(?<![@\w])@([A-Za-z_][A-Za-z0-9_]*)/g;
     var ops = read();
@@ -86,44 +86,45 @@
     function cardHtml(op, i) {
         var id = "op" + i;
         var open = op._open !== false;
-        return "<section class=\"dnf-card dnf-endpoint-op\"" + (open ? "" : " data-collapsed=\"true\"") + " data-op=\"" + i + "\" aria-label=\"Operation " + (i + 1) + "\">" +
+        return "<section class=\"dnf-card dnf-endpoint-op\"" + (open ? "" : " data-collapsed=\"true\"") + " data-op=\"" + i + "\" aria-label=\"" + esc(dnfText("Operation {0}", i + 1)) + "\">" +
             "<div class=\"dnf-card__header flex-wrap items-end\">" +
                 "<div class=\"dnf-endpoint-op__request\">" +
-                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-method\">Method</label>" +
+                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-method\">" + esc(dnfText("Method")) + "</label>" +
                     "<select id=\"" + id + "-method\" class=\"dnf-select\" data-op-key=\"method\">" + options(methods, op.method || "GET") + "</select></div>" +
-                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-path\">Sub-path<span class=\"dnf-field__optional\">optional</span></label>" +
+                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-path\">" + esc(dnfText("Sub-path")) + "<span class=\"dnf-field__optional\">" + esc(dnfText("optional")) + "</span></label>" +
                     "<div class=\"dnf-input-group\"><span class=\"dnf-input-group__prefix font-mono max-sm:hidden\" aria-hidden=\"true\" data-op-prefix></span>" +
-                    "<input id=\"" + id + "-path\" class=\"dnf-input dnf-input--mono max-sm:rounded-md\" maxlength=\"200\" placeholder=\"e.g. {id}\" data-op-key=\"path\" value=\"" + esc(op.path) + "\" /></div></div>" +
+                    "<input id=\"" + id + "-path\" class=\"dnf-input dnf-input--mono max-sm:rounded-md\" maxlength=\"200\" placeholder=\"" + esc(dnfText("e.g. {id}")) + "\" data-op-key=\"path\" value=\"" + esc(op.path) + "\" /></div></div>" +
                 "</div>" +
                 "<div class=\"dnf-cluster\">" +
-                "<button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm\" data-op-remove aria-label=\"Remove this operation\"" + (ops.length === 1 ? " disabled" : "") + ">" + icon("trash") + "</button>" +
-                "<button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-endpoint-op__toggle\" data-op-toggle aria-controls=\"" + id + "-body\" aria-expanded=\"" + open + "\" aria-label=\"" + (open ? "Close" : "Open") + " this operation\">" + icon("chevron-right") + "</button>" +
+                "<button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm\" data-op-remove aria-label=\"" + esc(dnfText("Remove this operation")) + "\"" + (ops.length === 1 ? " disabled" : "") + ">" + icon("trash") + "</button>" +
+                "<button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm dnf-endpoint-op__toggle\" data-op-toggle aria-controls=\"" + id + "-body\" aria-expanded=\"" + open + "\" aria-label=\"" + esc(open ? dnfText("Close this operation") : dnfText("Open this operation")) + "\">" + icon("chevron-right") + "</button>" +
                 "</div>" +
                 "<span class=\"basis-full truncate text-sm text-muted\" data-op-summary" + (open || !summary(op) ? " hidden" : "") + ">" + esc(summary(op)) + "</span>" +
             "</div>" +
             "<div class=\"dnf-card__body dnf-stack\" id=\"" + id + "-body\" data-op-body" + (open ? "" : " hidden") + ">" +
-                "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-name\">Name<span class=\"dnf-field__optional\">optional</span></label>" +
-                "<input id=\"" + id + "-name\" class=\"dnf-input\" maxlength=\"100\" placeholder=\"Get one product\" data-op-key=\"name\" value=\"" + esc(op.name) + "\" /></div>" +
+                "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-name\">" + esc(dnfText("Name")) + "<span class=\"dnf-field__optional\">" + esc(dnfText("optional")) + "</span></label>" +
+                "<input id=\"" + id + "-name\" class=\"dnf-input\" maxlength=\"100\" placeholder=\"" + esc(dnfText("Get one product")) + "\" data-op-key=\"name\" value=\"" + esc(op.name) + "\" /></div>" +
                 "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-sql\">SQL</label>" +
                 "<textarea id=\"" + id + "-sql\" rows=\"7\" class=\"dnf-textarea dnf-textarea--code\" spellcheck=\"false\" data-op-key=\"sql\" placeholder=\"SELECT * FROM products WHERE id = @id\">" + esc(op.sql) + "</textarea>" +
-                "<span class=\"dnf-field__description\">Any statement. Write @name where a value goes - values are sent as parameters, never pasted into the SQL.</span>" +
+                "<span class=\"dnf-field__description\">" + esc(dnfText("Any statement. Write @name where a value goes - values are sent as parameters, never pasted into the SQL.")) + "</span>" +
                 "<ul class=\"list-disc ps-4\" data-op-hints hidden></ul></div>" +
-                "<div class=\"dnf-stack dnf-stack--sm\"><div class=\"dnf-spread\"><span class=\"text-sm font-semibold\">Parameters</span>" +
-                "<button type=\"button\" class=\"dnf-button dnf-button--secondary dnf-button--sm\" data-param-add>" + icon("plus") + " Add parameter</button></div>" +
+                "<div class=\"dnf-stack dnf-stack--sm\"><div class=\"dnf-spread\"><span class=\"text-sm font-semibold\">" + esc(dnfText("Parameters")) + "</span>" +
+                "<button type=\"button\" class=\"dnf-button dnf-button--secondary dnf-button--sm\" data-param-add>" + icon("plus") + " " + esc(dnfText("Add parameter")) + "</button></div>" +
                 "<div class=\"dnf-table\" data-param-wrap hidden><table class=\"dnf-table__table\"><thead><tr>" +
-                "<th scope=\"col\">Name</th><th scope=\"col\">Type</th><th scope=\"col\">From</th><th scope=\"col\">Required</th><th scope=\"col\">Default</th>" +
-                "<th scope=\"col\" class=\"dnf-table__cell--actions\"><span class=\"sr-only\">Remove</span></th></tr></thead><tbody data-param-rows></tbody></table></div>" +
-                "<p class=\"text-sm text-muted\" data-param-empty hidden>No parameters. Add one for every @name in the SQL.</p></div>" +
+                "<th scope=\"col\">" + esc(dnfText("Name")) + "</th><th scope=\"col\">" + esc(dnfText("Type")) + "</th><th scope=\"col\">" + esc(dnfText("From")) + "</th>" +
+                "<th scope=\"col\">" + esc(dnfText("Required")) + "</th><th scope=\"col\">" + esc(dnfText("Default")) + "</th>" +
+                "<th scope=\"col\" class=\"dnf-table__cell--actions\"><span class=\"sr-only\">" + esc(dnfText("Remove")) + "</span></th></tr></thead><tbody data-param-rows></tbody></table></div>" +
+                "<p class=\"text-sm text-muted\" data-param-empty hidden>" + esc(dnfText("No parameters. Add one for every @name in the SQL.")) + "</p></div>" +
                 "<div class=\"dnf-endpoint-op__settings\">" +
-                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-result\">Answers with</label><select id=\"" + id + "-result\" class=\"dnf-select\" data-op-key=\"result\">" + options(results, op.result || "Rows") + "</select></div>" +
-                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-timeout\">Timeout (s)</label><input id=\"" + id + "-timeout\" type=\"number\" class=\"dnf-input\" min=\"1\" max=\"120\" data-op-key=\"timeoutSeconds\" value=\"" + esc(op.timeoutSeconds || 30) + "\" /></div>" +
-                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-rows\">Row limit</label><input id=\"" + id + "-rows\" type=\"number\" class=\"dnf-input\" min=\"1\" max=\"10000\" data-op-key=\"maxRows\" value=\"" + esc(op.maxRows || 1000) + "\" /></div>" +
+                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-result\">" + esc(dnfText("Answers with")) + "</label><select id=\"" + id + "-result\" class=\"dnf-select\" data-op-key=\"result\">" + options(results, op.result || "Rows") + "</select></div>" +
+                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-timeout\">" + esc(dnfText("Timeout (s)")) + "</label><input id=\"" + id + "-timeout\" type=\"number\" class=\"dnf-input\" min=\"1\" max=\"120\" data-op-key=\"timeoutSeconds\" value=\"" + esc(op.timeoutSeconds || 30) + "\" /></div>" +
+                    "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "-rows\">" + esc(dnfText("Row limit")) + "</label><input id=\"" + id + "-rows\" type=\"number\" class=\"dnf-input\" min=\"1\" max=\"10000\" data-op-key=\"maxRows\" value=\"" + esc(op.maxRows || 1000) + "\" /></div>" +
                 "</div>" +
-                "<details class=\"dnf-endpoint-op__test\"><summary>Test this operation</summary><div class=\"dnf-stack\">" +
+                "<details class=\"dnf-endpoint-op__test\"><summary>" + esc(dnfText("Test this operation")) + "</summary><div class=\"dnf-stack\">" +
                     "<div class=\"dnf-form-grid\" data-test-values></div>" +
-                    "<label class=\"dnf-check\"><input type=\"checkbox\" class=\"dnf-checkbox\" checked data-test-rollback /><span class=\"dnf-check__text\"><span>Undo changes after the run</span>" +
-                    "<span class=\"dnf-check__description\">The SQL runs in a transaction that is rolled back, so test INSERT, UPDATE and DELETE safely.</span></span></label>" +
-                    "<div class=\"dnf-cluster\"><button type=\"button\" class=\"dnf-button dnf-button--secondary\" data-test-run>" + icon("send") + " Run test</button>" +
+                    "<label class=\"dnf-check\"><input type=\"checkbox\" class=\"dnf-checkbox\" checked data-test-rollback /><span class=\"dnf-check__text\"><span>" + esc(dnfText("Undo changes after the run")) + "</span>" +
+                    "<span class=\"dnf-check__description\">" + esc(dnfText("The SQL runs in a transaction that is rolled back, so test INSERT, UPDATE and DELETE safely.")) + "</span></span></label>" +
+                    "<div class=\"dnf-cluster\"><button type=\"button\" class=\"dnf-button dnf-button--secondary\" data-test-run>" + icon("send") + " " + esc(dnfText("Run test")) + "</button>" +
                     "<span class=\"text-sm text-muted\" data-test-status role=\"status\"></span></div>" +
                     "<pre class=\"dnf-code-block\" data-test-output hidden></pre>" +
                 "</div></details>" +
@@ -143,12 +144,12 @@
         summaryEl.hidden = open || !summaryEl.textContent;
         var toggle = c.querySelector("[data-op-toggle]");
         toggle.setAttribute("aria-expanded", open ? "true" : "false");
-        toggle.setAttribute("aria-label", (open ? "Close" : "Open") + " this operation");
+        toggle.setAttribute("aria-label", open ? dnfText("Close this operation") : dnfText("Open this operation"));
         updateToggleAll();
     }
     // "Open all" while any card is closed, else "Close all".
     function updateToggleAll() {
-        toggleAll.querySelector("[data-op-toggle-all-label]").textContent = ops.some(function (o) { return o._open === false; }) ? "Open all" : "Close all";
+        toggleAll.querySelector("[data-op-toggle-all-label]").textContent = ops.some(function (o) { return o._open === false; }) ? dnfText("Open all") : dnfText("Close all");
         toggleAll.hidden = ops.length < 2;
     }
     function updatePrefixes() {
@@ -164,12 +165,12 @@
         c.querySelector("[data-param-rows]").innerHTML = op.parameters.map(function (p, j) {
             var route = p.source === "route";
             return "<tr data-index=\"" + j + "\">" +
-                "<td><input type=\"text\" class=\"dnf-input dnf-input--mono min-w-24\" data-key=\"name\" value=\"" + esc(p.name) + "\" aria-label=\"Name\" maxlength=\"64\" /></td>" +
-                "<td><select class=\"dnf-select min-w-24\" data-key=\"type\" aria-label=\"Type\">" + options(types, p.type || "string") + "</select></td>" +
-                "<td><select class=\"dnf-select min-w-24\" data-key=\"source\" aria-label=\"From\">" + options(sources, p.source || "query") + "</select></td>" +
-                "<td><input type=\"checkbox\" class=\"dnf-checkbox\" data-key=\"required\" aria-label=\"Required\"" + (p.required || route ? " checked" : "") + (route ? " disabled title=\"Route values are always required\"" : "") + " /></td>" +
-                "<td><input type=\"text\" class=\"dnf-input min-w-24\" data-key=\"default\" value=\"" + esc(p["default"]) + "\" aria-label=\"Default\"" + (route ? " disabled" : "") + " /></td>" +
-                "<td class=\"dnf-table__cell--actions\"><button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm\" data-param-remove aria-label=\"Remove " + esc(p.name || "parameter") + "\">" + icon("trash") + "</button></td>" +
+                "<td><input type=\"text\" class=\"dnf-input dnf-input--mono min-w-24\" data-key=\"name\" value=\"" + esc(p.name) + "\" aria-label=\"" + esc(dnfText("Name")) + "\" maxlength=\"64\" /></td>" +
+                "<td><select class=\"dnf-select min-w-24\" data-key=\"type\" aria-label=\"" + esc(dnfText("Type")) + "\">" + options(types, p.type || "string") + "</select></td>" +
+                "<td><select class=\"dnf-select min-w-24\" data-key=\"source\" aria-label=\"" + esc(dnfText("From")) + "\">" + options(sources, p.source || "query") + "</select></td>" +
+                "<td><input type=\"checkbox\" class=\"dnf-checkbox\" data-key=\"required\" aria-label=\"" + esc(dnfText("Required")) + "\"" + (p.required || route ? " checked" : "") + (route ? " disabled title=\"" + esc(dnfText("Route values are always required")) + "\"" : "") + " /></td>" +
+                "<td><input type=\"text\" class=\"dnf-input min-w-24\" data-key=\"default\" value=\"" + esc(p["default"]) + "\" aria-label=\"" + esc(dnfText("Default")) + "\"" + (route ? " disabled" : "") + " /></td>" +
+                "<td class=\"dnf-table__cell--actions\"><button type=\"button\" class=\"dnf-button dnf-button--ghost dnf-button--icon-only dnf-button--sm\" data-param-remove aria-label=\"" + esc(dnfText("Remove {0}", p.name || dnfText("parameter"))) + "\">" + icon("trash") + "</button></td>" +
                 "</tr>";
         }).join("");
         c.querySelector("[data-param-wrap]").hidden = op.parameters.length === 0;
@@ -212,10 +213,10 @@
         var used = ((op.sql || "").match(placeholder) || []).map(function (m) { return m.slice(1).toLowerCase(); });
         var hints = [];
         used.filter(function (n, k) { return used.indexOf(n) === k && !has(op, n); }).forEach(function (n) {
-            hints.push("The SQL uses @" + n + ", but there is no parameter \"" + n + "\" - the database will reject the statement.");
+            hints.push(dnfText('The SQL uses @{0}, but there is no parameter "{0}" - the database will reject the statement.', n));
         });
         op.parameters.filter(function (p) { return p.name && used.indexOf(p.name.toLowerCase()) < 0; }).forEach(function (p) {
-            hints.push("Parameter \"" + p.name + "\" is not used in the SQL (write @" + p.name + " where its value goes).");
+            hints.push(dnfText('Parameter "{0}" is not used in the SQL (write @{0} where its value goes).', p.name));
         });
         list.innerHTML = hints.map(function (h) { return "<li>" + esc(h) + "</li>"; }).join("");
         list.hidden = hints.length === 0;
@@ -226,12 +227,12 @@
         var op = ops[i], hostEl = card(i).querySelector("[data-test-values]");
         var named = op.parameters.filter(function (p) { return p.name; });
         hostEl.innerHTML = named.length === 0
-            ? "<p class=\"text-sm text-muted dnf-form-grid__full\">No parameters to fill in.</p>"
+            ? "<p class=\"text-sm text-muted dnf-form-grid__full\">" + esc(dnfText("No parameters to fill in.")) + "</p>"
             : named.map(function (p, k) {
                 var id = "op" + i + "-test-" + k;
-                var where = p.source === "route" ? "path" : p.source === "body" ? "body" : "query";
+                var where = p.source === "route" ? dnfText("path") : p.source === "body" ? dnfText("body") : dnfText("query");
                 return "<div class=\"dnf-field\"><label class=\"dnf-field__label\" for=\"" + id + "\"><span class=\"font-mono\">" + esc(p.name) + "</span>" +
-                    "<span class=\"dnf-field__optional\">" + esc(p.type || "string") + " · " + where + (p.required || p.source === "route" ? "" : " · optional") + "</span></label>" +
+                    "<span class=\"dnf-field__optional\">" + esc(p.type || "string") + " · " + esc(where) + (p.required || p.source === "route" ? "" : " · " + esc(dnfText("optional"))) + "</span></label>" +
                     "<input type=\"text\" class=\"dnf-input\" id=\"" + id + "\" data-test-name=\"" + esc(p.name) + "\" value=\"" + esc(op._test[p.name] || "") + "\"" +
                     (p["default"] ? " placeholder=\"" + esc(p["default"]) + "\"" : "") + " /></div>";
             }).join("");
@@ -245,10 +246,10 @@
         data.append("testValues", JSON.stringify(op._test));
         data.append("rollback", c.querySelector("[data-test-rollback]").checked ? "true" : "false");
         button.disabled = true;
-        status.textContent = "Running…";
+        status.textContent = dnfText("Running…");
         fetch("/admin/api-endpoints/test", { method: "POST", body: data, credentials: "same-origin", headers: { "Accept": "application/json", "X-CSRF-TOKEN": token() } })
             .then(function (res) {
-                if (!res.ok || res.redirected) { throw new Error("The server could not run the test (" + res.status + ")."); }
+                if (!res.ok || res.redirected) { throw new Error(dnfText("The server could not run the test ({0}).", res.status)); }
                 return res.json();
             })
             .then(function (result) { show(result, status, output); })
@@ -259,11 +260,11 @@
         output.hidden = false;
         flag(output, "data-invalid", !result.ok);
         if (result.ok) {
-            status.textContent = result.status + " · " + result.ms + " ms" + (result.rolledBack ? " · changes undone" : " · changes kept");
+            status.textContent = result.status + " · " + result.ms + " ms · " + (result.rolledBack ? dnfText("changes undone") : dnfText("changes kept"));
             output.textContent = JSON.stringify(result.body, null, 2);
         } else {
-            status.textContent = result.status ? result.status + " · failed" : "Not run";
-            output.textContent = (result.errors || ["The test failed."]).join("\n");
+            status.textContent = result.status ? result.status + " · " + dnfText("failed") : dnfText("Not run");
+            output.textContent = (result.errors || [dnfText("The test failed.")]).join("\n");
         }
     }
 
@@ -325,7 +326,7 @@
         if (event.target.closest("[data-op-remove]") && ops.length > 1) {
             var removeOp = function () { ops.splice(i, 1); write(); render(); };
             if (window.dnfUI && window.dnfUI.confirm) {
-                window.dnfUI.confirm({ title: "Remove operation", text: "Remove " + (ops[i].method || "") + " /" + (ops[i].path || "") + "? It is gone once you save.", action: "Remove" })
+                window.dnfUI.confirm({ title: dnfText("Remove operation"), text: dnfText("Remove {0}? It is gone once you save.", (ops[i].method || "") + " /" + (ops[i].path || "")), action: dnfText("Remove") })
                     .then(function (ok) { if (ok) { removeOp(); } });
             } else {
                 removeOp();

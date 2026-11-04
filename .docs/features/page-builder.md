@@ -113,16 +113,29 @@ allows `https://www.youtube-nocookie.com` and `https://player.vimeo.com` for the
 - **Publish** (needs `Collection types` / `publish`): the draft becomes `LayoutJson`. Audited as `content.updated`
   (details `Layout published`).
 - **Unpublish** (needs `publish`): `LayoutJson = null`, the draft is kept. Audited (`Layout unpublished`).
+  A translation's layout is audited as `content.translated` instead (`Layout published - Deutsch (de)`,
+  `PageBuilderService.AuditLayoutAsync`).
 - **Discard** unpublished changes: the draft goes back to the published layout.
 - **Preview** (`/admin/pages/{id}/builder/preview`): the draft rendered in the site's page view with
   `noindex`, for editors only.
+
+**Translations.** Each enabled locale other than the default can have its own layout
+([internationalization → content pages](internationalization.md#content-pages)): a `PageTranslation` row with the same
+columns (`LayoutJson`, `DraftLayoutJson`, `DraftVersion`, `DraftUpdatedDate`, `DraftUpdatedById`,
+`LayoutPublishedDate`). The editor opens it under `/admin/pages/{id}/translations/{locale}/builder` (from **Edit
+{locale} layout** on the page's Translations tab): `PageBuilderController` loads an untracked copy of the page carrying
+the translation's layout state (`PageTranslationService.ShowLayout`), lets `PageBuilderService` work on it as usual
+and stores the result in the translation (`KeepLayout`). The first open starts from the page's own layout (draft,
+else published) as an unsaved draft. Visitors of `/de/...` see the published translation, else the page's layout.
 
 There is no version history yet ([Planned](#planned-not-implemented)).
 
 ## API
 
 JSON under `/admin/pages/{pageId}/builder/` (`/admin/content/{id}/builder` redirects there since the page tree moved
-to the Pages screen); every POST needs the antiforgery token in `X-CSRF-TOKEN`. Access: the
+to the Pages screen); for a translation's layout the same API is under
+`/admin/pages/{pageId}/translations/{locale}/builder/` (an enabled locale other than the default, else 404; canvas,
+preview and content-list previews render in that locale). Every POST needs the antiforgery token in `X-CSRF-TOKEN`. Access: the
 user may edit the page (`Collection types` update, update.own on own pages, or a page **edit** grant -
 [page permissions](content-pages-and-routing.md#page-permissions)); otherwise 403/404.
 
@@ -162,7 +175,10 @@ column, height in a row) gets `align-self: stretch`; an `alignSelf` it also has 
 buttons for such a layer and clears `alignSelf` when Fill is chosen.
 
 `GET /page-css/{id}.css?v={hash}` serves a **live** page's layout CSS, `Cache-Control: public, max-age=31536000,
-immutable` when `v` matches (the URL changes with every publish).
+immutable` when `v` matches (the URL changes with every publish). Under a locale's prefix (`/de/page-css/{id}.css`) it
+serves the CSS of that [translation's layout](internationalization.md#content-pages), falling back to the page's when
+the translation has none; `PageLayoutViewComponent` links that URL on a translated page, and the translation's
+`.../translations/{locale}/builder/draft.css` in its preview and canvas.
 
 ## Theme colours
 
@@ -210,6 +226,10 @@ tall (`--pe-control`). Dragging on the canvas by touch is not covered by tests.
   where `PageLayoutViewComponent` emits an empty `#pe-canvas-mount` and `canvas.css` instead of the layout
   (`ViewData["BuilderCanvas"]`). The editor renders the layout into the mount with the JS renderer and patches only
   the changed nodes. `GET preview` renders the draft through the same theme.
+- **Editor text** is shown in the [admin language](internationalization.md#admin-language): the modules call `t("...")`
+  from `ui/i18n.js`, which reads the `builder` section of the catalog from the `<meta name="dnf-text">` that
+  `PageBuilder/Index.cshtml` writes (`<html lang>` and `dir` follow the language). Without a document (the Node
+  fixture tests) the text stays English.
 - The canvas shows the page light or dark (⋯ menu, remembered per browser, light by default): the editor sets
   `data-theme` and `color-scheme` on the iframe's `<html>`. The DotNetForge UI tokens (`dnf.css`, used by the built-in fallback layout) and the sample theme honour it; a
   theme that only uses `prefers-color-scheme` follows the system instead.
