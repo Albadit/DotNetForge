@@ -44,10 +44,19 @@ Missing or invalid values stop startup with `[DotNetForge] Configuration error: 
 | `dotnet test` | unit and integration tests (or one project: `dotnet test tests/DotNetForge.Tests`) |
 | `dotnet format src/DotNetForge.Web --verify-no-changes --severity error` | the CI style check (run per project; see [testing](testing.md#ci)) |
 
-VS Code: **Terminal → Run Build Task** offers `build`, `watch (hot reload)`, `run`, `test: all`, `test: unit`,
-`test: integration`, `clean`, `restore tools` and the `ef: add migration (…)` tasks - only
-`ef: add migration (PostgreSQL)` still applies (the SQLite, SQL Server and MySQL ones target contexts that no longer
-exist).
+VS Code: every command here is a task in `.vscode/tasks.json` (**Terminal → Run Task**; **Run Build Task**,
+Ctrl+Shift+B, lists the build, run and tool tasks, **Run Test Task** the tests). The labels are grouped by prefix:
+
+| Prefix | Tasks |
+| --- | --- |
+| `setup:` | create `.env` (from `.env.example` or `.env.developer`, never over an existing one), restore dotnet tools, install the lint tools (`npm ci` in `tools/`), install Chromium for the UI tests |
+| `docker:` | PostgreSQL up/down, the dev services (`compose.dev.yml`) up/down, any single service of `docker/databases`, `docker/s3` or `docker/mail` up/down (picked from a list), the app in Docker (`compose.app.yml`) up/down, build the production image |
+| (none) | `build`, `build: Release`, `clean`, `run`, `watch (hot reload)` |
+| `publish:` | Release to `out/`, start `out/` (Production, or Development for local file storage), build and start |
+| `test:` | all, unit, integration, UI (Playwright), a `--filter` you type, the page builder and content-list fixtures (Node) |
+| `check:` | `dotnet format` verify / fix, JavaScript lint, docs links, and `check: all` (format, lint, links, unit tests, fixtures) |
+| `ef:` | add a migration (asks for the name), check pending model changes, list migrations - always `PostgreSqlDbContext` |
+
 **F5** runs "Debug DotNetForge.Web" (builds first, opens the browser when Kestrel is listening).
 
 ### Where the app finds its files

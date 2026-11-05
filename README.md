@@ -81,7 +81,9 @@ project; the web app is `src/DotNetForge.Web`.
 | `dotnet build` | Builds the whole solution, including the sample extensions. |
 | `dotnet test` | Runs the unit and integration tests (the integration tests need PostgreSQL, [testing](.docs/guides/testing.md#databases)). |
 
-In VS Code, **F5** starts the debugger and **Run Build Task** offers build, run, watch and test tasks.
+In VS Code, **F5** starts the debugger and every command of this README is a task (**Terminal → Run Task**: setup,
+Docker services, build/run/watch, the local production build, tests, checks, migrations -
+[development guide](.docs/guides/development.md)).
 
 ### Test the production build locally
 

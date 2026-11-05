@@ -1,11 +1,153 @@
 {
-  // All tasks below are in the "build" group with NO default, so pressing
-  // Ctrl+Shift+B (Run Build Task) shows a picker to select which one to run.
+  // Every command of the repository as a VS Code task (Terminal → Run Task, or Ctrl+Shift+P → "Tasks: Run Task").
+  // Build, run and tool tasks are in the "build" group with NO default, so Ctrl+Shift+B (Run Build Task) shows a
+  // picker; the test tasks are in the "test" group (Run Test Task). Labels are prefixed by area: setup, docker, run,
+  // publish, test, check, ef. Everything runs from the repository root (.docs/guides/development.md).
   "version": "2.0.0",
   "tasks": [
+    // ---- Setup ------------------------------------------------------------------------------------------------
+    {
+      "label": "setup: create .env",
+      "detail": "Copy .env.example (or .env.developer: local RustFS S3 + Mailpit SMTP) to .env - only when there is no .env yet",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "-e",
+        "const fs = require('fs'); const from = process.argv[1]; if (fs.existsSync('.env')) { console.log('.env already exists - left as it is.'); } else { fs.copyFileSync(from, '.env'); console.log('Created .env from ' + from + '.'); }",
+        "${input:envTemplate}"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "setup: restore dotnet tools",
+      "detail": "dotnet tool restore - the pinned dotnet-ef tool",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["tool", "restore"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "setup: install lint tools",
+      "detail": "npm ci in tools/ - ESLint for the JavaScript lint (nothing from npm reaches the app)",
+      "type": "shell",
+      "command": "npm ci --ignore-scripts",
+      "options": { "cwd": "${workspaceFolder}/tools" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "setup: install Chromium for UI tests",
+      "detail": "playwright.ps1 install chromium - once, after building tests/DotNetForge.UiTests (.docs/guides/testing.md#ui-tests)",
+      "type": "shell",
+      "command": "pwsh tests/DotNetForge.UiTests/bin/Debug/net10.0/playwright.ps1 install chromium",
+      // Windows without PowerShell 7: the built-in Windows PowerShell runs the same script.
+      "windows": { "command": "powershell -ExecutionPolicy Bypass -File tests/DotNetForge.UiTests/bin/Debug/net10.0/playwright.ps1 install chromium" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "dependsOn": ["build"],
+      "group": "build",
+      "problemMatcher": []
+    },
+
+    // ---- Docker services --------------------------------------------------------------------------------------
+    {
+      "label": "docker: PostgreSQL up",
+      "detail": "docker compose -f docker/databases/postgres.yml up -d - the CMS database on localhost:5432",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker/databases/postgres.yml", "up", "-d"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: PostgreSQL down",
+      "detail": "docker compose -f docker/databases/postgres.yml down - stops it (the data volume stays)",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker/databases/postgres.yml", "down"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: dev services up",
+      "detail": "docker compose -f docker/compose.dev.yml up -d - PostgreSQL + RustFS (S3) + Mailpit (SMTP) for .env.developer",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker/compose.dev.yml", "up", "-d"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: dev services down",
+      "detail": "docker compose -f docker/compose.dev.yml down",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker/compose.dev.yml", "down"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: service up",
+      "detail": "One service from docker/databases, docker/s3 or docker/mail (additional databases, S3 servers, Mailpit) - pick it",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "${input:dockerService}", "up", "-d"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: service down",
+      "detail": "Stops one service of docker/databases, docker/s3 or docker/mail - pick it",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "${input:dockerService}", "down"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: app up",
+      "detail": "docker compose -f docker/compose.app.yml up -d --build - builds and runs the app itself in Docker",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker/compose.app.yml", "up", "-d", "--build"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: app down",
+      "detail": "docker compose -f docker/compose.app.yml down",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-f", "docker/compose.app.yml", "down"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: build image",
+      "detail": "docker build -f docker/Dockerfile -t dotnetforge . - the production image",
+      "type": "process",
+      "command": "docker",
+      "args": ["build", "-f", "docker/Dockerfile", "-t", "dotnetforge", "."],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+
+    // ---- Build and run ----------------------------------------------------------------------------------------
     {
       "label": "build",
-      "detail": "dotnet build - the whole solution (DotNetForge.slnx)",
+      "detail": "dotnet build - the whole solution (DotNetForge.slnx), sample extensions included",
       "type": "process",
       "command": "dotnet",
       "args": ["build"],
@@ -14,22 +156,24 @@
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "watch (hot reload)",
-      "detail": "dotnet watch - run the web host (src/DotNetForge.Web) with hot reload",
+      "label": "build: Release",
+      "detail": "dotnet build -c Release - the whole solution in Release",
       "type": "process",
       "command": "dotnet",
-      "args": ["watch", "--project", "src/DotNetForge.Web"],
+      "args": ["build", "-c", "Release"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",
-      "isBackground": true,
-      "problemMatcher": {
-        "base": "$msCompile",
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "^.*(Building|Determining projects to restore|dotnet watch).*$",
-          "endsPattern": "^.*(Now listening on:|Waiting for changes|Application started).*$"
-        }
-      }
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "clean",
+      "detail": "dotnet clean - remove build outputs",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["clean"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
     },
     {
       "label": "run",
@@ -50,12 +194,85 @@
       }
     },
     {
-      "label": "test: all",
-      "detail": "Run unit tests, then integration tests",
+      "label": "watch (hot reload)",
+      "detail": "dotnet watch - run the web host (src/DotNetForge.Web) with hot reload",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["watch", "--project", "src/DotNetForge.Web"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "base": "$msCompile",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*(Building|Determining projects to restore|dotnet watch).*$",
+          "endsPattern": "^.*(Now listening on:|Waiting for changes|Application started).*$"
+        }
+      }
+    },
+
+    // ---- Production build, locally (README "Test the production build locally") -------------------------------
+    {
+      "label": "publish: Release to out/",
+      "detail": "dotnet build, then dotnet publish src/DotNetForge.Web -c Release -o out - minified and precompressed",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["publish", "src/DotNetForge.Web", "-c", "Release", "-o", "out"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "dependsOn": ["build"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish: start out/",
+      "detail": "dotnet out/DotNetForge.Web.dll - the published app in Production on http://localhost:5000 (stop run/watch first)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["out/DotNetForge.Web.dll"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "dotnetforge",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "activeOnStart": true, "beginsPattern": "^.*$", "endsPattern": "^.*(Now listening on:|Application started).*$" }
+      }
+    },
+    {
+      "label": "publish: start out/ (Development)",
+      "detail": "dotnet out/DotNetForge.Web.dll with ASPNETCORE_ENVIRONMENT=Development - local file storage instead of S3",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["out/DotNetForge.Web.dll"],
+      "options": { "cwd": "${workspaceFolder}", "env": { "ASPNETCORE_ENVIRONMENT": "Development" } },
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "dotnetforge",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "activeOnStart": true, "beginsPattern": "^.*$", "endsPattern": "^.*(Now listening on:|Application started).*$" }
+      }
+    },
+    {
+      "label": "publish: build and start",
+      "detail": "publish to out/, then start it (Production)",
       "dependsOrder": "sequence",
-      "dependsOn": ["test: unit", "test: integration"],
+      "dependsOn": ["publish: Release to out/", "publish: start out/"],
       "group": "build",
       "problemMatcher": []
+    },
+
+    // ---- Tests ------------------------------------------------------------------------------------------------
+    {
+      "label": "test: all",
+      "detail": "dotnet test - unit and integration tests (integration needs PostgreSQL: docker: PostgreSQL up)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": "$msCompile"
     },
     {
       "label": "test: unit",
@@ -64,42 +281,113 @@
       "command": "dotnet",
       "args": ["test", "tests/DotNetForge.Tests"],
       "options": { "cwd": "${workspaceFolder}" },
-      "group": "build",
+      "group": "test",
       "problemMatcher": "$msCompile"
     },
     {
       "label": "test: integration",
-      "detail": "dotnet test tests/DotNetForge.IntegrationTests",
+      "detail": "dotnet test tests/DotNetForge.IntegrationTests (needs PostgreSQL; DNF_TEST_POSTGRES to override)",
       "type": "process",
       "command": "dotnet",
       "args": ["test", "tests/DotNetForge.IntegrationTests"],
       "options": { "cwd": "${workspaceFolder}" },
-      "group": "build",
+      "group": "test",
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "clean",
-      "detail": "dotnet clean - remove build outputs",
+      "label": "test: UI (Playwright)",
+      "detail": "dotnet test tests/DotNetForge.UiTests - screenshots, accessibility, behaviours (needs Chromium: setup task)",
       "type": "process",
       "command": "dotnet",
-      "args": ["clean"],
+      "args": ["test", "tests/DotNetForge.UiTests"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: filter",
+      "detail": "dotnet test with --filter (e.g. FullyQualifiedName~EnvironmentVariablesTests)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "--filter", "${input:testFilter}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: page builder fixtures",
+      "detail": "node tests/js/page-builder-fixtures.mjs - C# and JS render byte-identically",
+      "type": "process",
+      "command": "node",
+      "args": ["tests/js/page-builder-fixtures.mjs"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "test: content list fixtures",
+      "detail": "node tests/js/content-list-fixtures.mjs - writes the content-list cases the PageBuilder tests compare",
+      "type": "process",
+      "command": "node",
+      "args": ["tests/js/content-list-fixtures.mjs"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    },
+
+    // ---- Checks (what CI runs, plus the docs) -------------------------------------------------------------------
+    {
+      "label": "check: format (verify)",
+      "detail": "dotnet format --verify-no-changes --severity error - the CI check, changes nothing",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["format", "--verify-no-changes", "--severity", "error"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "restore tools",
-      "detail": "dotnet tool restore - restore the pinned dotnet-ef tool",
+      "label": "check: format (fix)",
+      "detail": "dotnet format --severity error - fixes formatting and style",
       "type": "process",
       "command": "dotnet",
-      "args": ["tool", "restore"],
+      "args": ["format", "--severity", "error"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "check: JavaScript lint",
+      "detail": "npm run lint in tools/ - ESLint over the app's scripts (run 'setup: install lint tools' once)",
+      "type": "shell",
+      "command": "npm run lint",
+      "options": { "cwd": "${workspaceFolder}/tools" },
+      "group": "build",
+      "problemMatcher": "$eslint-stylish"
+    },
+    {
+      "label": "check: docs links",
+      "detail": "python .claude/skills/verify/check_links.py - broken links and paths in the documentation",
+      "type": "process",
+      "command": "python",
+      "args": [".claude/skills/verify/check_links.py"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": "build",
       "problemMatcher": []
     },
     {
+      "label": "check: all",
+      "detail": "format (verify), JavaScript lint, docs links, unit tests, page builder fixtures",
+      "dependsOrder": "sequence",
+      "dependsOn": ["check: format (verify)", "check: JavaScript lint", "check: docs links", "test: unit", "test: page builder fixtures"],
+      "group": "build",
+      "problemMatcher": []
+    },
+
+    // ---- Database migrations (PostgreSqlDbContext only; .docs/architecture/database.md#migrations) -----------
+    {
       "label": "ef: add migration",
-      "detail": "dotnet ef migrations add <name> for PostgreSqlDbContext (Database/Providers/PostgreSql/Migrations) - the CMS database is PostgreSQL only",
+      "detail": "dotnet ef migrations add <name> for PostgreSqlDbContext (strip the BOM afterwards; database-change skill)",
       "type": "process",
       "command": "dotnet",
       "args": [
@@ -110,11 +398,72 @@
         "--output-dir", "Database/Providers/PostgreSql/Migrations"
       ],
       "options": { "cwd": "${workspaceFolder}" },
+      "dependsOn": ["setup: restore dotnet tools"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "ef: check pending model changes",
+      "detail": "dotnet ef migrations has-pending-model-changes - must report none before a commit",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef", "migrations", "has-pending-model-changes",
+        "--project", "src/DotNetForge.Data",
+        "--startup-project", "src/DotNetForge.Data",
+        "--context", "PostgreSqlDbContext"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "dependsOn": ["setup: restore dotnet tools"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "ef: list migrations",
+      "detail": "dotnet ef migrations list - every migration (needs DATABASE_CONNECTION_STRING to show which are applied)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef", "migrations", "list",
+        "--project", "src/DotNetForge.Data",
+        "--startup-project", "src/DotNetForge.Data",
+        "--context", "PostgreSqlDbContext"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "dependsOn": ["setup: restore dotnet tools"],
       "group": "build",
       "problemMatcher": "$msCompile"
     }
   ],
   "inputs": [
+    {
+      "id": "envTemplate",
+      "type": "pickString",
+      "description": "Which template becomes .env?",
+      "options": [".env.example", ".env.developer"],
+      "default": ".env.example"
+    },
+    {
+      "id": "dockerService",
+      "type": "pickString",
+      "description": "Which Docker service?",
+      "options": [
+        "docker/databases/postgres.yml",
+        "docker/databases/sqlserver.yml",
+        "docker/databases/mysql.yml",
+        "docker/databases/mongodb.yml",
+        "docker/s3/rustfs.yml",
+        "docker/s3/seaweedfs.yml",
+        "docker/s3/ceph.yml",
+        "docker/mail/mailpit.yml"
+      ],
+      "default": "docker/databases/postgres.yml"
+    },
+    {
+      "id": "testFilter",
+      "type": "promptString",
+      "description": "dotnet test --filter expression (e.g. FullyQualifiedName~AdminLanguageTests)"
+    },
     {
       "id": "migrationName",
       "type": "promptString",
