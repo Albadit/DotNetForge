@@ -325,7 +325,7 @@
     </dialog>
 
     @* New folder (header) opens this. *@
-    <dialog class="dnf-dialog dnf-dialog--md" id="new-folder-dialog" aria-labelledby="new-folder-title">
+    <dialog class="dnf-dialog dnf-dialog--md" id="new-folder-dialog" closedby="any" aria-labelledby="new-folder-title">
         <div class="dnf-dialog__header">
             <div>
                 <h2 class="dnf-dialog__title" id="new-folder-title">@T["New folder"]</h2>
@@ -401,7 +401,7 @@
 @if (Model.Files.Count > 0)
 {
     @* Info in a file's menu opens this (media.js fills in the file). *@
-    <dialog class="dnf-dialog dnf-dialog--md" id="file-info-dialog" aria-labelledby="file-info-title">
+    <dialog class="dnf-dialog dnf-dialog--md" id="file-info-dialog" closedby="any" aria-labelledby="file-info-title">
         <div class="dnf-dialog__header">
             <h2 class="dnf-dialog__title" id="file-info-title">@T["File info"]</h2>
         </div>
@@ -417,7 +417,7 @@
 @if (anyRenamable)
 {
     @* Rename… in a file's menu opens this (media.js sets the form's action, the name and the extension). *@
-    <dialog class="dnf-dialog dnf-dialog--md" id="file-rename-dialog" aria-labelledby="file-rename-title">
+    <dialog class="dnf-dialog dnf-dialog--md" id="file-rename-dialog" closedby="any" aria-labelledby="file-rename-title">
         <div class="dnf-dialog__header">
             <div>
                 <h2 class="dnf-dialog__title" id="file-rename-title">@T["Rename file"]</h2>
@@ -444,7 +444,7 @@
 @if (Model.Files.Count > 0)
 {
     @* Clicking a file opens this (media.js): images, video, audio and PDF/text shown; .zip listed; anything else described. *@
-    <dialog class="dnf-dialog dnf-dialog--xl dnf-media-preview" id="media-preview" aria-labelledby="media-preview-title" tabindex="-1">
+    <dialog class="dnf-dialog dnf-dialog--xl dnf-media-preview" id="media-preview" closedby="any" aria-labelledby="media-preview-title" tabindex="-1">
         <div class="dnf-media-preview__head">
             <div class="dnf-media-preview__title">
                 <h2 class="dnf-dialog__title truncate" id="media-preview-title" data-preview-title></h2>

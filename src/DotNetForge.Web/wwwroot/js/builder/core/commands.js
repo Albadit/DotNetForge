@@ -393,7 +393,7 @@ function wrapNodes(store, ids, type = "container") {
   const parent = doc.nodes[parentId];
   if (!canContain(parent.type, type) || targets.some((id2) => !canContain(type, doc.nodes[id2].type))) return null;
   const id = newId(doc.nodes);
-  const ordered = [...targets].sort((a, b) => parent.children.indexOf(a) - parent.children.indexOf(b));
+  const ordered = targets.toSorted((a, b) => parent.children.indexOf(a) - parent.children.indexOf(b));
   const first = doc.nodes[ordered[0]];
   store.transact("Wrap in container", (tx) => {
     const wrapper = createNode(type, id, parentId);

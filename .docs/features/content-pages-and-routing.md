@@ -101,6 +101,7 @@ title, content, SEO and layout change as on any page. No page has a sort order b
 | 3 | no move creates a cycle | `That move would create a cycle in the page tree.` |
 | 4 | no two siblings share a slug | `Two pages under the same parent would share the slug '<slug>'.` |
 | 5 | at most one `[...]` page per parent | `A parent would get more than one dynamic route ([…]); only one is allowed per parent.` |
+| 6 | a page moved to the top level does not have a locale's code as its slug (rule 8a) | `The slug '<slug>' is a locale code (Internationalization); choose another one.` |
 
 Only pages whose parent or sort order actually changed get a new `UpdatedDate`; an empty list is a no-op.
 `PagesController.Reorder` returns `400 { error }` on failure and `wwwroot/js/admin/pages.js` shows the message in a
@@ -110,7 +111,9 @@ danger toast, then reloads.
 
 The page's children move up to the deleted page's parent. If that would put two equal slugs or two `[...]` pages
 under one parent, the delete is refused with `Can't delete: its child pages would move up a level and clash.`
-followed by the conflict message (rule 4 or 5 above); the Pages screen shows it as a form error. The page's
+followed by the conflict message (rule 4 or 5 above); a top-level page whose children would reach the top level with
+a locale's code as slug is refused with `Can't delete: its child pages would move up to the top level and clash.`
+plus the rule 8a message. The Pages screen shows it as a form error. The page's
 `PageTranslations` are removed with it ([internationalization](internationalization.md#content-pages)).
 
 ### `PageService.Slugify`

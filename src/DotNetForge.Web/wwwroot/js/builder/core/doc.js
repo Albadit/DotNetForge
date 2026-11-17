@@ -12,7 +12,7 @@ function newId(taken) {
   }
 }
 function deepClone(value) {
-  return value === void 0 ? value : JSON.parse(JSON.stringify(value));
+  return value === void 0 ? value : structuredClone(value);
 }
 function createNode(type, id, parent) {
   const def = componentDef(type);

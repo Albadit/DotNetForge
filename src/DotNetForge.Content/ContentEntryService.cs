@@ -220,7 +220,7 @@ public sealed class ContentEntryService
     {
         var entries = await _db.ContentEntries.Where(e => e.ContentTypeId == type.Id && ids.Contains(e.Id)).ToListAsync(ct);
         var positions = entries.Select(e => e.SortOrder).OrderBy(s => s).ToList();
-        var ordered = ids.Select(id => entries.FirstOrDefault(e => e.Id == id)).Where(e => e is not null).ToList();
+        var ordered = ids.Distinct().Select(id => entries.FirstOrDefault(e => e.Id == id)).Where(e => e is not null).ToList();
         for (var i = 0; i < ordered.Count; i++)
         {
             // The moved entries share the positions they had, in the new order, so entries on other pages stay put.
@@ -356,12 +356,16 @@ public sealed class ContentEntryService
     /// <summary>The first of <c>value</c>, <c>value-2</c>, <c>value-3</c>... no entry of the type uses in <paramref name="field"/>.</summary>
     private async Task<string> FreeValueAsync(ContentType type, string field, string value, CancellationToken ct)
     {
-        var taken = (await _db.ContentEntryValues.Where(v => v.ContentTypeId == type.Id && v.Field == field && v.Text != null && v.Text.StartsWith(EntryData.IndexText(value)))
+        // The index keeps only the first MaxIndexText characters: a longer value is cut so the "-n" suffix stays
+        // inside them - otherwise every candidate indexes the same and the search never ends.
+        var stem = value.Length > EntryData.MaxIndexText - 10 ? value[..(EntryData.MaxIndexText - 10)] : value;
+        var prefix = EntryData.IndexText(stem);
+        var taken = (await _db.ContentEntryValues.Where(v => v.ContentTypeId == type.Id && v.Field == field && v.Text != null && v.Text.StartsWith(prefix))
             .Select(v => v.Text!).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
         var candidate = value;
         for (var n = 2; taken.Contains(EntryData.IndexText(candidate)); n++)
         {
-            candidate = $"{value}-{n}";
+            candidate = $"{stem}-{n}";
         }
 
         return candidate;

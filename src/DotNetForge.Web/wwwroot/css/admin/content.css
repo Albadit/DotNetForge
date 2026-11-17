@@ -339,7 +339,7 @@
         box-shadow: var(--dnf-shadow-md);
     }
     .dnf-relation-picker__result { padding: var(--dnf-space-2) var(--dnf-space-3); border-radius: var(--dnf-radius-sm); font-size: var(--dnf-text-sm); cursor: pointer; }
-    .dnf-relation-picker__result:hover { background: var(--dnf-surface-hover); }
+    .dnf-relation-picker__result:hover, .dnf-relation-picker__result[aria-selected="true"] { background: var(--dnf-surface-hover); }
     .dnf-relation-picker__result--empty { color: var(--dnf-muted-foreground); cursor: default; }
 
     @media (max-width: 40rem) {

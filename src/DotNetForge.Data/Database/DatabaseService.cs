@@ -55,6 +55,11 @@ public sealed partial class DatabaseService : IDatabaseService
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         var stopwatch = Stopwatch.StartNew();
         long count = 0;
+        if (effective.Take == 0)
+        {
+            LogCompleted(database, effective, stopwatch.Elapsed, 0);
+            yield break;
+        }
 
         await using var enumerator = executor.QueryAsync(effective, transaction, linked.Token).GetAsyncEnumerator(linked.Token);
         while (true)
@@ -161,6 +166,12 @@ public sealed partial class DatabaseService : IDatabaseService
         return await RunAsync<IReadOnlyList<DatabaseRecord>>(command, transaction, throwOnError, query: true, cancellationToken,
             async (executor, effective, token) =>
             {
+                if (effective.Take == 0)
+                {
+                    // No records on every provider: MongoDB reads a limit of 0 as "no limit", SQL Server rejects FETCH NEXT 0.
+                    return (records, 0);
+                }
+
                 await foreach (var record in executor.QueryAsync(effective, transaction, token).WithCancellation(token))
                 {
                     records.Add(record);

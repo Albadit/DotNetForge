@@ -131,7 +131,7 @@ class Session {
     const missing = host.filter((m) => !placed.has(m.moduleId) && !removed.has(m.moduleId));
     if (!missing.length) return;
     for (const m of missing) {
-      const before = [...host].reverse().find((o) => o.order < m.order && placed.has(o.moduleId)) ?? host.find((o) => placed.has(o.moduleId));
+      const before = host.findLast((o) => o.order < m.order && placed.has(o.moduleId)) ?? host.find((o) => placed.has(o.moduleId));
       const anchor = before ? this.store.doc.nodes[placed.get(before.moduleId)] : null;
       const parent = anchor?.parent ? this.store.doc.nodes[anchor.parent] : this.store.doc.nodes[this.store.doc.root];
       const at = anchor && before.order < m.order ? parent.children.indexOf(anchor.id) + 1 : anchor ? parent.children.indexOf(anchor.id) : parent.children.length;

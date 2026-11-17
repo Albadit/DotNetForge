@@ -249,8 +249,10 @@ public sealed partial class MfaService
 
             if (Totp.Verify(secret, code, DateTimeOffset.UtcNow, app.Counter) is { } step)
             {
-                await MarkUsedAsync(app.Id, step, ct);
-                return true;
+                // Claim the step in the database: of two requests with the same code at once only one gets past it.
+                var now = DateTime.UtcNow;
+                return await _db.UserMfaMethods.Where(m => m.Id == app.Id && m.Counter < step)
+                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.LastUsedDate, now).SetProperty(m => m.Counter, step), ct) == 1;
             }
         }
 

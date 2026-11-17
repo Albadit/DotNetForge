@@ -60,7 +60,7 @@ function autoFlow(items, cols) {
   return items.map((it) => out.get(it.id));
 }
 function sortByPosition(list) {
-  return [...list].sort((a, b) => a.row - b.row || a.col - b.col);
+  return list.toSorted((a, b) => a.row - b.row || a.col - b.col);
 }
 function compact(items, pinned) {
   const cols = items.reduce((m, i) => Math.max(m, i.col + i.colSpan - 1), 1);

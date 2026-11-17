@@ -17,6 +17,20 @@
 (function () {
     "use strict";
 
+    // Click outside closes the dialogs marked closedby="any" (the view); this only covers browsers without closedby.
+    // The pointer position is tested, not event.target (the dialog is also the target for its own padding), and both
+    // the press and the release must be outside, so a text-selection drag ending on the backdrop doesn't close it.
+    function lightDismiss(dialog) {
+        if (!dialog || "closedBy" in HTMLDialogElement.prototype) { return; }
+        function outside(e) {
+            var r = dialog.getBoundingClientRect();
+            return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+        }
+        var pressedOutside = false;
+        dialog.addEventListener("pointerdown", function (e) { pressedOutside = outside(e); });
+        dialog.addEventListener("pointerup", function (e) { if (pressedOutside && outside(e)) { dialog.close(); } });
+    }
+
     uploadPanel();
     folderDialog();
     moveDialog();
@@ -342,9 +356,8 @@
     function fileDialogs() {
         var info = document.getElementById("file-info-dialog");
         var rename = document.getElementById("file-rename-dialog");
-        [info, rename].forEach(function (dialog) {
-            if (dialog) { dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } }); }
-        });
+        lightDismiss(info);
+        lightDismiss(rename);
         window.dnfScreen.on(document, "click", function (event) {
             var button = event.target.closest && event.target.closest("[data-file-info], [data-file-rename]");
             if (!button) { return; }
@@ -699,7 +712,7 @@
             button.addEventListener("click", function () { step(parseInt(button.getAttribute("data-preview-step"), 10)); });
         });
         dialog.querySelector("[data-preview-close]").addEventListener("click", function () { dialog.close(); });
-        dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } });
+        lightDismiss(dialog);
         dialog.addEventListener("keydown", function (event) {
             if (event.target.closest && event.target.closest("video, audio, input")) { return; }
             if (event.key === "ArrowLeft") { event.preventDefault(); step(-1); }
@@ -741,7 +754,7 @@
         var dialog = document.getElementById("new-folder-dialog");
         if (!dialog || typeof dialog.showModal !== "function") { return; }
         var name = document.getElementById("new-folder");
-        dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } });
+        lightDismiss(dialog);
         Array.prototype.forEach.call(document.querySelectorAll("[data-folder-new]"), function (button) {
             button.addEventListener("click", function () { name.value = ""; dialog.showModal(); });
         });

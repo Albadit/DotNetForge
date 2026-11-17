@@ -154,6 +154,12 @@ public sealed class UsersController : AdminControllerBase
             return RedirectToAction(nameof(Edit), new { id });
         }
 
+        // Like every other change to a Super Admin (UserManagementService): only a Super Admin may weaken their sign-in.
+        if (!Actor.IsSuperAdmin && await IsSuperAdminAsync(id))
+        {
+            return Forbid();
+        }
+
         // ResetAsync writes the user.mfa.reset audit entry.
         var removed = await _mfa.ResetAsync(user, HttpContext.RequestAborted);
         TempData["Success"] = removed == 0
@@ -256,6 +262,9 @@ public sealed class UsersController : AdminControllerBase
             .ToListAsync())
         .Select(l => (l.UserId, l.RoleId))
         .ToList();
+
+    private Task<bool> IsSuperAdminAsync(Guid userId) =>
+        _db.UserRoles.AsNoTracking().AnyAsync(ur => ur.UserId == userId && _db.Roles.Any(r => r.Id == ur.RoleId && r.Name == Roles.SuperAdmin));
 
     private async Task<string> EmailOfAsync(Guid id) =>
         await _db.Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Email).FirstOrDefaultAsync() ?? T["the user"];

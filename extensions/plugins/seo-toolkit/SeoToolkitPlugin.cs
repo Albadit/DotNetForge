@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Xml;
 using DotNetForge.Sdk;
@@ -38,7 +39,7 @@ public sealed class SeoToolkitPlugin : IExtension
             {
                 writer.WriteStartElement("url");
                 writer.WriteElementString("loc", baseUrl + page.Path);
-                writer.WriteElementString("lastmod", page.UpdatedDate.ToString("yyyy-MM-dd"));
+                writer.WriteElementString("lastmod", page.UpdatedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                 writer.WriteEndElement();
             }
 

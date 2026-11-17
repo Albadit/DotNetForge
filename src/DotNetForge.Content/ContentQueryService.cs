@@ -141,13 +141,25 @@ public sealed class ContentQueryService
         var value = filter.Value?.Trim() ?? string.Empty;
         if (filter.Field is ItemData.IdPath)
         {
+            // Every entry has an id.
+            if (filter.Op is "empty" or "notEmpty")
+            {
+                return filter.Op == "notEmpty" ? all : new HashSet<Guid>();
+            }
+
             return Guid.TryParse(value, out var id) ? all.Where(c => (c == id) == (filter.Op != "neq")).ToHashSet() : new HashSet<Guid>();
         }
 
         if (filter.Field is ItemData.TitlePath)
         {
             var title = value.ToLowerInvariant();
-            return candidates.Where(c => Compare(c.Title.ToLowerInvariant(), null, null, filter.Op, title)).Select(c => c.Id).ToHashSet();
+            return candidates.Where(c => filter.Op switch
+            {
+                "neq" => c.Title.ToLowerInvariant() != title,
+                "empty" => c.Title.Length == 0,
+                "notEmpty" => c.Title.Length > 0,
+                _ => Compare(c.Title.ToLowerInvariant(), null, null, filter.Op, title),
+            }).Select(c => c.Id).ToHashSet();
         }
 
         var field = fields.FirstOrDefault(f => f.Key == filter.Field);

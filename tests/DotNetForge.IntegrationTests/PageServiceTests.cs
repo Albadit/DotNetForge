@@ -227,4 +227,17 @@ public sealed class PageServiceTests : IAsyncLifetime
         await AddAsync("team", news.Id); // would collide with the root-level "team"
         Assert.Contains("clash", await _service.DeleteAsync(news));
     }
+
+    [Fact]
+    public async Task No_move_or_delete_puts_a_locale_code_at_the_top_level()
+    {
+        _db.Locales.Add(new Locale { Code = "de", DisplayName = "Deutsch" });
+        var shop = await AddAsync("shop");
+        var de = await AddAsync("de", shop.Id);
+
+        // /de is the German prefix: the page would be hidden there, as it would be when saved with that slug.
+        Assert.Contains("locale code", await _service.MoveAsync(de.Id, null));
+        Assert.Contains("locale code", await _service.DeleteAsync(shop));
+        Assert.Equal(shop.Id, (await _db.Pages.SingleAsync(p => p.Id == de.Id)).ParentPageId);
+    }
 }

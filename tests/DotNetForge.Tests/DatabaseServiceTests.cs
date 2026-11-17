@@ -77,6 +77,24 @@ public sealed class DatabaseServiceTests
     }
 
     [Fact]
+    public async Task Take_zero_returns_no_records_without_asking_the_provider()
+    {
+        Main.Records = new[] { Record("a@example.com") };
+
+        var result = await _service.QueryAsync(DatabaseCommand.Find("Users") with { Take = 0 });
+        var streamed = 0;
+        await foreach (var _ in _service.StreamAsync(DatabaseCommand.Find("Users") with { Take = 0 }))
+        {
+            streamed++;
+        }
+
+        Assert.True(result.Success);
+        Assert.Empty(result.Data!);
+        Assert.Equal(0, streamed);
+        Assert.Empty(Main.Commands);
+    }
+
+    [Fact]
     public async Task A_slow_command_fails_with_a_timeout_error()
     {
         Main.Before = (_, token) => Task.Delay(TimeSpan.FromSeconds(10), token);

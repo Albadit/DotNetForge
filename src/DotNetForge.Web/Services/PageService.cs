@@ -98,9 +98,9 @@ public sealed partial class PageService : IPageService
         }
 
         // A top-level slug equal to a locale code would be read as that locale's URL prefix (/de/...).
-        if (input.ParentPageId is null && await _db.Locales.AnyAsync(l => l.Code.ToLower() == slug, ct))
+        if (input.ParentPageId is null && await LocaleClashAsync(new[] { slug }, ct) is { } clash)
         {
-            return $"The slug '{slug}' is a locale code (Internationalization); choose another one.";
+            return clash;
         }
 
         // A parent can have at most one dynamic "[param]" route segment (otherwise resolution is ambiguous).
@@ -234,6 +234,12 @@ public sealed partial class PageService : IPageService
             return conflict;
         }
 
+        // A page moved to the top level must not take a locale's URL prefix, as on save (ApplyAsync).
+        if (await LocaleClashAsync(positions.Where(p => p.ParentPageId is null && byId[p.Id].ParentPageId is not null).Select(p => byId[p.Id].Slug), ct) is { } clash)
+        {
+            return clash;
+        }
+
         var now = DateTime.UtcNow;
         foreach (var position in positions)
         {
@@ -271,6 +277,11 @@ public sealed partial class PageService : IPageService
         if (FindConflict(afterDelete) is { } conflict)
         {
             return $"Can't delete: its child pages would move up a level and clash. {conflict}";
+        }
+
+        if (page.ParentPageId is null && await LocaleClashAsync(children.Select(c => c.Slug), ct) is { } clash)
+        {
+            return $"Can't delete: its child pages would move up to the top level and clash. {clash}";
         }
 
         foreach (var child in children)
@@ -363,6 +374,21 @@ public sealed partial class PageService : IPageService
         }
 
         return false;
+    }
+
+    /// <summary>The error when one of these top-level slugs is a locale's code (its URL prefix, /de/...), else null.</summary>
+    private async Task<string?> LocaleClashAsync(IEnumerable<string> topLevelSlugs, CancellationToken ct)
+    {
+        var slugs = topLevelSlugs.ToList();
+        if (slugs.Count == 0)
+        {
+            return null;
+        }
+
+        var codes = await _db.Locales.AsNoTracking().Select(l => l.Code.ToLower()).ToListAsync(ct);
+        return slugs.FirstOrDefault(codes.Contains) is { } slug
+            ? $"The slug '{slug}' is a locale code (Internationalization); choose another one."
+            : null;
     }
 
     /// <summary>Checks a whole tree for duplicate slugs or multiple dynamic segments under one parent.</summary>

@@ -69,6 +69,8 @@
         search.addEventListener("input", filter);
         search.addEventListener("keydown", function (event) {
             if (event.key === "Enter") {
+                // Enter that confirms an IME composition (Japanese, Chinese, Korean) is not a "go".
+                if (event.isComposing || event.keyCode === 229) { return; }
                 var first = nav.querySelector("li:not([hidden]) a");
                 if (first) { window.location.href = first.href; }
             } else if (event.key === "Escape") {

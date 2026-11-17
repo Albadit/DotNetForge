@@ -107,7 +107,7 @@ public static class ItemData
 
             case FieldTypes.Date:
                 {
-                    var raw = (string?)value ?? string.Empty;
+                    var raw = EntryData.AsText(value) ?? string.Empty;
                     if (!EntryData.TryDate(raw, out var date))
                     {
                         return null;
@@ -155,7 +155,7 @@ public static class ItemData
                 return new JObject { ["text"] = (string?)value ?? string.Empty, ["url"] = (string?)value ?? string.Empty };
 
             default:
-                return value.Type == JTokenType.String ? new JObject { ["text"] = (string)value! } : null;
+                return EntryData.AsText(value) is { } plain ? new JObject { ["text"] = plain } : null;
         }
     }
 

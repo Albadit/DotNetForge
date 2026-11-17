@@ -30,7 +30,8 @@ public sealed class RequestLocaleMiddleware(RequestDelegate next, LocaleCatalog 
             {
                 if (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method))
                 {
-                    context.Response.Redirect(rest + context.Request.QueryString, permanent: true);
+                    // One leading slash: "/en//evil.com" must not answer "//evil.com" (another site to the browser).
+                    context.Response.Redirect("/" + rest.TrimStart('/', '\\') + context.Request.QueryString, permanent: true);
                     return;
                 }
             }

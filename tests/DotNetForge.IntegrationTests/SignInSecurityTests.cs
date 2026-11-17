@@ -428,6 +428,23 @@ public sealed partial class SignInSecurityTests
     }
 
     [Fact]
+    public async Task Only_a_super_admin_resets_a_super_admins_two_step_verification()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        Guid superAdminId = default;
+        await factory.WithDbAsync(async db => superAdminId = (await db.Users.SingleAsync(u => u.Email == DotNetForgeWebFactory.AdminEmail)).Id);
+        await factory.CreateUserAsync("admin2@example.com", "Adm1nPass99", Roles.Admin);
+        var admin = await factory.SignInAsync("admin2@example.com", "Adm1nPass99");
+
+        var refused = await DotNetForgeWebFactory.PostFormAsync(admin, $"/admin/users/{superAdminId}", $"/admin/users/{superAdminId}/mfa/reset",
+            new Dictionary<string, string>());
+
+        Assert.NotEqual($"/admin/users/{superAdminId}", refused.Headers.Location?.OriginalString);
+        await factory.WithDbAsync(async db => Assert.False(await db.AuditLogs.AnyAsync(a => a.Action == AuditActions.MfaReset)));
+    }
+
+    [Fact]
     public async Task Passkey_registration_starts_for_app_url_and_refuses_a_forged_credential()
     {
         using var factory = new DotNetForgeWebFactory();

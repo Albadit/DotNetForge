@@ -108,7 +108,7 @@
 
     // ---- Rendering -------------------------------------------------------------------------------------------
     function render() {
-        root.innerHTML = "";
+        root.replaceChildren();
         root.appendChild(renderList(fields, 1));
         if (!readOnly) { root.appendChild(addControl(fields, 1)); }
     }
@@ -147,7 +147,13 @@
             "<span class=\"dnf-field-builder__name\">" + esc(field.label || field.key || dnfText("Untitled")) + "</span>" +
             "<code class=\"dnf-field-builder__key\">" + esc(field.key) + "</code>" +
             "<span class=\"dnf-field-builder__type-name\">" + esc(info.label) + "</span>" + badges(field));
-        summary.addEventListener("click", function () { open[field.id] = !open[field.id]; render(); });
+        summary.addEventListener("click", function () {
+            open[field.id] = !open[field.id];
+            render();
+            // The list is rebuilt: keep keyboard focus on this field's (new) summary button.
+            var again = root.querySelector("[data-field-id=\"" + field.id + "\"] > .dnf-field-builder__row > .dnf-field-builder__summary");
+            if (again) { again.focus(); }
+        });
         row.appendChild(summary);
         if (!readOnly) {
             var tools = el("div", { "class": "dnf-field-builder__tools" });
@@ -204,7 +210,7 @@
         changed(true);
     }
     function duplicate(list, index) {
-        var copy = JSON.parse(JSON.stringify(list[index]));
+        var copy = structuredClone(list[index]);
         (function fresh(f) { f.id = newId(); (f.fields || []).forEach(fresh); })(copy);
         copy.label = dnfText("{0} copy", copy.label || copy.key);
         copy.key = keyFrom(copy.label, list, copy);
@@ -451,7 +457,7 @@
         wrap.appendChild(el("span", { "class": "dnf-field__label" }, esc(dnfText("Options"))));
         var rows = el("div", { "class": "dnf-field-builder__options" });
         function draw() {
-            rows.innerHTML = "";
+            rows.replaceChildren();
             field.choices.forEach(function (choice, i) {
                 var row = el("div", { "class": "dnf-field-builder__option" });
                 var label = el("input", { type: "text", "class": "dnf-input dnf-input--sm", placeholder: dnfText("Label"), "aria-label": dnfText("Option {0} label", i + 1), maxlength: "100" });

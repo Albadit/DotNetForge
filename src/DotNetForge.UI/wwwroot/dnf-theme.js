@@ -16,6 +16,10 @@
         var theme = window.localStorage.getItem("dnf-theme");
         if (theme === "light" || theme === "dark") {
             document.documentElement.setAttribute("data-theme", theme);
+            // The meta tag (when the layout has one, before this script) gives the browser the scheme for the canvas
+            // and its own UI before the stylesheet loads; [data-theme] sets color-scheme once it has.
+            var meta = document.querySelector("meta[name='color-scheme']");
+            if (meta) { meta.setAttribute("content", theme); }
         }
     } catch (e) {
         // Storage blocked (privacy mode): the system preference applies.

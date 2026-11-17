@@ -7,7 +7,7 @@ const BPS = ["base", "tablet", "mobile"];
 const DEVICES = ["desktop", "tablet", "mobile"];
 const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 const own = (table, key) => Object.prototype.hasOwnProperty.call(table, key) ? table[key] : void 0;
-const cloneDefault = (v) => v === void 0 ? null : JSON.parse(JSON.stringify(v));
+const cloneDefault = (v) => v === void 0 ? null : structuredClone(v);
 /** The conditions a content list filter may use (FilterOperators in DocumentValidator.cs). */
 const FILTER_OPS = ["eq", "neq", "contains", "gt", "gte", "lt", "lte", "empty", "notEmpty"];
 /** Prop types a node inside a content list can take from an entry (PropDef.BindableTypes). */

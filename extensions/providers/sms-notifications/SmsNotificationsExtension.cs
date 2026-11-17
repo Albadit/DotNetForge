@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using DotNetForge.Sdk;
@@ -78,7 +79,7 @@ public sealed class SmsAuditHandler : IAuditEventHandler
             "plugin.disabled" => $"Extension disabled: {e.EntityDisplay}",
             _ => $"{e.Action}: {e.EntityDisplay ?? e.EntityId}",
         };
-        var text = $"[DotNetForge] {what} ({e.TimestampUtc:yyyy-MM-dd HH:mm} UTC, IP {e.IpAddress})";
+        var text = string.Create(CultureInfo.InvariantCulture, $"[DotNetForge] {what} ({e.TimestampUtc:yyyy-MM-dd HH:mm} UTC, IP {e.IpAddress})");
         return text.Length <= 300 ? text : text[..300];
     }
 }

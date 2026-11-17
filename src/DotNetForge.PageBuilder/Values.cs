@@ -198,8 +198,9 @@ namespace DotNetForge.PageBuilder
             return rounded == 0 ? 0 : rounded;
         }
 
-        private static readonly Regex TrackPx = new Regex(@"^([0-9]{1,4})px$", RegexOptions.CultureInvariant);
-        private static readonly Regex TrackFr = new Regex(@"^([0-9]{1,3}(?:\.[0-9]{1,6})?)fr$", RegexOptions.CultureInvariant);
+        // \z, not $: .NET's $ also matches before a final newline, JavaScript's does not ("12px\n" is invalid).
+        private static readonly Regex TrackPx = new Regex(@"^([0-9]{1,4})px\z", RegexOptions.CultureInvariant);
+        private static readonly Regex TrackFr = new Regex(@"^([0-9]{1,3}(?:\.[0-9]{1,6})?)fr\z", RegexOptions.CultureInvariant);
 
         /// <summary>
         /// A grid track size as Figma sets it: "auto" (Hug), "&lt;n&gt;px" (Fixed, 0-4000, whole pixels) or

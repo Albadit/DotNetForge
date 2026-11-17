@@ -86,7 +86,7 @@ class Actions {
     const doc = this.store.doc;
     const created = [];
     for (const root of data.roots) {
-      const nodes = Object.values(this.subtreeOf(data, root));
+      const nodes = this.subtreeOf(data, root);
       if (!nodes.length) continue;
       const valid = this.validateSubtree(nodes);
       if (!valid) continue;
@@ -101,19 +101,21 @@ class Actions {
     if (created.length) this.store.select(created);
     void doc;
   }
+  /**
+   * The copied nodes of one root, root first (empty when the root is missing). A Map, not an object: an object lists
+   * array-index keys ("12") first, which would put a descendant with such an id ahead of the root.
+   */
   subtreeOf(data, root) {
-    const out = {};
+    const out = /* @__PURE__ */ new Map();
     const stack = [root];
     while (stack.length) {
       const id = stack.pop();
-      const n = data.nodes[id];
-      if (!n || out[id]) continue;
-      out[id] = n;
+      const n = Object.prototype.hasOwnProperty.call(data.nodes, id) ? data.nodes[id] : void 0;
+      if (!n || out.has(id)) continue;
+      out.set(id, n);
       for (const c of n.children ?? []) stack.push(c);
     }
-    const rootNode = out[root];
-    delete out[root];
-    return { [root]: rootNode, ...out };
+    return [...out.values()];
   }
   validateSubtree(nodes) {
     const root = nodes[0];

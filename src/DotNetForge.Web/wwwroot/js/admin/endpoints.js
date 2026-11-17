@@ -360,6 +360,8 @@
         if (list !== null) {
             ops = list;
             ops.forEach(function (o) { o._open = ops.length === 1; });
+            // Hidden at the start when the JSON was invalid: the cards show again once it is fixed.
+            host.hidden = false;
             render();
         }
     });

@@ -166,8 +166,11 @@ public sealed class BehaviourTests(UiHost host)
 
         await page.EvaluateAsync("document.querySelector('[data-theme-set=\"dark\"]').click()");
         Assert.Equal("dark", await page.EvaluateAsync<string>("document.documentElement.getAttribute('data-theme')"));
+        const string Meta = "document.querySelector(\"meta[name='color-scheme']\").content";
+        Assert.Equal("dark", await page.EvaluateAsync<string>(Meta));
         await page.EvaluateAsync("document.querySelector('[data-theme-set=\"system\"]').click()");
         Assert.Null(await page.EvaluateAsync<string?>("document.documentElement.getAttribute('data-theme')"));
+        Assert.Equal("light dark", await page.EvaluateAsync<string>(Meta));
         await page.Context.CloseAsync();
     }
 

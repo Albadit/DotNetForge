@@ -371,6 +371,11 @@ public sealed class StructuredContentTests
         Assert.Equal(category.ToString(), bySlug.GetProperty("data").GetProperty("data").GetProperty("category").GetString());
         Assert.Equal(HttpStatusCode.NotFound, (await reader.GetAsync("/api/entries/blog-posts/draft-only")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await reader.GetAsync("/api/entries/blog-posts?filter[title][like]=x")).StatusCode);
+        // $title supports every operator, also the negations.
+        var notOther = await reader.GetFromJsonAsync<JsonElement>("/api/entries/blog-posts?filter[$title][neq]=Other");
+        Assert.Equal(1, notOther.GetProperty("meta").GetProperty("total").GetInt32());
+        var withTitle = await reader.GetFromJsonAsync<JsonElement>("/api/entries/blog-posts?filter[$title][notEmpty]=");
+        Assert.Equal(1, withTitle.GetProperty("meta").GetProperty("total").GetInt32());
 
         // Update with the version read; an older version is a conflict.
         var id = entry.GetProperty("id").GetString();

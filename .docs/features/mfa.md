@@ -181,7 +181,7 @@ API tokens are never affected.
 
 1. The user signs in with a **recovery code** and sets up a new method.
 2. Without one, a user with **Users update** opens their account on [Users](../pages/users.md) → **Reset two-step
-   verification** (`POST /admin/users/{id}/mfa/reset`, not for one's own account): every method and recovery code of
+   verification** (`POST /admin/users/{id}/mfa/reset`, not for one's own account; a Super Admin's only by a Super Admin, else 403): every method and recovery code of
    that user is deleted (`MfaService.ResetAsync`, audit `user.mfa.reset`). The user then signs in with the password
    alone and sets up a new method (at once, while it is required). An account created through a sign-in provider has
    no password: it signs in with its provider.

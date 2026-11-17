@@ -234,7 +234,7 @@
         var max = parseInt(repeater.getAttribute("data-max") || "0", 10);
         if (add && max) { add.disabled = repeater.querySelectorAll(":scope > [data-repeater-rows] > [data-repeater-row]").length >= max; }
     }
-    doc.addEventListener("click", function (event) {
+    window.dnfScreen.on(doc, "click", function (event) {
         var target = event.target instanceof Element ? event.target : null;
         if (!target) { return; }
         var add = target.closest("[data-repeater-add]");
@@ -281,6 +281,9 @@
     var dialog = null;
     function mediaDialog() {
         if (dialog) { return dialog; }
+        // One per page: the copy an earlier visit to this screen left in <body> (navigation.js swaps screens in place).
+        var earlier = doc.querySelector("body > dialog.dnf-media-dialog");
+        if (earlier) { earlier.remove(); }
         dialog = doc.createElement("dialog");
         dialog.className = "dnf-dialog dnf-dialog--xl dnf-media-dialog";
         dialog.setAttribute("aria-labelledby", "media-dialog-title");
@@ -451,6 +454,14 @@
             if (input) {
                 var timer = null;
                 var found = [];
+                var active = 0;
+                // The highlighted result (arrow keys), announced through aria-activedescendant; Enter picks it.
+                function highlight(index) {
+                    active = index;
+                    var options = results.querySelectorAll("[data-index]");
+                    Array.prototype.forEach.call(options, function (li, i) { li.setAttribute("aria-selected", i === index ? "true" : "false"); });
+                    if (options[index]) { input.setAttribute("aria-activedescendant", options[index].id); options[index].scrollIntoView({ block: "nearest" }); } else { input.removeAttribute("aria-activedescendant"); }
+                }
                 function show(list) {
                     found = list;
                     results.innerHTML = list.length ? list.map(function (e, i) {
@@ -458,8 +469,9 @@
                     }).join("") : "<li class=\"dnf-relation-picker__result dnf-relation-picker__result--empty\">" + esc(dnfText("No match")) + "</li>";
                     results.hidden = false;
                     input.setAttribute("aria-expanded", "true");
+                    highlight(0);
                 }
-                function hide() { results.hidden = true; input.setAttribute("aria-expanded", "false"); }
+                function hide() { results.hidden = true; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); }
                 function pick(entry) {
                     var option = Array.prototype.filter.call(select.options, function (o) { return o.value === entry.id; })[0];
                     if (!option) {
@@ -480,9 +492,13 @@
                 input.addEventListener("focus", search);
                 input.addEventListener("keydown", function (event) {
                     if (event.key === "Escape") { hide(); }
+                    if ((event.key === "ArrowDown" || event.key === "ArrowUp") && !results.hidden && found.length) {
+                        event.preventDefault();
+                        highlight((active + (event.key === "ArrowDown" ? 1 : found.length - 1)) % found.length);
+                    }
                     if (event.key === "Enter") {
                         event.preventDefault();
-                        if (found.length) { pick(found[0]); }
+                        if (found.length && !results.hidden) { pick(found[active] || found[0]); }
                     }
                 });
                 results.addEventListener("mousedown", function (event) {

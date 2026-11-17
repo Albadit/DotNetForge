@@ -1,3 +1,4 @@
+using System.Data;
 using DotNetForge.Shared.Constants;
 using DotNetForge.Shared.Entities;
 using DotNetForge.Shared.Results;
@@ -30,7 +31,9 @@ public sealed class InstallationStore : IInstallationStore
     {
         ArgumentNullException.ThrowIfNull(admin);
 
-        await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+        // Repeatable read: a second setup that read "not installed" before the first committed fails on its update of
+        // the SystemState row (a serialization error) instead of adding a second Super Admin, as read committed would.
+        await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
 
         var state = await _db.SystemState.OrderBy(s => s.Id).FirstOrDefaultAsync(cancellationToken);
         if (state is null)

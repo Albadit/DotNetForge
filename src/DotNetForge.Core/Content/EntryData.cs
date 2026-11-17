@@ -82,7 +82,7 @@ public static partial class EntryData
             var raw = ((string)s!).Trim();
             try
             {
-                value = raw.StartsWith('[') ? JToken.Parse(raw) : Paragraphs(raw);
+                value = raw.StartsWith('[') ? ParseJson(raw) : Paragraphs(raw);
             }
             catch (Newtonsoft.Json.JsonException)
             {
@@ -223,7 +223,7 @@ public static partial class EntryData
                         var raw = ((string)value!).Trim();
                         try
                         {
-                            blocks = raw.StartsWith('[') ? JToken.Parse(raw) : Paragraphs(raw);
+                            blocks = raw.StartsWith('[') ? ParseJson(raw) : Paragraphs(raw);
                         }
                         catch (Newtonsoft.Json.JsonException)
                         {
@@ -589,7 +589,7 @@ public static partial class EntryData
     public static string Title(IReadOnlyList<FieldDefinition> fields, string? titleKey, JObject data)
     {
         var key = ContentSchema.TitleKey(fields, titleKey);
-        var text = key is null ? null : (string?)(data[key] as JValue);
+        var text = key is null ? null : AsText(data[key]);
         text = text?.Trim() ?? string.Empty;
         return text.Length > MaxTitle ? text[..MaxTitle] : text;
     }
@@ -740,23 +740,37 @@ public static partial class EntryData
 
     private static bool TryText(JToken? value, out string text)
     {
-        if (value is { Type: JTokenType.String })
-        {
-            text = (string)value!;
-            return true;
-        }
-
-        text = string.Empty;
-        return false;
+        text = AsText(value) ?? string.Empty;
+        return value is { Type: JTokenType.String or JTokenType.Date };
     }
+
+    /// <summary>
+    /// The text of a string value. <c>JToken.Parse</c> reads ISO date strings as date tokens (Newtonsoft's default
+    /// <c>DateParseHandling.DateTime</c>), so a stored <c>2024-05-01T10:00:00Z</c> can arrive as one: it is written back
+    /// in the same ISO form, never in a culture's date format.
+    /// </summary>
+    internal static string? AsText(JToken? value) => value switch
+    {
+        JValue { Type: JTokenType.String } s => (string?)s,
+        JValue { Type: JTokenType.Date, Value: DateTime d } => d.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture),
+        JValue { Type: JTokenType.Date, Value: DateTimeOffset o } => o.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz", CultureInfo.InvariantCulture),
+        _ => null,
+    };
 
     /// <summary>The strings in a value that is one string or a list of strings.</summary>
     internal static IEnumerable<string> Strings(JToken? value) => value switch
     {
-        JArray a => a.Where(t => t.Type == JTokenType.String).Select(t => (string)t!),
-        JValue { Type: JTokenType.String } s => new[] { (string)s! },
+        JArray a => a.Select(AsText).OfType<string>(),
+        JValue v when AsText(v) is { } s => new[] { s },
         _ => Enumerable.Empty<string>(),
     };
+
+    /// <summary>JSON as posted, with date-like strings kept as strings (a rich text run may be just a date).</summary>
+    private static JToken ParseJson(string json)
+    {
+        using var reader = new Newtonsoft.Json.JsonTextReader(new StringReader(json)) { DateParseHandling = Newtonsoft.Json.DateParseHandling.None };
+        return JToken.ReadFrom(reader);
+    }
 
     private static string OneLine(string text) => Regex.Replace(text, @"\s*[\r\n]+\s*", " ").Trim();
 

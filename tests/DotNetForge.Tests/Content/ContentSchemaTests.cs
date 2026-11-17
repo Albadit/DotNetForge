@@ -237,6 +237,29 @@ public sealed class ContentSchemaTests
         }
     }
 
+    [Fact]
+    public void Stored_iso_date_times_read_back_as_text()
+    {
+        // JToken.Parse turns "…T…Z" strings into date tokens: stored values must still validate and render the same.
+        var fields = Fields("""
+            [{ "key": "name", "type": "text" }, { "key": "at", "type": "date", "withTime": true }, { "key": "body", "type": "richText" }]
+            """);
+        var stored = JToken.Parse("""{ "name": "2026-01-02T03:04:05Z", "at": "2026-01-02T03:04:05Z" }""");
+        Assert.Equal(JTokenType.Date, stored["at"]!.Type);
+
+        var result = EntryData.Validate(fields, stored, publish: true, References(false));
+        Assert.True(result.IsValid, string.Join(" | ", result.Errors));
+        Assert.Equal("2026-01-02T03:04:05Z", (string?)result.Data["at"]);
+        Assert.Equal("2026-01-02T03:04:05Z", (string?)result.Data["name"]);
+
+        var item = ItemData.Build(Guid.Empty, "t", "", fields, (JObject)stored, _ => null, _ => null)["fields"]!;
+        Assert.Equal("2026-01-02T03:04:05Z", (string?)item["at"]!["value"]);
+        Assert.Equal("2026-01-02T03:04:05Z", (string?)item["name"]!["text"]);
+
+        var rich = EntryData.Validate(fields, JObject.FromObject(new { body = """[{"type":"p","runs":[{"text":"2026-01-02T03:04:05Z"}]}]""" }), false, References(false));
+        Assert.NotNull(rich.Data["body"]);
+    }
+
     private static EntryReferences References(bool entries) =>
         new((_, _) => true, (id, type) => entries && id == Categories && type == Categories);
 }

@@ -150,10 +150,12 @@ The user's choice is stored in `localStorage` under `dnf-theme` (`light` or `dar
 
 - **`dnf-theme.js`** - load it synchronously in `<head>`, before the stylesheet. It sets `<html data-theme>` from
   `dnf-theme` before the first paint (no flash) and adds `class="dnf-js"` to `<html>`, so `.dnf-js-only` elements (a
-  theme menu) show from the first paint. Blocked storage falls back to the system preference.
+  theme menu) show from the first paint. Blocked storage falls back to the system preference. Put it after
+  `<meta name="color-scheme" content="light dark">`: it sets that tag to the stored theme too, so the page canvas and
+  the browser's own UI use it before the stylesheet loads.
 - **`dnf.js`** - any element with `data-theme-set="light|dark|system"` switches on click: it sets or removes
-  `data-theme` on `<html>`, stores or clears `dnf-theme`, and sets `aria-checked="true"` on the matching
-  `[data-theme-set]` elements (`"false"` on the others).
+  `data-theme` on `<html>`, stores or clears `dnf-theme`, sets the `color-scheme` meta tag to the theme (`light dark`
+  for system), and sets `aria-checked="true"` on the matching `[data-theme-set]` elements (`"false"` on the others).
 
 The CMS theme menu (`src/DotNetForge.Web/Views/Shared/_ThemeMenu.cshtml`):
 

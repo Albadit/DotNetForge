@@ -177,6 +177,22 @@ public sealed class InternationalizationTests
     }
 
     [Fact]
+    public async Task The_default_locale_redirect_stays_on_this_site()
+    {
+        using var factory = new DotNetForgeWebFactory();
+        await factory.InstallAsync();
+        using var visitor = factory.CreateNoRedirectClient();
+
+        var slashes = await visitor.GetAsync("/en//evil.example/path");
+        var backslash = await visitor.GetAsync("/en/%5Cevil.example");
+
+        Assert.Equal(HttpStatusCode.MovedPermanently, slashes.StatusCode);
+        Assert.Equal("/evil.example/path", slashes.Headers.Location?.OriginalString);
+        Assert.False(backslash.Headers.Location?.OriginalString.StartsWith("/\\", StringComparison.Ordinal) == true);
+        Assert.False(backslash.Headers.Location?.OriginalString.StartsWith("//", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
     public async Task A_locale_code_and_a_top_level_slug_never_share_a_url()
     {
         using var factory = new DotNetForgeWebFactory();

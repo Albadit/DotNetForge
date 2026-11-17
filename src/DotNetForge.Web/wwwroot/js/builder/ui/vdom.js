@@ -316,7 +316,7 @@ function diffElement(vnode, old, ctx, svg) {
     if (html !== oldProps.dangerouslySetInnerHTML?.__html || !old) dom.innerHTML = html;
     vnode.children = [];
   } else {
-    if (oldProps.dangerouslySetInnerHTML) dom.innerHTML = "";
+    if (oldProps.dangerouslySetInnerHTML) dom.replaceChildren();
     diffChildren(vnode, normalizeChildren(props.children), old?.children ?? [], ctx, svg && type !== "foreignObject", vnode);
     placeChildren(vnode);
   }

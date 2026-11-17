@@ -129,6 +129,8 @@ class InlineEditor {
         e.preventDefault();
         e.stopPropagation();
         this.commit();
+      } else if (e.key === "Enter" && (e.isComposing || e.keyCode === 229)) {
+        // Enter confirms an IME composition (Japanese, Chinese, Korean): leave it to the IME, don't commit.
       } else if (e.key === "Enter" && kind !== "rich" && !(kind === "inline" && e.shiftKey)) {
         e.preventDefault();
         this.commit();

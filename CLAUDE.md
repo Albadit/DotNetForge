@@ -13,7 +13,8 @@ app is `src/DotNetForge.Web`, libraries are the other `src/` projects, Docker fi
   size suggestions (complexity, file length, nesting: `.docs/guides/testing.md#guardrails`).
 - **Terminology:** `.docs/glossary.md` ("screen" = UI view, "content page"/`Page` = entity, "live" ≠ `Published`).
 - **Skills:** `admin-page`, `api-endpoint`, `database-change`, `admin-extension`, `verify`, `documentation`,
-  `software-engineering`, `release-notes` (in `.claude/skills/`).
+  `software-engineering`, `release-notes`, `modern-web` (front-end modernization, Modern Web Guidance) (in
+  `.claude/skills/`).
 
 ## Commands (repository root)
 

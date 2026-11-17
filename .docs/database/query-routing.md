@@ -47,7 +47,7 @@ DatabaseCommand
 ├── Filter         DatabaseFilter tree (below)
 ├── Fields         projection; null = all fields
 ├── Sort           DatabaseSort(Field, Descending)…
-├── Skip / Take    paging, applied in the database
+├── Skip / Take    paging, applied in the database; Take = 0 returns no records without a round trip
 ├── Documents      records to insert
 ├── Set            field values for updates
 ├── Aggregation    GroupBy fields + accumulators (Count, Sum, Min, Max, Average)

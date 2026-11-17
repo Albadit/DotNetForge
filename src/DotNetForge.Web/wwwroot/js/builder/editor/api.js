@@ -31,7 +31,9 @@ class Api {
     } catch {
       throw new ApiError(0, t("The server could not be reached. Check your connection."));
     }
-    if (res.redirected && /\/account\/(login|denied)/.test(res.url)) {
+    // The cookie challenge redirects to the sign-in page (/login; /account/login is its old address) and fetch
+    // follows it: without this check the sign-in page's HTML would pass as a successful response.
+    if (res.redirected && /^\/(?:login|account\/(?:login|denied))(?:\/|$)/.test(new URL(res.url, location.href).pathname)) {
       throw new ApiError(401, t("Your session has expired. Sign in again to continue."));
     }
     const text = await res.text();

@@ -91,7 +91,7 @@ Server: the `Users` / `UserRoles` rows. Client: the list's search, filters, sort
 | --- | --- |
 | list, form (`GET`) | `AdminArea` + `Users` / `read` |
 | create (`GET`/`POST`) | + `Users` / `create` |
-| save, enable, disable, reset two-step verification | + `Users` / `update` |
+| save, enable, disable, reset two-step verification | + `Users` / `update` (on a Super Admin only as a Super Admin; reset two-step verification answers 403 otherwise) |
 | delete | + `Users` / `delete` |
 
 Defaults: Super Admin and Admin. Without `update` the form is read-only ("View only"). Rules that hold regardless of

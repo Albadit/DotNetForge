@@ -117,7 +117,8 @@ always writes `lang="en" dir="ltr"`; the sample theme writes `CurrentUICulture.N
 **Slugs and locale codes never share a URL.** Adding a locale whose code equals the slug of a top-level page is refused
 (`LocaleService.AddAsync`: "A top-level page uses the slug 'da', which this locale's URLs would hide. Change that
 page's slug first."), and a top-level page can't take an existing locale's code as its slug (`PageService.ApplyAsync`:
-"The slug 'de' is a locale code (Internationalization); choose another one.").
+"The slug 'de' is a locale code (Internationalization); choose another one.") - nor get there by a move or by its
+parent's deletion (`ReorderAsync`, `DeleteAsync`).
 
 ## Public site
 

@@ -44,7 +44,7 @@ function bindValue(type, template, fields, max) {
       return text ? [{ text }] : [];
     }
     case "rich": {
-      if (c && Array.isArray(c.rich)) return JSON.parse(JSON.stringify(c.rich));
+      if (c && Array.isArray(c.rich)) return structuredClone(c.rich);
       const text = cut(fill(template, fields, false), max);
       return text ? [{ type: "p", runs: [{ text }] }] : [];
     }
@@ -66,7 +66,7 @@ function bindNode(node, item) {
   const def = componentDef(node.type);
   if (!def) return node;
   const fields = isObj(item.fields) ? item.fields : {};
-  const props = JSON.parse(JSON.stringify(node.props));
+  const props = structuredClone(node.props);
   for (const [prop, template] of Object.entries(node.bind)) {
     const pdef = Object.prototype.hasOwnProperty.call(def.props, prop) ? def.props[prop] : void 0;
     if (!pdef || typeof template !== "string") continue;

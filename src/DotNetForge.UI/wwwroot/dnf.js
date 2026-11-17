@@ -58,13 +58,17 @@
     // ---- Theme: light / dark / system ([data-theme-set="light|dark|system"], aria-checked) ---------------------
     function currentTheme() { return storage.get("dnf-theme") || "system"; }
     function applyTheme(theme) {
-        if (theme === "light" || theme === "dark") {
+        var pinned = theme === "light" || theme === "dark";
+        if (pinned) {
             doc.documentElement.setAttribute("data-theme", theme);
             storage.set("dnf-theme", theme);
         } else {
             doc.documentElement.removeAttribute("data-theme");
             storage.remove("dnf-theme");
         }
+        // Kept in step with [data-theme] for the browser's own UI (dnf-theme.js sets it before the first paint).
+        var meta = doc.querySelector("meta[name='color-scheme']");
+        if (meta) { meta.setAttribute("content", pinned ? theme : "light dark"); }
         $all("[data-theme-set]").forEach(function (button) {
             button.setAttribute("aria-checked", button.getAttribute("data-theme-set") === (theme || "system") ? "true" : "false");
         });
